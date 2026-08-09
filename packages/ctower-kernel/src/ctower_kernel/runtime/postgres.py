@@ -10,8 +10,6 @@ from ctower_kernel.runtime import (
     DreamDispatchConsumeCommand,
     DreamDispatchEffect,
     DreamDispatchReceipt,
-    DreamLaneBindCommand,
-    DreamLaneBindingReceipt,
     FixedOperationAttempt,
     FixedOperationCompletion,
     FixedOperationResult,
@@ -37,6 +35,7 @@ from ctower_kernel.runtime._synthetic_sql import claim_synthetic as _claim_synth
 from ctower_kernel.runtime._synthetic_sql import complete_synthetic as _complete_synthetic
 from ctower_kernel.runtime._synthetic_sql import start_synthetic as _start_synthetic
 from ctower_kernel.runtime._synthetic_sql import synthetic_run as _synthetic_run
+from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
 
 __all__ = ["PostgresRuntime"]
 

@@ -33,6 +33,7 @@ from ctower_kernel.record.credentials import (
 from ctower_kernel.record.dream_dispatch_events import (
     DreamDispatchConsumedPayload,
     DreamLaneBoundPayload,
+    validate_dream_runtime_identity,
 )
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
@@ -596,7 +597,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_ticket_identity(event)
     _validate_catalog_identity(event)
     _validate_occurrence_identity(event)
-    _validate_dream_dispatch_identity(event)
+    validate_dream_runtime_identity(event.aggregate_id, event.payload)
     _validate_poison_identity(event)
     _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
     _validate_inbox_identity(event.payload, event.aggregate_id)
@@ -632,17 +633,6 @@ def _validate_occurrence_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.payload.occurrence_id
     ):
         raise ValueError("Routine aggregate and occurrence identity must match")
-
-
-def _validate_dream_dispatch_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, DreamDispatchConsumedPayload) and (
-        event.aggregate_id != event.payload.effect_id
-    ):
-        raise ValueError("dream dispatch aggregate and effect identity must match")
-    if isinstance(event.payload, DreamLaneBoundPayload) and (
-        event.aggregate_id != event.payload.principal_id
-    ):
-        raise ValueError("dream lane aggregate and principal identity must match")
 
 
 def _validate_poison_identity(event: EventEnvelope) -> None:

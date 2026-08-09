@@ -1,6 +1,5 @@
 """Public Runtime Interface for deterministic fixed-operation Routines."""
 
-from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
 from ctower_kernel.runtime.interface import (
     CatchUpPolicy,
     ConcurrencyPolicy,
@@ -36,8 +35,6 @@ __all__ = [
     "DreamDispatchEffect",
     "DreamDispatchReceipt",
     "DreamDispatchSpec",
-    "DreamLaneBindCommand",
-    "DreamLaneBindingReceipt",
     "FixedOperationAttempt",
     "FixedOperationCompletion",
     "FixedOperationJob",

@@ -6,7 +6,11 @@ import re
 from dataclasses import dataclass
 from uuid import UUID
 
-__all__ = ["DreamDispatchConsumedPayload", "DreamLaneBoundPayload"]
+__all__ = [
+    "DreamDispatchConsumedPayload",
+    "DreamLaneBoundPayload",
+    "validate_dream_runtime_identity",
+]
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _MAX_REFERENCE_LENGTH = 128
@@ -82,6 +86,15 @@ class DreamLaneBoundPayload:
             "probe_evidence": self.probe_evidence,
             "reasoning_effort": self.reasoning_effort,
         }
+
+
+def validate_dream_runtime_identity(aggregate_id: UUID, payload: object) -> None:
+    """Keep dream effect and lane aggregates bound to their payload identity."""
+
+    if isinstance(payload, DreamDispatchConsumedPayload) and aggregate_id != payload.effect_id:
+        raise ValueError("dream dispatch aggregate and effect identity must match")
+    if isinstance(payload, DreamLaneBoundPayload) and aggregate_id != payload.principal_id:
+        raise ValueError("dream lane aggregate and principal identity must match")
 
 
 def _bounded(label: str, value: object) -> None:

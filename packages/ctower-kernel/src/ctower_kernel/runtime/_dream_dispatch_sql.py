@@ -29,9 +29,8 @@ from ctower_kernel.runtime import (
     DreamDispatchEffect,
     DreamDispatchReceipt,
     DreamDispatchSpec,
-    DreamLaneBindCommand,
-    DreamLaneBindingReceipt,
 )
+from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
 
 __all__: tuple[str, ...] = ()
 
@@ -159,6 +158,17 @@ def _commit_binding(
         now=now,
         topic="runtime.dream-lane-bindings",
     )
+    _insert_binding(connection, actor, command, evidence, now)
+    return receipt
+
+
+def _insert_binding(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: DreamLaneBindCommand,
+    evidence: str,
+    now: datetime,
+) -> None:
     connection.execute(
         """
         INSERT INTO runtime_dream_lane_bindings (
@@ -182,7 +192,6 @@ def _commit_binding(
             now,
         ),
     )
-    return receipt
 
 
 def list_dream_dispatches(dsn: str, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
