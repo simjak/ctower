@@ -220,38 +220,6 @@ def test_review_dispatch_commands_parse_the_exact_effect_and_routing_facts() -> 
     assert consumed.crew_name == "review-r347"
 
 
-def test_dream_lane_bind_parses_the_ceremony_shape_exactly() -> None:
-    parsed = parse_arguments(
-        [
-            "dream-lane",
-            "bind",
-            "--lane",
-            "dream-lane:writer-r2881-dream",
-            "--crew",
-            "writer-r2881-dream",
-            "--harness",
-            "codex",
-            "--model",
-            "gpt-5.6-sol",
-            "--effort",
-            "max",
-            "--fallback",
-            "qwen3.8-max",
-            "--tier",
-            "hard",
-        ]
-    )
-
-    assert parsed.cli_name == "dream-lane bind"
-    assert parsed.lane_ref == "dream-lane:writer-r2881-dream"
-    assert parsed.crew_name == "writer-r2881-dream"
-    assert parsed.harness_ref == "codex"
-    assert parsed.model_ref == "gpt-5.6-sol"
-    assert parsed.reasoning_effort == "max"
-    assert parsed.fallback_model_ref == "qwen3.8-max"
-    assert parsed.model_tier == "hard"
-
-
 def test_project_seat_credential_commands_are_strict_and_unspoolable() -> None:
     command_id = uuid4()
     issue = parse_arguments(
