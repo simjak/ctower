@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/simjak/ctower/compare/v0.19.0...v0.20.0) (2026-08-09)
+
+
+### Features
+
+* **ui:** add the server-authoritative inbox chat send box ([#390](https://github.com/simjak/ctower/issues/390)) ([4edf515](https://github.com/simjak/ctower/commit/4edf5152a59b16746caf3b4d313f089044fd198d))
+
 ## [0.19.0](https://github.com/simjak/ctower/compare/v0.18.0...v0.19.0) (2026-08-08)
 
 
