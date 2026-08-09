@@ -17,21 +17,23 @@ export async function promoteThreadAction(
 }
 
 /**
- * Server action: the browser submits message text, and only message text.
+ * Server action: the browser submits message text, and the answer it last got.
  *
  * The thread is bound from the route, the recipient is resolved server-side,
  * and the sender is the bearer's own principal. An accepted message revalidates
  * this route so the thread re-renders with it in place — the reader never
  * reloads to see what they just sent, and never sees a message the record has
- * not answered with.
+ * not answered with. Nothing is revalidated for an answer the record did not
+ * accept: there is no new truth to re-read, and `previous` carries that send's
+ * identity back so pressing the box again retries it rather than duplicating it.
  */
 export async function sendMessageAction(
   threadId: string,
-  _previous: InboxSendState,
+  previous: InboxSendState,
   formData: FormData
 ): Promise<InboxSendState> {
   const typed = formData.get("text");
-  const state = await sendInboxMessage(threadId, typeof typed === "string" ? typed : "");
+  const state = await sendInboxMessage(threadId, typeof typed === "string" ? typed : "", previous);
   if (state.kind === "sent") {
     revalidatePath("/inbox");
   }

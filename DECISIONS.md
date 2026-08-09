@@ -1810,3 +1810,61 @@ Rejected alternatives:
 - Keeping the suite named `dogfood-inbox-promotion` while it proves two controls. An identifier that names
   one of the things it covers is a stale name, and `DECISIONS.md` is superseded, never rewritten (D36), so
   the rename is recorded here rather than edited into D42.
+
+## D45 — The dogfood send box tells a non-accepted answer from an accepted one (engineering, 2026-08-09, gh#372)
+
+The independent review of the send box found it reading `durability_state` only to validate it: both
+members were accepted, the discriminator was discarded, and every answer became a confirmed `just sent`
+row with the draft cleared. D17 clauses 4 and 7 and the client-acknowledgement law in `SPEC.md` say the
+opposite about one of those members — a `202`/`durability_pending` answer is explicitly *non-accepted*, stays
+visibly unsent, and is safely replayable under the same command key. The answer carries the same message
+identity, position and timestamp the accepted one does, so nothing but the discriminator distinguishes a
+recorded message from one the record has not promised to keep. This entry records the cure and supersedes
+only the two D44 clauses it changes; D41, D42, D22, D23, D31, CT-I1-005 and CT-I2-005 are unchanged.
+
+1. **Three answers, three renderings.** An accepted answer draws the message row, marked `just sent`, and
+   clears the box. A non-accepted answer draws no row at all: the typed words stay in the field, the line
+   under the box says the server has not confirmed the message, and the button offers `Retry` rather than
+   `Send`. A terminal problem document renders its own validated human `detail` and hands the words back.
+   No control on this boundary projects an unaccepted command as record truth.
+2. **The browser carries one more value, and it is not authority.** This supersedes D44 clause 1's
+   "submits exactly one value: the message text" only. The browser also returns the answer it last
+   received, and the server reads exactly one field out of it: the command identity of a send the record
+   answered without accepting. That identity names a command; it claims nothing. The API re-authorizes
+   every attempt from the server-held bearer, exact replay returns that command's original outcome, and a
+   same-key different request is refused as a conflict. It is read strictly — a value that is not a UUID
+   is refused before any read or command is made. The browser still receives no bearer, session, CSRF
+   token, credential, actor, project, scope, custody, or authorization claim, the recipient is still
+   resolved server-side, and the request body is still exactly `{"text","thread_id","to"}`.
+3. **A retry of an unconfirmed send reuses its identity; an edit mints a new one.** This supersedes D44
+   clause 2's minting sentence only. One `Idempotency-Key` is minted before the first attempt, reused by
+   every bounded transport retry, *and* reused when the sender presses the box again on a message the
+   record has not confirmed — retrying that message under a fresh identity would ask the record to keep
+   two copies of it. Editing the words first makes it a different request, so it is a different command
+   with a new identity: one key for two different requests is a conflict, not a retry.
+4. **The one suite proves the non-accepted half too.** The `dogfood-inbox-controls` suite already proved
+   that an accepted message appears without a reload; it now also submits on a thread the local stub
+   answers `202` for, and proves at each width that no row is drawn, the draft survives, the sentence is
+   on screen, and pressing the box again reaches the record under the same key. The transport fixture
+   carried only an `accepted` response before this, so the otherwise-green suite could not fail. No second
+   suite is registered and no other suite changes status.
+5. **What this still withholds.** It adds no origin-scoped draft persistence: closing or reloading the
+   document discards an unconfirmed draft and its identity, and the next send mints a new one. `SPEC.md`
+   assigns that persistence to the product browser command path, which stays deferred to `CT-I2-005`; on
+   this boundary the guarantee is bounded by one document's lifetime, and after a reload the screen still
+   says only what the record says — the message is absent, not shown as sent. It grants no new command,
+   contract, role, capability flag, product route, or deployment promise.
+
+Rejected alternatives:
+
+- Drawing the unconfirmed message as a greyed-out row with a `not confirmed` chip. It is the same row
+  component the accepted state uses, in the place a reader has learned holds recorded messages, and it
+  reduces "this may not exist" to a chip somebody has to notice. The words are the same information kept
+  where the sender can act on them.
+- Clearing the box and holding the draft only in server state until the sender asks for it back. The
+  draft in the field *is* the retry affordance; a message nobody can see is a message nobody will retry.
+- Minting a new identity on every press. That asks the record to keep two copies of one message whenever
+  the first attempt did commit, which is the duplicate this whole path exists to prevent.
+- Treating `202` as one more retryable status inside the bounded transport loop. It is not transport
+  noise; it is the record's own answer about durability, the acknowledgement can outlast any client
+  deadline, and retrying inside the loop would hide the one state the operator has to see.

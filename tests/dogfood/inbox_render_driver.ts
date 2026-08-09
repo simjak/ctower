@@ -16,6 +16,12 @@
  * submits the box, waits for its own text, and reports whether the stamp
  * survived — a full page load would have wiped it.
  *
+ * The third is that same claim's other half: a send the record answers *without
+ * accepting* must not appear as a message at all. Each width therefore also
+ * submits on a thread the stub answers `202`/`durability_pending` for, and
+ * reports the rows, the box's own words, its button and the sentence it put on
+ * screen — before and after pressing it again.
+ *
  * Two texts are reported for each capture, because they answer different
  * questions. `visible` is `innerText` — what a reader actually sees, with the
  * rail collapsed into its drawer at phone width. `rendered` is every text node
@@ -32,7 +38,8 @@
  * `tests/repository`.
  *
  * Usage:
- *   node --no-warnings inbox_render_driver.ts <base-url> <thread-id> <refused-thread-id> <dir>
+ *   node --no-warnings inbox_render_driver.ts <base-url> <thread-id> <refused-thread-id>
+ *     <unconfirmed-thread-id> <dir>
  */
 
 import { chromium } from "@playwright/test";
@@ -43,6 +50,8 @@ const HEIGHT = 900;
 const NAVIGATION_TIMEOUT_MS = 30_000;
 const SETTLE_TIMEOUT_MS = 30_000;
 const STAMP = "kept";
+/** The send box, told from the promote form it shares a page and a class with. */
+const SEND_BOX = "form.steer-box:has(textarea[name='text'])";
 
 interface NewTicketAffordance {
   readonly label: string;
@@ -64,25 +73,35 @@ interface Capture extends Surface {
   readonly screenshot: string;
 }
 
-/** What one width's send box did when it was actually used. */
-interface Drive {
-  readonly width: number;
-  readonly outcome: string;
-  /** The text typed into the box. */
-  readonly typed: string;
+/** The thread and its send box, as one document reports them. */
+interface BoxState {
   /** True when the document that submitted is the document that answered. */
   readonly sameDocument: boolean;
   /** The box's own field after the round trip. */
   readonly fieldAfter: string;
-  /** The thread's messages as the page lists them, after the round trip. */
+  /** What the box's own button offers next: `Send`, `Retry`, or `Sending…`. */
+  readonly button: string;
+  /** The thread's messages as the page lists them. */
   readonly messages: readonly string[];
   /** Those of them the projection has not folded yet, by their own marker. */
-  readonly pending: readonly string[];
-  /** The same two, re-read in a fresh document once the projection caught up. */
+  readonly unfolded: readonly string[];
+  /** The unconfirmed-send sentence on screen, or the empty string. */
+  readonly notice: string;
+  /** The refusal sentence on screen, or the empty string. */
+  readonly refusal: string;
+}
+
+/** What one width's send box did when it was actually used. */
+interface Drive extends BoxState {
+  readonly width: number;
+  readonly outcome: string;
+  /** The text typed into the box. */
+  readonly typed: string;
+  /** The same page after pressing the box again, when it was not confirmed. */
+  readonly retried: BoxState | null;
+  /** The thread re-read in a fresh document, with none of this page's state. */
   readonly messagesReloaded: readonly string[];
-  readonly pendingReloaded: readonly string[];
-  /** The refusal sentence the box put on screen, when it refused. */
-  readonly refusal: string | null;
+  readonly unfoldedReloaded: readonly string[];
   readonly screenshot: string;
 }
 
@@ -128,23 +147,55 @@ async function stamp(page: Page): Promise<void> {
   }, STAMP);
 }
 
-async function threadState(page: Page): Promise<{
-  readonly sameDocument: boolean;
-  readonly fieldAfter: string;
-  readonly messages: string[];
-  readonly pending: string[];
-}> {
+async function boxState(page: Page): Promise<BoxState> {
   return await page.evaluate((mark: string) => {
     const field = document.querySelector("textarea[name='text']");
+    // the send box is the form its own message field belongs to: the promote
+    // control is another form in the same design-system class on the same page
+    const box = field instanceof HTMLTextAreaElement ? field.form : null;
     const said = (rows: string): string[] =>
       [...document.querySelectorAll(rows)].map((node) => node.textContent ?? "");
+    const text = (node: Element | null | undefined): string => node?.textContent?.trim() ?? "";
     return {
       sameDocument: document.documentElement.dataset.visit === mark,
       fieldAfter: field instanceof HTMLTextAreaElement ? field.value : "",
+      button: text(box?.querySelector("button[type='submit']")),
       messages: said(".panel .msg .subj"),
-      pending: said(".panel .msg:has(.verdict) .subj"),
+      unfolded: said(".panel .msg:has(.verdict) .subj"),
+      notice: text(box?.querySelector("p[role='status']")),
+      refusal: text(box?.querySelector("p[role='alert']")),
     };
   }, STAMP);
+}
+
+/** Wait for the one thing this outcome puts on the screen. */
+async function settle(page: Page, outcome: string, typed: string): Promise<void> {
+  if (outcome === "sent") {
+    await page.locator(".msg .subj", { hasText: typed }).first().waitFor({
+      timeout: SETTLE_TIMEOUT_MS,
+    });
+    return;
+  }
+  const role = outcome === "refused" ? "alert" : "status";
+  await page.locator(`${SEND_BOX} p[role='${role}']`).waitFor({ timeout: SETTLE_TIMEOUT_MS });
+}
+
+/**
+ * Press the box again on a send the server has not confirmed.
+ *
+ * The screen says the same thing before and after, so the round trip is waited
+ * for at the transport: the Server Action's own answer. What the retry has to
+ * prove is on the record's side — one command identity, not two — and that is
+ * asserted against the stub's command log.
+ */
+async function retry(page: Page): Promise<BoxState> {
+  const answered = page.waitForResponse((response) => response.request().method() === "POST", {
+    timeout: SETTLE_TIMEOUT_MS,
+  });
+  await page.locator(SEND_BOX).getByRole("button", { name: "Retry" }).click();
+  await answered;
+  await settle(page, "unconfirmed", "");
+  return await boxState(page);
 }
 
 /** Type into the send box, submit it, and report what the same document did. */
@@ -158,46 +209,46 @@ async function drive(
 ): Promise<Drive> {
   await stamp(page);
   await page.locator("textarea[name='text']").fill(typed);
-  await page.getByRole("button", { name: "Send" }).click();
-  const settled =
-    outcome === "sent"
-      ? page.locator(".msg .subj", { hasText: typed }).first()
-      : page.locator("form.steer-box p[role='alert']");
-  await settled.waitFor({ timeout: SETTLE_TIMEOUT_MS });
-  const refusal = outcome === "sent" ? null : ((await settled.textContent()) ?? "");
-  const state = await threadState(page);
+  await page.locator(SEND_BOX).getByRole("button", { name: "Send" }).click();
+  await settle(page, outcome, typed);
+  const state = await boxState(page);
   await page.screenshot({ path: screenshot, fullPage: true });
+  const retried = outcome === "unconfirmed" ? await retry(page) : null;
 
   // a second, fresh document: what the thread projection itself now carries,
   // with nothing of the submitting page's state left to carry it
   await page.goto(route, { waitUntil: "networkidle" });
-  const reloaded = await threadState(page);
+  const reloaded = await boxState(page);
   return {
     width,
     outcome,
     typed,
-    refusal,
+    retried,
     screenshot,
     ...state,
     messagesReloaded: reloaded.messages,
-    pendingReloaded: reloaded.pending,
+    unfoldedReloaded: reloaded.unfolded,
   };
 }
 
 async function main(): Promise<void> {
-  const [baseUrl, threadId, refusedThreadId, screenshotDirectory] = process.argv.slice(2);
+  const [baseUrl, threadId, refusedThreadId, unconfirmedThreadId, screenshotDirectory] =
+    process.argv.slice(2);
   if (
     baseUrl === undefined ||
     threadId === undefined ||
     refusedThreadId === undefined ||
+    unconfirmedThreadId === undefined ||
     screenshotDirectory === undefined ||
     baseUrl === "" ||
     threadId === "" ||
     refusedThreadId === "" ||
+    unconfirmedThreadId === "" ||
     screenshotDirectory === ""
   ) {
     throw new TypeError(
-      "usage: inbox_render_driver.ts <base-url> <thread-id> <refused-thread-id> <screenshot-dir>"
+      "usage: inbox_render_driver.ts <base-url> <thread-id> <refused-thread-id>" +
+        " <unconfirmed-thread-id> <screenshot-dir>"
     );
   }
   const threadRoute = `/inbox?thread=${encodeURIComponent(threadId)}`;
@@ -247,6 +298,21 @@ async function main(): Promise<void> {
           `Refused at ${width.toString()}px.`,
           `${screenshotDirectory}/inbox-refused-${width.toString()}.png`,
           refusedRoute
+        )
+      );
+
+      // the send the record answers without accepting: it must not appear as a
+      // message, and pressing the box again must replay one command
+      const unconfirmedRoute = `${baseUrl}/inbox?thread=${encodeURIComponent(unconfirmedThreadId)}`;
+      await page.goto(unconfirmedRoute, { waitUntil: "networkidle" });
+      drives.push(
+        await drive(
+          page,
+          width,
+          "unconfirmed",
+          `Unconfirmed at ${width.toString()}px.`,
+          `${screenshotDirectory}/inbox-unconfirmed-${width.toString()}.png`,
+          unconfirmedRoute
         )
       );
       await context.close();

@@ -56,11 +56,19 @@ written once to stderr. Each command supplies one `Idempotency-Key` before any a
 unchanged for retries. `src/mutate/command.ts` holds what both commands share — the headers, the
 strict response readers, and the one validated refusal sentence. `src/mutate/inboxPromotion.ts`
 accepts only the thread and an optional target-ticket identifier. `src/mutate/inboxSend.ts` accepts
-only the thread and the message text, and reads the recipient back from the server's own
-recipient-scoped projection rather than taking one from a form: a recipient is an identity, and this
-surface asserts none. Neither sends a claimed actor, scope, custody, or authorization fact. The API
-authenticates and authorizes the server-held bearer, and every refusal is rendered from the server
-problem document's human `detail`, never raw JSON.
+only the thread, the message text and the answer the box last received, and reads the recipient back
+from the server's own recipient-scoped projection rather than taking one from a form: a recipient is an
+identity, and this surface asserts none. Neither sends a claimed actor, scope, custody, or authorization
+fact. The API authenticates and authorizes the server-held bearer, and every refusal is rendered from the
+server problem document's human `detail`, never raw JSON.
+
+The send box reads `durability_state` for which of two things the record just said. `accepted` draws the
+message; `durability_pending` means the durable acknowledgement acceptance requires has not committed, so
+no message is drawn at all — the words stay in the field, the line under the box says the server has not
+confirmed them, and `Retry` sends that same message under the identity the first attempt minted. The one
+field read back out of the previous answer is that identity, and it is read strictly: anything that is not
+a UUID is refused before a read or a command is made. Editing the words first mints a new identity,
+because one key for two different requests is a conflict rather than a retry.
 
 `tests/repository/test_browser_network_chokepoint.py` derives the call-site denominator from the
 repository tree — not from a hand-kept endpoint list — and fails closed when a network-capable

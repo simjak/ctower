@@ -1,6 +1,6 @@
 """What the dogfood Inbox surface renders and does, read out of a real browser.
 
-Two of this boundary's claims are only true in a running browser.
+Three of this boundary's claims are only true in a running browser.
 
 The copy D41 clause 3 governs is not a fact about any one file. It is composed
 at render time from a frame component, a rail constant and a screen, so a test
@@ -13,6 +13,12 @@ and no source file can carry it. D44 therefore permits this suite — and only
 this suite, and only for the send control — to submit the box from the browser.
 It stays a dogfood claim: the browser posts to this server's own Server Action,
 receives no credential, and never addresses a running instance.
+
+The third is the same claim's other half: a message the record has *not*
+accepted must not appear as one. A `202`/`durability_pending` answer carries the
+same identity, position and timestamp an accepted answer does, so only a
+rendered page can show whether the surface drew a row anyway, kept the sender's
+words, and retried under the identity the first attempt minted.
 
 This suite builds the separate dogfood server, serves it on an ephemeral
 loopback port against a stub record source on another one, and asserts on what
@@ -61,6 +67,7 @@ _READY_POLL_SECONDS = 0.25
 _STOP_GRACE_SECONDS = 10
 _OK = 200
 _CREATED = 201
+_PENDING_DURABILITY = 202
 _UNPROCESSABLE = 422
 _NOT_FOUND = 404
 
@@ -69,14 +76,23 @@ _INSTANCE_LABEL = "render-probe"
 _CREDENTIAL = "loopback-render-probe"
 _THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000600"
 _REFUSED_THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000610"
+_UNCONFIRMED_THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000620"
 _SELF_SEAT = "designer"
 _OTHER_SEAT = "reviewer"
 _STRANGER_SEAT = "unseated-agent"
+_UNDURABLE_SEAT = "commander"
 _PREVIEW = "The reviewer asked for the rendered surface, not the source text."
 _RETIRED_CLAIM = "no mutation path exists on this surface"
 _SCOPED_FOOT = "server-authorized Inbox send and promotion paths · browser holds no write authority"
 _NEW_TICKET_VERDICT = "read-only v1 · disabled"
 _REFUSAL_DETAIL = "The authenticated principal has no addressable project seat."
+_UNCONFIRMED_SENTENCE = (
+    "The server has not confirmed this message, so it is not sent yet. "
+    "Press Retry to send the same message again."
+)
+# what the line under the box reads, chip included; the chip's own stylesheet
+# upper-cases it on screen
+_UNCONFIRMED_NOTICE = f"not confirmed {_UNCONFIRMED_SENTENCE}"
 _SEND_FIELDS = ("text", "thread_id", "to")
 
 
@@ -107,6 +123,22 @@ def _summary(thread_id: str, other: str) -> dict[str, Any]:
         "last_message_at": "2026-08-08T12:00:00Z",
         "unread_count": 2,
         "promoted_ticket_id": None,
+    }
+
+
+def _answer(payload: dict[str, Any], position: int, durability: str) -> dict[str, Any]:
+    """One send result, in the authored shape both durability states share."""
+    return {
+        "command_id": f"018f0d5e-7b9a-7c01-8000-0000000008{position:02d}",
+        "durability_state": durability,
+        "event_ids": [f"018f0d5e-7b9a-7c01-8000-0000000009{position:02d}"],
+        "from": _SELF_SEAT,
+        "message_id": f"018f0d5e-7b9a-7c01-8000-0000000007{position:02d}",
+        "position": position,
+        "sent_at": "2026-08-09T03:05:00Z",
+        "thread_id": str(payload["thread_id"]),
+        "thread_version": position + 1,
+        "to": str(payload["to"]),
     }
 
 
@@ -142,6 +174,7 @@ class _Record:
         self._threads = {
             _THREAD_ID: _thread(_THREAD_ID, _OTHER_SEAT),
             _REFUSED_THREAD_ID: _thread(_REFUSED_THREAD_ID, _STRANGER_SEAT),
+            _UNCONFIRMED_THREAD_ID: _thread(_UNCONFIRMED_THREAD_ID, _UNDURABLE_SEAT),
         }
         self._unfolded: list[tuple[str, dict[str, Any]]] = []
         self.commands: list[dict[str, Any]] = []
@@ -152,8 +185,9 @@ class _Record:
             "threads": [
                 _summary(_THREAD_ID, _OTHER_SEAT),
                 _summary(_REFUSED_THREAD_ID, _STRANGER_SEAT),
+                _summary(_UNCONFIRMED_THREAD_ID, _UNDURABLE_SEAT),
             ],
-            "total_unread": 4,
+            "total_unread": 6,
             "unread_only": False,
         }
 
@@ -194,18 +228,22 @@ class _Record:
                 "sent_at": "2026-08-09T03:05:00Z",
             }
             self._unfolded.append((thread_id, accepted))
-            return {
-                "command_id": f"018f0d5e-7b9a-7c01-8000-0000000008{position:02d}",
-                "durability_state": "accepted",
-                "event_ids": [f"018f0d5e-7b9a-7c01-8000-0000000009{position:02d}"],
-                "from": _SELF_SEAT,
-                "message_id": str(accepted["message_id"]),
-                "position": position,
-                "sent_at": "2026-08-09T03:05:00Z",
-                "thread_id": str(payload["thread_id"]),
-                "thread_version": position + 1,
-                "to": str(payload["to"]),
-            }
+            return _answer(payload, position, "accepted")
+
+    def undurable(self, payload: dict[str, Any], key: str | None) -> dict[str, Any]:
+        """Answer the way the record answers without its off-host acknowledgement.
+
+        The command committed here, but the durable acknowledgement acceptance
+        requires did not, so the answer is the same authored envelope carrying
+        the state it is really in. Nothing is folded into the thread read: this
+        message is not a fact anyone has promised to keep, and a replay under
+        the same key gets the same non-accepted answer back.
+        """
+        with self._lock:
+            self.commands.append({"payload": payload, "idempotency_key": key})
+            thread = self._threads[str(payload["thread_id"])]
+            position = len(cast("list[dict[str, Any]]", thread["messages"])) + 1
+            return _answer(payload, position, "durability_pending")
 
 
 class _RecordStub(BaseHTTPRequestHandler):
@@ -236,9 +274,13 @@ class _RecordStub(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0"))
         payload = cast("dict[str, Any]", json.loads(self.rfile.read(length)))
         key = self.headers.get("Idempotency-Key")
-        if str(payload.get("thread_id")) == _REFUSED_THREAD_ID:
+        thread_id = str(payload.get("thread_id"))
+        if thread_id == _REFUSED_THREAD_ID:
             self.record.refuse(payload, key)
             self._answer(_UNPROCESSABLE, _REFUSAL, content_type="application/problem+json")
+            return
+        if thread_id == _UNCONFIRMED_THREAD_ID:
+            self._answer(_PENDING_DURABILITY, self.record.undurable(payload, key))
             return
         self._answer(_CREATED, self.record.append(payload, key))
 
@@ -363,22 +405,28 @@ def _drive(port: int, screenshots: Path) -> dict[str, Any]:
         # not a skip: this is a required suite, and a verification host without
         # the toolchain it declares is a failure, not a reason to pass quietly
         raise RuntimeError("node is not on PATH; the dogfood surface cannot be driven")
-    completed = subprocess.run(  # noqa: S603 - a resolved interpreter and a checked-in driver
-        (
-            node,
-            "--no-warnings",
-            str(_DRIVER),
-            f"http://127.0.0.1:{port:d}",
-            _THREAD_ID,
-            _REFUSED_THREAD_ID,
-            str(screenshots),
-        ),
-        cwd=_ROOT,
-        timeout=_DRIVE_TIMEOUT_SECONDS,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(  # noqa: S603 - a resolved interpreter and a checked-in driver
+            (
+                node,
+                "--no-warnings",
+                str(_DRIVER),
+                f"http://127.0.0.1:{port:d}",
+                _THREAD_ID,
+                _REFUSED_THREAD_ID,
+                _UNCONFIRMED_THREAD_ID,
+                str(screenshots),
+            ),
+            cwd=_ROOT,
+            timeout=_DRIVE_TIMEOUT_SECONDS,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as failed:
+        # what the browser could not find is the whole diagnosis; an exit status
+        # on its own sends the next reader back to run it by hand
+        raise RuntimeError(f"the render driver failed:\n{failed.stderr}") from failed
     return cast("dict[str, Any]", json.loads(completed.stdout))
 
 
@@ -463,9 +511,10 @@ class InboxSurfaceRenderTests(unittest.TestCase):
         for drive in sends:
             with self.subTest(width=drive["width"]):
                 self.assertIn(drive["typed"], drive["messages"])
-                self.assertEqual(drive["pending"], [drive["typed"]])
+                self.assertEqual(drive["unfolded"], [drive["typed"]])
                 self.assertTrue(drive["sameDocument"])
                 self.assertEqual(drive["fieldAfter"], "")
+                self.assertEqual(drive["button"], "Send")
 
     def test_the_projection_takes_the_message_over_and_the_marker_goes_away(self) -> None:
         """One message, never two: the row is the command's until the read has it."""
@@ -474,18 +523,64 @@ class InboxSurfaceRenderTests(unittest.TestCase):
                 reloaded = cast("list[str]", drive["messagesReloaded"])
                 self.assertIn(drive["typed"], reloaded)
                 self.assertEqual(reloaded.count(drive["typed"]), 1)
-                self.assertEqual(drive["pendingReloaded"], [])
+                self.assertEqual(drive["unfoldedReloaded"], [])
+
+    def test_a_non_accepted_answer_is_never_rendered_as_a_sent_message(self) -> None:
+        """`202`/`durability_pending` is the record saying it has not accepted.
+
+        Its answer carries the same message identity, position and timestamp an
+        accepted one does, so a surface that reads the envelope instead of the
+        discriminator shows an unkept message as a recorded fact. Here the row
+        is not drawn at all: the words stay in the box, and the box says the
+        server has not confirmed them.
+        """
+        held = [drive for drive in self.drives if drive["outcome"] == "unconfirmed"]
+        self.assertEqual([drive["width"] for drive in held], list(_WIDTHS))
+        for drive in held:
+            with self.subTest(width=drive["width"]):
+                self.assertNotIn(drive["typed"], drive["messages"])
+                self.assertEqual(drive["unfolded"], [])
+                self.assertEqual(drive["notice"], _UNCONFIRMED_NOTICE)
+                self.assertEqual(drive["refusal"], "")
+                # the draft survives, and the control names the retry it offers
+                self.assertEqual(drive["fieldAfter"], drive["typed"])
+                self.assertEqual(drive["button"], "Retry")
+                self.assertTrue(drive["sameDocument"])
+                self.assertNotIn(drive["typed"], drive["messagesReloaded"])
+
+    def test_the_retry_of_an_unconfirmed_send_reuses_one_command_identity(self) -> None:
+        """Pressing the box again replays one command; it does not send a second."""
+        for drive in (item for item in self.drives if item["outcome"] == "unconfirmed"):
+            with self.subTest(width=drive["width"]):
+                retried = cast("dict[str, Any]", drive["retried"])
+                self.assertEqual(retried["notice"], _UNCONFIRMED_NOTICE)
+                self.assertEqual(retried["fieldAfter"], drive["typed"])
+                self.assertEqual(retried["button"], "Retry")
+                self.assertNotIn(drive["typed"], retried["messages"])
+
+        keys = [
+            command["idempotency_key"]
+            for command in self.record.commands
+            if str(cast("dict[str, Any]", command["payload"])["thread_id"])
+            == _UNCONFIRMED_THREAD_ID
+        ]
+        self.assertEqual(len(keys), len(_WIDTHS) * 2)
+        self.assertEqual(len(set(keys)), len(_WIDTHS))
+        for first, second in zip(keys[::2], keys[1::2], strict=True):
+            self.assertEqual(first, second)
 
     def test_the_command_carried_the_message_and_no_claimed_identity(self) -> None:
         commands = self.record.commands
-        self.assertEqual(len(commands), len(_WIDTHS) * 2)
+        # one accepted send, one refused send, and two attempts at one
+        # unconfirmed send, at each width
+        self.assertEqual(len(commands), len(_WIDTHS) * 4)
         keys = [command["idempotency_key"] for command in commands]
-        self.assertEqual(len(set(keys)), len(commands))
+        self.assertEqual(len(set(keys)), len(_WIDTHS) * 3)
         for command in commands:
             payload = cast("dict[str, Any]", command["payload"])
             with self.subTest(text=payload.get("text")):
                 self.assertEqual(tuple(sorted(payload)), _SEND_FIELDS)
-                self.assertIn(payload["to"], (_OTHER_SEAT, _STRANGER_SEAT))
+                self.assertIn(payload["to"], (_OTHER_SEAT, _STRANGER_SEAT, _UNDURABLE_SEAT))
                 self.assertRegex(cast("str", command["idempotency_key"]), r"^[0-9a-f-]{36}$")
 
     def test_a_refused_send_renders_the_servers_own_sentence(self) -> None:
@@ -499,6 +594,8 @@ class InboxSurfaceRenderTests(unittest.TestCase):
                 self.assertTrue(drive["sameDocument"])
                 # the words survive the refusal: nobody retypes a rejected send
                 self.assertEqual(drive["fieldAfter"], drive["typed"])
+                # a refused command has no identity to replay, so this is a fresh send
+                self.assertEqual(drive["button"], "Send")
 
     def test_the_served_document_carries_no_credential(self) -> None:
         """D41 clause 1: the browser receives no bearer, in markup or in props."""

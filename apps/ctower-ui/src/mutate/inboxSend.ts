@@ -10,19 +10,39 @@ const SURFACE = "ctower-ui-send";
 /** `InboxSendRequest.text`'s authored ceiling; the server refuses past it. */
 const LONGEST_MESSAGE = 65536;
 
+const UNCONFIRMED =
+  "The server has not confirmed this message, so it is not sent yet. " +
+  "Press Retry to send the same message again.";
+const LOST_REPLAY =
+  "This retry lost track of the message waiting for confirmation. " +
+  "Reload the thread and send it again.";
+
+/** One attempt at one message: what was sent, what was typed, and under which identity. */
+interface Attempt {
+  readonly threadId: string;
+  /** The message as it went on the wire. */
+  readonly message: string;
+  /** The words as the operator typed them. */
+  readonly text: string;
+  readonly commandId: string;
+}
+
 /**
- * The accepted message, read strictly out of the command's own answer.
+ * The command's own answer, read strictly, and read for which state it names.
  *
- * `text` is the text this command sent. The result carries every other field
- * the record assigned — identity, position, timestamp — and does not echo the
- * body back, so the one value not read from the response is the one the caller
- * already holds.
+ * `durability_state` is the whole difference between a recorded message and one
+ * the record has not promised to keep: a `202` answer carries the same message
+ * identity, position and timestamp the accepted answer does. So the accepted
+ * fields are read only on the accepted branch, and the non-accepted one returns
+ * the sender's words and the identity a retry sends again — nothing that could
+ * be drawn as a message.
+ *
+ * On the accepted branch `text` is the text this command sent. The result
+ * carries every other field the record assigned — identity, position, timestamp
+ * — and does not echo the body back, so the one value not read from the
+ * response is the one the caller already holds.
  */
-function sentFrom(
-  value: unknown,
-  expectedThreadId: string,
-  text: string
-): Extract<InboxSendState, { readonly kind: "sent" }> {
+function answerFrom(value: unknown, attempt: Attempt): InboxSendState {
   const fields = [
     "command_id",
     "durability_state",
@@ -37,10 +57,18 @@ function sentFrom(
   ] as const;
   const row = exactRecord(value, "inbox.send", fields);
   uuidField(row.command_id, "inbox.send.command_id");
-  asMember(row.durability_state, "inbox.send.durability_state", DURABILITY);
+  const durability = asMember(row.durability_state, "inbox.send.durability_state", DURABILITY);
   asInteger(row.thread_version, "inbox.send.thread_version");
-  if (uuidField(row.thread_id, "inbox.send.thread_id") !== expectedThreadId) {
+  if (uuidField(row.thread_id, "inbox.send.thread_id") !== attempt.threadId) {
     throw new PayloadRefusal("inbox.send.thread_id", "the thread this message was sent on");
+  }
+  if (durability !== "accepted") {
+    return {
+      kind: "pending",
+      message: UNCONFIRMED,
+      text: attempt.text,
+      commandId: attempt.commandId,
+    };
   }
   return {
     kind: "sent",
@@ -49,7 +77,7 @@ function sentFrom(
       position: asInteger(row.position, "inbox.send.position"),
       from: asString(row.from, "inbox.send.from"),
       to: asString(row.to, "inbox.send.to"),
-      text,
+      text: attempt.message,
       sentAt: asString(row.sent_at, "inbox.send.sent_at"),
     },
   };
@@ -63,14 +91,23 @@ function refused(message: string, text: string): InboxSendState {
 /**
  * Send one message on an existing thread through the authored send command.
  *
- * The browser supplies the message text and nothing else. The thread comes
- * from the route this action was bound to, the recipient is read back from the
- * server's own recipient-scoped projection at submit time, and the sender is
- * never sent at all — the API derives it from the bearer this server holds. A
- * recipient a browser could edit would be a claimed identity, so there is no
- * form field for one.
+ * The browser supplies the message text and the answer it last received. The
+ * thread comes from the route this action was bound to, the recipient is read
+ * back from the server's own recipient-scoped projection at submit time, and
+ * the sender is never sent at all — the API derives it from the bearer this
+ * server holds. A recipient a browser could edit would be a claimed identity,
+ * so there is no form field for one.
+ *
+ * `previous` exists for one value: the identity of a send the record answered
+ * without accepting. Retrying that message under a new identity would ask the
+ * record to keep two copies of it, so the retry sends the same one and the
+ * record replays its own command instead.
  */
-export async function sendInboxMessage(threadId: string, text: string): Promise<InboxSendState> {
+export async function sendInboxMessage(
+  threadId: string,
+  text: string,
+  previous: InboxSendState
+): Promise<InboxSendState> {
   if (!isUuid(threadId)) {
     return refused("Open a thread before sending a message.", text);
   }
@@ -88,20 +125,29 @@ export async function sendInboxMessage(threadId: string, text: string): Promise<
   if (credential === undefined || credential === "") {
     return refused("Sending is not available because this server has no API credential.", text);
   }
+  // The browser's copy of the last answer is an outside payload, so the one
+  // value read out of it is read strictly. Only an unconfirmed send carries an
+  // identity to reuse, and only for the same message: a different message is a
+  // different command, and one key for two different requests is a conflict
+  // rather than a retry.
+  const replay = previous.kind === "pending" && previous.text.trim() === message ? previous : null;
+  if (replay !== null && !isUuid(replay.commandId)) {
+    return refused(LOST_REPLAY, text);
+  }
   let recipient: string;
   try {
     recipient = (await loadInboxCorrespondent(threadId)).recipient;
   } catch {
     return refused("This thread's other participant could not be read, so nothing was sent.", text);
   }
-  const commandId = randomUUID();
+  const commandId = replay === null ? randomUUID() : replay.commandId;
   try {
     const result = await boundedMutation(
       `${instanceIdentity().baseUrl}/v1/inbox/messages`,
       commandHeaders(credential, commandId, SURFACE),
       JSON.stringify({ text: message, thread_id: threadId, to: recipient })
     );
-    return sentFrom(result, threadId, message);
+    return answerFrom(result, { threadId, message, text, commandId });
   } catch (error: unknown) {
     if (error instanceof MutationRefused) {
       try {
