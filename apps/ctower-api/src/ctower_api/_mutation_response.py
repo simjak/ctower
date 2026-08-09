@@ -59,11 +59,17 @@ def mutation_response(
         ),
     )
     boundary = boundary_model.model_validate_json(encoded(payload))
+    # `by_alias` is what makes the wire name the authored one. A boundary field
+    # whose contract name is a Python keyword — `InboxSendResult.from` — carries
+    # an alias, and dumping without it puts `from_` on the wire against an
+    # `additionalProperties: false` schema. The generated clients accept either
+    # spelling by name, so only a strict reader outside them sees it.
+    envelope = boundary.model_dump(mode="json", by_alias=True)
     if decision.accepted:
-        return JSONResponse(status_code=accepted_status, content=boundary.model_dump(mode="json"))
+        return JSONResponse(status_code=accepted_status, content=envelope)
     return JSONResponse(
         status_code=202,
-        content=boundary.model_dump(mode="json"),
+        content=envelope,
         headers={"Retry-After": str(decision.retry_after_seconds)},
     )
 

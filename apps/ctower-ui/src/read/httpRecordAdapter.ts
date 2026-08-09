@@ -35,6 +35,7 @@ import type {
   BoardCards,
   BoardEntry,
   BoardSnapshot,
+  InboxCorrespondent,
   InboxProjection,
   InboxPromotionPicker,
   InboxThread,
@@ -435,6 +436,24 @@ async function loadInboxThread(threadId: string): Promise<InboxThread> {
 }
 
 /**
+ * The two seats one thread is between, taken from the server's own answer.
+ *
+ * The projection is recipient-scoped: it names the authenticated principal's
+ * seat once and the other participant per thread, so neither identity is
+ * inferred here from a participant list or accepted from a browser. A thread
+ * this principal is not a participant of is absent from the projection and
+ * refuses by name rather than resolving to a guess.
+ */
+export async function loadInboxCorrespondent(threadId: string): Promise<InboxCorrespondent> {
+  const projection = await loadInbox();
+  const summary = projection.threads.find((thread) => thread.threadId === threadId);
+  if (summary === undefined) {
+    throw new PayloadRefusal("inbox.threads", "a thread this principal participates in");
+  }
+  return { sender: projection.recipient, recipient: summary.otherAgent };
+}
+
+/**
  * The target picker uses the same project-scoped Board record as the Board
  * screen. A failed read remains visible to the user, while creating a ticket
  * from the thread stays available because that operation needs no target.
@@ -475,6 +494,8 @@ export const httpRecordAdapter: RecordApiReads = {
   inbox: async (): Promise<Reading<InboxProjection>> => await reading(loadInbox),
   inboxThread: async (threadId: string): Promise<Reading<InboxThread>> =>
     await reading(async () => await loadInboxThread(threadId)),
+  inboxCorrespondent: async (threadId: string): Promise<Reading<InboxCorrespondent>> =>
+    await reading(async () => await loadInboxCorrespondent(threadId)),
   inboxPromotionPicker: loadInboxPromotionPicker,
   workSessions: (): Promise<Reading<never>> =>
     Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),

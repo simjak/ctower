@@ -9,7 +9,7 @@ operator dogfood surface over the running shadow instance, ordered by the operat
 |        |                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Is     | A Next.js server that reads the shadow instance's existing read API and renders the approved screen set.                                                                                                                              |
-| Is     | An Inbox promotion control that asks the existing server-authoritative `POST /v1/inbox/threads/{thread_id}/promotion` operation to create or link a ticket.                                                                           |
+| Is     | Two Inbox controls that ask existing server-authoritative operations: a send box over `POST /v1/inbox/messages`, and a promote control over `POST /v1/inbox/threads/{thread_id}/promotion`.                                            |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
 
@@ -48,15 +48,27 @@ future deployment wants it hidden, `frame/RecordFoot.tsx` is the one place to ch
 ### Bounded server requests (O10)
 
 `src/read/bounded.ts` is the only module in `apps/` that names `fetch`. Every record read and the
-one Inbox promotion request go through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
+two Inbox commands go through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
 elapsed deadline, full-jittered exponential backoff capped and clamped to the remaining deadline, a
 typed transient/permanent predicate with no catch-all branch, and a typed `ReadExhausted` outcome
 that preserves the attempt count, elapsed time and last classified failure and is counted and
-written once to stderr. The promotion request supplies one `Idempotency-Key` before any attempt and
-reuses it unchanged for retries. `src/mutate/inboxPromotion.ts` accepts only the thread and an
-optional target-ticket identifier; it sends no claimed actor, scope, custody, or authorization fact.
-The API authenticates and authorizes the server-held bearer, and every refusal is rendered from the
+written once to stderr. Each command supplies one `Idempotency-Key` before any attempt and reuses it
+unchanged for retries. `src/mutate/command.ts` holds what both commands share — the headers, the
+strict response readers, and the one validated refusal sentence. `src/mutate/inboxPromotion.ts`
+accepts only the thread and an optional target-ticket identifier. `src/mutate/inboxSend.ts` accepts
+only the thread, the message text and the answer the box last received, and reads the recipient back
+from the server's own recipient-scoped projection rather than taking one from a form: a recipient is an
+identity, and this surface asserts none. Neither sends a claimed actor, scope, custody, or authorization
+fact. The API authenticates and authorizes the server-held bearer, and every refusal is rendered from the
 server problem document's human `detail`, never raw JSON.
+
+The send box reads `durability_state` for which of two things the record just said. `accepted` draws the
+message; `durability_pending` means the durable acknowledgement acceptance requires has not committed, so
+no message is drawn at all — the words stay in the field, the line under the box says the server has not
+confirmed them, and `Retry` sends that same message under the identity the first attempt minted. The one
+field read back out of the previous answer is that identity, and it is read strictly: anything that is not
+a UUID is refused before a read or a command is made. Editing the words first mints a new identity,
+because one key for two different requests is a conflict rather than a retry.
 
 `tests/repository/test_browser_network_chokepoint.py` derives the call-site denominator from the
 repository tree — not from a hand-kept endpoint list — and fails closed when a network-capable
@@ -69,9 +81,9 @@ bounds, or when an application value-imports the generated client's single-shot 
 `Reading<T>` — `present`, `absent` (with the work item that will land the source), or
 `unavailable`. `src/read/httpRecordAdapter.ts` implements it against `/v1/board`,
 `/v1/tickets/{id}`, `/v1/tickets/{id}/audit`, and the recipient-scoped inbox projection
-(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). The Inbox promotion action uses the
-already-authored `POST /v1/inbox/threads/{thread_id}/promotion` path. `src/read/adapter.ts` binds the one
-that is active.
+(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). The Inbox actions use the already-authored
+`POST /v1/inbox/messages` and `POST /v1/inbox/threads/{thread_id}/promotion` paths.
+`src/read/adapter.ts` binds the one that is active.
 
 Two board reads are declared, not one. `board` joins every card to the ticket read behind it, so a
 card can show its recorded source and age; `boardCards` returns the cards alone. The Portfolio
@@ -219,8 +231,8 @@ place where the convenient number and the true one differ.
 
 Columns are the record's lanes, for the same reason the Board's are (deviation 1 below), and the
 panel prints how many of the counted cards carry a recorded workflow stage so the reader can see
-why. The view is read-only by scope: the operator's UI-may-mutate ruling permits controls and this
-one carries none, which the suite asserts rather than assumes.
+why. The Portfolio is read-only by scope: the operator's UI-may-mutate ruling permits controls and
+this view carries none, which the suite asserts rather than assumes.
 
 ### Honest empty states — and the difference between empty and unreachable
 
@@ -256,8 +268,8 @@ Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
 ### Controls still unavailable in v1
 
-The Inbox promote control is live and asks the existing authenticated server operation; the steering
-composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
+The Inbox send box and promote control are live and ask existing authenticated server operations; the
+steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
 render as visibly disabled affordances — a real `disabled` control, the shared
 `read-only v1 · disabled` chip, and the reason printed on the control itself, never as a page
 banner, never in a hover alone, and never as a dead-looking control. `New ticket` names what the
@@ -277,8 +289,8 @@ apps/ctower-ui/serve-development.sh          # builds nothing; serves the built 
 
 The script resolves the operator credential from the Secret Service reference the instance
 already uses and exports it for the life of the Node process. It is never written to a file,
-never passed as an argument, and never reaches the browser. The server uses it for reads and the
-single Inbox promotion request; the API remains the sole authority for identity and scope.
+never passed as an argument, and never reaches the browser. The server uses it for reads and for the
+two Inbox commands; the API remains the sole authority for identity and scope.
 
 | Variable                      | Default                        | Meaning                                                         |
 | ----------------------------- | ------------------------------ | --------------------------------------------------------------- |

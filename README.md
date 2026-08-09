@@ -212,7 +212,7 @@ them:
 In plain terms: the HTTP API and the command line are built first, and ctower does not become the system of
 record for its own work until they hold up. Product browser work — the interface, its tests, and its proof —
 starts later, at a planned point the roadmap calls I2.4. The separate server-mediated `ctower-ui` Inbox
-dogfood control is D41's narrow exception, not a supported product UI. `I1`, `I2.4` and `CT-I2-005` are
+dogfood controls are the narrow D41/D44 exception, not a supported product UI. `I1`, `I2.4` and `CT-I2-005` are
 stage names from [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md), not version numbers.
 
 ## Go deeper

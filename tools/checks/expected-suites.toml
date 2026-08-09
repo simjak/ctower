@@ -581,7 +581,7 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
-id = "dogfood-inbox-promotion"
+id = "dogfood-inbox-controls"
 owner = "CT-I1-007"
 phase = "CT-I1-007"
 status = "required"

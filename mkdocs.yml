@@ -47,7 +47,7 @@ nav:
       - CLI: reference/cli.md
       - HTTP API: reference/http-api.md
       - Generated clients and contracts: reference/clients.md
-      - ctower-ui dogfood Inbox promotion: reference/dogfood-inbox-promotion.md
+      - ctower-ui dogfood Inbox controls: reference/dogfood-inbox-controls.md
       - Authored OpenAPI document: https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml
       - Authored contracts: https://github.com/simjak/ctower/tree/main/contracts
   - For agents:
