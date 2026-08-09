@@ -62,6 +62,7 @@ nav:
       - Delivery state: project-status.md
       - Epic specifications:
           - Issue connector framework: specs/connectors.md
+          - First-class operator Requests: specs/operator-requests.md
       - What is deliberately unavailable: start-here/availability.md
       - Repository setup: start-here/repository-setup.md
       - Exercise the development walking slice: getting-started.md
