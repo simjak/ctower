@@ -293,6 +293,7 @@ than those asserted, exits `69`. A timeout exits `75`.
 |---|---|---|
 | `dream-dispatch list` | — | — |
 | `dream-dispatch consume` | `<effect_id>` | required: `--output-digest <sha256>`; optional: `--command-id` |
+| `dream-lane bind` | — | required: `--lane`, `--crew`, `--harness`, `--model`, `--effort`, `--fallback`, `--tier`; optional: `--command-id` |
 
 `list` is an online-only query and is never spooled. A project-seat principal receives only the effect for
 its persisted Project grant; foreign Project effects and the fleet effect are absent. An operator receives
@@ -304,6 +305,17 @@ consumption or lane/model policy: a foreign Project or fleet request by a projec
 `project-scope-denied` with no consumption. Fleet consumption is operator-only. The command accepts no
 lane, crew, harness, model, family, effort, or tier flags; those facts come from the persisted substrate
 binding and are joined to the Routine occurrence and output digest.
+
+`dream-lane bind` is the online-only operator ceremony that creates exactly one immutable binding for the
+authenticated operator principal. The closed ceremony selection is `codex` with `gpt-5.6-sol` at `max`,
+`qwen3.8-max` as fallback, and the `hard` tier. A non-operator is refused as
+`dream-lane-binding-operator-required`; a second binding is refused as `dream-lane-already-bound`.
+
+Run the live ceremony only as the operator, using the exact command shape below:
+
+```console
+ctl --as operator dream-lane bind --lane <ref> --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
+```
 
 ## Migration (ctower-project)
 

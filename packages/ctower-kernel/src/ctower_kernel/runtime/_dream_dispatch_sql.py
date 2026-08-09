@@ -13,7 +13,10 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ctower_kernel.record import Actor, RecordProblem
-from ctower_kernel.record.dream_dispatch_events import DreamDispatchConsumedPayload
+from ctower_kernel.record.dream_dispatch_events import (
+    DreamDispatchConsumedPayload,
+    DreamLaneBoundPayload,
+)
 from ctower_kernel.record.events import EventEnvelope, EventKind, EventOrigin
 from ctower_kernel.record.transaction import (
     RecordTransaction,
@@ -26,9 +29,160 @@ from ctower_kernel.runtime import (
     DreamDispatchEffect,
     DreamDispatchReceipt,
     DreamDispatchSpec,
+    DreamLaneBindCommand,
+    DreamLaneBindingReceipt,
 )
 
 __all__: tuple[str, ...] = ()
+
+_DREAM_MODEL_FAMILY = "codex"
+_DREAM_BINDING_SOURCE = "operator-ceremony"
+
+
+def bind_dream_lane(
+    dsn: str, actor: Actor, command: DreamLaneBindCommand
+) -> DreamLaneBindingReceipt | RecordProblem:
+    with authority_connection(dsn) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        now = _database_now(connection)
+        request_digest = hashlib.sha256(_canonical_bytes(command.request_payload())).digest()
+        transaction = RecordTransaction(connection)
+        existing = transaction.reserve(
+            actor.principal_id, command.client_command_id, request_digest
+        )
+        if isinstance(existing, RecordProblem):
+            return existing
+        if existing is not None:
+            return _lane_receipt(existing)
+        connection.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (f"dream-lane:{actor.tenant_id}:{actor.principal_id}",),
+        )
+        problem = _binding_refusal(connection, actor, command)
+        if problem is not None:
+            transaction.refuse(
+                actor.tenant_id,
+                actor.principal_id,
+                command.client_command_id,
+                request_digest,
+                problem,
+                now=now,
+            )
+            return problem
+        return _commit_binding(connection, transaction, actor, command, request_digest, now)
+
+
+def _binding_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: DreamLaneBindCommand,
+) -> RecordProblem | None:
+    principal = connection.execute(
+        "SELECT kind FROM principals WHERE tenant_id = %s AND principal_id = %s",
+        (actor.tenant_id, actor.principal_id),
+    ).fetchone()
+    if principal is None or principal["kind"] != "operator":
+        return _lane_problem(
+            command,
+            "dream-lane-binding-operator-required",
+            "Dream lane binding requires the operator",
+            403,
+        )
+    binding = connection.execute(
+        "SELECT 1 FROM runtime_dream_lane_bindings WHERE tenant_id = %s AND principal_id = %s",
+        (actor.tenant_id, actor.principal_id),
+    ).fetchone()
+    if binding is not None:
+        return _lane_problem(command, "dream-lane-already-bound", "Dream lane is already bound")
+    return None
+
+
+def _commit_binding(
+    connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: DreamLaneBindCommand,
+    request_digest: bytes,
+    now: datetime,
+) -> DreamLaneBindingReceipt:
+    event_id = _uuid7(now)
+    evidence = f"sha256:{request_digest.hex()}"
+    receipt = DreamLaneBindingReceipt(
+        command.client_command_id,
+        event_id,
+        actor.principal_id,
+        command.lane_ref,
+        command.crew_name,
+        command.harness_ref,
+        command.model_ref,
+        _DREAM_MODEL_FAMILY,
+        command.reasoning_effort,
+        command.model_tier,
+        _DREAM_BINDING_SOURCE,
+        evidence,
+        now,
+    )
+    event = EventEnvelope(
+        actor_principal_id=actor.principal_id,
+        aggregate_id=actor.principal_id,
+        causation_id=None,
+        client_command_id=command.client_command_id,
+        correlation_id=command.client_command_id,
+        event_id=event_id,
+        kind=EventKind.DREAM_LANE_BOUND,
+        origin=EventOrigin.API,
+        payload=DreamLaneBoundPayload(
+            actor.principal_id,
+            command.lane_ref,
+            command.crew_name,
+            command.harness_ref,
+            command.model_ref,
+            _DREAM_MODEL_FAMILY,
+            command.reasoning_effort,
+            command.fallback_model_ref,
+            command.model_tier,
+            _DREAM_BINDING_SOURCE,
+            evidence,
+        ),
+        prev_hash=bytes(32),
+        request_sha256=request_digest,
+        sequence=1,
+        server_time=now,
+        stream_id=f"dream-lane:{actor.principal_id}",
+        tenant_id=actor.tenant_id,
+    )
+    transaction.commit_control(
+        event,
+        outbox_id=_uuid7(now),
+        response_body=receipt.response_payload(),
+        status_code=202,
+        now=now,
+        topic="runtime.dream-lane-bindings",
+    )
+    connection.execute(
+        """
+        INSERT INTO runtime_dream_lane_bindings (
+            tenant_id, principal_id, lane_ref, crew_name, harness_ref,
+            model_ref, model_family, reasoning_effort, model_tier,
+            binding_source, probe_evidence, bound_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            actor.tenant_id,
+            actor.principal_id,
+            command.lane_ref,
+            command.crew_name,
+            command.harness_ref,
+            command.model_ref,
+            _DREAM_MODEL_FAMILY,
+            command.reasoning_effort,
+            command.model_tier,
+            _DREAM_BINDING_SOURCE,
+            evidence,
+            now,
+        ),
+    )
+    return receipt
 
 
 def list_dream_dispatches(dsn: str, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
@@ -326,6 +480,30 @@ def _receipt(payload: dict[str, object]) -> DreamDispatchReceipt:
         UUID(str(payload["effect_id"])),
         str(payload["output_digest"]),
     )
+
+
+def _lane_receipt(payload: dict[str, object]) -> DreamLaneBindingReceipt:
+    return DreamLaneBindingReceipt(
+        UUID(str(payload["command_id"])),
+        UUID(str(payload["event_id"])),
+        UUID(str(payload["principal_id"])),
+        str(payload["lane_ref"]),
+        str(payload["crew_name"]),
+        str(payload["harness_ref"]),
+        str(payload["model_ref"]),
+        str(payload["model_family"]),
+        str(payload["reasoning_effort"]),
+        str(payload["model_tier"]),
+        str(payload["binding_source"]),
+        str(payload["probe_evidence"]),
+        datetime.fromisoformat(str(payload["bound_at"])),
+    )
+
+
+def _lane_problem(
+    command: DreamLaneBindCommand, code: str, title: str, status: int = 409
+) -> RecordProblem:
+    return RecordProblem(code, title, status, title, command.client_command_id)
 
 
 def _problem(

@@ -46,6 +46,7 @@ from ctowerctl._dream_dispatch_commands import (
     mutation_command_names as dream_dispatch_mutations,
 )
 from ctowerctl._dream_dispatch_commands import query_command_names as dream_dispatch_queries
+from ctowerctl._dream_lane_commands import mutation_command_names as dream_lane_mutations
 from ctowerctl._inbox_commands import build_mutation as build_inbox_mutation
 from ctowerctl._inbox_commands import mutation_command_names as inbox_mutations
 from ctowerctl._inbox_commands import query_command_names as inbox_queries
@@ -120,6 +121,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | session_mutations()
         | attention_mutations()
         | dream_dispatch_mutations()
+        | dream_lane_mutations()
     )
     queries = (
         ticket_queries()
@@ -155,6 +157,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         "bootstrap first-tenant",
         "credential seat issue",
         "credential seat revoke",
+        "dream-lane bind",
         "migration ctower-project inventory",
         "migration ctower-project export",
         "migration ctower-project plan",
@@ -215,6 +218,38 @@ def test_review_dispatch_commands_parse_the_exact_effect_and_routing_facts() -> 
     assert consumed.cli_name == "ticket review-dispatch consume"
     assert consumed.effect_id == effect_id
     assert consumed.crew_name == "review-r347"
+
+
+def test_dream_lane_bind_parses_the_ceremony_shape_exactly() -> None:
+    parsed = parse_arguments(
+        [
+            "dream-lane",
+            "bind",
+            "--lane",
+            "dream-lane:writer-r2881-dream",
+            "--crew",
+            "writer-r2881-dream",
+            "--harness",
+            "codex",
+            "--model",
+            "gpt-5.6-sol",
+            "--effort",
+            "max",
+            "--fallback",
+            "qwen3.8-max",
+            "--tier",
+            "hard",
+        ]
+    )
+
+    assert parsed.cli_name == "dream-lane bind"
+    assert parsed.lane_ref == "dream-lane:writer-r2881-dream"
+    assert parsed.crew_name == "writer-r2881-dream"
+    assert parsed.harness_ref == "codex"
+    assert parsed.model_ref == "gpt-5.6-sol"
+    assert parsed.reasoning_effort == "max"
+    assert parsed.fallback_model_ref == "qwen3.8-max"
+    assert parsed.model_tier == "hard"
 
 
 def test_project_seat_credential_commands_are_strict_and_unspoolable() -> None:

@@ -186,6 +186,7 @@ Project Delivery rows expose `qualifying_stage_slots[]`. Each item has `slot_key
 |---|---|---|---|---|---|---|
 | `GET` | `/v1/runtime/dream-dispatches` | `listDreamDispatchEffects` | `dream-dispatch list` | query | forbidden | `200`, `401`, `403` |
 | `POST` | `/v1/runtime/dream-dispatches/{effect_id}/consume` | `consumeDreamDispatchEffect` | `dream-dispatch consume` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/runtime/dream-lane-bindings` | `bindDreamLane` | `dream-lane bind` | mutation | forbidden | `200`, `202`, `401`, `403`, `409`, `422` |
 
 The list is filtered by persisted authority before response materialization. Project seats receive only
 their own Project effect and never the fleet effect; operators receive all Project effects and the fleet
@@ -197,6 +198,13 @@ consumption return `project-scope-denied` without recording an event, outbox row
 lane, crew, harness, model, family, effort, and tier from the authenticated principal's persisted substrate
 binding; none is accepted from the request. The `202` response uses the ordinary durability-pending and
 `Retry-After` contract.
+
+`DreamLaneBindRequest` is the operator-only, online ceremony surface. It accepts the lane and crew plus the
+closed `codex` / `gpt-5.6-sol` / `max` / `qwen3.8-max` / `hard` selection. The server resolves the
+authenticated principal from the credential, records one canonical event, and creates one immutable
+`runtime_dream_lane_bindings` row atomically. It never accepts a principal or model-family claim from the
+request. Non-operators receive `dream-lane-binding-operator-required`; an already-bound operator receives
+`dream-lane-already-bound`.
 
 ### Migration (ctower-project)
 

@@ -30,7 +30,10 @@ from ctower_kernel.record.credentials import (
     SeatCredentialIssuedPayload,
     SeatCredentialRevokedPayload,
 )
-from ctower_kernel.record.dream_dispatch_events import DreamDispatchConsumedPayload
+from ctower_kernel.record.dream_dispatch_events import (
+    DreamDispatchConsumedPayload,
+    DreamLaneBoundPayload,
+)
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
     InboxEventPayload,
@@ -113,6 +116,7 @@ class EventKind(StrEnum):
     WORK_CHANGED = "work.changed"
     ROUTINE_OCCURRENCE_RECORDED = "routine.occurrence_recorded"
     DREAM_DISPATCH_CONSUMED = "runtime.dream_dispatch_consumed"
+    DREAM_LANE_BOUND = "runtime.dream_lane_bound"
     POISON_DISPOSITION_RECORDED = "attention.poison_disposition_recorded"
     MIGRATION_CHANGED = "migration.changed"
     INBOUND_EVENT_RECORDED = "intake.inbound_event_recorded"
@@ -290,6 +294,7 @@ type EventPayload = (
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | DreamDispatchConsumedPayload
+    | DreamLaneBoundPayload
     | PoisonDispositionRecordedPayload
     | MigrationChangedPayload
     | IntakeEventPayload
@@ -450,6 +455,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             DreamDispatchConsumedPayload,
             "dream-dispatch",
         ),
+        EventCatalogEntry(EventKind.DREAM_LANE_BOUND, DreamLaneBoundPayload, "dream-lane"),
         EventCatalogEntry(
             EventKind.POISON_DISPOSITION_RECORDED,
             PoisonDispositionRecordedPayload,
@@ -633,6 +639,10 @@ def _validate_dream_dispatch_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.payload.effect_id
     ):
         raise ValueError("dream dispatch aggregate and effect identity must match")
+    if isinstance(event.payload, DreamLaneBoundPayload) and (
+        event.aggregate_id != event.payload.principal_id
+    ):
+        raise ValueError("dream lane aggregate and principal identity must match")
 
 
 def _validate_poison_identity(event: EventEnvelope) -> None:

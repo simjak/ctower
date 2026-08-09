@@ -87,6 +87,7 @@ def _parser() -> argparse.ArgumentParser:
     _spool_parser(areas.add_parser("spool"))
     attention_parser(areas.add_parser("attention"))
     _dream_dispatch_parser(areas.add_parser("dream-dispatch"))
+    _dream_lane_parser(areas.add_parser("dream-lane"))
     return parser
 
 
@@ -99,6 +100,20 @@ def _dream_dispatch_parser(parser: argparse.ArgumentParser) -> None:
     _command_id(consume)
     consume.add_argument("effect_id", type=UUID)
     consume.add_argument("--output-digest", required=True, type=_sha256_digest)
+
+
+def _dream_lane_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    bind = actions.add_parser("bind")
+    bind.set_defaults(cli_name="dream-lane bind")
+    _command_id(bind)
+    bind.add_argument("--lane", dest="lane_ref", required=True)
+    bind.add_argument("--crew", dest="crew_name", required=True)
+    bind.add_argument("--harness", dest="harness_ref", required=True)
+    bind.add_argument("--model", dest="model_ref", required=True)
+    bind.add_argument("--effort", dest="reasoning_effort", required=True)
+    bind.add_argument("--fallback", dest="fallback_model_ref", required=True)
+    bind.add_argument("--tier", dest="model_tier", required=True)
 
 
 def _bootstrap_parser(parser: argparse.ArgumentParser) -> None:

@@ -28,6 +28,7 @@ from ctowerctl import (
     _company_commands,
     _credential_commands,
     _dream_dispatch_commands,
+    _dream_lane_commands,
     _inbox_commands,
     _intake_commands,
     _knowledge_commands,
@@ -139,7 +140,7 @@ def _execute(
     if operation is None:
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
-    if namespace.area == "credential":
+    if namespace.area in {"credential", "dream-lane"}:
         return _execute_online_credential(base_url, credential, namespace, operation)
     if namespace.area == "migration" and (operation.mutation or operation.refusal_only):
         return _execute_online_migration(base_url, credential, namespace, operation)
@@ -259,12 +260,16 @@ def _execute_online_credential(
     arguments: argparse.Namespace,
     operation: OperationSpec,
 ) -> tuple[BaseModel, ExitCode]:
-    """Execute one operator-only credential write without replay spooling."""
+    """Execute one operator-only command without replay spooling."""
 
     if operation.spool_policy is not SpoolPolicy.FORBIDDEN:
-        raise ValueError("usage: credential operations require forbidden spool metadata")
+        raise ValueError("usage: operator commands require forbidden spool metadata")
     with CtowerClient(base_url, credential=credential) as client:
-        result = _credential_commands.execute_online(arguments, client)
+        result = (
+            _dream_lane_commands.execute_online(arguments, client)
+            if arguments.area == "dream-lane"
+            else _credential_commands.execute_online(arguments, client)
+        )
     code = ExitCode.SUCCESS if result.durability_state == "accepted" else ExitCode.TEMPORARY
     return result, code
 

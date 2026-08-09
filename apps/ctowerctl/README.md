@@ -37,6 +37,10 @@ operator reads all Project effects plus the operator-only fleet effect.
 harness, model, family, effort, or tier labels; those facts come from the authenticated substrate binding.
 Foreign-Project and non-operator fleet consumption refuse as `project-scope-denied` before any custody is
 recorded.
+The online-only `dream-lane bind` command is the operator ceremony that creates that authenticated
+principal's immutable binding exactly once. It uses the closed codex/primary/fallback/effort/tier selection
+declared by the authored contract; it never accepts a principal or model-family label, and it is not queued
+for later execution.
 
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted

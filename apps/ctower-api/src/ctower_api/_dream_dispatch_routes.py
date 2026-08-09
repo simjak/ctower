@@ -22,16 +22,20 @@ from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import (
     DreamDispatchConsumeRequest,
     DreamDispatchEffectList,
+    DreamLaneBindRequest,
 )
 from ctower_client.models import (
     DreamDispatchReceipt as HttpDreamDispatchReceipt,
 )
+from ctower_client.models import DreamLaneBindingReceipt as HttpDreamLaneBindingReceipt
 from ctower_kernel.access import Access
 from ctower_kernel.record import Actor, Record, RecordProblem
 from ctower_kernel.runtime import (
     DreamDispatchConsumeCommand,
     DreamDispatchEffect,
     DreamDispatchReceipt,
+    DreamLaneBindCommand,
+    DreamLaneBindingReceipt,
 )
 
 __all__: tuple[str, ...] = ()
@@ -44,6 +48,10 @@ class DreamDispatchRuntime(Protocol):
         self, actor: Actor, command: DreamDispatchConsumeCommand
     ) -> DreamDispatchReceipt | RecordProblem: ...
 
+    def bind_dream_lane(
+        self, actor: Actor, command: DreamLaneBindCommand
+    ) -> DreamLaneBindingReceipt | RecordProblem: ...
+
 
 def install_dream_dispatch_routes(
     app: FastAPI,
@@ -52,6 +60,46 @@ def install_dream_dispatch_routes(
     runtime: DreamDispatchRuntime,
     recorder: TelemetryRecorder,
 ) -> None:
+    @app.post("/v1/runtime/dream-lane-bindings")
+    async def bind_dream_lane(request: Request) -> JSONResponse:
+        actor = authenticate(
+            access, recorder, request, required_scope=UnscopedAuthentication.ALLOWED
+        )
+        if isinstance(actor, RecordProblem):
+            return problem_response(actor)
+        try:
+            command_id = uuid_value(request.headers.get("Idempotency-Key"))
+            payload = DreamLaneBindRequest.model_validate_json(await request.body())
+            command = DreamLaneBindCommand(
+                command_id,
+                payload.lane_ref,
+                payload.crew_name,
+                payload.harness_ref,
+                payload.model_ref,
+                payload.reasoning_effort,
+                payload.fallback_model_ref,
+                payload.model_tier,
+            )
+            telemetry = telemetry_context(request).bind(
+                tenant_id=str(actor.tenant_id),
+                actor_id=str(actor.principal_id),
+                command_id=str(command_id),
+            )
+        except (ValidationError, ValueError):
+            return problem_response(validation_problem())
+        recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        outcome = runtime.bind_dream_lane(actor, command)
+        return mutation_response(
+            record,
+            outcome,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            command_id=command_id,
+            telemetry=telemetry,
+            boundary_model=HttpDreamLaneBindingReceipt,
+            accepted_status=200,
+        )
+
     @app.get("/v1/runtime/dream-dispatches")
     def list_dream_dispatches(request: Request) -> JSONResponse:
         actor = authenticate(

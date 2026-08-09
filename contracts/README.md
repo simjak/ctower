@@ -25,7 +25,9 @@ executable extensions, or off-host durability.
 
 Routine v2 adds the four exact nightly dream packs and a strict dream-dispatch effect/read/consume HTTP
 contract. Consumption carries only the output digest; the emitted effect owns model requirements and the
-kernel copies executing-lane facts from substrate bindings.
+kernel copies executing-lane facts from substrate bindings. The same OpenAPI authority defines the
+online-only operator `dream-lane bind` ceremony, its closed model selection, immutable binding receipt, and
+typed authorization/conflict refusals.
 
 The GitLab Issue integration contracts under `domain/integrations/` define the strict normalized provider
 issue, durable cursor, proof-gated close command, and delivery receipt. The published reference-only

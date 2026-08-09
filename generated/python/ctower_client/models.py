@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:384c0197ccd1a704198d4038a20efa6f9c1852edfc1410468b292c3a06cc5c60
+Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
 """
 
 from __future__ import annotations
@@ -94,6 +94,8 @@ __all__ = [
     "DreamDispatchEffectList",
     "DreamDispatchReceipt",
     "DreamDispatchScope",
+    "DreamLaneBindRequest",
+    "DreamLaneBindingReceipt",
     "DreamModelRequirement",
     "DreamModelSelection",
     "DurabilityState",
@@ -847,6 +849,16 @@ class DreamDispatchConsumption(_BoundaryModel):
 class DreamDispatchScope(_BoundaryModel):
     kind: Literal["project", "fleet"]
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
+
+
+class DreamLaneBindRequest(_BoundaryModel):
+    lane_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    harness_ref: Literal["codex"]
+    model_ref: Literal["gpt-5.6-sol"]
+    reasoning_effort: Literal["max"]
+    fallback_model_ref: Literal["qwen3.8-max"]
+    model_tier: Literal["hard"]
 
 
 class DreamModelSelection(_BoundaryModel):
@@ -1768,6 +1780,23 @@ class DreamDispatchReceipt(_BoundaryModel):
     output_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
+class DreamLaneBindingReceipt(_BoundaryModel):
+    binding_source: Literal["operator-ceremony"]
+    bound_at: _Rfc3339DateTime
+    command_id: UUID
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    durability_state: DurabilityState
+    event_id: UUID
+    harness_ref: Literal["codex"]
+    lane_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    model_family: Literal["codex"]
+    model_ref: Literal["gpt-5.6-sol"]
+    model_tier: Literal["hard"]
+    principal_id: UUID
+    probe_evidence: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reasoning_effort: Literal["max"]
+
+
 class DreamModelRequirement(_BoundaryModel):
     primary: DreamModelSelection
     fallback: DreamModelSelection
@@ -2007,6 +2036,8 @@ class Problem(_BoundaryModel):
         "dream-dispatch-model-requirement-mismatch",
         "dream-dispatch-tier-refused",
         "dream-dispatch-unavailable",
+        "dream-lane-already-bound",
+        "dream-lane-binding-operator-required",
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
