@@ -6,8 +6,13 @@ import { KnownValue, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { crewTerminalStream, recordAdapter, SOURCE_LABELS } from "@/read/adapter";
+import { readConsoleTyping } from "@/read/consoleTyping";
 import type { CrewProfile, CrewUnknown, Reading, SessionStream, TailNote } from "@/read/interface";
 import { redacted } from "@/read/sources/redact";
+import type { CeremonyPlacement } from "@/surfaces/console/TypingCeremony";
+import { ConsoleTypingCeremony } from "@/surfaces/console/TypingCeremony";
+import type { ConsoleTyping as ConsoleTypingSession } from "@/surfaces/console/typing";
+import { consoleTypingAction } from "./actions";
 import { CrewCurrent } from "@/surfaces/crew/CrewCurrent";
 import { CrewHead } from "@/surfaces/crew/CrewHead";
 import { CrewClaims, CrewLifecycle } from "@/surfaces/crew/CrewHistory";
@@ -46,12 +51,71 @@ function Foot({ tail }: { readonly tail: TailNote }): ReactElement {
   return <span>{notes.join(" · ")}</span>;
 }
 
+/**
+ * THE ONE INTEGRATION POINT for the console typing ceremony (gh#428).
+ *
+ * Everything variant-specific about the operator's open A/B pick is this
+ * component call. Variant A confirms in place under the pane — `inline`, which
+ * is how the crew page is already shaped; variant B lifts the same ceremony
+ * into a modal over the frame — `modal`, one word away. The states, copy,
+ * counts and refusals are identical between them, which is the compare board's
+ * own finding, so the pick moves this line and nothing else.
+ *
+ * The panel exists only when the record answers a console session for this
+ * crew. Today it answers none, so nothing renders here and the shipped
+ * read-only reader is untouched — which is also what CT-C01 requires: the
+ * dogfood tmux capture is not the product's authorization boundary and may not
+ * grow a writable path.
+ */
+const CEREMONY_PLACEMENT: CeremonyPlacement = "inline";
+
+function ConsoleTyping({
+  typing,
+  sessionName,
+  now,
+}: {
+  readonly typing: Reading<ConsoleTypingSession | null>;
+  readonly sessionName: string;
+  readonly now: number;
+}): ReactNode {
+  return (
+    <Resolved brief reading={typing} subject="this crew's console">
+      {(session) =>
+        session === null ? null : (
+          <section className="panel" style={{ marginTop: "16px" }}>
+            <header>
+              <h2>Console</h2>
+              <span className="sub">typing into this crew&rsquo;s own terminal</span>
+            </header>
+            <ConsoleTypingCeremony
+              action={consoleTypingAction.bind(null, sessionName)}
+              placement={CEREMONY_PLACEMENT}
+              serverNow={now}
+              typing={session}
+            />
+            <div className="src-line">
+              <span>grants: Access control plane · one presentation · at most 60 seconds</span>
+              <span>
+                every typed command is an append-only fact bound to you, this crew and this epoch
+              </span>
+            </div>
+          </section>
+        )
+      }
+    </Resolved>
+  );
+}
+
 function Profile({
   profile,
   stream,
+  typing,
+  now,
 }: {
   readonly profile: CrewProfile;
   readonly stream: Reading<SessionStream>;
+  readonly typing: Reading<ConsoleTypingSession | null>;
+  readonly now: number;
 }): ReactElement {
   const identity = {
     crew: profile.row.name,
@@ -85,6 +149,7 @@ function Profile({
                   )
                 }
               </Resolved>
+              <ConsoleTyping now={now} sessionName={profile.sessionName} typing={typing} />
               <CrewCurrent profile={profile} />
               <CrewLifecycle profile={profile} />
               <CrewClaims profile={profile} />
@@ -278,11 +343,15 @@ export default async function CrewPage({
   const { crewName } = await params;
   const lookup = await recordAdapter.crewProfile(crewName);
   const stream = await crewTerminalStream(lookup);
+  const typing = await readConsoleTyping(lookup);
+  // this server's clock, so the ceremony's first paint does not depend on the
+  // browser's and the countdown has one origin rather than two
+  const now = Date.now();
   return (
     <Resolved reading={lookup} frame={(declared) => <Frame crew={crewName} declared={declared} />}>
       {(value) =>
         value.found === "crew" ? (
-          <Profile profile={value.profile} stream={stream} />
+          <Profile now={now} profile={value.profile} stream={stream} typing={typing} />
         ) : (
           <NotFound missing={value.missing} />
         )

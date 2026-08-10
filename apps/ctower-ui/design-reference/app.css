@@ -2025,3 +2025,55 @@ body:has(#f-bhloop:checked) .pgroup:not(.gr-bhloop) { display: none; }
 .term-tabgroup:has(.term-tab-radio:nth-of-type(8):checked) .term-tab:nth-of-type(8) {
   background: var(--accent-bg); color: var(--accent-deep);
 }
+
+/* ── console typing ceremony (gh#428) ────────────────────────────────────────
+   The approved compare board at `bc822f5` carried these as one `cc-` block
+   reading only existing tokens, plus two changes it asked for in shared
+   primitives rather than copying into the console. Both land here, where the
+   Feed composer and the inbox Promote form get them too:
+
+   1. `.steer-row` did not wrap, so at phone width the field was squeezed to
+      about 170px beside its button. A field an operator types a command into
+      cannot be a third of the row.
+   2. A disabled `.field` had no treatment of its own, so an inert composer
+      looked exactly like a live one. The board carried that as an inline style
+      on every locked field; a control whose whole point is that it is locked
+      states it in the stylesheet instead.
+
+   The state's border colour is a class rather than the board's inline style —
+   same three pixels, named by the state that owns them. No new colour, radius
+   or type size is introduced: `--accent`, `--warn` and `--refuse` are the
+   tokens the rest of this sheet already uses for the same three meanings. */
+.field:disabled { opacity: .6; cursor: not-allowed; background: var(--surface); }
+
+@media (max-width: 559px) {
+  .steer-row { flex-wrap: wrap; }
+  .steer-row .field { flex: 1 1 100%; }
+  .steer-row .btn { flex: 1 1 auto; }
+}
+
+.steer-box.cc-open { border-top: 2px solid var(--accent); }
+.steer-box.cc-live { border-top: 2px solid var(--warn); }
+.steer-box.cc-shut { border-top: 2px solid var(--refuse); }
+
+/* the countdown is the loudest element of the granted composer, so it sits
+   above the field rather than under it, where round 1 read it as an underline */
+.cc-tick { height: 3px; margin-top: 9px; border: 1px solid var(--warn-line); border-radius: 2px; background: var(--warn-bg); overflow: hidden; }
+.cc-tick > i { display: block; height: 100%; background: var(--warn); }
+
+.cc-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-4); }
+.cc-meta b { color: var(--ink-2); font-weight: 500; }
+
+/* the exact bytes, wrapped rather than clipped: a command an operator is asked
+   to confirm cannot have its tail hidden behind an overflow */
+.cc-bytes { margin: 0; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg); font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.cc-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 16px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.cc-chain .arrow { color: var(--ink-4); }
+.cc-chain .why { margin-left: auto; }
+
+/* variant B's placement: the same ceremony body, over the frame instead of
+   under the pane. Both are built, because the operator's A/B pick is open and
+   the ceremony's content does not depend on it. */
+.cc-modal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-start; justify-content: center; padding: 72px 16px; background: rgba(23, 23, 23, .42); overflow: auto; }
+.cc-modal > .panel { width: min(540px, 100%); background: var(--bg); }

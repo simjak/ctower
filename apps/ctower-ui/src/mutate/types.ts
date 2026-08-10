@@ -1,3 +1,5 @@
+import type { Ceremony, DispatchRecord, LiveGrant } from "@/surfaces/console/typing";
+
 /** Client-safe shape of the one Inbox promotion result this UI can render. */
 export type InboxPromotionState =
   | { readonly kind: "idle" }
@@ -44,6 +46,37 @@ export type InboxSendState =
       /** What the operator typed, so a refusal never costs them their words. */
       readonly text: string;
     };
+
+/**
+ * Client-safe shape of the one console typing answer this UI can render.
+ *
+ * The kinds are different claims about a live crew terminal, and the difference
+ * between them is the whole reason this control is allowed to exist:
+ *
+ * * `opened` — the operator is writing a command. Nothing has been asked of
+ *   the server, so this is `idle` with the ceremony on screen rather than a
+ *   separate authority; it is a state of its own only because the surface must
+ *   tell "no ceremony" apart from "a ceremony nobody has answered yet".
+ * * `confirmed` — the server canonicalized the words and granted nothing. No
+ *   byte is closer to the pane than it was before.
+ * * `granted` — the control plane minted 60 seconds for one presentation of
+ *   exactly that confirmation. Still nothing has been typed.
+ * * `dispatched` — the command reached the record, and `dispatch.state` says
+ *   how far it got. `injected_unacknowledged` and `state_unknown` are both in
+ *   that set, and neither of them means the pane received the text.
+ * * `refused` — nothing was accepted, and the operator keeps their words.
+ *
+ * `text` rides on the refusal for the same reason it does on a refused inbox
+ * send: a control that costs an operator the command they just wrote is one
+ * they will stop trusting with the ones that matter.
+ */
+export type ConsoleTypingState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "opened" }
+  | { readonly kind: "confirmed"; readonly ceremony: Ceremony }
+  | { readonly kind: "granted"; readonly grant: LiveGrant }
+  | { readonly kind: "dispatched"; readonly dispatch: DispatchRecord }
+  | { readonly kind: "refused"; readonly message: string; readonly text: string };
 
 /** One message exactly as the send command answered with it. */
 export interface InboxAcceptedMessage {

@@ -124,6 +124,16 @@ async function read(path: string): Promise<unknown> {
   });
 }
 
+/**
+ * The same bounded, credentialed GET the readers below use, for a reader whose
+ * projection is not one of theirs. It carries no policy of its own: the
+ * bearer, the telemetry context, the bounds and the refusal shape are this
+ * module's, so a read living elsewhere cannot quietly acquire a weaker one.
+ */
+export async function readRecordPath(path: string): Promise<unknown> {
+  return await read(path);
+}
+
 function optionalText(value: unknown, field: string): string | null {
   const text = asStringOrNull(value, field);
   return text === null || text === "None" ? null : text;

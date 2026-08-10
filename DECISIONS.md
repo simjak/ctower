@@ -2088,3 +2088,50 @@ Rejected alternatives:
   similarity is not an authority fact.
 - Adding a transport or scheduler inside ctower. Existing notification rails and director-owned scheduling
   already supply those responsibilities without widening the trust boundary.
+
+## D52 — The console typing ceremony ships inert on the dogfood surface and adds no live control (design, 2026-08-10, issue #428)
+
+The Q3 CSO verdict (`docs/security/console-q3-typing-cso.md`) cleared the typed-input boundary with
+CT-C01..CT-C08, and CT-C01 forbids attaching typing to the current `apps/ctower-ui` terminal reader: that
+reader captures tmux directly through a server-side dogfood source and is not the product's authorization
+boundary. The approved compare board at `bc822f5` is nevertheless the contract for how the ceremony renders,
+and gh#428 splits the work into a server lane and this UI lane. This entry records what the UI lane is
+allowed to land before the server lane exists. It preserves D41, D42, D44 and D45 in full and supersedes
+nothing.
+
+1. **The affordance is absent unless the record serves a console session.** The crew surface reads
+   `/v1/console/sessions/{ref}/typing` and renders the ceremony only on a present answer. The shadow
+   instance answers no console path, so the surface an operator opens today is byte-identical to the one
+   before this change: no field, no button, no grant, no capability note. This is the CT-C01 requirement
+   seen from the browser, and it is asserted as an absence, not documented as an intention.
+2. **No third dogfood control is registered.** D41 and D44 permit exactly two mutating controls on this
+   boundary — Inbox promotion and Inbox send — and this adds none. The console commands address a contract
+   that does not exist on any instance; they are unreachable in production precisely because clause 1 never
+   renders the control that would call them. When the server lane lands, activating them is that lane's
+   contract, its own CSO evidence, and a decision of its own — not a consequence of this entry.
+3. **No second verification suite.** D42 clause 1 and D44 clause 4 cap the dogfood exception at one
+   activated suite, and that cap holds unchanged: `dogfood-inbox-controls` already covers `tests/dogfood`
+   by path and pattern, and it now also drives the console ceremony against a stub record source and a tmux
+   stand-in. The suite id is deliberately *not* renamed a second time — a rename would move a required
+   suite's stable key, its owning phase, and a published reference page for a naming improvement, and D44's
+   rename was justified by a live control joining the boundary, which clause 2 says this is not.
+4. **The browser still canonicalizes nothing and names no target.** Byte counts, digest, submit policy,
+   grant identity and expiry are server-derived and rendered as received. The session is bound into the
+   Server Action from the route, never posted from a form. The countdown describes the server's clock and
+   decides nothing; it is floored and clamped to the granted life so it can never show time the grant was
+   not given, and a lapsed one locks the control rather than offering a press that is certain to refuse.
+5. **The ceremony's placement is one seam, and the operator's variant pick is open.** The approved board
+   carries two full-frame variants whose ceremony content is identical; the operator's 2026-08-10
+   acknowledgement approved the terminal console without naming one. The build implements both placements
+   behind a single `placement` prop at a single call site, and the pick is a one-word change rather than a
+   second implementation.
+
+Rejected alternatives:
+
+- Rendering a disabled "Request type grant" button until the server lane lands. That is the capability
+  banner the operator's craft rules ban, and it invites a path nothing honours.
+- A dedicated `/console` route to demonstrate the states. `docs/specs/crew-console.md` scopes the console
+  as contextual content and explicitly adds no top-level console destination.
+- Proving the states from source text or a component harness. The walk, the moving countdown, server-side
+  expiry, and refusal copy composed at render time are all claims about a running document; the escape
+  D41 clause 3 was written for is exactly a source assertion passing while the screen said otherwise.
