@@ -221,6 +221,63 @@
         }
       }
     },
+    "/v1/requests": {
+      "post": {
+        "operationId": "captureRequest",
+        "x-ctower-cli": "request capture",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/RequestCaptureRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Request committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestCaptureResult"}}}
+          },
+          "201": {
+            "description": "Request accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestCaptureResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      },
+      "get": {
+        "operationId": "listRequests",
+        "x-ctower-cli": "request list",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "project_key",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted-only epistemic Request context",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestList"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/intake/events/{inbound_event_id}/promotion": {
       "post": {
         "operationId": "promoteIntakeEvent",
@@ -3339,6 +3396,7 @@
               "project-delivery-unavailable",
               "project-grant-required",
               "project-scope-denied",
+              "request-project-unavailable",
               "reauthentication-required",
               "request-body-too-large",
               "proof-candidate-author-mismatch",
@@ -3528,6 +3586,86 @@
           "thread_version": {"type": "integer", "minimum": 1},
           "ticket_id": {"type": ["string", "null"], "format": "uuid"},
           "ticket_version": {"type": ["integer", "null"], "minimum": 1}
+        }
+      },
+      "RequestCaptureRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_key", "text"],
+        "properties": {
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "RequestCaptureResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command_id", "durability_state", "event_ids", "inbound_event_id", "owner_id",
+          "project_key", "reference", "request_id", "request_number", "submitted_by", "version"
+        ],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string", "format": "uuid"}},
+          "inbound_event_id": {"type": "string", "format": "uuid"},
+          "owner_id": {"type": "string", "format": "uuid"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "request_id": {"type": "string", "format": "uuid"},
+          "request_number": {"type": "integer", "minimum": 1},
+          "submitted_by": {"type": "string", "format": "uuid"},
+          "version": {"type": "integer", "minimum": 1}
+        }
+      },
+      "RequestRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "age_seconds", "blocker", "content", "durability_state", "freshness",
+          "optional_ticket_ids", "owner", "owner_id", "priority", "priority_default",
+          "project_key", "proof_coverage", "reference", "request_id", "request_number",
+          "required_ticket_ids", "source_kind", "state", "triage", "unknown_reason"
+        ],
+        "properties": {
+          "age_seconds": {"type": "integer", "minimum": 0},
+          "blocker": {"type": ["string", "null"]},
+          "content": {"type": "string", "minLength": 1, "maxLength": 65536},
+          "durability_state": {"type": "string", "const": "accepted"},
+          "freshness": {"type": "integer", "minimum": 1},
+          "optional_ticket_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "owner": {"type": "string", "minLength": 1, "maxLength": 120},
+          "owner_id": {"type": "string", "format": "uuid"},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "priority_default": {"type": "boolean"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "proof_coverage": {"type": ["integer", "null"], "minimum": 0},
+          "reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "request_id": {"type": "string", "format": "uuid"},
+          "request_number": {"type": "integer", "minimum": 1},
+          "required_ticket_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+          "state": {"type": "string", "enum": ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]},
+          "triage": {"type": "string", "enum": ["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"]},
+          "unknown_reason": {"type": ["string", "null"]}
+        }
+      },
+      "RequestList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "answered_project_count", "answered_projects", "observed_at",
+          "requested_project_count", "requested_projects", "rows", "unanswered_projects", "watermark"
+        ],
+        "properties": {
+          "answered_project_count": {"type": "integer", "minimum": 0},
+          "answered_projects": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}},
+          "observed_at": {"type": "string", "format": "date-time"},
+          "requested_project_count": {"type": "integer", "minimum": 0},
+          "requested_projects": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}},
+          "rows": {"type": "array", "items": {"$ref": "#/components/schemas/RequestRow"}},
+          "unanswered_projects": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}},
+          "watermark": {"type": "integer", "minimum": 0}
         }
       },
       "InboxSendRequest": {

@@ -10,8 +10,10 @@ __all__ = ["InboundEventPromotedPayload", "InboundEventRecordedPayload", "Intake
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9._-]{2,127}$")
-_OUTCOMES = frozenset({"discussion", "ticket_created", "ticket_linked", "quarantined"})
-_INTENTS = frozenset({"discussion", "create_ticket", "link_ticket"})
+_OUTCOMES = frozenset(
+    {"discussion", "ticket_created", "ticket_linked", "quarantined", "request_created"}
+)
+_INTENTS = frozenset({"discussion", "create_ticket", "link_ticket", "create_request"})
 _TAINTS = frozenset({"authenticated", "external_untrusted", "quarantine_required"})
 _MAX_SOURCE_KIND_LENGTH = 64
 _MAX_SOURCE_REF_LENGTH = 256

@@ -59,6 +59,7 @@ from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._project_event_routes import install_project_event_routes
+from ctower_api._request_routes import install_request_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
@@ -97,6 +98,7 @@ from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.runtime import RoutineRevision
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
+from ctower_kernel.work.requests import Requests
 from ctower_kernel.workflow import Workflow
 
 __all__ = ["OidcRuntimeConfig", "create_app"]
@@ -164,6 +166,7 @@ def create_app(
     proof: Proof | None = None,
     workflow: Workflow | None = None,
     work: Work | None = None,
+    requests: Requests | None = None,
     projections: Projections | None = None,
     attention: Attention | None = None,
     board_context: BoardContextFacts | None = None,
@@ -194,7 +197,9 @@ def create_app(
     )
     work_module = work or Work(record, telemetry=recorder)
     _install_telemetry_health(app, recorder)
-    _install_core_routes(app, access, record, work_module, workflow, recorder, oidc)
+    _install_core_routes(
+        app, access, record, work_module, workflow, recorder, oidc, requests=requests
+    )
     _install_optional_routes(
         app,
         access,
@@ -226,6 +231,8 @@ def _install_core_routes(
     workflow: Workflow | None,
     recorder: TelemetryRecorder,
     oidc: OidcRuntimeConfig,
+    *,
+    requests: Requests | None,
 ) -> None:
     install_auth_routes(app, access, recorder)
     install_login_gate(app, enforcing=oidc.gate_enforcing)
@@ -234,6 +241,8 @@ def _install_core_routes(
     _install_custody_route(app, access, record, work, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
     install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
+    if requests is not None:
+        install_request_routes(app, access, record, requests, recorder)
     install_comment_routes(app, access, record, recorder)
     install_session_routes(app, access, record, recorder)
     install_project_event_routes(app, access, record, recorder)

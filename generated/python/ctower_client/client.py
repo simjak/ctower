@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+Authored contract digest: sha256:2731f8f3c28340b3bd4d482eb69a7d096dfc43d9ee153d6e5aa303adaafe0269
 """
 
 from __future__ import annotations
@@ -84,6 +84,9 @@ from ctower_client.models import (
     ProjectSessionPage,
     ProofReceipt,
     RelationRequest,
+    RequestCaptureRequest,
+    RequestCaptureResult,
+    RequestList,
     ResolveCloseRequest,
     ReviewDispatchConsumeRequest,
     ReviewDispatchEffectList,
@@ -464,6 +467,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: BootstrapReceipt, 202: BootstrapReceipt}, {401: Problem, 403: Problem, 409: Problem, 410: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def capture_request(
+        self,
+        request: RequestCaptureRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestCaptureResult:
+        response = self._http.post(
+            "/v1/requests",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: RequestCaptureResult, 202: RequestCaptureResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_assignment(
@@ -969,6 +993,24 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: ProjectSessionPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_requests(
+        self,
+        *,
+        project_key: str | None = None,
+    ) -> RequestList:
+        response = self._http.get(
+            "/v1/requests",
+            params={**({"project_key": project_key} if project_key is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: RequestList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_review_dispatch_effects(

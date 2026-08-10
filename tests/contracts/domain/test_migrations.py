@@ -70,13 +70,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0056_gitlab_trace_views.sql",
     "0057_dream_lane_binding_surface.sql",
     "0058_recoverable_dream_lane_binding.sql",
+    "0059_request_authority.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0058_recoverable_dream_lane_binding.sql",
-    "schema_sha256": ("sha256:ac7257bff6f2ce1e5cce4c45652044e09d9eb767f299ebdec33620c7d63998e2"),
+    "through": "0059_request_authority.sql",
+    "schema_sha256": ("sha256:af3eb0a317195b952ceea7ebbc563164577848842b8ddfe995bbea83aa541ce6"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"
+        "sum256:f2787fc770ea3d801a3c577961f7722e8e96a6f2ccc16eb1c682ca79138fda0f"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

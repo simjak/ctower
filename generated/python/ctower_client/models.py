@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+Authored contract digest: sha256:2731f8f3c28340b3bd4d482eb69a7d096dfc43d9ee153d6e5aa303adaafe0269
 """
 
 from __future__ import annotations
@@ -189,6 +189,10 @@ __all__ = [
     "RelationRequest",
     "ReopenIntent",
     "ReopenedAuditData",
+    "RequestCaptureRequest",
+    "RequestCaptureResult",
+    "RequestList",
+    "RequestRow",
     "ResolveCloseRequest",
     "ReviewDispatchConsumeRequest",
     "ReviewDispatchConsumption",
@@ -1292,6 +1296,11 @@ class ReopenIntent(_BoundaryModel):
     priority_policy: Literal["carry_forward"]
 
 
+class RequestCaptureRequest(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    text: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
 class ResolveCloseRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")] | None = None
@@ -2078,6 +2087,7 @@ class Problem(_BoundaryModel):
         "project-delivery-unavailable",
         "project-grant-required",
         "project-scope-denied",
+        "request-project-unavailable",
         "reauthentication-required",
         "request-body-too-large",
         "proof-candidate-author-mismatch",
@@ -2194,6 +2204,43 @@ class ReopenedAuditData(_BoundaryModel):
     episode_number: Annotated[int, Field(ge=2, le=9007199254740991)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class RequestCaptureResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=2, max_length=2)]
+    inbound_event_id: UUID
+    owner_id: UUID
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    request_id: UUID
+    request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    submitted_by: UUID
+    version: Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
+class RequestRow(_BoundaryModel):
+    age_seconds: Annotated[int, Field(ge=0, le=9007199254740991)]
+    blocker: str | None
+    content: Annotated[str, Field(min_length=1, max_length=65536)]
+    durability_state: Literal["accepted"]
+    freshness: Annotated[int, Field(ge=1, le=9007199254740991)]
+    optional_ticket_ids: tuple[UUID, ...]
+    owner: Annotated[str, Field(min_length=1, max_length=120)]
+    owner_id: UUID
+    priority: Priority
+    priority_default: bool
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    proof_coverage: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    request_id: UUID
+    request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    required_ticket_ids: tuple[UUID, ...]
+    source_kind: Annotated[str, Field(min_length=1, max_length=64)]
+    state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    triage: Literal["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"]
+    unknown_reason: str | None
 
 
 class ReviewDispatchEffect(_BoundaryModel):
@@ -2584,6 +2631,17 @@ class ProjectSessionPage(_BoundaryModel):
     next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     sessions: tuple[TicketSession, ...]
+
+
+class RequestList(_BoundaryModel):
+    answered_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    answered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    observed_at: _Rfc3339DateTime
+    requested_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    requested_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    rows: tuple[RequestRow, ...]
+    unanswered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class ReviewDispatchEffectList(_BoundaryModel):

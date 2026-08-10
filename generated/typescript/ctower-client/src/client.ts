@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+// Authored contract digest: sha256:2731f8f3c28340b3bd4d482eb69a7d096dfc43d9ee153d6e5aa303adaafe0269
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -87,6 +87,11 @@ export type BootstrapFirstTenantInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly "XCtowerBootstrapCapability": string;
   readonly body: Models.BootstrapRequest;
+}>;
+
+export type CaptureRequestInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestCaptureRequest;
 }>;
 
 export type ChangeTicketAssignmentInput = Readonly<{
@@ -224,6 +229,10 @@ export type ListProjectSessionsInput = Readonly<{
   readonly "projectKey": string;
   readonly "cursor"?: number;
   readonly "limit"?: number;
+}>;
+
+export type ListRequestsInput = Readonly<{
+  readonly "projectKey"?: string;
 }>;
 
 export type ListReviewDispatchEffectsInput = Readonly<{
@@ -388,6 +397,7 @@ export type OperationInputs = Readonly<{
   readonly "bindCtowerProjectExportEquality": BindCtowerProjectExportEqualityInput;
   readonly "bindDreamLane": BindDreamLaneInput;
   readonly "bootstrapFirstTenant": BootstrapFirstTenantInput;
+  readonly "captureRequest": CaptureRequestInput;
   readonly "changeTicketAssignment": ChangeTicketAssignmentInput;
   readonly "changeTicketPriority": ChangeTicketPriorityInput;
   readonly "commitCtowerProjectDevelopmentEpoch": CommitCtowerProjectDevelopmentEpochInput;
@@ -414,6 +424,7 @@ export type OperationInputs = Readonly<{
   readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
+  readonly "listRequests": ListRequestsInput;
   readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
@@ -458,6 +469,7 @@ export type OperationResults = Readonly<{
   readonly "bindCtowerProjectExportEquality": Models.CtowerProjectImportRun;
   readonly "bindDreamLane": Models.DreamLaneBindingReceipt;
   readonly "bootstrapFirstTenant": Models.BootstrapReceipt;
+  readonly "captureRequest": Models.RequestCaptureResult;
   readonly "changeTicketAssignment": Models.WorkReceipt;
   readonly "changeTicketPriority": Models.WorkReceipt;
   readonly "commitCtowerProjectDevelopmentEpoch": never;
@@ -484,6 +496,7 @@ export type OperationResults = Readonly<{
   readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
   readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
+  readonly "listRequests": Models.RequestList;
   readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
@@ -614,6 +627,12 @@ export class CtowerClient {
     input: BootstrapFirstTenantInput,
   ): Promise<Models.BootstrapReceipt> {
     return this.execute("bootstrapFirstTenant", input);
+  }
+
+  public async captureRequest(
+    input: CaptureRequestInput,
+  ): Promise<Models.RequestCaptureResult> {
+    return this.execute("captureRequest", input);
   }
 
   public async changeTicketAssignment(
@@ -770,6 +789,12 @@ export class CtowerClient {
     input: ListProjectSessionsInput,
   ): Promise<Models.ProjectSessionPage> {
     return this.execute("listProjectSessions", input);
+  }
+
+  public async listRequests(
+    input: ListRequestsInput,
+  ): Promise<Models.RequestList> {
+    return this.execute("listRequests", input);
   }
 
   public async listReviewDispatchEffects(

@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0058_recoverable_dream_lane_binding.sql",
-    "schema_sha256": "sha256:ac7257bff6f2ce1e5cce4c45652044e09d9eb767f299ebdec33620c7d63998e2",
+    "through": "0059_request_authority.sql",
+    "schema_sha256": "sha256:af3eb0a317195b952ceea7ebbc563164577848842b8ddfe995bbea83aa541ce6",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"
+    "schema_object_sum256": "sum256:f2787fc770ea3d801a3c577961f7722e8e96a6f2ccc16eb1c682ca79138fda0f"
   },
   "migrations": [
     {
@@ -548,6 +548,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_operator_recovers_wrong_binding_with_a_new_versioned_lane",
       "rollback_or_forward_compensation": "Preserve every immutable dream-lane binding and canonical binding event; recover with a new versioned lane reference or append reviewed forward compensation, never edit or delete an accepted binding.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture dream-lane binding and binding-event counts grouped by tenant and principal plus a verified database backup; verify the composite primary key and unchanged UPDATE/DELETE refusal trigger after the forward change."
+    },
+    {
+      "path": "0059_request_authority.sql",
+      "sha256": "sha256:35e5a1bc5638921386ef3f8c9ccd37df8b56fed3add2357500089dfae40a9760",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_requests.py::test_request_capture_ack_replay_and_authoritative_list",
+      "rollback_or_forward_compensation": "Preserve every Request number, UUID, inbound provenance event, append-only Request fact, command result, canonical event, outbox row, allocator high-water, source alias, and import manifest; append reviewed forward compensation and never restore a prior writer or reuse an issued Request number.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture the accepted Request, inbound-event, command-result, event, outbox, and allocator counts and high-waters by tenant plus a verified database backup; the new Request tables start empty until the one-way authority epoch."
     }
   ]
 }

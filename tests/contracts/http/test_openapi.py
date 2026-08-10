@@ -54,6 +54,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     ),
     "bindDreamLane": ("dream-lane bind", True, "forbidden", None, False),
     "bootstrapFirstTenant": ("bootstrap first-tenant", True, "forbidden", None, False),
+    "captureRequest": ("request capture", True, "allowed", None, False),
     "changeTicketAssignment": ("ticket assign", True, "allowed", None, False),
     "changeTicketPriority": ("ticket prioritize", True, "allowed", None, False),
     "consumeReviewDispatchEffect": (
@@ -148,6 +149,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         "authenticated",
         False,
     ),
+    "listRequests": ("request list", False, "forbidden", None, False),
     "listReviewDispatchEffects": (
         "ticket review-dispatch list",
         False,
@@ -299,6 +301,7 @@ _EXPECTED_PROBLEM_CODES = {
     "project-delivery-unavailable",
     "project-grant-required",
     "project-scope-denied",
+    "request-project-unavailable",
     "reauthentication-required",
     "request-body-too-large",
     "proof-candidate-author-mismatch",

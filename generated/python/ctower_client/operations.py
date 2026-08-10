@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+Authored contract digest: sha256:2731f8f3c28340b3bd4d482eb69a7d096dfc43d9ee153d6e5aa303adaafe0269
 """
 
 from __future__ import annotations
@@ -224,6 +224,19 @@ OPERATIONS = MappingProxyType(
             cli_names=('bootstrap first-tenant',),
             mutation=True,
             spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "captureRequest": OperationSpec(
+            operation_id="captureRequest",
+            client_method="capture_request",
+            method="POST",
+            path="/v1/requests",
+            request_model=_models.RequestCaptureRequest,
+            response_model=_models.RequestCaptureResult,
+            cli_names=('request capture',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
             principal=None,
             refusal_only=False,
         ),
@@ -563,6 +576,19 @@ OPERATIONS = MappingProxyType(
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal='authenticated',
+            refusal_only=False,
+        ),
+        "listRequests": OperationSpec(
+            operation_id="listRequests",
+            client_method="list_requests",
+            method="GET",
+            path="/v1/requests",
+            request_model=None,
+            response_model=_models.RequestList,
+            cli_names=('request list',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
             refusal_only=False,
         ),
         "listReviewDispatchEffects": OperationSpec(
@@ -939,6 +965,7 @@ CLI_OPERATIONS = MappingProxyType(
         "migration ctower-project export": OPERATIONS["bindCtowerProjectExportEquality"],
         "dream-lane bind": OPERATIONS["bindDreamLane"],
         "bootstrap first-tenant": OPERATIONS["bootstrapFirstTenant"],
+        "request capture": OPERATIONS["captureRequest"],
         "ticket assign": OPERATIONS["changeTicketAssignment"],
         "ticket prioritize": OPERATIONS["changeTicketPriority"],
         "migration ctower-project commit-development-epoch": OPERATIONS["commitCtowerProjectDevelopmentEpoch"],
@@ -967,6 +994,7 @@ CLI_OPERATIONS = MappingProxyType(
         "knowledge list": OPERATIONS["listKnowledgeDocuments"],
         "project events": OPERATIONS["listProjectEvents"],
         "session project": OPERATIONS["listProjectSessions"],
+        "request list": OPERATIONS["listRequests"],
         "ticket review-dispatch list": OPERATIONS["listReviewDispatchEffects"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],

@@ -59,6 +59,8 @@ from ctower_kernel.record.knowledge_events import (
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
+from ctower_kernel.record.request_events import RequestChangedPayload
+from ctower_kernel.record.request_events import _validate_identity as _validate_request_identity
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
     SessionEventPayload,
@@ -137,6 +139,7 @@ class EventKind(StrEnum):
     ATTENTION_FINDING_APPENDED = "attention.finding_appended"
     ATTENTION_FINDING_DISPOSITION_RECORDED = "attention.finding_disposition_recorded"
     KNOWLEDGE_DOCUMENT_REGISTERED = "knowledge.document_registered"
+    REQUEST_CHANGED = "request.changed"
 
 
 class EventOrigin(StrEnum):
@@ -308,6 +311,7 @@ type EventPayload = (
     | LabelAppliedPayload
     | AttentionFindingAppendedPayload
     | AttentionFindingDispositionRecordedPayload
+    | RequestChangedPayload
 )
 
 
@@ -509,6 +513,13 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             KnowledgeDocumentRegisteredPayload,
             "knowledge-document",
         ),
+        EventCatalogEntry(
+            EventKind.REQUEST_CHANGED,
+            RequestChangedPayload,
+            "request",
+            _API_OR_IMPORT,
+            project_feed=True,
+        ),
     )
 }
 
@@ -602,6 +613,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
     _validate_inbox_identity(event.payload, event.aggregate_id)
     _validate_knowledge_identity(event.payload, event.aggregate_id)
+    _validate_request_identity(event.payload, event.aggregate_id)
     _validate_seat_credential_identity(event)
     _validate_session_identity(event)
 

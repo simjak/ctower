@@ -21,6 +21,14 @@ from ctower_kernel.work.interface import (
     WorkReadiness,
     WorkReceipt,
 )
+from ctower_kernel.work.requests import (
+    PostgresRequests,
+    RequestCapture,
+    RequestCaptureResult,
+    RequestList,
+    RequestRow,
+    Requests,
+)
 
 __all__ = [
     "AddRelation",
@@ -42,4 +50,10 @@ __all__ = [
     "WorkCommand",
     "WorkReadiness",
     "WorkReceipt",
+    "PostgresRequests",
+    "RequestCapture",
+    "RequestCaptureResult",
+    "RequestList",
+    "RequestRow",
+    "Requests",
 ]
