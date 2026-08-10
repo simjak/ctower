@@ -1,6 +1,6 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **82 authored server
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **85 authored server
 commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
 operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
@@ -116,6 +116,20 @@ online-only read and never enters the spool.
 The server derives Actor, project authority, submitter, initial owner, source, number, and state. A Request
 may remain without a Ticket; relations are explicit and never change Ticket custody or lifecycle. See
 [Requests](../concepts/requests.md).
+
+## Rulings
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ruling append` | `<verbatim>` | optional: `--command-id`, `--supersedes <ruling_id>` |
+| `ruling list` | — | optional: `--project-key` |
+| `ruling get` | `<ruling_id>` | — |
+
+Append uses the protected encrypted spool and derives Project, principal, and seat from the authenticated
+existing project-seat credential. Preserve the returned command and Ruling IDs when an append is pending;
+replay the same command instead of creating a second intent. Corrections append a new Ruling with
+`--supersedes`; they never edit the old words. List and get are accepted-only online reads. See
+[Rulings and the Agreements ledger](../concepts/rulings.md).
 
 ## Ticket: capture and reads
 

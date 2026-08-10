@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **75 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **78 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -39,14 +39,14 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 149 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 154 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
 
 | Parameter | In | Constraint |
 |---|---|---|
-| `ticket_id`, `request_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
+| `ticket_id`, `request_id`, `ruling_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
 | `project_key` | path | `^[a-z][a-z0-9-]{2,63}$` |
 | `cursor` | query | integer ≥ 0, default 0 |
 | `limit` | query | integer 1–100, default 50 |
@@ -128,6 +128,19 @@ The list is an accepted-only read at a named Record watermark. It reports reques
 unanswered projects separately, so an unanswered source never contributes a fabricated empty result.
 Mutation `202` responses remain `durability_pending`; accepted list rows and totals exclude them. The
 operator migration helper is deliberately absent from this ordinary HTTP surface.
+
+### Rulings
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/rulings` | `appendRuling` | `ruling append` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422`, `503` |
+| `GET` | `/v1/rulings` | `listRulings` | `ruling list` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `GET` | `/v1/rulings/{ruling_id}` | `getRuling` | `ruling get` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+
+Append accepts exact `verbatim` words and an optional `supersedes_ruling_id`. The server derives Project,
+principal, and seat from the existing authenticated project seat. Reads expose only accepted facts and keep
+the stable Ruling ID, server date, byte digest, attribution, and both supersession directions. Listing names
+requested, answered, and unanswered Projects plus the Record watermark; pending facts are absent.
 
 ### Intake
 

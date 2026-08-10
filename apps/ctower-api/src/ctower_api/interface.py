@@ -22,6 +22,7 @@ from ctower_api._board_routes import install_board_routes
 from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
 from ctower_api._comment_routes import install_comment_routes
 from ctower_api._credential_routes import install_credential_routes
+from ctower_api._custody_routes import install_custody_route
 from ctower_api._cutover_routes import install_cutover_routes
 from ctower_api._dream_dispatch_routes import (
     DreamDispatchRuntime,
@@ -62,6 +63,7 @@ from ctower_api._project_event_routes import install_project_event_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._request_cutover_routes import install_request_cutover_routes
 from ctower_api._request_routes import install_request_routes
+from ctower_api._ruling_routes import install_ruling_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
@@ -69,7 +71,6 @@ from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
     BootstrapRequest,
-    CustodyTransferRequest,
     TicketCreateRequest,
     TicketResource,
     TimelineResponse,
@@ -86,7 +87,6 @@ from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
     Actor,
     BootstrapCommand,
-    CustodyCommand,
     Record,
     RecordProblem,
     SourceReference,
@@ -101,6 +101,7 @@ from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
 from ctower_kernel.work.request_cutover import RequestCutover
 from ctower_kernel.work.requests import Requests
+from ctower_kernel.work.rulings import Rulings
 from ctower_kernel.workflow import Workflow
 
 __all__ = ["OidcRuntimeConfig", "create_app"]
@@ -169,6 +170,7 @@ def create_app(
     workflow: Workflow | None = None,
     work: Work | None = None,
     requests: Requests | None = None,
+    rulings: Rulings | None = None,
     request_cutover: RequestCutover | None = None,
     projections: Projections | None = None,
     attention: Attention | None = None,
@@ -208,6 +210,7 @@ def create_app(
         workflow=workflow,
         work=work,
         requests=requests,
+        rulings=rulings,
         request_cutover=request_cutover,
         projections=projections,
         attention=attention,
@@ -236,6 +239,7 @@ def _install_application_routes(
     workflow: Workflow | None,
     work: Work | None,
     requests: Requests | None,
+    rulings: Rulings | None,
     request_cutover: RequestCutover | None,
     projections: Projections | None,
     attention: Attention | None,
@@ -255,6 +259,7 @@ def _install_application_routes(
         recorder,
         oidc,
         requests=requests,
+        rulings=rulings,
         request_cutover=request_cutover,
     )
     _install_optional_routes(
@@ -283,17 +288,20 @@ def _install_core_routes(
     oidc: OidcRuntimeConfig,
     *,
     requests: Requests | None,
+    rulings: Rulings | None,
     request_cutover: RequestCutover | None,
 ) -> None:
     install_auth_routes(app, access, recorder)
     install_login_gate(app, enforcing=oidc.gate_enforcing)
     _install_access_routes(app, access, record, recorder)
     _install_ticket_create_route(app, access, record, work, recorder)
-    _install_custody_route(app, access, record, work, recorder)
+    install_custody_route(app, access, record, work, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
     install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     if requests is not None:
         install_request_routes(app, access, record, requests, recorder)
+    if rulings is not None:
+        install_ruling_routes(app, access, record, rulings, recorder)
     if request_cutover is not None:
         install_request_cutover_routes(app, access, record, request_cutover, recorder)
     install_comment_routes(app, access, record, recorder)
@@ -561,57 +569,6 @@ def _install_ticket_read_routes(
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         return _timeline_response(
             record.ticket_timeline(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
-        )
-
-
-def _install_custody_route(
-    app: FastAPI,
-    access: Access,
-    record: Record,
-    work: Work,
-    telemetry_recorder: TelemetryRecorder,
-) -> None:
-    """Bind the protected custody command Adapter."""
-
-    @app.post("/v1/tickets/{ticket_id}/custody")
-    async def transfer_ticket_custody(ticket_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(
-            access,
-            telemetry_recorder,
-            request,
-            required_scope=CredentialScope.TRANSITION,
-        )
-        if isinstance(actor, RecordProblem):
-            return _problem_response(actor)
-        try:
-            telemetry = _telemetry(request)
-            parsed_ticket_id = _uuid(ticket_id)
-            command_id = _uuid(request.headers.get("Idempotency-Key"))
-            payload = CustodyTransferRequest.model_validate_json(await request.body())
-        except (ValidationError, ValueError):
-            return _problem_response(_validation_problem())
-        telemetry = telemetry.bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            command_id=str(command_id),
-            ticket_id=str(parsed_ticket_id),
-        )
-        telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
-        outcome = work.transfer_custody(
-            actor,
-            CustodyCommand(
-                client_command_id=command_id,
-                expected_version=payload.expected_version,
-                from_custodian_id=payload.from_custodian_id,
-                protected_transfer=payload.protected_transfer,
-                reason=payload.reason,
-                ticket_id=parsed_ticket_id,
-                to_custodian_id=payload.to_custodian_id,
-            ),
-            telemetry=telemetry,
-        )
-        return _ticket_command_response(
-            record, outcome, actor, command_id, telemetry, status_code=200
         )
 
 

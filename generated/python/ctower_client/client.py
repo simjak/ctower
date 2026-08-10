@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
+Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
 """
 
 from __future__ import annotations
@@ -97,6 +97,10 @@ from ctower_client.models import (
     ResolveCloseRequest,
     ReviewDispatchConsumeRequest,
     ReviewDispatchEffectList,
+    RulingAppendRequest,
+    RulingAppendResult,
+    RulingList,
+    RulingRow,
     SeatCredentialIssueRequest,
     SeatCredentialReceipt,
     SeatCredentialRevocationRequest,
@@ -302,6 +306,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: CtowerProjectMigrationReceipt, 202: CtowerProjectMigrationReceipt}, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def append_ruling(
+        self,
+        request: RulingAppendRequest,
+        *,
+        command_id: UUID,
+    ) -> RulingAppendResult:
+        response = self._http.post(
+            "/v1/rulings",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: RulingAppendResult, 202: RulingAppendResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_company_bundle(
@@ -858,6 +883,22 @@ class CtowerClient:
         return _response(response, {200: ProjectDeliveryView}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_ruling(
+        self,
+        ruling_id: UUID,
+    ) -> RulingRow:
+        response = self._http.get(
+            f"/v1/rulings/{quote(str(ruling_id), safe='')}",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: RulingRow}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(
         self,
         run_id: UUID,
@@ -1078,6 +1119,24 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: ReviewDispatchEffectList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_rulings(
+        self,
+        *,
+        project_key: str | None = None,
+    ) -> RulingList:
+        response = self._http.get(
+            "/v1/rulings",
+            params={**({"project_key": project_key} if project_key is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: RulingList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(

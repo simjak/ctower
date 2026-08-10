@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
+Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
 """
 
 from __future__ import annotations
@@ -121,6 +121,19 @@ OPERATIONS = MappingProxyType(
             mutation=True,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal='operator',
+            refusal_only=False,
+        ),
+        "appendRuling": OperationSpec(
+            operation_id="appendRuling",
+            client_method="append_ruling",
+            method="POST",
+            path="/v1/rulings",
+            request_model=_models.RulingAppendRequest,
+            response_model=_models.RulingAppendResult,
+            cli_names=('ruling append',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
             refusal_only=False,
         ),
         "applyCompanyBundle": OperationSpec(
@@ -474,6 +487,19 @@ OPERATIONS = MappingProxyType(
             principal='authenticated',
             refusal_only=False,
         ),
+        "getRuling": OperationSpec(
+            operation_id="getRuling",
+            client_method="get_ruling",
+            method="GET",
+            path="/v1/rulings/{ruling_id}",
+            request_model=None,
+            response_model=_models.RulingRow,
+            cli_names=('ruling get',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "getSyntheticWorkflowRun": OperationSpec(
             operation_id="getSyntheticWorkflowRun",
             client_method="get_synthetic_workflow_run",
@@ -625,6 +651,19 @@ OPERATIONS = MappingProxyType(
             request_model=None,
             response_model=_models.ReviewDispatchEffectList,
             cli_names=('ticket review-dispatch list',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "listRulings": OperationSpec(
+            operation_id="listRulings",
+            client_method="list_rulings",
+            method="GET",
+            path="/v1/rulings",
+            request_model=None,
+            response_model=_models.RulingList,
+            cli_names=('ruling list',),
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
@@ -1031,6 +1070,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket relation add": OPERATIONS["addTicketRelation"],
         "attention finding append": OPERATIONS["appendAttentionFinding"],
         "migration ctower-project correction append": OPERATIONS["appendCtowerProjectImportCorrection"],
+        "ruling append": OPERATIONS["appendRuling"],
         "company bundle apply": OPERATIONS["applyCompanyBundle"],
         "migration ctower-project import": OPERATIONS["applyCtowerProjectImportBatch"],
         "ticket admit": OPERATIONS["applyTicketIntent"],
@@ -1063,6 +1103,7 @@ CLI_OPERATIONS = MappingProxyType(
         "migration ctower-project run get": OPERATIONS["getCtowerProjectImportRun"],
         "knowledge get": OPERATIONS["getKnowledgeDocument"],
         "project delivery query": OPERATIONS["getProjectDelivery"],
+        "ruling get": OPERATIONS["getRuling"],
         "synthetic query": OPERATIONS["getSyntheticWorkflowRun"],
         "ticket query": OPERATIONS["getTicket"],
         "ticket show": OPERATIONS["getTicket"],
@@ -1076,6 +1117,7 @@ CLI_OPERATIONS = MappingProxyType(
         "session project": OPERATIONS["listProjectSessions"],
         "request list": OPERATIONS["listRequests"],
         "ticket review-dispatch list": OPERATIONS["listReviewDispatchEffects"],
+        "ruling list": OPERATIONS["listRulings"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
         "session ticket": OPERATIONS["listTicketSessions"],

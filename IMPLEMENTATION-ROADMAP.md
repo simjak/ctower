@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.20 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.21 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-08-09 |
+| Last reviewed | 2026-08-10 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -57,6 +57,8 @@ INCREMENT 1 — durable task-management dogfood
  [CP3-D: external ACK + keys + destructive restore + measured RPO/RTO]
               |
  [CT-I1-015: Request authority + exact one-way ledger cutover]
+              |
+ [CT-I1-016: immutable Agreements ledger over existing project seats]
               |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
@@ -380,7 +382,21 @@ import remains absent.
 **Exit:** AC-REQ-01..06 pass through the named CT-I1-015 suites; the exact v1 architecture records
 `no-new-boundary`; restore reconstructs Request authority and allocator state; the old writer and import
 operation are absent; and the first authoritative capture allocates strictly above the sealed high-water.
-This checkpoint joins CT-I1-009..014 and CP3-D in the full normative I1 exit.
+This checkpoint joins CT-I1-009..014 and CP3-D; CT-I1-016 then completes the full normative I1 exit.
+
+### I1.10 — Immutable Agreements ledger
+
+**Stable work:** `CT-I1-016`.
+
+After CT-I1-015, add one Work-owned Ruling fact surface over the existing project-seat identity domain.
+Each append receives a server date and UUIDv7 citation identity and stores the operator's exact UTF-8 bytes
+plus digest. A correction appends one same-Project successor linked to its predecessor; database UPDATE and
+DELETE remain impossible. Generated HTTP/client and protected CLI append/list/get operations expose only
+accepted facts, deterministic date/ID order, and explicit epistemic Project scope.
+
+**Exit:** AC-RUL-01..04 pass on real PostgreSQL, the Request B4 existing-tenant fence sequence remains
+green, generated/client/CLI/docs artifacts match the same candidate, and independent review confirms
+`no-new-boundary` with no new principal class.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

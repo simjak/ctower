@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import cast
 
+from ._ruling_inventory import RULING_OPERATION_METADATA, RULING_PROBLEM_CODES
+
 ROOT = Path(__file__).parents[3]
 MAX_IMPORT_ITEMS = 64
 
@@ -22,6 +24,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         "operator",
         False,
     ),
+    **RULING_OPERATION_METADATA,
     "applyCompanyBundle": ("company bundle apply", True, "allowed", None, False),
     "applyCtowerProjectImportBatch": (
         "migration ctower-project import",
@@ -315,6 +318,7 @@ _EXPECTED_PROBLEM_CODES = {
     "request-source-forbidden",
     "request-transition-forbidden",
     "request-triage-forbidden",
+    *RULING_PROBLEM_CODES,
     "reauthentication-required",
     "request-body-too-large",
     "proof-candidate-author-mismatch",

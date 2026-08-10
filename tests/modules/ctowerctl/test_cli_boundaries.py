@@ -28,7 +28,7 @@ from ctower_client.models import (
     WorkflowStartRequest,
 )
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
-from ctowerctl import _credential_commands, _workflow_commands, main
+from ctowerctl import _credential_commands, _ruling_commands, _workflow_commands, main
 from ctowerctl._attention_commands import build_mutation as build_attention_mutation
 from ctowerctl._attention_commands import (
     mutation_command_names as attention_mutations,
@@ -124,7 +124,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | attention_mutations()
         | dream_dispatch_mutations()
         | dream_lane_mutations()
-        | request_mutations()
+        | (request_mutations() | _ruling_commands.mutation_command_names())
     )
     queries = (
         ticket_queries()
@@ -136,7 +136,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | knowledge_queries()
         | session_queries()
         | dream_dispatch_queries()
-        | request_queries()
+        | (request_queries() | _ruling_commands.query_command_names())
     )
     refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}

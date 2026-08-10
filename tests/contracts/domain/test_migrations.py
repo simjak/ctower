@@ -71,13 +71,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0057_dream_lane_binding_surface.sql",
     "0058_recoverable_dream_lane_binding.sql",
     "0059_request_authority.sql",
+    "0060_rulings_ledger.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0059_request_authority.sql",
-    "schema_sha256": ("sha256:0d15d3ed93ba31b848f1f6161d56f3d81edb9c9bca67226d19d8ceefe2b4865d"),
+    "through": "0060_rulings_ledger.sql",
+    "schema_sha256": ("sha256:c0a3014f9823d155887544ed48a9242f25f149fcb08ff74fda122c5ea5b8a7b5"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:0aa8aa0e2f9fd5e80b30d37dd6640a93c33ed3095edae870dacfe81f91ceb61a"
+        "sum256:c5f273c5d2bae6f3d34ba0937bf658322086cc77936fb46b38215288f63b5e9a"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.20 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.21 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-09 |
+| Last reviewed | 2026-08-10 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -25,6 +25,11 @@ The first-class Request aggregate now exists as a tested Phase-1 development can
 append-only semantic facts, generated API/CLI operations, accepted-only read, restore evidence, and a
 read-only cutover analyzer. It has no portfolio authority. The Mission Control ledger remains authoritative
 until CT-I1-015's complete signed, fenced, reconciled one-way epoch succeeds.
+
+The Agreements ledger is a tested CT-I1-016 candidate. It stores each accepted Ruling as a server-dated,
+UUIDv7-addressed, byte-exact immutable Work fact attributed to an existing project seat. Corrections append
+one same-Project successor; accepted-only list/get reads derive both citation directions and explicit
+epistemic scope. It adds no principal class, adapter, ingress, egress, or browser authority.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery
@@ -324,7 +329,7 @@ plugins, or any new network boundary.
 | Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, pair-grouped notification ingestion, atomic create-or-link ticket promotion, immutable promotion links, fact-derived per-message state and unread projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Integrations | Catalog-revision-pinned bounded source cursors, immutable external issue/ticket custody links and observations, and proof-gated outbound delivery receipts; no provider credential values or lifecycle authority |
-| Work | First-class Requests and their triage/owner/priority/Ticket-relation/blocker/closure rules; permanent Tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
+| Work | Immutable Rulings over existing project seats and their accepted-only citation/supersession reads; first-class Requests and their triage/owner/priority/Ticket-relation/blocker/closure rules; permanent Tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
 | Attention | Exact policy-qualified human actions, the typed append-only findings feed and its configured kind catalog, and Needs You projection inputs |
 | Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |

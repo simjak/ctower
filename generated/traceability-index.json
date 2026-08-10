@@ -512,6 +512,24 @@
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
+    "AC-RUL-01": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
+    ],
+    "AC-RUL-02": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
+    ],
+    "AC-RUL-03": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
+    ],
+    "AC-RUL-04": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
+    ],
     "AC-SEC-01": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
       "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
@@ -1125,6 +1143,11 @@
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
+    "INV-88": [
+      "contracts/domain/events/canonical-vectors.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
+    ],
     "SPEC#accepted-first-class-operator-request-contract": [
       "contracts/domain/migration/request-batch-proof.schema.json",
       "contracts/domain/migration/request-import-manifest.schema.json",
@@ -1138,6 +1161,11 @@
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
+    ],
+    "SPEC#agreements-ledger": [
+      "contracts/domain/events/canonical-vectors.json",
+      "contracts/domain/inbox/inbox.schema.json",
+      "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
     ],
     "SPEC#assignment-model-visibility-reporter": [
       "contracts/domain/inbox/inbox.schema.json",

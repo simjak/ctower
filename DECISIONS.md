@@ -1986,3 +1986,36 @@ Rejected alternatives:
 - Automatically quarantining on every refusal. Input, transient durability, and operator mistakes are not
   equivalent dispositions, and a trigger cannot honestly decide among them.
 - Re-enabling native or legacy capture after failure. That recreates the split-brain window OR-06 removes.
+
+## D49 — Agreements are immutable Ruling facts written by existing project seats (engineering, 2026-08-10, issue #401)
+
+The Agreements ledger records a dated operator agreement without turning prose into mutable configuration
+or introducing another identity plane.
+
+1. Work owns one `Ruling` append policy and accepted-only read Interface. Record owns its canonical
+   `ruling.recorded` event, command result, outbox, durability, and transaction.
+2. A Ruling receives server time and UUIDv7 identity. Its operator words are encoded once as UTF-8 and
+   stored byte-exact with a SHA-256 digest. Database `UPDATE` and `DELETE` use the accepted immutable
+   control-fact refusal trigger.
+3. The authenticated active project seat supplies tenant, Project, principal, and seat. The strict body
+   contains only `verbatim` and an optional predecessor UUID. Unknown or non-seat identity refuses by
+   stable code and cannot create a principal, mapping, alias, or grant.
+4. A correction is a new same-Project Ruling that points old-to-new through `supersedes_ruling_id`; accepted
+   reads derive the reverse citation and permit at most one successor. The prior words remain unchanged.
+5. Listing and citation reads expose only off-host-accepted facts, deterministic server-date/ID order, and
+   explicit requested/answered/unanswered Project scope plus the Record watermark.
+6. V1 reuses the existing generated HTTP/client, encrypted spool, protected CLI, project-seat credential,
+   PostgreSQL, and telemetry boundaries. The exact design records `no-new-boundary`; adding any adapter,
+   principal class, credential custody path, ingress, egress, or browser authority requires a new decision
+   and CSO review.
+
+Rejected alternatives:
+
+- Editing the old agreement in place. That destroys the exact words and citation history relied on by later
+  reasoning.
+- Letting callers name a Project or identity. Authentication already resolves the authoritative seat and a
+  claimed value would create an impersonation/confused-deputy surface.
+- Reusing Request or Ticket identity. Agreements are facts about decisions, not captured intent or
+  executable work, and their stable citations must remain semantically distinct.
+- Adding a generic principal, policy, or document abstraction. The existing seat domain and one cohesive
+  ledger fully meet the current requirement.
