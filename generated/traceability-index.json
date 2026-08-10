@@ -46,6 +46,23 @@
     "AC-ATT-02": [
       "packages/ctower-kernel/migrations/0045_attention_findings.sql"
     ],
+    "AC-BRIEF-01": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
+    ],
+    "AC-BRIEF-02": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
+    ],
+    "AC-BRIEF-03": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
+    ],
+    "AC-BRIEF-04": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
+    ],
     "AC-COMP-01": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/attention-kind-catalog.schema.json",
@@ -1148,6 +1165,11 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
     ],
+    "INV-89": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
+    ],
     "SPEC#accepted-first-class-operator-request-contract": [
       "contracts/domain/migration/request-batch-proof.schema.json",
       "contracts/domain/migration/request-import-manifest.schema.json",
@@ -1424,6 +1446,11 @@
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
+    "SPEC#request-derived-operator-decision-briefs": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",

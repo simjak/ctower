@@ -26,7 +26,8 @@ class RulingRecordedPayload:
     recorded_by: UUID
     seat_key: str
     recorded_at: datetime
-    supersedes_ruling_id: UUID | None = None
+    supersedes_ruling_id: UUID | None
+    request_id: UUID | None
 
     def __post_init__(self) -> None:
         _validate_identities(self)
@@ -39,6 +40,7 @@ class RulingRecordedPayload:
             "project_key": self.project_key,
             "recorded_at": self.recorded_at.isoformat(),
             "recorded_by": str(self.recorded_by),
+            "request_id": None if self.request_id is None else str(self.request_id),
             "ruling_id": str(self.ruling_id),
             "seat_key": self.seat_key,
             "supersedes_ruling_id": (
@@ -60,6 +62,8 @@ def _validate_identities(payload: RulingRecordedPayload) -> None:
     predecessor = payload.supersedes_ruling_id
     if predecessor is not None and not isinstance(predecessor, UUID):
         raise TypeError("Ruling supersession identity must be a UUID or None")
+    if payload.request_id is not None and not isinstance(payload.request_id, UUID):
+        raise TypeError("Ruling Request identity must be a UUID or None")
 
 
 def _validate_attribution(payload: RulingRecordedPayload) -> None:

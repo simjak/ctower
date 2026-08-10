@@ -62,7 +62,12 @@ class _RulingRoutes:
         self._recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         outcome = self._rulings.append(
             actor,
-            RulingAppend(command_id, payload.verbatim, payload.supersedes_ruling_id),
+            RulingAppend(
+                command_id,
+                payload.verbatim,
+                payload.supersedes_ruling_id,
+                payload.request_id,
+            ),
             telemetry=telemetry,
         )
         return mutation_response(

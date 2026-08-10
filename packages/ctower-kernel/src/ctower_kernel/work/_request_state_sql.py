@@ -9,6 +9,8 @@ from uuid import UUID
 
 import psycopg
 
+from ctower_kernel.work._decision_brief import OPERATOR_DECISION_BLOCKER
+
 __all__ = [
     "active_blocker_keys",
     "active_relations",
@@ -194,9 +196,7 @@ def dependency_digest(
         _DEPENDENCY_RELATIONS_SQL,
         _dependency_args(tenant_id, request_id, accepted_only=accepted_only),
     )
-    blockers = connection.execute(
-        _DEPENDENCY_BLOCKERS_SQL, (tenant_id, request_id, accepted_only)
-    ).fetchall()
+    blockers = active_blocker_keys(connection, tenant_id, request_id, accepted_only=accepted_only)
     triage = connection.execute(
         """
         SELECT fact.disposition, fact.canonical_request_id FROM request_triage_facts AS fact
@@ -212,7 +212,7 @@ def dependency_digest(
         (tenant_id, request_id, accepted_only),
     ).fetchone()
     payload = {
-        "blockers": [str(row["blocker_key"]) for row in blockers],
+        "blockers": list(blockers),
         "canonical": _canonical_dependency(
             connection, tenant_id, triage, accepted_only=accepted_only
         ),
@@ -291,22 +291,6 @@ WHERE latest.active ORDER BY latest.ticket_id
 """
 
 
-_DEPENDENCY_BLOCKERS_SQL = """
-SELECT blocker_key, active FROM (
-    SELECT DISTINCT ON (fact.blocker_key) fact.blocker_key, fact.active
-    FROM request_blocker_facts AS fact
-    WHERE fact.tenant_id = %s AND fact.request_id = %s
-      AND (NOT %s OR EXISTS (
-          SELECT 1 FROM durability_acceptance_confirmations AS confirmation
-          WHERE confirmation.tenant_id = fact.tenant_id
-            AND confirmation.principal_id = fact.recorded_by
-            AND confirmation.client_command_id = fact.command_id
-      ))
-    ORDER BY fact.blocker_key, fact.request_version DESC
-) AS latest WHERE active ORDER BY blocker_key
-"""
-
-
 def active_relations(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
@@ -359,7 +343,38 @@ def active_blocker_keys(
         """,
         (tenant_id, request_id, accepted_only),
     ).fetchall()
-    return tuple(str(row["blocker_key"]) for row in rows)
+    keys = tuple(str(row["blocker_key"]) for row in rows)
+    if OPERATOR_DECISION_BLOCKER not in keys or not _decision_answered(
+        connection, tenant_id, request_id, accepted_only=accepted_only
+    ):
+        return keys
+    return tuple(key for key in keys if key != OPERATOR_DECISION_BLOCKER)
+
+
+def _decision_answered(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool,
+) -> bool:
+    return (
+        connection.execute(
+            """
+            SELECT 1 FROM rulings AS ruling
+            WHERE ruling.tenant_id = %s AND ruling.request_id = %s
+              AND (NOT %s OR EXISTS (
+                  SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+                  WHERE confirmation.tenant_id = ruling.tenant_id
+                    AND confirmation.principal_id = ruling.recorded_by
+                    AND confirmation.client_command_id = ruling.command_id
+              ))
+            LIMIT 1
+            """,
+            (tenant_id, request_id, accepted_only),
+        ).fetchone()
+        is not None
+    )
 
 
 def _has_request_blocker(

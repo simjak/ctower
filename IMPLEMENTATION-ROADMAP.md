@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.21 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.22 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
@@ -59,6 +59,8 @@ INCREMENT 1 — durable task-management dogfood
  [CT-I1-015: Request authority + exact one-way ledger cutover]
               |
  [CT-I1-016: immutable Agreements ledger over existing project seats]
+              |
+ [CT-I1-017: Request-derived decision briefs closed by linked Rulings]
               |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
@@ -397,6 +399,25 @@ accepted facts, deterministic date/ID order, and explicit epistemic Project scop
 **Exit:** AC-RUL-01..04 pass on real PostgreSQL, the Request B4 existing-tenant fence sequence remains
 green, generated/client/CLI/docs artifacts match the same candidate, and independent review confirms
 `no-new-boundary` with no new principal class.
+
+### I1.11 — Request-derived operator decision briefs
+
+**Stable work:** `CT-I1-017`.
+
+After the Request and Ruling authorities exist, render one complete operator ask for every accepted Request
+whose latest accepted `operator-decision-required` blocker is active. The accepted Request read supplies the
+plain explanation, exact origin quote, three scored outcomes, record-derived recommendation, safe default,
+ready-to-send text, and open/answered state. Caller facts and model output do not enter this projection;
+ordinary Requests expose no brief.
+
+An answer appends through the existing protected Ruling command with the Request identity. PostgreSQL binds
+the relation to the same tenant and Project, accepted reads expose it from both records, accepted state stops
+counting the decision blocker, and successors inherit the relation. Pending Rulings change no accepted read.
+The separately ticketed digest layer may consume this shape later and adds no scope to this checkpoint.
+
+**Exit:** AC-BRIEF-01..04 pass through the named contract and real-PostgreSQL suites; rendered evidence,
+record-only taint proof, bidirectional Request/Ruling queries, same-candidate generated artifacts and docs,
+the full release gate, and one independent maximum-effort judgment verdict are recorded.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

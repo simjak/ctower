@@ -18,6 +18,7 @@ __all__: tuple[str, ...] = ()
 def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
     return MutationPayload(
         request=RulingAppendRequest(
+            request_id=cast(UUID | None, arguments.request_id),
             supersedes_ruling_id=cast(UUID | None, arguments.supersedes_ruling_id),
             verbatim=cast(str, arguments.verbatim),
         ),

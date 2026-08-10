@@ -4263,6 +4263,13 @@
               "format": "uuid",
               "type": "string"
             },
+            "request_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "ruling_id": {
               "format": "uuid",
               "type": "string"
@@ -4291,6 +4298,7 @@
             "project_key",
             "recorded_at",
             "recorded_by",
+            "request_id",
             "ruling_id",
             "seat_key",
             "supersedes_ruling_id",
@@ -16612,7 +16620,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:64a6f2c5109516797b5a7f0c014cca840e917f64a7feacb43acce034c35f8976"
+      "sha256": "sha256:b63b0629c07f29cc0598277ea462ea7143f7c224a6ca77f8dac2e57bf094edae"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",

@@ -2019,3 +2019,36 @@ Rejected alternatives:
   executable work, and their stable citations must remain semantically distinct.
 - Adding a generic principal, policy, or document abstraction. The existing seat domain and one cohesive
   ledger fully meet the current requirement.
+
+## D50 — Decision briefs are Request-record projections answered by linked Rulings (engineering, 2026-08-10, issue #403)
+
+Operator decision asks must be complete without allowing a caller, model, or digest renderer to invent the
+facts presented for judgment.
+
+1. The latest accepted active Request blocker with the exact key `operator-decision-required` marks one
+   decision. No separate Decision aggregate or mutable brief record is added.
+2. The accepted Request read builds the full brief from Request facts: a fixed plain ELI, the exact Request
+   content as origin, three fixed outcome choices with bounded completeness scores, a recommendation chosen
+   from accepted triage with its reason, and a fixed safe default with its reason. It also returns one
+   ready-to-send rendering.
+3. Request and query payloads have no fields for ELI, choices, scores, recommendation, safe default, or
+   rendering. No model call, caller prose, or other call-time fact participates in the projection.
+4. An answer is an immutable Ruling whose optional `request_id` is constrained to the same tenant and
+   Project and to a current decision Request. Pending Rulings do not resolve accepted state. Accepted reads
+   expose Request-to-Ruling and Ruling-to-Request links; every Ruling successor inherits the relation.
+5. An accepted linked Ruling removes only the exact decision blocker from derived Request state. The
+   append-only blocker fact stays intact, and every unrelated blocker keeps its authority.
+6. The digest layer may consume the rendered brief through its own stable ticket. This decision adds no
+   digest behavior, principal class, adapter, ingress, egress, browser authority, or trust boundary and
+   records `no-new-boundary`.
+
+Rejected alternatives:
+
+- Accepting caller-authored brief fields. That would let a tainted caller rewrite the issue, choices, or
+  recommendation shown to the operator.
+- Generating the brief with a model at read time. That would make the same accepted Request render different
+  judgment facts and would create an unrecorded source of authority.
+- Writing a second Decision record. The Request already owns the need and the Ruling already owns the answer;
+  another aggregate would duplicate state and create reconciliation work.
+- Coupling digest delivery into this change. The digest has its own work item and consumes this stable read
+  shape only after that item is active.

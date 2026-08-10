@@ -36,6 +36,19 @@ The operator state is derived in this order:
 A later relation, blocker, proof invalidation, or canonical-Request change can invalidate an old closure
 evaluation. This is why no client edits a Request status directly.
 
+## Decision briefs
+
+The exact active blocker key `operator-decision-required` makes the accepted Request read include a complete
+operator ask. Ctower derives its plain explanation, exact Request-content quote, three outcome choices and
+their completeness scores, recommendation, safe default, and ready-to-send text from accepted Request facts.
+Callers cannot submit or override any brief field. Requests without that blocker return
+`decision_brief: null`.
+
+The safe default is to leave the Request blocked. An answer is an accepted Ruling linked to the Request.
+Pending Rulings do not change the accepted brief. After acceptance, the brief cites the Ruling and becomes
+`answered`; the decision blocker no longer affects derived state, while every unrelated blocker still does.
+See [Rulings](rulings.md#answering-a-request-decision).
+
 ## Honest reads
 
 The Phase 1 Request read is read-only, carries a Record watermark and freshness, and excludes pending

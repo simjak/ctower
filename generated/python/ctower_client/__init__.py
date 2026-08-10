@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
+Authored contract digest: sha256:3fb0287b8bfed7a013e2310417ed303c7f346494a9b3e1cf9272634d9495275c
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -73,6 +73,9 @@ from ctower_client.models import (
     CustodyTransferredAuditEvent,
     CustodyTransferredPayload,
     CustodyTransferRequest,
+    DecisionBrief,
+    DecisionBriefChoice,
+    DecisionBriefSelection,
     DeferIntent,
     DeferredAuditData,
     DeliverySurfaceAvailability,
@@ -337,6 +340,9 @@ __all__ = [
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
+    "DecisionBrief",
+    "DecisionBriefChoice",
+    "DecisionBriefSelection",
     "DeferIntent",
     "DeferredAuditData",
     "DeliverySurfaceAvailability",

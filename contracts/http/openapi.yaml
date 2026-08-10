@@ -3597,6 +3597,9 @@
               "ruling-already-superseded",
               "ruling-not-found",
               "ruling-project-unavailable",
+              "ruling-request-already-answered",
+              "ruling-request-not-decision",
+              "ruling-request-not-found",
               "ruling-seat-not-found",
               "reauthentication-required",
               "request-body-too-large",
@@ -3798,6 +3801,7 @@
         "additionalProperties": false,
         "required": ["verbatim"],
         "properties": {
+          "request_id": {"type": ["string", "null"], "format": "uuid"},
           "supersedes_ruling_id": {"type": ["string", "null"], "format": "uuid"},
           "verbatim": {"type": "string", "minLength": 1, "maxLength": 65536}
         }
@@ -3807,7 +3811,7 @@
         "additionalProperties": false,
         "required": [
           "accepted_position", "command_id", "durability_state", "event_ids", "project_key",
-          "recorded_at", "recorded_by", "ruling_id", "seat_key", "supersedes_ruling_id"
+          "recorded_at", "recorded_by", "request_id", "ruling_id", "seat_key", "supersedes_ruling_id"
         ],
         "properties": {
           "accepted_position": {"type": ["integer", "null"], "minimum": 1},
@@ -3817,6 +3821,7 @@
           "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "recorded_at": {"type": "string", "format": "date-time"},
           "recorded_by": {"type": "string", "format": "uuid"},
+          "request_id": {"type": ["string", "null"], "format": "uuid"},
           "ruling_id": {"type": "string", "format": "uuid"},
           "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "supersedes_ruling_id": {"type": ["string", "null"], "format": "uuid"}
@@ -3827,7 +3832,8 @@
         "additionalProperties": false,
         "required": [
           "durability_state", "freshness", "project_key", "recorded_at", "recorded_by",
-          "ruling_id", "seat_key", "superseded_by_ruling_id", "supersedes_ruling_id",
+          "request_id", "request_reference", "ruling_id", "seat_key",
+          "superseded_by_ruling_id", "supersedes_ruling_id",
           "verbatim", "verbatim_sha256"
         ],
         "properties": {
@@ -3836,6 +3842,8 @@
           "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "recorded_at": {"type": "string", "format": "date-time"},
           "recorded_by": {"type": "string", "format": "uuid"},
+          "request_id": {"type": ["string", "null"], "format": "uuid"},
+          "request_reference": {"type": ["string", "null"], "pattern": "^R[1-9][0-9]*$"},
           "ruling_id": {"type": "string", "format": "uuid"},
           "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "superseded_by_ruling_id": {"type": ["string", "null"], "format": "uuid"},
@@ -3977,11 +3985,52 @@
           "version": {"type": "integer", "minimum": 2}
         }
       },
+      "DecisionBriefChoice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["completeness", "key", "outcome"],
+        "properties": {
+          "completeness": {"type": "integer", "minimum": 0, "maximum": 10},
+          "key": {"type": "string", "enum": ["A", "B", "C"]},
+          "outcome": {"type": "string", "minLength": 1, "maxLength": 160}
+        }
+      },
+      "DecisionBriefSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["choice_key", "reason"],
+        "properties": {
+          "choice_key": {"type": "string", "enum": ["A", "B", "C"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 160}
+        }
+      },
+      "DecisionBrief": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "choices", "eli", "origin_quote", "recommendation", "rendered", "ruling_id",
+          "safe_default", "status"
+        ],
+        "properties": {
+          "choices": {
+            "type": "array", "minItems": 3, "maxItems": 3,
+            "items": {"$ref": "#/components/schemas/DecisionBriefChoice"}
+          },
+          "eli": {"type": "string", "minLength": 1, "maxLength": 160},
+          "origin_quote": {"type": "string", "minLength": 1, "maxLength": 65536},
+          "recommendation": {"$ref": "#/components/schemas/DecisionBriefSelection"},
+          "rendered": {"type": "string", "minLength": 1, "maxLength": 131072},
+          "ruling_id": {"type": ["string", "null"], "format": "uuid"},
+          "safe_default": {"$ref": "#/components/schemas/DecisionBriefSelection"},
+          "status": {"type": "string", "enum": ["open", "answered"]}
+        }
+      },
       "RequestRow": {
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "age_seconds", "blocker", "content", "content_sha256", "created_at", "durability_state", "freshness",
+          "age_seconds", "blocker", "content", "content_sha256", "created_at", "decision_brief",
+          "durability_state", "freshness",
           "optional_ticket_ids", "owner", "owner_id", "priority", "priority_default",
           "project_key", "proof_coverage", "reference", "request_id", "request_number",
           "required_ticket_ids", "source_kind", "source_ref", "original_owner_sha256",
@@ -3993,6 +4042,12 @@
           "content": {"type": "string", "minLength": 1, "maxLength": 65536},
           "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "created_at": {"type": "string", "format": "date-time"},
+          "decision_brief": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/DecisionBrief"},
+              {"type": "null"}
+            ]
+          },
           "durability_state": {"type": "string", "const": "accepted"},
           "freshness": {"type": "integer", "minimum": 1},
           "optional_ticket_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
