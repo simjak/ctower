@@ -221,6 +221,28 @@
         }
       }
     },
+    "/v1/digests/morning": {
+      "get": {
+        "operationId": "getMorningDigest",
+        "x-ctower-cli": "digest morning",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{
+          "name": "date", "in": "query", "required": false,
+          "schema": {"type": "string", "format": "date"}
+        }],
+        "responses": {
+          "200": {
+            "description": "One epistemically explicit Europe/Vilnius morning digest artifact",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MorningDigest"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/rulings": {
       "post": {
         "operationId": "appendRuling",
@@ -3791,6 +3813,158 @@
           "thread_version": {"type": "integer", "minimum": 1},
           "ticket_id": {"type": ["string", "null"], "format": "uuid"},
           "ticket_version": {"type": ["integer", "null"], "minimum": 1}
+        }
+      },
+      "DigestReadingState": {
+        "type": "string",
+        "enum": ["complete", "partial", "unknown"]
+      },
+      "DigestUnreachedScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "reason"],
+        "properties": {
+          "key": {"type": "string", "minLength": 1, "maxLength": 128},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 128}
+        }
+      },
+      "DigestDecisionChoice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["completeness", "label", "outcome"],
+        "properties": {
+          "completeness": {"type": "integer", "minimum": 0, "maximum": 10},
+          "label": {"type": "string", "minLength": 1, "maxLength": 512},
+          "outcome": {"type": "string", "minLength": 1, "maxLength": 2048}
+        }
+      },
+      "DigestDecisionBrief": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["choices", "origin", "recommendation", "safe_default", "what"],
+        "properties": {
+          "choices": {"type": "array", "items": {"$ref": "#/components/schemas/DigestDecisionChoice"}},
+          "origin": {"type": "string", "minLength": 1, "maxLength": 1024},
+          "recommendation": {"type": ["string", "null"], "minLength": 1, "maxLength": 2048},
+          "safe_default": {"type": "string", "minLength": 1, "maxLength": 2048},
+          "what": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "MorningDigestDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["brief", "project_key", "request_id", "request_reference", "state", "unknown_reason"],
+        "properties": {
+          "brief": {"$ref": "#/components/schemas/DigestDecisionBrief"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "request_id": {"type": "string", "format": "uuid"},
+          "request_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "unknown_reason": {"type": ["string", "null"], "maxLength": 128}
+        }
+      },
+      "MorningDigestExecution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id", "request_reference", "state", "ticket_ids"],
+        "properties": {
+          "request_id": {"type": "string", "format": "uuid"},
+          "request_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "state": {"type": "string", "enum": ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]},
+          "ticket_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}}
+        }
+      },
+      "MorningDigestRuling": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["executions", "project_key", "recorded_at", "ruling_id", "state", "unknown_reason", "verbatim"],
+        "properties": {
+          "executions": {"type": "array", "items": {"$ref": "#/components/schemas/MorningDigestExecution"}},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "recorded_at": {"type": "string", "format": "date-time"},
+          "ruling_id": {"type": "string", "format": "uuid"},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "unknown_reason": {"type": ["string", "null"], "maxLength": 128},
+          "verbatim": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "MorningDigestTicketLink": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["href", "purpose", "ticket_id"],
+        "properties": {
+          "href": {"type": "string", "pattern": "^/v1/tickets/[0-9a-f-]{36}/timeline$"},
+          "purpose": {"type": "string", "enum": ["required", "optional"]},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "MorningDigestProof": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["current_proof_count", "project_key", "request_id", "request_reference", "tickets"],
+        "properties": {
+          "current_proof_count": {"type": ["integer", "null"], "minimum": 0},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "request_id": {"type": "string", "format": "uuid"},
+          "request_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "tickets": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/MorningDigestTicketLink"}}
+        }
+      },
+      "MorningDigestDecisionSection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "state", "total_count", "unreached", "visible_count"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/MorningDigestDecision"}},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "total_count": {"type": ["integer", "null"], "minimum": 0},
+          "unreached": {"type": "array", "items": {"$ref": "#/components/schemas/DigestUnreachedScope"}},
+          "visible_count": {"type": "integer", "minimum": 0}
+        }
+      },
+      "MorningDigestRulingSection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "state", "total_count", "unreached", "visible_count"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/MorningDigestRuling"}},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "total_count": {"type": ["integer", "null"], "minimum": 0},
+          "unreached": {"type": "array", "items": {"$ref": "#/components/schemas/DigestUnreachedScope"}},
+          "visible_count": {"type": "integer", "minimum": 0}
+        }
+      },
+      "MorningDigestProofSection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "state", "total_count", "unreached", "visible_count"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/MorningDigestProof"}},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "total_count": {"type": ["integer", "null"], "minimum": 0},
+          "unreached": {"type": "array", "items": {"$ref": "#/components/schemas/DigestUnreachedScope"}},
+          "visible_count": {"type": "integer", "minimum": 0}
+        }
+      },
+      "MorningDigest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_key", "artifact_sha256", "digest_date", "observed_at", "open_decisions",
+          "proof", "request_watermark", "ruling_watermark", "state", "timezone", "yesterday_rulings"
+        ],
+        "properties": {
+          "artifact_key": {"type": "string", "pattern": "^morning-digest:[0-9]{4}-[0-9]{2}-[0-9]{2}:Europe/Vilnius$"},
+          "artifact_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "digest_date": {"type": "string", "format": "date"},
+          "observed_at": {"type": "string", "format": "date-time"},
+          "open_decisions": {"$ref": "#/components/schemas/MorningDigestDecisionSection"},
+          "proof": {"$ref": "#/components/schemas/MorningDigestProofSection"},
+          "request_watermark": {"type": ["integer", "null"], "minimum": 0},
+          "ruling_watermark": {"type": ["integer", "null"], "minimum": 0},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "timezone": {"type": "string", "const": "Europe/Vilnius"},
+          "yesterday_rulings": {"$ref": "#/components/schemas/MorningDigestRulingSection"}
         }
       },
       "RulingAppendRequest": {

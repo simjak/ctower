@@ -27,6 +27,10 @@ Durable decisions remain in the owning kernel Modules; the API never connects ar
 The Request routes are the same thin composition: capture and six expected-version fact commands delegate
 to Work, while list is accepted-only and read-only. Payloads cannot claim Actor, owner, source, number, or
 state, and no ordinary Request import route exists.
+The operator-only morning-digest route independently reads the injected Request and Ruling authorities and
+passes their typed outcomes to the pure kernel fold. A source refusal becomes a named unknown scope in the
+successful artifact; authentication, role, and malformed-date failures remain transport problems. The route
+stores nothing and owns no scheduler or notification delivery.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers
 never catch up the projection. One common mutation envelope asks Record to reconcile the exact command root and

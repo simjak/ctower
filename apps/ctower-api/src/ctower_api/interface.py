@@ -58,6 +58,7 @@ from ctower_api._intake_routes import install_intake_routes
 from ctower_api._knowledge_routes import install_knowledge_routes
 from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
+from ctower_api._morning_digest_routes import install_morning_digest_routes
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._project_event_routes import install_project_event_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
@@ -302,6 +303,8 @@ def _install_core_routes(
         install_request_routes(app, access, record, requests, recorder)
     if rulings is not None:
         install_ruling_routes(app, access, record, rulings, recorder)
+    if requests is not None and rulings is not None:
+        install_morning_digest_routes(app, access, requests, rulings, recorder)
     if request_cutover is not None:
         install_request_cutover_routes(app, access, record, request_cutover, recorder)
     install_comment_routes(app, access, record, recorder)

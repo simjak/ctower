@@ -136,7 +136,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | knowledge_queries()
         | session_queries()
         | dream_dispatch_queries()
-        | (request_queries() | _ruling_commands.query_command_names())
+        | ({"digest morning"} | request_queries() | _ruling_commands.query_command_names())
     )
     refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}

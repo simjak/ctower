@@ -67,6 +67,11 @@ Request capture and the explicit priority, triage, owner, Ticket-relation, block
 commands use the same protected generated-client/spool path. Request list is online-only. The CLI supplies
 neither Actor nor owner/source/state authority and creates no Ticket implicitly.
 
+`digest morning [--date YYYY-MM-DD] [--output text|json]` is an online-only operator read. Text is the
+default deterministic STE projection; JSON is the exact generated boundary. Both keep unknown totals,
+unreached scopes, missing briefs, and missing execution links explicit. The command sends no notification
+and enters no spool; the existing Mission Control caller owns notify-rail delivery and scheduling.
+
 A mutation is encrypted and durably appended before its first network send only when the generated operation
 behind it carries `spool_policy: allowed`. Reads, `bootstrap first-tenant`, and the authenticated online-only
 `migration ctower-project` operations carry `spool_policy: forbidden`: they are never appended, and they fail

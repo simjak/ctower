@@ -1,6 +1,6 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **85 authored server
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **86 authored server
 commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
 operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
@@ -130,6 +130,17 @@ existing project-seat credential. Preserve the returned command and Ruling IDs w
 replay the same command instead of creating a second intent. Corrections append a new Ruling with
 `--supersedes`; they never edit the old words. List and get are accepted-only online reads. See
 [Rulings and the Agreements ledger](../concepts/rulings.md).
+
+## Morning digest
+
+| Command | Positional | Flags |
+|---|---|---|
+| `digest morning` | — | optional: `--date YYYY-MM-DD`, `--output {text,json}` |
+
+This operator-only online read defaults to today's Europe/Vilnius artifact and deterministic STE text.
+JSON returns the exact generated boundary. The command is never spooled and sends no notification. Unknown
+totals, unreached scopes, missing decision briefs, and missing execution links remain explicit. See the
+[morning digest concept](../concepts/morning-digest.md).
 
 ## Ticket: capture and reads
 

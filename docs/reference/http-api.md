@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **78 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **79 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -141,6 +141,18 @@ Append accepts exact `verbatim` words and an optional `supersedes_ruling_id`. Th
 principal, and seat from the existing authenticated project seat. Reads expose only accepted facts and keep
 the stable Ruling ID, server date, byte digest, attribution, and both supersession directions. Listing names
 requested, answered, and unanswered Projects plus the Record watermark; pending facts are absent.
+
+### Morning digest
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `GET` | `/v1/digests/morning` | `getMorningDigest` | `digest morning` | query | forbidden | `200`, `401`, `403`, `422` |
+
+The optional `date` query is an ISO calendar date. Omission selects the current Europe/Vilnius date. The
+operator-only result has one artifact key and content digest, Request and Ruling watermarks, and the ordered
+open-decision, prior-day-Ruling, and Ticket-proof sections. Each section distinguishes a measured zero from
+an unknown total and names every unreached scope. The read stores nothing and does not deliver or schedule a
+notification. See the [morning digest concept](../concepts/morning-digest.md).
 
 ### Intake
 

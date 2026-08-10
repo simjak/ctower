@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
+Authored contract digest: sha256:634fc3a2c112440c99cfa2faeaca2e8a630d1eb9051ec03d4d8e8c6bcc99cf04
 """
 
 from __future__ import annotations
@@ -88,6 +88,10 @@ __all__ = [
     "DeliverySurfaceAvailability",
     "DeliverySurfaceAvailabilityNoQualifyingCheckpoint",
     "DeliverySurfaceAvailabilityQualifyingCheckpoint",
+    "DigestDecisionBrief",
+    "DigestDecisionChoice",
+    "DigestReadingState",
+    "DigestUnreachedScope",
     "DreamDispatchConsumeRequest",
     "DreamDispatchConsumption",
     "DreamDispatchEffect",
@@ -158,6 +162,15 @@ __all__ = [
     "MigrationSourceIdentity",
     "MigrationSourceLinkCorrection",
     "MigrationWatermarks",
+    "MorningDigest",
+    "MorningDigestDecision",
+    "MorningDigestDecisionSection",
+    "MorningDigestExecution",
+    "MorningDigestProof",
+    "MorningDigestProofSection",
+    "MorningDigestRuling",
+    "MorningDigestRulingSection",
+    "MorningDigestTicketLink",
     "MutableAssignmentKind",
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",
@@ -844,6 +857,23 @@ class DeliverySurfaceAvailabilityNoQualifyingCheckpoint(_BoundaryModel):
     state: Literal["no_qualifying_checkpoint"]
 
 
+class DigestDecisionChoice(_BoundaryModel):
+    completeness: Annotated[int, Field(ge=0, le=10)]
+    label: Annotated[str, Field(min_length=1, max_length=512)]
+    outcome: Annotated[str, Field(min_length=1, max_length=2048)]
+
+
+class DigestReadingState(StrEnum):
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    UNKNOWN = "unknown"
+
+
+class DigestUnreachedScope(_BoundaryModel):
+    key: Annotated[str, Field(min_length=1, max_length=128)]
+    reason: Annotated[str, Field(min_length=1, max_length=128)]
+
+
 class DreamDispatchConsumeRequest(_BoundaryModel):
     output_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
@@ -1231,6 +1261,19 @@ class MigrationWatermarks(_BoundaryModel):
     export_native: Annotated[int, Field(ge=0, le=9007199254740991)]
     record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
     projection_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
+class MorningDigestExecution(_BoundaryModel):
+    request_id: UUID
+    request_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    ticket_ids: tuple[UUID, ...]
+
+
+class MorningDigestTicketLink(_BoundaryModel):
+    href: Annotated[str, Field(pattern="^/v1/tickets/[0-9a-f-]{36}/timeline$")]
+    purpose: Literal["required", "optional"]
+    ticket_id: UUID
 
 
 class MutableAssignmentKind(StrEnum):
@@ -1848,6 +1891,14 @@ class CustodyTransferredAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
+class DigestDecisionBrief(_BoundaryModel):
+    choices: tuple[DigestDecisionChoice, ...]
+    origin: Annotated[str, Field(min_length=1, max_length=1024)]
+    recommendation: Annotated[str, Field(min_length=1, max_length=2048)] | None
+    safe_default: Annotated[str, Field(min_length=1, max_length=2048)]
+    what: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
 class DreamDispatchReceipt(_BoundaryModel):
     command_id: UUID
     effect_id: UUID
@@ -2039,6 +2090,24 @@ class KnowledgeDocument(_BoundaryModel):
 
 
 type MigrationCorrectionReplacement = MigrationAliasCorrection | MigrationSourceLinkCorrection | MigrationRelationCorrection
+
+
+class MorningDigestProof(_BoundaryModel):
+    current_proof_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    request_id: UUID
+    request_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    tickets: Annotated[tuple[MorningDigestTicketLink, ...], Field(min_length=1)]
+
+
+class MorningDigestRuling(_BoundaryModel):
+    executions: tuple[MorningDigestExecution, ...]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    recorded_at: _Rfc3339DateTime
+    ruling_id: UUID
+    state: DigestReadingState
+    unknown_reason: Annotated[str, Field(max_length=128)] | None
+    verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
 
 
 class PoisonDispositionReceipt(_BoundaryModel):
@@ -2753,6 +2822,31 @@ class KnowledgeDocumentList(_BoundaryModel):
     scope: KnowledgeScope
 
 
+class MorningDigestDecision(_BoundaryModel):
+    brief: DigestDecisionBrief
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    request_id: UUID
+    request_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    state: DigestReadingState
+    unknown_reason: Annotated[str, Field(max_length=128)] | None
+
+
+class MorningDigestProofSection(_BoundaryModel):
+    items: tuple[MorningDigestProof, ...]
+    state: DigestReadingState
+    total_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    unreached: tuple[DigestUnreachedScope, ...]
+    visible_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
+class MorningDigestRulingSection(_BoundaryModel):
+    items: tuple[MorningDigestRuling, ...]
+    state: DigestReadingState
+    total_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    unreached: tuple[DigestUnreachedScope, ...]
+    visible_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):
     state: Literal["assigned"]
     seat: ProjectDeliverySeat
@@ -2902,6 +2996,14 @@ class DreamDispatchEffectList(_BoundaryModel):
     effects: tuple[DreamDispatchEffect, ...]
 
 
+class MorningDigestDecisionSection(_BoundaryModel):
+    items: tuple[MorningDigestDecision, ...]
+    state: DigestReadingState
+    total_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    unreached: tuple[DigestUnreachedScope, ...]
+    visible_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment
 
 
@@ -2959,6 +3061,20 @@ class BoardCard(_BoundaryModel):
 class CompanyBundleResource(_BoundaryModel):
     component: VersionedComponent
     payload: _FreeFormJsonObject
+
+
+class MorningDigest(_BoundaryModel):
+    artifact_key: Annotated[str, Field(pattern="^morning-digest:[0-9]{4}-[0-9]{2}-[0-9]{2}:Europe/Vilnius$")]
+    artifact_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    digest_date: str
+    observed_at: _Rfc3339DateTime
+    open_decisions: MorningDigestDecisionSection
+    proof: MorningDigestProofSection
+    request_watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    ruling_watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    state: DigestReadingState
+    timezone: Literal["Europe/Vilnius"]
+    yesterday_rulings: MorningDigestRulingSection
 
 
 class ProjectDeliverySlot(_BoundaryModel):

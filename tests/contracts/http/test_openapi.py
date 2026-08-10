@@ -1,4 +1,4 @@
-"""Minimum public HTTP and RFC 9457 contract."""
+# Minimum public HTTP and RFC 9457 contract.
 
 from __future__ import annotations
 
@@ -103,6 +103,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "getBoard": ("board query", False, "forbidden", None, False),
     "getControlHealth": ("control health", False, "forbidden", None, False),
     "getKnowledgeDocument": ("knowledge get", False, "forbidden", None, False),
+    "getMorningDigest": ("digest morning", False, "forbidden", None, False),
     "getCtowerProjectCutoverHealth": (
         "migration ctower-project verify",
         False,

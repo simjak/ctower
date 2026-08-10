@@ -8,11 +8,11 @@
       "inputs": [
         {
           "path": "SPEC.md",
-          "sha256": "sha256:14fbe416d164e7b5827d70563c09ac326ff14970bcbe0dc24a282d3b13b37393"
+          "sha256": "sha256:097a65cbc4515eb97136a5d9fabc832ebd7da0fec11173ef21615d84d097935e"
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:77590b6ae18f1c58424c81371e931fc3e2b5867af528489829f57fdefe266eac"
+          "sha256": "sha256:77e75f22a711dab12189a168cf26657c9c969fb9710935d04558e3a76281951a"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:6f84cdf9b157c1aa575de8aadebf3c8d46491b4a19047625740e4ed58a8a427a"
+          "sha256": "sha256:cfe1bb314b3a55175b5a7f809b6d7d89a86aad800cc4610c594aad6ca1667a1a"
         }
       ],
       "tool_version": "2"
@@ -322,7 +322,7 @@
         },
         {
           "path": "contracts/http/openapi.yaml",
-          "sha256": "sha256:41426342c86b44e3977dce9f08868d0d392471a8a8ce53a02def44608ad967a9"
+          "sha256": "sha256:d48ea9037c1dc2a10fa9548605312585a7384c80a08217732348df9afdbe314c"
         },
         {
           "path": "contracts/observability/telemetry-context.schema.json",
@@ -422,7 +422,7 @@
         },
         {
           "path": "tools/codegen/_inventory.py",
-          "sha256": "sha256:36b7a929c65dcd2b6b74ae2fcde3e91a3127870ef82e4bb2cd1ac749715087c6"
+          "sha256": "sha256:aee2b6da56a1b2fa5c190a5572856835f6ea614d191e1a1879682d9cea236de6"
         },
         {
           "path": "tools/codegen/_json_integer_codegen.py",
@@ -468,31 +468,31 @@
         },
         {
           "path": "generated/python/ctower_client/__init__.py",
-          "sha256": "sha256:7fa96fc7c363875294a9c48636ef4d6433164434305b0066c828e1043dca12db"
+          "sha256": "sha256:6316efe82ee4f5fb458506b598f5be7d040fef4338c66e9a5ac3a55e1194fa60"
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:221e4376306f2039ad019df5b8ce2b1c7685ae26e109972c3bfc8c1e188dbd5d"
+          "sha256": "sha256:e00374a8cf34b9ea74f83a7b82c6e8ba3b3827f3d818f258f48f9da5793d306c"
         },
         {
           "path": "generated/python/ctower_client/models.py",
-          "sha256": "sha256:721a62c7afa9f56b1627f8317393b84b361ab7f4f34da712912cf65b44b0d368"
+          "sha256": "sha256:e7aec09b48ff2aae9120164fcbf9f6f559d601d2e99c8903ca85fd5c1f475995"
         },
         {
           "path": "generated/python/ctower_client/operations.py",
-          "sha256": "sha256:2ea076e819d841e68646197bc49406365206d28b464358ac1bc0513c24d7e7b1"
+          "sha256": "sha256:92cba34d5e588c9d7f163db54ce021f4f512a1a486e74b3eaa88ff35c4a9e67a"
         },
         {
           "path": "generated/python/ctower_contracts/__init__.py",
-          "sha256": "sha256:191685a4b3c4491d8e1bad3b57b96aaa44464156154aa1a129e14e16d0b7d479"
+          "sha256": "sha256:f0996e243a991884c69cf0bc26d2a90ce9d017a070caabd7b8121dfe3d48c21f"
         },
         {
           "path": "generated/python/ctower_contracts/__main__.py",
-          "sha256": "sha256:30e9ee928ce533bd02d9766f11fcf3935423391f5e9df3557a83000e17976848"
+          "sha256": "sha256:8377c384ec7023de3ea0444554a71f8a522ed74d7e94e08480cf188f54fd4877"
         },
         {
           "path": "generated/python/ctower_contracts/catalog.py",
-          "sha256": "sha256:0845c5ec6652512ef1cb77f39e77c2f9946dfdb34581d91a72e5828522e77c2e"
+          "sha256": "sha256:6cd0892e11439c6ec512ec2f97259607259b3bddf142e1879a7198a4d029d226"
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
@@ -504,27 +504,27 @@
         },
         {
           "path": "generated/typescript/ctower-client/src/client.ts",
-          "sha256": "sha256:e329d7e9a09ccb3968d5094d264e96ca6ada518652b31d58531474173171ee4b"
+          "sha256": "sha256:15e87d378c936402f8b9cecc250380e5fc24a4ac6230e080bb93cade7731a1ff"
         },
         {
           "path": "generated/typescript/ctower-client/src/index.ts",
-          "sha256": "sha256:4294174d3af38b667a36f59634ccc58576cb50cb9412ccb312ffa78c7bad211c"
+          "sha256": "sha256:e663320385dd0080968ee6b0ff4c626e3ec17ed180adb019bd1ce5f63bb78af4"
         },
         {
           "path": "generated/typescript/ctower-client/src/models.ts",
-          "sha256": "sha256:f69d71d1272ac0c48a9f8111e0e1fc6ae8b4e19561a8e4da4f3375ccee91cebf"
+          "sha256": "sha256:e3f14496f2018e27f6037ff5f5848d3d2553097a395850457a76e56bf43d989f"
         },
         {
           "path": "generated/typescript/ctower-client/src/operations.ts",
-          "sha256": "sha256:b3a90f47ca119e73e0a28391e94379f6e6d536fb7dc8b1dc790a5ba050e34e4f"
+          "sha256": "sha256:e900d3b9612799bd2fae96e50a3ffabf43d1f484bf0c417db990a1f5b909abab"
         },
         {
           "path": "generated/typescript/ctower-client/src/response-json.ts",
-          "sha256": "sha256:29ff649111f2ee8ba64e492e55c1f3053d08e582b0ccb024177532982015037d"
+          "sha256": "sha256:386bd6382920114eeb47940f4cc05a4c7a1228e4e9a0ecb7694c18c8500b2c2a"
         },
         {
           "path": "generated/typescript/ctower-client/src/validators.ts",
-          "sha256": "sha256:4039f31501f070c3bf51b49850e4d203506cc4da52d0001426cb2176eb6fddc1"
+          "sha256": "sha256:537feb5182b6532769c7fc99b5656bdee6185546fdf834da5d26b13e853e789c"
         },
         {
           "path": "generated/typescript/ctower-client/tsconfig.json",

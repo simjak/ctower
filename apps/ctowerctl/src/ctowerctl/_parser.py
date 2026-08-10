@@ -31,6 +31,7 @@ from ctowerctl._argument_types import (
     _sha256_digest,
 )
 from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
+from ctowerctl._digest_parser import digest_parser
 from ctowerctl._knowledge_parser import knowledge_parser
 from ctowerctl._parser_support import (
     AUTHORED_COMMAND_NAMES,
@@ -82,6 +83,7 @@ def _parser() -> argparse.ArgumentParser:
     _bootstrap_parser(areas.add_parser("bootstrap"))
     _credential_parser(areas.add_parser("credential"))
     _intake_parser(areas.add_parser("intake"))
+    digest_parser(areas.add_parser("digest"))
     request_parser(areas.add_parser("request"))
     ruling_parser(areas.add_parser("ruling"))
     _inbox_parser(areas.add_parser("inbox"))

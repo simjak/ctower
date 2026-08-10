@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
+Authored contract digest: sha256:634fc3a2c112440c99cfa2faeaca2e8a630d1eb9051ec03d4d8e8c6bcc99cf04
 """
 
 from __future__ import annotations
@@ -469,6 +469,19 @@ OPERATIONS = MappingProxyType(
             request_model=None,
             response_model=_models.KnowledgeDocument,
             cli_names=('knowledge get',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "getMorningDigest": OperationSpec(
+            operation_id="getMorningDigest",
+            client_method="get_morning_digest",
+            method="GET",
+            path="/v1/digests/morning",
+            request_model=None,
+            response_model=_models.MorningDigest,
+            cli_names=('digest morning',),
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
@@ -1102,6 +1115,7 @@ CLI_OPERATIONS = MappingProxyType(
         "migration ctower-project verify": OPERATIONS["getCtowerProjectCutoverHealth"],
         "migration ctower-project run get": OPERATIONS["getCtowerProjectImportRun"],
         "knowledge get": OPERATIONS["getKnowledgeDocument"],
+        "digest morning": OPERATIONS["getMorningDigest"],
         "project delivery query": OPERATIONS["getProjectDelivery"],
         "ruling get": OPERATIONS["getRuling"],
         "synthetic query": OPERATIONS["getSyntheticWorkflowRun"],

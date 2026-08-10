@@ -15,6 +15,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "bootstrap first-tenant",
         "credential seat issue",
         "credential seat revoke",
+        "digest morning",
         "intake promote",
         "intake submit",
         "request capture",

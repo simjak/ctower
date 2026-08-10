@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.21 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.22 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
 | Last reviewed | 2026-08-10 |
 
@@ -30,6 +30,12 @@ The Agreements ledger is a tested CT-I1-016 candidate. It stores each accepted R
 UUIDv7-addressed, byte-exact immutable Work fact attributed to an existing project seat. Corrections append
 one same-Project successor; accepted-only list/get reads derive both citation directions and explicit
 epistemic scope. It adds no principal class, adapter, ingress, egress, or browser authority.
+
+The morning digest is a tested CT-I1-017 read-model candidate. Its pure fold composes accepted Requests and
+Rulings into one Europe/Vilnius artifact with brief-shaped open decisions, prior-day Rulings and recorded
+executions, then Ticket proof links. Generated API/client and CLI surfaces preserve partial and unknown
+sources explicitly. Delivery reuses Mission Control's existing notification rail; this candidate adds no
+store, scheduler, identity, adapter, Slack/Hermes path, or director-cron change.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery
@@ -335,7 +341,7 @@ plugins, or any new network boundary.
 | Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |
 | Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, versioned CommandGuard decisions, local execution composition |
 | Effects | Grants, releases, provider observations, receipts, incidents, rollback, reconciliation |
-| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, contextual Project Delivery and Request projections, watermarks, KPIs |
+| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, contextual Project Delivery, Request, and morning-digest projections, watermarks, KPIs |
 
 There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
 The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
@@ -582,6 +588,28 @@ portfolio capture allocate above the sealed high-water. General Ticket/corpus im
 V1 reuses the project-seat CLI and existing human session/CSRF plane, so its exact candidate records
 `no-new-boundary`. Slack/Hermes is absent until CT-I2-012 has a separate append-only security decision,
 operator acknowledgement, and independent exact-digest CSO verdict for its adapter identity and custody.
+
+## Morning digest reads facts; it stores and infers nothing
+
+```text
+accepted Request read ----> open decision briefs ----+
+                                                     |
+accepted Ruling read -----> yesterday + executions --+--> one dated digest
+                                                     |
+Request Ticket relations -> timeline proof links ----+
+```
+
+The fold uses the Europe/Vilnius civil-day boundary. A Request enters open decisions only through the
+recorded `operator-decision-required` marker. Complete brief and execution facts render exactly as recorded;
+until those typed facts exist, the same visible Request or Ruling remains partial and names the missing
+source. Every section carries its state, visible count, nullable total, unreached scopes, and source
+watermark, so an unavailable source cannot become a calm zero.
+
+`GET /v1/digests/morning` is an operator-only generated-client read. `digest morning` renders the same strict
+artifact as STE text by default or JSON on request, and it never enters the mutation spool. A scheduled
+caller may pass the rendered text to Mission Control's existing `tools/notify`, where durable rail 1
+precedes the existing rail-2 mirror. Ctower owns neither that schedule nor the director's interim-cron
+switch.
 
 ## One ticket, orthogonal state and changing owners
 
@@ -917,6 +945,8 @@ I1: L0 contracts/repository gates
      -> CT-I1-014 one bounded GitLab Issue co-source + immutable custody/delivery receipts
      -> CP3-D external-failure-domain/key/destructive-restore/RPO-RTO proof
      -> CT-I1-015 Request authority + exact one-way Mission Control ledger cutover
+     -> CT-I1-016 immutable Agreements ledger
+     -> CT-I1-017 native morning digest + existing-rail delivery
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof

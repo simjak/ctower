@@ -106,6 +106,15 @@
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
+    "AC-DIG-01": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-DIG-02": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-DIG-03": [
+      "contracts/http/openapi.yaml"
+    ],
     "AC-DUR-01": [
       "contracts/http/openapi.yaml",
       "contracts/operations/durability-ack.schema.json",
@@ -1148,6 +1157,9 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0060_rulings_ledger.sql"
     ],
+    "INV-89": [
+      "contracts/http/openapi.yaml"
+    ],
     "SPEC#accepted-first-class-operator-request-contract": [
       "contracts/domain/migration/request-batch-proof.schema.json",
       "contracts/domain/migration/request-import-manifest.schema.json",
@@ -1286,6 +1298,9 @@
       "contracts/compatibility/matrix-result.schema.json"
     ],
     "SPEC#mission-control-notification-transport": [
+      "contracts/http/openapi.yaml"
+    ],
+    "SPEC#morning-digest-read-model": [
       "contracts/http/openapi.yaml"
     ],
     "SPEC#native-inbox-delivery-and-read-facts": [

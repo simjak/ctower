@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
+// Authored contract digest: sha256:634fc3a2c112440c99cfa2faeaca2e8a630d1eb9051ec03d4d8e8c6bcc99cf04
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -193,6 +193,10 @@ export type GetKnowledgeDocumentInput = Readonly<{
   readonly "documentId": string;
   readonly "scope": "org" | "project";
   readonly "projectKey"?: string;
+}>;
+
+export type GetMorningDigestInput = Readonly<{
+  readonly "date"?: string;
 }>;
 
 export type GetProjectDeliveryInput = Readonly<{
@@ -465,6 +469,7 @@ export type OperationInputs = Readonly<{
   readonly "getCtowerProjectCutoverHealth": GetCtowerProjectCutoverHealthInput;
   readonly "getCtowerProjectImportRun": GetCtowerProjectImportRunInput;
   readonly "getKnowledgeDocument": GetKnowledgeDocumentInput;
+  readonly "getMorningDigest": GetMorningDigestInput;
   readonly "getProjectDelivery": GetProjectDeliveryInput;
   readonly "getRuling": GetRulingInput;
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
@@ -546,6 +551,7 @@ export type OperationResults = Readonly<{
   readonly "getCtowerProjectCutoverHealth": Models.CtowerProjectCutoverHealth;
   readonly "getCtowerProjectImportRun": Models.CtowerProjectImportRun;
   readonly "getKnowledgeDocument": Models.KnowledgeDocument;
+  readonly "getMorningDigest": Models.MorningDigest;
   readonly "getProjectDelivery": Models.ProjectDeliveryView;
   readonly "getRuling": Models.RulingRow;
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
@@ -808,6 +814,12 @@ export class CtowerClient {
     input: GetKnowledgeDocumentInput,
   ): Promise<Models.KnowledgeDocument> {
     return this.execute("getKnowledgeDocument", input);
+  }
+
+  public async getMorningDigest(
+    input: GetMorningDigestInput,
+  ): Promise<Models.MorningDigest> {
+    return this.execute("getMorningDigest", input);
   }
 
   public async getProjectDelivery(

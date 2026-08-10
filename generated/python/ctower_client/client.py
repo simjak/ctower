@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
+Authored contract digest: sha256:634fc3a2c112440c99cfa2faeaca2e8a630d1eb9051ec03d4d8e8c6bcc99cf04
 """
 
 from __future__ import annotations
@@ -75,6 +75,7 @@ from ctower_client.models import (
     KnowledgeAddResult,
     KnowledgeDocument,
     KnowledgeDocumentList,
+    MorningDigest,
     PoisonDispositionReceipt,
     PoisonDispositionRequest,
     PriorityChangeRequest,
@@ -865,6 +866,24 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: KnowledgeDocument}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_morning_digest(
+        self,
+        *,
+        date: str | None = None,
+    ) -> MorningDigest:
+        response = self._http.get(
+            "/v1/digests/morning",
+            params={**({"date": date} if date is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: MorningDigest}, {401: Problem, 403: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
