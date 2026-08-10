@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0060_rulings_ledger.sql",
-    "schema_sha256": "sha256:c0a3014f9823d155887544ed48a9242f25f149fcb08ff74fda122c5ea5b8a7b5",
+    "through": "0061_request_decision_briefs.sql",
+    "schema_sha256": "sha256:8083397ac6c8da0ed3a7177135c3b13f76139196ede2971e0410e451c72da7a9",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:c5f273c5d2bae6f3d34ba0937bf658322086cc77936fb46b38215288f63b5e9a"
+    "schema_object_sum256": "sum256:35b2ff2f8b5ec8bdcce79403d7489402c832f0b2e577afb27aba10f2f3c44607"
   },
   "migrations": [
     {
@@ -566,6 +566,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_rulings.py::test_ruling_is_byte_exact_immutable_citable_and_superseded_by_a_new_fact",
       "rollback_or_forward_compensation": "Preserve every byte-exact Ruling, stable identity, seat attribution, canonical event, command result, outbox row, and supersession link; append a reviewed successor or forward compensation and never edit or delete an accepted Ruling fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Ruling, project-seat, event, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; the new Ruling table starts empty."
+    },
+    {
+      "path": "0061_request_decision_briefs.sql",
+      "sha256": "sha256:7cabe7a74eab59a5b51f10fad1ffff851c46803ab75af89ad0b4698b60f2f34f",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_decision_briefs.py::test_linked_ruling_is_visible_from_request_and_ruling_and_resolves_decision",
+      "rollback_or_forward_compensation": "Preserve every Request decision marker, generated brief source fact, Request-to-Ruling relation, Ruling byte, canonical event, command result, outbox row, and inherited successor relation; append reviewed forward compensation and never edit or detach an accepted Ruling.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture Request, Request blocker, Ruling, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; existing Rulings receive a null Request relation."
     }
   ]
 }

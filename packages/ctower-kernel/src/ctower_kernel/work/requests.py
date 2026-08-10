@@ -24,6 +24,9 @@ from ctower_kernel.work._request_capture_sql import capture_request
 from ctower_kernel.work._request_change_sql import change_request
 from ctower_kernel.work._request_read_sql import list_requests
 from ctower_kernel.work._request_types import (
+    DecisionBrief,
+    DecisionBriefChoice,
+    DecisionBriefSelection,
     RequestBlocker,
     RequestCapture,
     RequestCaptureResult,
@@ -39,6 +42,9 @@ from ctower_kernel.work._request_types import (
 )
 
 __all__ = [
+    "DecisionBrief",
+    "DecisionBriefChoice",
+    "DecisionBriefSelection",
     "PostgresRequests",
     "RequestBlocker",
     "RequestCapture",

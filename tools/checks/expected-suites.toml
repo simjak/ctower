@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-016"
+active_phase = "CT-I1-017"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -23,6 +23,7 @@ phase_order = [
   "CT-I1-014",
   "CT-I1-015",
   "CT-I1-016",
+  "CT-I1-017",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -746,6 +747,33 @@ command = [
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_rulings.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "decision-brief-contracts"
+owner = "CT-I1-017"
+phase = "CT-I1-017"
+status = "required"
+path = "tests/contracts/decision_briefs"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/decision_briefs", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "decision-brief-acceptance"
+owner = "CT-I1-017"
+phase = "CT-I1-017"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_decision_brief*.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_decision_brief_replay.py",
+  "tests/acceptance/increment-1/test_decision_briefs.py",
   "-q",
 ]
 timeout_seconds = 900

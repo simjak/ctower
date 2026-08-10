@@ -7,6 +7,9 @@ from datetime import datetime
 from uuid import UUID
 
 __all__ = [
+    "DecisionBrief",
+    "DecisionBriefChoice",
+    "DecisionBriefSelection",
     "RequestBlocker",
     "RequestCapture",
     "RequestCaptureResult",
@@ -20,6 +23,59 @@ __all__ = [
     "RequestTicketRelation",
     "RequestTriage",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionBriefChoice:
+    """One operator choice stated as an outcome with a bounded score."""
+
+    key: str
+    outcome: str
+    completeness: int
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "completeness": self.completeness,
+            "key": self.key,
+            "outcome": self.outcome,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionBriefSelection:
+    """One recommended or safe-default choice and its plain reason."""
+
+    choice_key: str
+    reason: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {"choice_key": self.choice_key, "reason": self.reason}
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionBrief:
+    """Complete operator ask derived only from one accepted Request row."""
+
+    eli: str
+    origin_quote: str
+    choices: tuple[DecisionBriefChoice, ...]
+    recommendation: DecisionBriefSelection
+    safe_default: DecisionBriefSelection
+    rendered: str
+    status: str
+    ruling_id: UUID | None
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "choices": [choice.response_payload() for choice in self.choices],
+            "eli": self.eli,
+            "origin_quote": self.origin_quote,
+            "recommendation": self.recommendation.response_payload(),
+            "rendered": self.rendered,
+            "ruling_id": None if self.ruling_id is None else str(self.ruling_id),
+            "safe_default": self.safe_default.response_payload(),
+            "status": self.status,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +303,7 @@ class RequestRow:
     source_kind: str
     source_ref: str
     original_owner_sha256: str | None
+    decision_brief: DecisionBrief | None = None
     unknown_reason: str | None = None
 
     def response_payload(self, *, observed_at: datetime) -> dict[str, object]:
@@ -256,6 +313,9 @@ class RequestRow:
             "content": self.content,
             "content_sha256": self.content_sha256,
             "created_at": self.created_at.isoformat(),
+            "decision_brief": (
+                None if self.decision_brief is None else self.decision_brief.response_payload()
+            ),
             "durability_state": self.durability_state,
             "freshness": self.freshness,
             "optional_ticket_ids": [str(item) for item in self.optional_ticket_ids],

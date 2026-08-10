@@ -11,6 +11,7 @@ from psycopg.rows import dict_row
 
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.transaction import project_scope_refusal
+from ctower_kernel.work._decision_brief import decision_brief
 from ctower_kernel.work._request_state_sql import derived_state
 from ctower_kernel.work._request_types import RequestList, RequestRow
 
@@ -161,9 +162,28 @@ WITH accepted AS (
                AS optional_ticket_ids,
            max(acceptance_position) AS acceptance_position
     FROM relation_latest GROUP BY request_id
+), accepted_ruling AS (
+    SELECT ruling.*, confirmation.acceptance_position
+    FROM rulings AS ruling
+    JOIN accepted AS request
+      ON request.tenant_id = ruling.tenant_id
+     AND request.project_key = ruling.project_key
+     AND request.request_id = ruling.request_id
+    JOIN durability_acceptance_confirmations AS confirmation
+      ON confirmation.tenant_id = ruling.tenant_id
+     AND confirmation.principal_id = ruling.recorded_by
+     AND confirmation.client_command_id = ruling.command_id
+), current_ruling AS (
+    SELECT ruling.request_id, ruling.decision_blocker_fact_id,
+           ruling.ruling_id, ruling.acceptance_position
+    FROM accepted_ruling AS ruling
+    WHERE NOT EXISTS (
+        SELECT 1 FROM accepted_ruling AS successor
+        WHERE successor.supersedes_ruling_id = ruling.ruling_id
+    )
 ), blocker_latest AS (
     SELECT DISTINCT ON (fact.request_id, fact.blocker_key)
-           fact.request_id, fact.blocker_key, fact.active,
+           fact.request_id, fact.blocker_fact_id, fact.blocker_key, fact.active,
            confirmation.acceptance_position
     FROM request_blocker_facts AS fact
     JOIN durability_acceptance_confirmations AS confirmation
@@ -172,9 +192,23 @@ WITH accepted AS (
      AND confirmation.client_command_id = fact.command_id
     ORDER BY fact.request_id, fact.blocker_key, fact.request_version DESC
 ), blocker AS (
-    SELECT request_id, min(blocker_key) FILTER (WHERE active) AS blocker,
-           max(acceptance_position) AS acceptance_position
-    FROM blocker_latest GROUP BY request_id
+    SELECT latest.request_id,
+           min(latest.blocker_key) FILTER (
+               WHERE latest.active AND NOT (
+                   latest.blocker_key = 'operator-decision-required'
+                   AND current_ruling.ruling_id IS NOT NULL
+               )
+           ) AS blocker,
+           max(latest.acceptance_position) AS acceptance_position
+    FROM blocker_latest AS latest
+    LEFT JOIN current_ruling
+      ON current_ruling.decision_blocker_fact_id = latest.blocker_fact_id
+    GROUP BY latest.request_id
+), decision AS (
+    SELECT latest.request_id, latest.blocker_fact_id
+    FROM blocker_latest AS latest
+    WHERE latest.blocker_key = 'operator-decision-required'
+      AND latest.active
 ), closure AS (
     SELECT DISTINCT ON (evaluation.request_id)
            evaluation.request_id, evaluation.outcome, evaluation.dependency_digest,
@@ -196,7 +230,8 @@ SELECT accepted.request_id, accepted.request_number, accepted.project_key,
            latest_triage.acceptance_position,
            COALESCE(relation.acceptance_position, 0),
            COALESCE(blocker.acceptance_position, 0),
-           COALESCE(closure.acceptance_position, 0)
+           COALESCE(closure.acceptance_position, 0),
+           COALESCE(current_ruling.acceptance_position, 0)
        ) AS acceptance_position,
        latest_owner.owner_id, principal.display_name AS owner,
        latest_priority.priority, latest_priority.is_default,
@@ -216,6 +251,8 @@ SELECT accepted.request_id, accepted.request_number, accepted.project_key,
              )
        ), 0) AS proof_coverage,
        blocker.blocker,
+       decision.request_id IS NOT NULL AS decision_required,
+       current_ruling.ruling_id,
        closure.outcome AS closure_outcome,
        owner_alias.source_owner_digest
 FROM accepted
@@ -227,6 +264,9 @@ JOIN latest_priority ON latest_priority.request_id = accepted.request_id
 JOIN latest_triage ON latest_triage.request_id = accepted.request_id
 LEFT JOIN relation ON relation.request_id = accepted.request_id
 LEFT JOIN blocker ON blocker.request_id = accepted.request_id
+LEFT JOIN decision ON decision.request_id = accepted.request_id
+LEFT JOIN current_ruling
+  ON current_ruling.decision_blocker_fact_id = decision.blocker_fact_id
 LEFT JOIN closure ON closure.request_id = accepted.request_id
 LEFT JOIN request_owner_aliases AS owner_alias
   ON owner_alias.tenant_id = accepted.tenant_id
@@ -236,6 +276,18 @@ ORDER BY accepted.request_number
 
 
 def _request_row(row: dict[str, object], *, state: str) -> RequestRow:
+    ruling_id = cast(UUID | None, row["ruling_id"])
+    triage = str(row["disposition"])
+    brief = (
+        decision_brief(
+            content=str(row["content"]),
+            reference=f"R{int(cast(int, row['request_number']))}",
+            triage=triage,
+            ruling_id=ruling_id,
+        )
+        if bool(row["decision_required"])
+        else None
+    )
     return RequestRow(
         request_id=cast(UUID, row["request_id"]),
         request_number=int(cast(int, row["request_number"])),
@@ -243,7 +295,7 @@ def _request_row(row: dict[str, object], *, state: str) -> RequestRow:
         content=str(row["content"]),
         content_sha256=_digest(row["content_digest"]),
         state=state,
-        triage=str(row["disposition"]),
+        triage=triage,
         owner_id=cast(UUID, row["owner_id"]),
         owner=str(row["owner"]),
         priority=str(row["priority"]),
@@ -260,6 +312,7 @@ def _request_row(row: dict[str, object], *, state: str) -> RequestRow:
         original_owner_sha256=(
             None if row["source_owner_digest"] is None else _digest(row["source_owner_digest"])
         ),
+        decision_brief=brief,
     )
 
 
