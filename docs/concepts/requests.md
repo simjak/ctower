@@ -46,8 +46,9 @@ Callers cannot submit or override any brief field. Requests without that blocker
 
 The safe default is to leave the Request blocked. An answer is an accepted Ruling linked to the Request.
 Pending Rulings do not change the accepted brief. After acceptance, the brief cites the Ruling and becomes
-`answered`; the decision blocker no longer affects derived state, while every unrelated blocker still does.
-See [Rulings](rulings.md#answering-a-request-decision).
+`answered`; that exact decision occurrence no longer affects derived state, while every unrelated blocker
+still does. A later active decision marker opens a new brief and cannot reuse the older answer. Deactivating
+the latest marker removes the brief. See [Rulings](rulings.md#answering-a-request-decision).
 
 ## Honest reads
 

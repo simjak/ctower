@@ -129,7 +129,9 @@ unanswered projects separately, so an unanswered source never contributes a fabr
 Mutation `202` responses remain `durability_pending`; accepted list rows and totals exclude them. The
 operator migration helper is deliberately absent from this ordinary HTTP surface. A row whose exact
 accepted decision blocker is active includes the complete record-derived `decision_brief`; other rows carry
-`null`. The list declares no caller input for brief text, choices, recommendation, or safe default.
+`null`. An accepted Ruling answers only the exact active blocker occurrence it was bound to; a later marker
+reopens and an inactive latest marker returns `null`. The list declares no caller input for brief text,
+choices, recommendation, or safe default.
 
 ### Rulings
 

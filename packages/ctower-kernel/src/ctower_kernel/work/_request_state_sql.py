@@ -328,8 +328,9 @@ def active_blocker_keys(
 ) -> tuple[str, ...]:
     rows = connection.execute(
         """
-        SELECT blocker_key FROM (
-            SELECT DISTINCT ON (fact.blocker_key) fact.blocker_key, fact.active
+        SELECT blocker_key, blocker_fact_id FROM (
+            SELECT DISTINCT ON (fact.blocker_key)
+                   fact.blocker_key, fact.blocker_fact_id, fact.active
             FROM request_blocker_facts AS fact
             WHERE fact.tenant_id = %s AND fact.request_id = %s
               AND (NOT %s OR EXISTS (
@@ -343,18 +344,32 @@ def active_blocker_keys(
         """,
         (tenant_id, request_id, accepted_only),
     ).fetchall()
-    keys = tuple(str(row["blocker_key"]) for row in rows)
-    if OPERATOR_DECISION_BLOCKER not in keys or not _decision_answered(
-        connection, tenant_id, request_id, accepted_only=accepted_only
+    decision_fact_id = next(
+        (
+            cast(UUID, row["blocker_fact_id"])
+            for row in rows
+            if str(row["blocker_key"]) == OPERATOR_DECISION_BLOCKER
+        ),
+        None,
+    )
+    if decision_fact_id is None or not _decision_answered(
+        connection,
+        tenant_id,
+        decision_fact_id,
+        accepted_only=accepted_only,
     ):
-        return keys
-    return tuple(key for key in keys if key != OPERATOR_DECISION_BLOCKER)
+        return tuple(str(row["blocker_key"]) for row in rows)
+    return tuple(
+        str(row["blocker_key"])
+        for row in rows
+        if str(row["blocker_key"]) != OPERATOR_DECISION_BLOCKER
+    )
 
 
 def _decision_answered(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
-    request_id: UUID,
+    decision_blocker_fact_id: UUID,
     *,
     accepted_only: bool,
 ) -> bool:
@@ -362,7 +377,7 @@ def _decision_answered(
         connection.execute(
             """
             SELECT 1 FROM rulings AS ruling
-            WHERE ruling.tenant_id = %s AND ruling.request_id = %s
+            WHERE ruling.tenant_id = %s AND ruling.decision_blocker_fact_id = %s
               AND (NOT %s OR EXISTS (
                   SELECT 1 FROM durability_acceptance_confirmations AS confirmation
                   WHERE confirmation.tenant_id = ruling.tenant_id
@@ -371,7 +386,7 @@ def _decision_answered(
               ))
             LIMIT 1
             """,
-            (tenant_id, request_id, accepted_only),
+            (tenant_id, decision_blocker_fact_id, accepted_only),
         ).fetchone()
         is not None
     )

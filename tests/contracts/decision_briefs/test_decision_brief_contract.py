@@ -31,6 +31,11 @@ def test_decision_brief_is_a_strict_read_shape_with_no_caller_fact_input() -> No
     }
     choices = cast(dict[str, object], cast(dict[str, object], brief["properties"])["choices"])
     assert choices["minItems"] == choices["maxItems"] == EXPECTED_CHOICE_COUNT
+    assert cast(dict[str, object], brief["properties"])["rendered"] == {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 400000,
+    }
     assert "decision_brief" in cast(list[str], row["required"])
     module = ast.parse(
         (ROOT / "packages/ctower-kernel/src/ctower_kernel/work/_decision_brief.py").read_text(
@@ -74,7 +79,10 @@ def test_request_ruling_relation_is_database_bound_and_successor_inherited() -> 
 
     assert "FOREIGN KEY (request_id, tenant_id, project_key)" in migration
     assert "REFERENCES requests(request_id, tenant_id, project_key)" in migration
-    assert "CREATE UNIQUE INDEX rulings_one_root_per_request" in migration
+    assert "FOREIGN KEY (decision_blocker_fact_id, request_id, tenant_id)" in migration
+    assert "CREATE UNIQUE INDEX rulings_one_root_per_decision_occurrence" in migration
     assert "CREATE TRIGGER rulings_request_chain_guard" in migration
-    assert "NEW.request_id IS DISTINCT FROM predecessor_request_id" in migration
+    assert "NEW.decision_blocker_fact_id IS DISTINCT FROM predecessor_decision_fact_id" in migration
+    assert "UPDATE command_results" in migration
+    assert "NOT response_body ? 'request_id'" in migration
     assert "UPDATE rulings" not in migration

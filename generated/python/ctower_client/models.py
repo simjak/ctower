@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3fb0287b8bfed7a013e2310417ed303c7f346494a9b3e1cf9272634d9495275c
+Authored contract digest: sha256:efbafd630f39a9bab81ba04bcfe57966e8d1c9b313afb5f35bbe9ec19284d5f2
 """
 
 from __future__ import annotations
@@ -1870,7 +1870,7 @@ class DecisionBrief(_BoundaryModel):
     eli: Annotated[str, Field(min_length=1, max_length=160)]
     origin_quote: Annotated[str, Field(min_length=1, max_length=65536)]
     recommendation: DecisionBriefSelection
-    rendered: Annotated[str, Field(min_length=1, max_length=131072)]
+    rendered: Annotated[str, Field(min_length=1, max_length=400000)]
     ruling_id: UUID | None
     safe_default: DecisionBriefSelection
     status: Literal["open", "answered"]

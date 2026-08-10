@@ -2034,10 +2034,13 @@ facts presented for judgment.
 3. Request and query payloads have no fields for ELI, choices, scores, recommendation, safe default, or
    rendering. No model call, caller prose, or other call-time fact participates in the projection.
 4. An answer is an immutable Ruling whose optional `request_id` is constrained to the same tenant and
-   Project and to a current decision Request. Pending Rulings do not resolve accepted state. Accepted reads
-   expose Request-to-Ruling and Ruling-to-Request links; every Ruling successor inherits the relation.
-5. An accepted linked Ruling removes only the exact decision blocker from derived Request state. The
-   append-only blocker fact stays intact, and every unrelated blocker keeps its authority.
+   Project and whose root is bound to the exact latest accepted active decision blocker fact. Pending
+   Rulings do not resolve accepted state. Accepted reads expose Request-to-Ruling and Ruling-to-Request
+   links; every Ruling successor inherits both the Request and decision-occurrence relation.
+5. An accepted linked Ruling removes only its exact decision occurrence from derived Request state. A later
+   active marker is a new open occurrence that an older Ruling cannot resolve, and an inactive latest marker
+   renders no brief. The append-only blocker facts stay intact, and every unrelated blocker keeps its
+   authority.
 6. The digest layer may consume the rendered brief through its own stable ticket. This decision adds no
    digest behavior, principal class, adapter, ingress, egress, browser authority, or trust boundary and
    records `no-new-boundary`.

@@ -68,25 +68,14 @@ def append_ruling(
                 now,
             )
         project_key, seat_key = seat
-        predecessor_request_id, predecessor = _predecessor_link(
-            connection, actor, command, project_key
-        )
-        if predecessor is not None:
-            return _refuse(transaction, actor, command, request_digest, predecessor, now)
-        linked_request_id = (
-            predecessor_request_id
-            if command.supersedes_ruling_id is not None
-            else command.request_id
-        )
-        request_problem = _request_link_problem(
+        linked_request_id, decision_fact_id, relation_problem = _ruling_relation(
             connection,
             actor,
             command,
-            project_key=project_key,
-            request_id=linked_request_id,
+            project_key,
         )
-        if request_problem is not None:
-            return _refuse(transaction, actor, command, request_digest, request_problem, now)
+        if relation_problem is not None:
+            return _refuse(transaction, actor, command, request_digest, relation_problem, now)
         return _commit_ruling(
             connection,
             transaction,
@@ -95,10 +84,36 @@ def append_ruling(
             request_digest=request_digest,
             project_key=project_key,
             request_id=linked_request_id,
+            decision_blocker_fact_id=decision_fact_id,
             seat_key=seat_key,
             now=now,
             telemetry=telemetry,
         )
+
+
+def _ruling_relation(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: RulingAppend,
+    project_key: str,
+) -> tuple[UUID | None, UUID | None, RecordProblem | None]:
+    predecessor_request_id, predecessor_decision_fact_id, problem = _predecessor_link(
+        connection, actor, command, project_key
+    )
+    if problem is not None:
+        return None, None, problem
+    request_id = (
+        predecessor_request_id if command.supersedes_ruling_id is not None else command.request_id
+    )
+    decision_fact_id, problem = _decision_link(
+        connection,
+        actor,
+        command,
+        project_key=project_key,
+        request_id=request_id,
+        predecessor_decision_fact_id=predecessor_decision_fact_id,
+    )
+    return request_id, decision_fact_id, problem
 
 
 def _commit_ruling(
@@ -110,6 +125,7 @@ def _commit_ruling(
     request_digest: bytes,
     project_key: str,
     request_id: UUID | None,
+    decision_blocker_fact_id: UUID | None,
     seat_key: str,
     now: datetime,
     telemetry: TelemetryContext,
@@ -132,6 +148,7 @@ def _commit_ruling(
         ruling_id,
         project_key=project_key,
         request_id=request_id,
+        decision_blocker_fact_id=decision_blocker_fact_id,
         request_digest=request_digest,
         seat_key=seat_key,
         now=now,
@@ -156,7 +173,13 @@ def _commit_ruling(
         now=now,
         subjects=subjects,
     )
-    _persist_ruling(connection, actor, command, result)
+    _persist_ruling(
+        connection,
+        actor,
+        command,
+        result,
+        decision_blocker_fact_id=decision_blocker_fact_id,
+    )
     return result
 
 
@@ -257,17 +280,17 @@ def _predecessor_link(
     actor: Actor,
     command: RulingAppend,
     project_key: str,
-) -> tuple[UUID | None, RecordProblem | None]:
+) -> tuple[UUID | None, UUID | None, RecordProblem | None]:
     predecessor_id = command.supersedes_ruling_id
     if predecessor_id is None:
-        return None, None
+        return None, None, None
     connection.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s::text, 0))",
         (predecessor_id,),
     )
     predecessor = connection.execute(
         """
-        SELECT ruling.ruling_id, ruling.request_id
+        SELECT ruling.ruling_id, ruling.request_id, ruling.decision_blocker_fact_id
         FROM rulings AS ruling
         JOIN durability_acceptance_confirmations AS confirmation
           ON confirmation.tenant_id = ruling.tenant_id
@@ -279,42 +302,53 @@ def _predecessor_link(
         (actor.tenant_id, project_key, predecessor_id),
     ).fetchone()
     if predecessor is None:
-        return None, _problem(
-            "ruling-not-found",
-            "The superseded Ruling is not available in the authenticated scope.",
-            404,
-            "Ruling not found",
-            command.client_command_id,
+        return (
+            None,
+            None,
+            _problem(
+                "ruling-not-found",
+                "The superseded Ruling is not available in the authenticated scope.",
+                404,
+                "Ruling not found",
+                command.client_command_id,
+            ),
         )
     successor = connection.execute(
         "SELECT 1 FROM rulings WHERE supersedes_ruling_id = %s",
         (predecessor_id,),
     ).fetchone()
     if successor is not None:
-        return None, _problem(
-            "ruling-already-superseded",
-            "The Ruling already has a successor.",
-            409,
-            "Ruling already superseded",
-            command.client_command_id,
+        return (
+            None,
+            None,
+            _problem(
+                "ruling-already-superseded",
+                "The Ruling already has a successor.",
+                409,
+                "Ruling already superseded",
+                command.client_command_id,
+            ),
         )
-    return cast(UUID | None, predecessor["request_id"]), None
+    return (
+        cast(UUID | None, predecessor["request_id"]),
+        cast(UUID | None, predecessor["decision_blocker_fact_id"]),
+        None,
+    )
 
 
-def _request_link_problem(
+def _decision_link(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     command: RulingAppend,
     *,
     project_key: str,
     request_id: UUID | None,
-) -> RecordProblem | None:
-    if request_id is None or command.supersedes_ruling_id is not None:
-        return None
-    connection.execute(
-        "SELECT pg_advisory_xact_lock(hashtextextended(%s::text, 0))",
-        (request_id,),
-    )
+    predecessor_decision_fact_id: UUID | None,
+) -> tuple[UUID | None, RecordProblem | None]:
+    if command.supersedes_ruling_id is not None:
+        return predecessor_decision_fact_id, None
+    if request_id is None:
+        return None, None
     request = connection.execute(
         """
         SELECT request.request_number
@@ -325,11 +359,12 @@ def _request_link_problem(
          AND confirmation.client_command_id = request.capture_command_id
         WHERE request.tenant_id = %s AND request.project_key = %s
           AND request.request_id = %s
+        FOR UPDATE OF request
         """,
         (actor.tenant_id, project_key, request_id),
     ).fetchone()
     if request is None:
-        return _problem(
+        return None, _problem(
             "ruling-request-not-found",
             "The linked Request is not available in the authenticated Project.",
             404,
@@ -338,7 +373,7 @@ def _request_link_problem(
         )
     decision = connection.execute(
         """
-        SELECT fact.active
+        SELECT fact.blocker_fact_id, fact.active
         FROM request_blocker_facts AS fact
         JOIN durability_acceptance_confirmations AS confirmation
           ON confirmation.tenant_id = fact.tenant_id
@@ -351,29 +386,31 @@ def _request_link_problem(
         (actor.tenant_id, request_id),
     ).fetchone()
     if decision is None or not bool(decision["active"]):
-        return _problem(
+        return None, _problem(
             "ruling-request-not-decision",
             "The linked Request has no current operator decision need.",
             409,
             "Ruling Request does not need a decision",
             command.client_command_id,
         )
+    decision_fact_id = cast(UUID, decision["blocker_fact_id"])
     existing = connection.execute(
         """
         SELECT 1 FROM rulings
-        WHERE tenant_id = %s AND request_id = %s AND supersedes_ruling_id IS NULL
+        WHERE tenant_id = %s AND decision_blocker_fact_id = %s
+          AND supersedes_ruling_id IS NULL
         """,
-        (actor.tenant_id, request_id),
+        (actor.tenant_id, decision_fact_id),
     ).fetchone()
     if existing is not None:
-        return _problem(
+        return None, _problem(
             "ruling-request-already-answered",
-            "The linked Request already has a Ruling chain.",
+            "The current Request decision occurrence already has a Ruling chain.",
             409,
             "Ruling Request already answered",
             command.client_command_id,
         )
-    return None
+    return decision_fact_id, None
 
 
 def _ruling_event(
@@ -383,6 +420,7 @@ def _ruling_event(
     *,
     project_key: str,
     request_id: UUID | None,
+    decision_blocker_fact_id: UUID | None,
     request_digest: bytes,
     seat_key: str,
     now: datetime,
@@ -408,6 +446,7 @@ def _ruling_event(
             now,
             command.supersedes_ruling_id,
             request_id,
+            decision_blocker_fact_id,
         ),
         prev_hash=bytes(32),
         request_sha256=request_digest,
@@ -423,6 +462,8 @@ def _persist_ruling(
     actor: Actor,
     command: RulingAppend,
     result: RulingAppendResult,
+    *,
+    decision_blocker_fact_id: UUID | None,
 ) -> None:
     verbatim = command.verbatim.encode("utf-8")
     connection.execute(
@@ -430,8 +471,8 @@ def _persist_ruling(
         INSERT INTO rulings (
             ruling_id, tenant_id, project_key, verbatim_bytes, verbatim_sha256,
             recorded_by, seat_key, recorded_at, command_id, event_id,
-            supersedes_ruling_id, request_id
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            supersedes_ruling_id, request_id, decision_blocker_fact_id
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             result.ruling_id,
@@ -446,6 +487,7 @@ def _persist_ruling(
             result.event_id,
             command.supersedes_ruling_id,
             result.request_id,
+            decision_blocker_fact_id,
         ),
     )
 

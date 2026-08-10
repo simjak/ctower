@@ -2,7 +2,7 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0061_request_decision_briefs.sql",
-    "schema_sha256": "sha256:fefe1cdfd92cf47d415e5c1304fac2b367fabec18264f20d91dfb0814a2e4a11",
+    "schema_sha256": "sha256:8083397ac6c8da0ed3a7177135c3b13f76139196ede2971e0410e451c72da7a9",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:35b2ff2f8b5ec8bdcce79403d7489402c832f0b2e577afb27aba10f2f3c44607"
   },
@@ -569,7 +569,7 @@
     },
     {
       "path": "0061_request_decision_briefs.sql",
-      "sha256": "sha256:cc227b65b15ab0e172747d7d306c8241ac90a4c802b705a3325f339a37f7df21",
+      "sha256": "sha256:7cabe7a74eab59a5b51f10fad1ffff851c46803ab75af89ad0b4698b60f2f34f",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_decision_briefs.py::test_linked_ruling_is_visible_from_request_and_ruling_and_resolves_decision",

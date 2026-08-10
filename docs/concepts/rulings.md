@@ -35,11 +35,13 @@ stable ID. A pending append is not silently treated as an agreement.
 
 A Ruling may answer a Request that currently needs an operator decision. Pass the Request UUID with
 `--request-id`; ctower verifies the same tenant and Project and stores the relation as part of the immutable
-Ruling. The Request brief then cites that Ruling, and Ruling reads show both `request_id` and the permanent
-`R<number>` reference.
+Ruling. Internally, the root is bound to the exact latest accepted active decision blocker fact, so a later
+decision marker opens a new answerable occurrence instead of reusing stale judgment. The Request brief then
+cites that Ruling, and Ruling reads show both `request_id` and the permanent `R<number>` reference.
 
 Do not combine `--request-id` with `--supersedes`. A correction names only its predecessor and inherits that
-predecessor's Request relation. A pending Ruling does not answer the accepted Request read.
+predecessor's Request and decision-occurrence relation. A pending Ruling does not answer the accepted
+Request read.
 
 Use the [CLI reference](../reference/cli.md#rulings) for exact commands and the
 [HTTP API reference](../reference/http-api.md#rulings) for generated operations.

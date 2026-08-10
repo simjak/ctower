@@ -411,9 +411,11 @@ ready-to-send text, and open/answered state. Caller facts and model output do no
 ordinary Requests expose no brief.
 
 An answer appends through the existing protected Ruling command with the Request identity. PostgreSQL binds
-the relation to the same tenant and Project, accepted reads expose it from both records, accepted state stops
-counting the decision blocker, and successors inherit the relation. Pending Rulings change no accepted read.
-The separately ticketed digest layer may consume this shape later and adds no scope to this checkpoint.
+the root to the same tenant, Project, Request, and exact latest accepted active decision blocker fact;
+accepted reads expose the Request relation from both records, accepted state stops counting only that
+occurrence, and successors inherit it. A later active marker opens a new occurrence, an inactive latest
+marker renders none, and pending Rulings change no accepted read. The separately ticketed digest layer may
+consume this shape later and adds no scope to this checkpoint.
 
 **Exit:** AC-BRIEF-01..04 pass through the named contract and real-PostgreSQL suites; rendered evidence,
 record-only taint proof, bidirectional Request/Ruling queries, same-candidate generated artifacts and docs,

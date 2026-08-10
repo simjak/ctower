@@ -129,7 +129,8 @@ Append uses the protected encrypted spool and derives Project, principal, and se
 existing project-seat credential. Preserve the returned command and Ruling IDs when an append is pending;
 replay the same command instead of creating a second intent. Corrections append a new Ruling with
 `--supersedes`; they never edit the old words. `--request-id` answers a current decision Request and cannot
-be combined with `--supersedes`; a correction inherits the predecessor's link. List and get are
+be combined with `--supersedes`; the root binds to the exact active decision occurrence and a correction
+inherits the predecessor's link. A later marker is a new answerable occurrence. List and get are
 accepted-only online reads. See
 [Rulings and the Agreements ledger](../concepts/rulings.md).
 

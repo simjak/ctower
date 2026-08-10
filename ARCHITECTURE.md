@@ -31,11 +31,12 @@ UUIDv7-addressed, byte-exact immutable Work fact attributed to an existing proje
 one same-Project successor; accepted-only list/get reads derive both citation directions and explicit
 epistemic scope. It adds no principal class, adapter, ingress, egress, or browser authority.
 
-Decision briefs are a tested CT-I1-017 Request read projection. The exact accepted decision blocker turns
-one Request into a complete record-derived operator ask; ordinary Requests expose no ask. An accepted
-same-Project Ruling answers the Request through an immutable bidirectional relation, while a pending Ruling
-changes no accepted read. The digest lane consumes this shape through separate work and is not implemented
-by this candidate.
+Decision briefs are a tested CT-I1-017 Request read projection. The latest exact accepted active decision
+blocker turns one Request occurrence into a complete record-derived operator ask; ordinary Requests and an
+inactive latest marker expose no ask. An accepted same-Project Ruling root answers that exact blocker fact
+through an immutable Request relation, successors inherit the occurrence, and a later marker reopens rather
+than reusing a stale answer. A pending Ruling changes no accepted read. The digest lane consumes this shape
+through separate work and is not implemented by this candidate.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery

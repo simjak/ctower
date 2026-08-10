@@ -4019,7 +4019,7 @@
           "eli": {"type": "string", "minLength": 1, "maxLength": 160},
           "origin_quote": {"type": "string", "minLength": 1, "maxLength": 65536},
           "recommendation": {"$ref": "#/components/schemas/DecisionBriefSelection"},
-          "rendered": {"type": "string", "minLength": 1, "maxLength": 131072},
+          "rendered": {"type": "string", "minLength": 1, "maxLength": 400000},
           "ruling_id": {"type": ["string", "null"], "format": "uuid"},
           "safe_default": {"$ref": "#/components/schemas/DecisionBriefSelection"},
           "status": {"type": "string", "enum": ["open", "answered"]}

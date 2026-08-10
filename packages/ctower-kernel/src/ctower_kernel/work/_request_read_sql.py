@@ -174,7 +174,8 @@ WITH accepted AS (
      AND confirmation.principal_id = ruling.recorded_by
      AND confirmation.client_command_id = ruling.command_id
 ), current_ruling AS (
-    SELECT ruling.request_id, ruling.ruling_id, ruling.acceptance_position
+    SELECT ruling.request_id, ruling.decision_blocker_fact_id,
+           ruling.ruling_id, ruling.acceptance_position
     FROM accepted_ruling AS ruling
     WHERE NOT EXISTS (
         SELECT 1 FROM accepted_ruling AS successor
@@ -182,7 +183,7 @@ WITH accepted AS (
     )
 ), blocker_latest AS (
     SELECT DISTINCT ON (fact.request_id, fact.blocker_key)
-           fact.request_id, fact.blocker_key, fact.active,
+           fact.request_id, fact.blocker_fact_id, fact.blocker_key, fact.active,
            confirmation.acceptance_position
     FROM request_blocker_facts AS fact
     JOIN durability_acceptance_confirmations AS confirmation
@@ -200,14 +201,14 @@ WITH accepted AS (
            ) AS blocker,
            max(latest.acceptance_position) AS acceptance_position
     FROM blocker_latest AS latest
-    LEFT JOIN current_ruling ON current_ruling.request_id = latest.request_id
+    LEFT JOIN current_ruling
+      ON current_ruling.decision_blocker_fact_id = latest.blocker_fact_id
     GROUP BY latest.request_id
 ), decision AS (
-    SELECT latest.request_id
+    SELECT latest.request_id, latest.blocker_fact_id
     FROM blocker_latest AS latest
-    LEFT JOIN current_ruling ON current_ruling.request_id = latest.request_id
     WHERE latest.blocker_key = 'operator-decision-required'
-      AND (latest.active OR current_ruling.ruling_id IS NOT NULL)
+      AND latest.active
 ), closure AS (
     SELECT DISTINCT ON (evaluation.request_id)
            evaluation.request_id, evaluation.outcome, evaluation.dependency_digest,
@@ -264,7 +265,8 @@ JOIN latest_triage ON latest_triage.request_id = accepted.request_id
 LEFT JOIN relation ON relation.request_id = accepted.request_id
 LEFT JOIN blocker ON blocker.request_id = accepted.request_id
 LEFT JOIN decision ON decision.request_id = accepted.request_id
-LEFT JOIN current_ruling ON current_ruling.request_id = accepted.request_id
+LEFT JOIN current_ruling
+  ON current_ruling.decision_blocker_fact_id = decision.blocker_fact_id
 LEFT JOIN closure ON closure.request_id = accepted.request_id
 LEFT JOIN request_owner_aliases AS owner_alias
   ON owner_alias.tenant_id = accepted.tenant_id

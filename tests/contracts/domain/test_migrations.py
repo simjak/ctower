@@ -76,7 +76,7 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0061_request_decision_briefs.sql",
-    "schema_sha256": ("sha256:fefe1cdfd92cf47d415e5c1304fac2b367fabec18264f20d91dfb0814a2e4a11"),
+    "schema_sha256": ("sha256:8083397ac6c8da0ed3a7177135c3b13f76139196ede2971e0410e451c72da7a9"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:35b2ff2f8b5ec8bdcce79403d7489402c832f0b2e577afb27aba10f2f3c44607"
