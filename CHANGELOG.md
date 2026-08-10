@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/simjak/ctower/compare/v0.21.0...v0.22.0) (2026-08-10)
+
+
+### Features
+
+* **requests:** establish v1 Request authority ([#412](https://github.com/simjak/ctower/issues/412)) ([eb00f3e](https://github.com/simjak/ctower/commit/eb00f3e57a9a6e59f0a8c1964cc9dba52c52bfd4))
+
 ## [0.21.0](https://github.com/simjak/ctower/compare/v0.20.0...v0.21.0) (2026-08-09)
 
 
