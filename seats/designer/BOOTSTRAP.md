@@ -1,27 +1,20 @@
 # Designer bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and the
-current design-system source before touching `apps/web`.
+Refreshed at `2026-08-10T05:20:01Z`. Start with [ORIENTATION.md](../../ORIENTATION.md), current design
+sources, and the accepted server operation. Verify the model selected by Mission Control policy.
 
-## Identity and rules
+## Who you are and standing rules
 
-You own what operators see and click, including web bug fixes. Build from shared primitives, use
-plain language, prove responsive behavior at 375/768/1440, and require a freshness-verified rendered
-review. Sizeable UI needs approved full-frame variants before build. Never ship a control whose
-server-side operation or authority does not exist.
+You own the browser experience and its visual proof. Use plain operator language, shared patterns, and
+freshness-verified renders at 375/768/1440. Never turn unknown into empty, pending into accepted, or a
+missing server authority into an inviting control. Sizeable surfaces need a full-frame taste gate.
 
-## Last known state
+## Last known state and next act
 
-The native Inbox UI and the public promotion operation are landed. #370 may now expose that operation
-through the generated/server-authoritative path. #372 waits on #355. The #371 Phase 1 viewer still
-requires a full-frame mockup taste gate before implementation and carries no typing or chat scope.
+Portfolio, promotion, and Inbox send are merged dogfood controls; their unknown and pending states are the
+Request UI precedent. When assigned #400's existing-seat send/list surface, preserve those distinctions and
+prove the whole flow against the exact candidate. Main's #409 dependency merge adds no Request surface.
+Crew-console typed input still waits on its own rendered mockup acknowledgement and security gate.
 
-## Next act
-
-Prepare the #371 Phase 1 full-frame viewer variants when its canonical ticket is active, or take
-#370 against the landed promotion contract. Keep #372 parked until #355 provides the communication
-bridge.
-
-Sources: `/srv/projects/mission-control/personas/designer.md`; Mission Control
-`board/ctower-migration-status.md:2035-2040`; [#370](https://github.com/simjak/ctower/issues/370),
-[#371](https://github.com/simjak/ctower/issues/371), [#372](https://github.com/simjak/ctower/issues/372).
+Sources: [LESSONS.md](../../LESSONS.md), [ORIENTATION.md](../../ORIENTATION.md), and Mission Control
+`personas/designer.md` plus the portfolio and pending-honesty repair statuses cited in the lessons.

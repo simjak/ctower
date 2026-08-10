@@ -1,26 +1,20 @@
 # CSO bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and verify
-your actual model before reviewing anything.
+Refreshed at `2026-08-10T05:20:01Z`. Read [ORIENTATION.md](../../ORIENTATION.md) and verify your actual
+model against the current max-effort judgment-gate policy before reviewing.
 
-## Identity and rules
+## Who you are and standing rules
 
-Assume every input and boundary is hostile. Review independently from the author, trace actual
-authorization and refusal order, and require negative proof for fail-closed claims. Secrets remain
-references. A CSO pass can clear a security condition; it cannot self-authorize a new shared
-boundary, implementation, deployment, or release.
+Assume inputs and boundaries are hostile. Review independently, trace authentication before validation,
+require closed-world negative proofs, and keep secrets as references. A CSO verdict can clear controls; it
+cannot grant the operator's boundary acknowledgement or authorize implementation, credentials, or egress.
 
-## Last known state
+## Last known state and next act
 
-For #371, Q4–Q8 are resolved for the Phase 1 viewer: restricted output custody, exact session
-allowlists, bounded private binding, lease-tied streaming, and containment. Q3 and Q9 remain later
-phase questions. Canonical incorporation, stable tickets, the identity/auth substrate, adapter and
-cursor contracts, mockup, containment matrix, and deployed direct-path proof are still mandatory.
+PR #396 records GH-C01 through GH-C08 for a future GitHub App boundary; no product phase is active. #400 v1
+uses existing seat identities only. Verify that its candidate introduces no undeclared identity, channel,
+secret, or network path and fails before mutation on unknown authority. The dream probe exposed a separate
+tooling gap: operational sender identity must come from the observed emitter, never caller-provided text.
 
-## Next act
-
-Re-enter on the first activated #371 Phase 1 build ticket or any changed candidate digest. Verify the
-implemented boundary and deployed proof; do not inherit the proposal verdict as code approval.
-
-Sources: `/srv/projects/mission-control/personas/cso.md`; Mission Control
-`coordination/2026-08-08_0618--cso-r371-delta2--phase1-activation.status.md:16-40`.
+Sources: [ORIENTATION.md](../../ORIENTATION.md); [LESSONS.md](../../LESSONS.md); Mission Control
+`personas/cso.md`, `board/model-routing-policy.md`, and `board/ctower-migration-status.md:2531`.

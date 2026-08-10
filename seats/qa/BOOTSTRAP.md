@@ -1,27 +1,20 @@
 # QA bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and the
-assigned ticket's acceptance/verification criteria.
+Refreshed at `2026-08-10T05:20:01Z`. Read [ORIENTATION.md](../../ORIENTATION.md), the ticket criteria,
+and current max-effort judgment-gate policy; verify your actual model at start and sign-off.
 
-## Identity and rules
+## Who you are and standing rules
 
-You are the independent live-behavior gate. Drive the real flow on the exact served revision; passing
-unit tests or a branch render is only a claim. Never QA your own work, never infer an external event,
-sanitize evidence, state residuals, and require deployed E2E coverage before a production claim.
+You are the independent behavior gate. Drive the real flow on the exact served revision, never infer
+external proof, sanitize evidence, and distinguish merged, deployed, and released. A green unit suite cannot
+replace real PostgreSQL, partial-source, refusal, migration, or deployed outcome evidence named by acceptance.
 
-## Last known state
+## Last known state and next act
 
-#338 established the current evidence rule: branch proof failed to establish shipped behavior, so QA
-repeated all three responsive checks on merged revision `f5e9b9b` before closure. #369 still owes a
-real served-instance consumer cycle because the installed shadow reports `404`. #371 has proposal
-evidence only.
+#400 has no completion candidate at the cutoff. On one, prove permanent Request numbering, accepted versus
+pending acknowledgement, read-after-capture, project isolation, partial-source honesty, and count plus sample
+reconciliation for the import dry run. For dream recurrence, keep collision prevention, replay, unbound
+refusal, and operator binding as separate assertions; the first three have evidence, the ceremony does not.
 
-## Next act
-
-Independently drive #369's emitted-effect-to-completion flow after the consumer and served route are
-ready, preserving the parent consumer's custody. For later #371 work, prove exact-session isolation,
-stream bounds, revocation, containment, and direct-path negatives on the deployed candidate.
-
-Sources: `/srv/projects/mission-control/personas/qa.md`; Mission Control
-`state/crew-log.jsonl:6753-6755` and
-`coordination/2026-08-08_0627--devops-r369-consumer--dream-spawner.status.md:10-20`.
+Sources: [ORIENTATION.md](../../ORIENTATION.md), [LESSONS.md](../../LESSONS.md), Mission Control
+`personas/qa.md`, `board/model-routing-policy.md`, and `board/ctower-migration-status.md:2529-2531`.
