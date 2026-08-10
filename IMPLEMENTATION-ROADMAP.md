@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.18 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.20 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-08-08 |
+| Last reviewed | 2026-08-09 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -16,11 +16,12 @@ normative I1 exit; a CT-I1-008 development `GO` or `GO_WITH_LIMITS` does not sat
 CP3-D is red. Normal operator-only gates still apply to material taste, a newly discovered
 architecture/security direction, destructive action, or incident.
 
-The approved authority shape is fresh start plus minimal carry-forward: create the ctower Company /
+The approved Ticket authority shape is fresh start plus minimal carry-forward: create the ctower Company /
 Project / checkpoint hierarchy and Project Delivery projection on a fresh database; keep the complete
 legacy corpus as signed read-only provenance; recreate only the exact reviewed still-actionable set through
-ordinary generated API/CLI commands with stable aliases. Bulk legacy import is dormant pending a separate
-future decision.
+ordinary generated API/CLI commands with stable aliases. General Ticket/corpus bulk import remains dormant.
+D46 is the separate decision that admits only OR-06's signed, fenced, exact-open-set Request-ledger import
+after CP3-D and a separately accepted portfolio authority epoch.
 
 ## One checkpoint sequence
 
@@ -55,6 +56,8 @@ INCREMENT 1 — durable task-management dogfood
               |
  [CP3-D: external ACK + keys + destructive restore + measured RPO/RTO]
               |
+ [CT-I1-015: Request authority + exact one-way ledger cutover]
+              |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
 INCREMENT 2 — autonomous generic workflow + one golden path
@@ -68,6 +71,10 @@ INCREMENT 2 — autonomous generic workflow + one golden path
  [I2.4 browser realization: five surfaces + Project Delivery detail/analytics + Effects/release]
               |
  [one software-factory production golden ticket]
+              |
+ [CT-I2-011 Request send box + contextual list]
+              |
+ [CT-I2-012 Slack/Hermes only after new security decision + operator + CSO]
 ```
 
 The order matters. Development dogfood may begin with limits before CP3-D, but its authority is confined to
@@ -283,7 +290,7 @@ The CT-I1-008 development verdict may be `GO_WITH_LIMITS` and may complete the d
 pilot/I1.7 checkpoint. It does not satisfy the disaster-safe authority criterion and excludes credentials,
 accounting, production authority/effects, incidents, client data, and irreplaceable artifacts. Full
 normative I1 exit remains `NO-GO` until CP3-D proves external-failure-domain acknowledgement, key recovery,
-isolated destructive restore, and measured RPO/RTO and CT-I1-009..014 pass.
+isolated destructive restore, and measured RPO/RTO and CT-I1-009..015 pass.
 
 The same checkpoint establishes only the hierarchy needed to dogfood project delivery:
 
@@ -311,7 +318,7 @@ canonical eight-state precedence with proof-aware `done`/`blocked`, and expose i
 hourly no-change freshness, and stale/unknown faults without accepting a projection write. A
 `GO_WITH_LIMITS` result keeps `CP3_D_NOT_PROVEN` visible.
 
-**Full I1 exit:** remains `NO-GO` until CT-I1-009..014 and the required CP3-D evidence pass. Only that full exit satisfies
+**Full I1 exit:** remains `NO-GO` until CT-I1-009..015 and the required CP3-D evidence pass. Only that full exit satisfies
 CT-I2-001's dependency on CT-I1-008. From the development epoch, ctower tickets—not this file or the SPEC
 table—own implementation status for the reviewed cohort.
 
@@ -347,6 +354,32 @@ that an earlier import-chain item passed. The following GitLab proof retains one
 maps one real issue to one ticket without intervention, applies a real update as a ticket comment, closes
 the provider issue only from a current-proof-gated ctower close, and proves one custody chain plus bounded
 poll/replay behavior with no comment or polling storm.
+
+### I1.9 — First-class Request authority and one-way ledger cutover
+
+**Stable work:** `CT-I1-015`.
+
+After CT-I1-014 and accepted CP3-D evidence, the operator separately accepts the portfolio authority epoch
+that permits this checkpoint. Before then, all Request implementation proof runs in a disposable verification
+tenant: no portfolio Request endpoint, grant, spool drain, UI control, adapter, import operation, or second
+allocator is active.
+
+Deliver OR-01..OR-06 as one landable authority replacement. Work owns the Request aggregate and its triage,
+priority, owner, blocker, Ticket-relation, and closure rules; Record owns atomic facts, UUIDv7 identity, the
+tenant-wide `R` sequence, command results, audit, outbox, and recovery inventory. The protected CLI and
+generated clients expose capture and read/transition commands without creating Tickets implicitly.
+
+The same candidate fences every Mission Control Request writer, seals and signs the complete ledger and
+full-ledger high-water, imports the exact frozen open set in serial batches of at most 25 through the one
+operator-authenticated manifest-bound command, reconciles every row plus full/per-project counts and the
+deterministic samples, and removes both the old mutation entrypoints and import operation before admitting
+the first portfolio capture above the high-water. Failure quarantines the run; rollback never re-enables the
+old writer. General Ticket/corpus bulk import remains absent.
+
+**Exit:** AC-REQ-01..06 pass through the named CT-I1-015 suites; the exact v1 architecture records
+`no-new-boundary`; restore reconstructs Request authority and allocator state; the old writer and import
+operation are absent; and the first authoritative capture allocates strictly above the sealed high-water.
+This checkpoint joins CT-I1-009..014 and CP3-D in the full normative I1 exit.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 
@@ -532,6 +565,27 @@ verify the real endpoint/digest independently, record the retro, and server-vali
 is reconstructable from ctower IDs without Mission Control ledgers, task/status files, raw terminal state,
 or vendor sessions; the production golden ticket passes the exact I2 validation contract in the SPEC.
 
+### I2.7 — Request surface, then the separately gated external adapter
+
+**Stable work:** `CT-I2-011`, then inactive `CT-I2-012`.
+
+After CT-I1-015 establishes the sole Request authority and CT-I2-005 realizes the product browser boundary,
+CT-I2-011 adds the existing-human-identity send box and OR-07 contextual Board/portfolio list. It reuses the
+generated Request command plus CT-I1-013's session/CSRF contract, preserves drafts and command identity while
+acceptance is uncertain, and renders answered/unanswered, stale, unavailable, unknown, unlinked, blocker,
+Proof, relation, and freshness states at 375, 768, and 1440 CSS pixels. It adds no sixth surface, writable
+status, adapter identity, browser bearer, or Record client.
+
+CT-I2-012 remains inactive even after that UI work. Slack/Hermes may start only after a later append-only
+security decision freezes the exact adapter Actor, credential custody/lifecycle, project capability,
+ingress/egress, replay, revocation, taint, and limits; the operator acknowledges the boundary; and an
+independent CSO approves the exact candidate digest. A changed boundary invalidates the verdict.
+
+**Exit:** CT-I2-011 passes AC-REQ-05/07 and the named API/CLI/browser equality and responsive projection
+suites. CT-I2-012, if later activated, passes AC-REQ-08 and one real caller-to-Request probe across accepted,
+pending, replay, changed-message, refusal, spool, and cross-project paths. Until then its route, credential,
+egress, and product path are absent.
+
 ## Backlog beyond the increments (sequenced, not scheduled)
 
 - **Operator chatbot via a harness adapter** (ticket `019fc85b-d9e1-743c-a25e-69fa7164424b`,
@@ -610,5 +664,7 @@ just verify    full manifest-scoped, drift/cleanliness/conformance/acceptance ga
 Every checkpoint extends the committed expected-suite manifest in the same change that makes its suite
 current. The development authority epoch recreates only the exact reviewed still-actionable stable backlog
 set through ordinary generated commands, with one stable alias each; the signed legacy archive keeps
-everything else as read-only provenance and bulk import remains dormant. After that, ctower ticket history
+everything else as read-only provenance and general Ticket/corpus bulk import remains dormant. OR-06's
+Request-only signed import is the sole exception and runs only inside CT-I1-015 after its authority gates.
+After that, ctower ticket history
 is the only live implementation board for the reviewed cohort. Full normative I1 exit still gates I2.
