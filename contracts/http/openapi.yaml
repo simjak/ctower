@@ -278,6 +278,120 @@
         }
       }
     },
+    "/v1/requests/{request_id}/priority": {
+      "post": {
+        "operationId": "prioritizeRequest",
+        "x-ctower-cli": "request prioritize",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestPriorityRequest"}}}},
+        "responses": {
+          "200": {"description": "Request priority fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Request priority committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/requests/{request_id}/triage": {
+      "post": {
+        "operationId": "triageRequest",
+        "x-ctower-cli": "request triage",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestTriageRequest"}}}},
+        "responses": {
+          "200": {"description": "Request triage fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Request triage committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/requests/{request_id}/owner": {
+      "post": {
+        "operationId": "assignRequestOwner",
+        "x-ctower-cli": "request owner assign",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestOwnerRequest"}}}},
+        "responses": {
+          "200": {"description": "Request owner fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Request owner committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/requests/{request_id}/ticket-relations": {
+      "post": {
+        "operationId": "relateRequestTicket",
+        "x-ctower-cli": "request ticket relate",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestTicketRelationRequest"}}}},
+        "responses": {
+          "200": {"description": "Request Ticket relation fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Request Ticket relation committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/requests/{request_id}/blockers": {
+      "post": {
+        "operationId": "setRequestBlocker",
+        "x-ctower-cli": "request blocker set",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestBlockerRequest"}}}},
+        "responses": {
+          "200": {"description": "Request blocker fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Request blocker committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/requests/{request_id}/closure-evaluations": {
+      "post": {
+        "operationId": "evaluateRequestClosure",
+        "x-ctower-cli": "request closure evaluate",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestClosureEvaluationRequest"}}}},
+        "responses": {
+          "200": {"description": "Request closure evaluation accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Request closure evaluation committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/intake/events/{inbound_event_id}/promotion": {
       "post": {
         "operationId": "promoteIntakeEvent",
@@ -3396,7 +3510,13 @@
               "project-delivery-unavailable",
               "project-grant-required",
               "project-scope-denied",
+              "request-capture-forbidden",
+              "request-import-forbidden",
+              "request-owner-forbidden",
               "request-project-unavailable",
+              "request-source-forbidden",
+              "request-transition-forbidden",
+              "request-triage-forbidden",
               "reauthentication-required",
               "request-body-too-large",
               "proof-candidate-author-mismatch",
@@ -3616,6 +3736,88 @@
           "request_number": {"type": "integer", "minimum": 1},
           "submitted_by": {"type": "string", "format": "uuid"},
           "version": {"type": "integer", "minimum": 1}
+        }
+      },
+      "RequestPriorityRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_version", "priority", "reason"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestTriageRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["disposition", "expected_version"],
+        "properties": {
+          "canonical_request_id": {"type": ["string", "null"], "format": "uuid"},
+          "disposition": {"type": "string", "enum": ["ACCEPTED", "DUPLICATE", "REJECTED"]},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestOwnerRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_version", "owner_id", "reason"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "owner_id": {"type": "string", "format": "uuid"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestTicketRelationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["active", "expected_version", "purpose", "reason", "ticket_id"],
+        "properties": {
+          "active": {"type": "boolean"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "purpose": {"type": "string", "enum": ["required", "optional"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "RequestBlockerRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["active", "blocker_key", "expected_version", "reason"],
+        "properties": {
+          "active": {"type": "boolean"},
+          "blocker_key": {"type": "string", "minLength": 1, "maxLength": 256},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestClosureEvaluationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_version", "reason"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestChangeResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command_id", "durability_state", "event_ids", "operation", "reference",
+          "request_id", "request_number", "state", "version"
+        ],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "operation": {"type": "string", "enum": ["priority", "triage", "owner", "ticket_relation", "blocker", "closure_evaluation"]},
+          "reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "request_id": {"type": "string", "format": "uuid"},
+          "request_number": {"type": "integer", "minimum": 1},
+          "state": {"type": "string", "enum": ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]},
+          "version": {"type": "integer", "minimum": 2}
         }
       },
       "RequestRow": {

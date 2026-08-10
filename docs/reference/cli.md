@@ -1,6 +1,6 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **74 authored server
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **82 authored server
 commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
 operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
@@ -94,6 +94,28 @@ All `*-ref` values are references. Never pass a credential value.
 
 Both commands are online-only and operator-authorized. They are never spooled. Credential values are not
 accepted; the issue command takes a reference and a lowercase SHA-256 digest.
+
+## Requests
+
+| Command | Positional | Flags |
+|---|---|---|
+| `request capture` | `<text>` | required: `--project-key`; optional: `--command-id` |
+| `request list` | — | optional: `--project-key` |
+| `request prioritize` | `<request_id>` | required: `--expected-version`, `--priority {P0,P1,P2}`, `--reason`; optional: `--command-id` |
+| `request triage` | `<request_id>` | required: `--expected-version`, `--disposition {ACCEPTED,DUPLICATE,REJECTED}`; optional: `--command-id`, `--reason`, `--canonical-request-id` |
+| `request owner assign` | `<request_id>` | required: `--expected-version`, `--owner-id`, `--reason`; optional: `--command-id` |
+| `request ticket relate` | `<request_id>` | required: `--expected-version`, `--ticket-id`, `--purpose {required,optional}`, `--reason`; optional: `--command-id`, `--inactive` |
+| `request blocker set` | `<request_id>` | required: `--expected-version`, `--blocker-key`, `--reason`; optional: `--command-id`, `--inactive` |
+| `request closure evaluate` | `<request_id>` | required: `--expected-version`, `--reason`; optional: `--command-id` |
+
+Capture and every Request mutation use the protected encrypted spool. Exit `75` and a
+`durability_pending` result mean the server has not yet supplied the required acceptance proof; drain or
+replay the same command ID. Do not invent a fresh command ID for the same intent. `request list` is an
+online-only read and never enters the spool.
+
+The server derives Actor, project authority, submitter, initial owner, source, number, and state. A Request
+may remain without a Ticket; relations are explicit and never change Ticket custody or lifecycle. See
+[Requests](../concepts/requests.md).
 
 ## Ticket: capture and reads
 

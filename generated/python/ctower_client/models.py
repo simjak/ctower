@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:2731f8f3c28340b3bd4d482eb69a7d096dfc43d9ee153d6e5aa303adaafe0269
+Authored contract digest: sha256:f28f39eb51046eaf5f3018e8c47f3e9f6f14298647a3a67328c6b6fbfec058a5
 """
 
 from __future__ import annotations
@@ -189,10 +189,17 @@ __all__ = [
     "RelationRequest",
     "ReopenIntent",
     "ReopenedAuditData",
+    "RequestBlockerRequest",
     "RequestCaptureRequest",
     "RequestCaptureResult",
+    "RequestChangeResult",
+    "RequestClosureEvaluationRequest",
     "RequestList",
+    "RequestOwnerRequest",
+    "RequestPriorityRequest",
     "RequestRow",
+    "RequestTicketRelationRequest",
+    "RequestTriageRequest",
     "ResolveCloseRequest",
     "ReviewDispatchConsumeRequest",
     "ReviewDispatchConsumption",
@@ -1296,9 +1303,42 @@ class ReopenIntent(_BoundaryModel):
     priority_policy: Literal["carry_forward"]
 
 
+class RequestBlockerRequest(_BoundaryModel):
+    active: bool
+    blocker_key: Annotated[str, Field(min_length=1, max_length=256)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
 class RequestCaptureRequest(_BoundaryModel):
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     text: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
+class RequestClosureEvaluationRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class RequestOwnerRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    owner_id: UUID
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class RequestTicketRelationRequest(_BoundaryModel):
+    active: bool
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    purpose: Literal["required", "optional"]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    ticket_id: UUID
+
+
+class RequestTriageRequest(_BoundaryModel):
+    canonical_request_id: UUID | None = None
+    disposition: Literal["ACCEPTED", "DUPLICATE", "REJECTED"]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)] | None = None
 
 
 class ResolveCloseRequest(_BoundaryModel):
@@ -2087,7 +2127,13 @@ class Problem(_BoundaryModel):
         "project-delivery-unavailable",
         "project-grant-required",
         "project-scope-denied",
+        "request-capture-forbidden",
+        "request-import-forbidden",
+        "request-owner-forbidden",
         "request-project-unavailable",
+        "request-source-forbidden",
+        "request-transition-forbidden",
+        "request-triage-forbidden",
         "reauthentication-required",
         "request-body-too-large",
         "proof-candidate-author-mismatch",
@@ -2218,6 +2264,31 @@ class RequestCaptureResult(_BoundaryModel):
     request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
     submitted_by: UUID
     version: Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
+class RequestChangeResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
+    operation: Literal[
+        "priority",
+        "triage",
+        "owner",
+        "ticket_relation",
+        "blocker",
+        "closure_evaluation",
+    ]
+    reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    request_id: UUID
+    request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    version: Annotated[int, Field(ge=2, le=9007199254740991)]
+
+
+class RequestPriorityRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    priority: Priority
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
 class RequestRow(_BoundaryModel):

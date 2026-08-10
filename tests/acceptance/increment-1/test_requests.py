@@ -13,16 +13,34 @@ from support.server import application
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
-from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceReference, TicketCommand
+from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.work import Work
 from ctower_kernel.work.requests import (
     PostgresRequests,
+    RequestBlocker,
     RequestCapture,
     RequestCaptureResult,
+    RequestChangeResult,
+    RequestClosureEvaluation,
+    RequestOwner,
+    RequestPriority,
     Requests,
+    RequestTicketRelation,
+    RequestTriage,
 )
 
 __all__: tuple[str, ...] = ()
+
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_PENDING = 202
+PARALLEL_CAPTURE_COUNT = 100
+PRIORITIZED_VERSION = 2
+TRIAGED_VERSION = 3
+RELATED_VERSION = 4
+BLOCKED_VERSION = 5
 
 
 def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture) -> None:
@@ -65,11 +83,11 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
 
     first = cast(dict[str, object], pending.json())
     second = cast(dict[str, object], replay.json())
-    assert pending.status_code == 202
+    assert pending.status_code == HTTP_PENDING
     assert first["durability_state"] == "durability_pending"
-    assert hidden.status_code == 200
+    assert hidden.status_code == HTTP_OK
     assert hidden.json()["rows"] == []
-    assert replay.status_code == 201
+    assert replay.status_code == HTTP_CREATED
     assert second["durability_state"] == "accepted"
     assert second["request_id"] == first["request_id"]
     assert second["request_number"] == first["request_number"]
@@ -83,10 +101,7 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
     assert rows[0]["priority"] == "P2"
     assert rows[0]["priority_default"] is True
     assert rows[0]["project_key"] == "ctower"
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        assert connection.execute("SELECT count(*) FROM tickets").fetchone()[0] == 0
-        assert connection.execute("SELECT count(*) FROM inbound_events").fetchone()[0] == 1
-        assert connection.execute("SELECT count(*) FROM requests").fetchone()[0] == 1
+    _assert_capture_storage(tenant)
     print(
         "REAL_REQUEST_ACK"
         f" first={pending.status_code}:{first['durability_state']}"
@@ -95,16 +110,28 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
     )
 
 
-def test_request_allocator_is_collision_impossible_under_parallel_capture(
+def _assert_capture_storage(tenant: TenantFixture) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        tickets = cast(tuple[int], connection.execute("SELECT count(*) FROM tickets").fetchone())
+        inbound = cast(
+            tuple[int], connection.execute("SELECT count(*) FROM inbound_events").fetchone()
+        )
+        requests = cast(tuple[int], connection.execute("SELECT count(*) FROM requests").fetchone())
+    assert tickets[0] == 0
+    assert inbound[0] == 1
+    assert requests[0] == 1
+
+
+def test_capture_is_atomic_burst_safe_and_idempotent(
     tenant: TenantFixture,
 ) -> None:
-    """INV-81/82: 100 unique commands allocate 100 distinct permanent numbers."""
+    """AC-REQ-01: 100 accepted keys stay unique; replays and digest reuse are exact."""
 
     requests = Requests(PostgresRequests(tenant.database.runtime_dsn))
     actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
     commands = tuple(
         RequestCapture(uuid4(), "ctower", f"Parallel operator intent {index}")
-        for index in range(100)
+        for index in range(PARALLEL_CAPTURE_COUNT)
     )
 
     with ThreadPoolExecutor(max_workers=20) as executor:
@@ -112,12 +139,35 @@ def test_request_allocator_is_collision_impossible_under_parallel_capture(
 
     assert all(isinstance(result, RequestCaptureResult) for result in results)
     receipts = cast(tuple[RequestCaptureResult, ...], results)
-    assert len({item.request_id for item in receipts}) == 100
-    assert len({item.request_number for item in receipts}) == 100
-    assert all(_capture(requests, actor, command) == receipt for command, receipt in zip(commands, receipts, strict=True))
+    assert len({item.request_id for item in receipts}) == PARALLEL_CAPTURE_COUNT
+    assert len({item.request_number for item in receipts}) == PARALLEL_CAPTURE_COUNT
+    assert all(
+        _capture(requests, actor, command) == receipt
+        for command, receipt in zip(commands, receipts, strict=True)
+    )
+    changed_digest = _capture(
+        requests,
+        actor,
+        RequestCapture(commands[0].client_command_id, "ctower", "Changed replay content"),
+    )
+    assert isinstance(changed_digest, RecordProblem)
+    assert changed_digest.code == "idempotency-conflict"
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    assert all(
+        _capture(requests, actor, command) == receipt
+        for command, receipt in zip(commands, receipts, strict=True)
+    )
+    projection = requests.list(actor, project_key="ctower", telemetry=_telemetry(actor, uuid4()))
+    assert not isinstance(projection, RecordProblem)
+    assert len(projection.rows) == PARALLEL_CAPTURE_COUNT
     with psycopg.connect(tenant.database.admin_dsn) as connection:
-        assert connection.execute("SELECT count(*) FROM requests").fetchone()[0] == 100
-        assert connection.execute("SELECT count(*) FROM tickets").fetchone()[0] == 0
+        assert (
+            cast(tuple[int], connection.execute("SELECT count(*) FROM requests").fetchone())[0]
+            == PARALLEL_CAPTURE_COUNT
+        )
+        assert (
+            cast(tuple[int], connection.execute("SELECT count(*) FROM tickets").fetchone())[0] == 0
+        )
 
 
 def test_request_capture_refuses_claimed_authority_and_cross_project_scope(
@@ -135,8 +185,321 @@ def test_request_capture_refuses_claimed_authority_and_cross_project_scope(
     assert isinstance(denied, RecordProblem)
     assert denied.code == "project-scope-denied"
     with psycopg.connect(tenant.database.admin_dsn) as connection:
-        assert connection.execute("SELECT count(*) FROM requests").fetchone()[0] == 0
-        assert connection.execute("SELECT count(*) FROM inbound_events").fetchone()[0] == 0
+        assert (
+            cast(tuple[int], connection.execute("SELECT count(*) FROM requests").fetchone())[0] == 0
+        )
+        assert (
+            cast(tuple[int], connection.execute("SELECT count(*) FROM inbound_events").fetchone())[
+                0
+            ]
+            == 0
+        )
+
+
+def test_request_commands_append_versioned_facts_and_derive_closure(
+    tenant: TenantFixture,
+) -> None:
+    """OR-02/05: independent facts derive state; no writable status exists."""
+
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    captured, ticket_id, blocked = _prepare_blocked_lifecycle(tenant, authority, actor)
+    open_evaluation = _accepted_change(
+        tenant,
+        authority.evaluate_closure(
+            actor,
+            RequestClosureEvaluation(
+                uuid4(), captured.request_id, blocked.version, "evaluate current facts"
+            ),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert open_evaluation.state == "BLOCKED"
+    cleared = _accepted_change(
+        tenant,
+        authority.set_blocker(
+            actor,
+            RequestBlocker(
+                uuid4(),
+                captured.request_id,
+                open_evaluation.version,
+                "operator-approval",
+                active=False,
+                reason="approval received",
+            ),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    _close_ticket_fixture(tenant, ticket_id)
+    done = _accepted_change(
+        tenant,
+        authority.evaluate_closure(
+            actor,
+            RequestClosureEvaluation(
+                uuid4(), captured.request_id, cleared.version, "required outcome proven"
+            ),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert done.state == "DONE"
+    projection = authority.list(actor, project_key="ctower", telemetry=_telemetry(actor, uuid4()))
+    assert not isinstance(projection, RecordProblem)
+    assert projection.rows[0].state == "DONE"
+    assert projection.rows[0].required_ticket_ids == (ticket_id,)
+    assert projection.rows[0].priority == "P1"
+    optional_ticket = _accepted_ticket(tenant, actor)
+    changed_after_close = _accepted_change(
+        tenant,
+        authority.relate_ticket(
+            actor,
+            RequestTicketRelation(
+                uuid4(),
+                captured.request_id,
+                done.version,
+                optional_ticket,
+                "optional",
+                active=True,
+                reason="later decomposition changed the closure denominator",
+            ),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert changed_after_close.state != "DONE"
+    invalidated = authority.list(actor, project_key="ctower", telemetry=_telemetry(actor, uuid4()))
+    assert not isinstance(invalidated, RecordProblem)
+    assert invalidated.rows[0].state != "DONE"
+
+
+def _prepare_blocked_lifecycle(
+    tenant: TenantFixture, authority: Requests, actor: Actor
+) -> tuple[RequestCaptureResult, UUID, RequestChangeResult]:
+    captured = _accepted_capture(tenant, authority, actor, "Lifecycle intent")
+    ticket_id = _accepted_ticket(tenant, actor)
+    prioritized = _accepted_change(
+        tenant,
+        authority.prioritize(
+            actor,
+            RequestPriority(uuid4(), captured.request_id, 1, "P1", "operator impact"),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert prioritized.version == PRIORITIZED_VERSION
+    triaged = _accepted_change(
+        tenant,
+        authority.triage(
+            actor,
+            RequestTriage(uuid4(), captured.request_id, prioritized.version, "ACCEPTED"),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert triaged.version == TRIAGED_VERSION
+    related = _accepted_change(
+        tenant,
+        authority.relate_ticket(
+            actor,
+            RequestTicketRelation(
+                uuid4(),
+                captured.request_id,
+                triaged.version,
+                ticket_id,
+                "required",
+                active=True,
+                reason="fulfills intent",
+            ),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert related.version == RELATED_VERSION
+    blocked = _accepted_change(
+        tenant,
+        authority.set_blocker(
+            actor,
+            RequestBlocker(
+                uuid4(),
+                captured.request_id,
+                related.version,
+                "operator-approval",
+                active=True,
+                reason="approval pending",
+            ),
+            telemetry=_telemetry(actor, uuid4()),
+        ),
+    )
+    assert blocked.version == BLOCKED_VERSION
+    return captured, ticket_id, blocked
+
+
+def test_request_triage_owner_relation_and_version_refusals_are_fail_closed(
+    tenant: TenantFixture,
+) -> None:
+    """OR-02/05: invalid authority, stale versions, and relation reuse mutate nothing."""
+
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    commander = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    first, ticket_id, relation = _canonical_request(tenant, authority, commander)
+    competing = _accepted_capture(tenant, authority, commander, "Competing intent")
+    _assert_ticket_reuse_refused(tenant, authority, commander, competing, ticket_id)
+    duplicate = _accepted_capture(tenant, authority, commander, "Repeated intent")
+    assert relation.version == RELATED_VERSION
+
+    duplicate_result = _accepted_change(
+        tenant,
+        authority.triage(
+            commander,
+            RequestTriage(
+                uuid4(), duplicate.request_id, 1, "DUPLICATE", "same outcome", first.request_id
+            ),
+            telemetry=_telemetry(commander, uuid4()),
+        ),
+    )
+    assert duplicate_result.state == "TRIAGED"
+    canonical_rewrite = authority.triage(
+        commander,
+        RequestTriage(
+            uuid4(), first.request_id, relation.version, "DUPLICATE", "cycle", duplicate.request_id
+        ),
+        telemetry=_telemetry(commander, uuid4()),
+    )
+    assert isinstance(canonical_rewrite, RecordProblem)
+    assert canonical_rewrite.code == "request-triage-forbidden"
+
+
+def _canonical_request(
+    tenant: TenantFixture, authority: Requests, commander: Actor
+) -> tuple[RequestCaptureResult, UUID, RequestChangeResult]:
+    first = _accepted_capture(tenant, authority, commander, "Canonical intent")
+    early = authority.triage(
+        commander,
+        RequestTriage(uuid4(), first.request_id, 1, "ACCEPTED"),
+        telemetry=_telemetry(commander, uuid4()),
+    )
+    assert isinstance(early, RecordProblem) and early.code == "request-triage-forbidden"
+    priority = _accepted_change(
+        tenant,
+        authority.prioritize(
+            commander,
+            RequestPriority(uuid4(), first.request_id, 1, "P2", "reviewed default"),
+            telemetry=_telemetry(commander, uuid4()),
+        ),
+    )
+    accepted = _accepted_change(
+        tenant,
+        authority.triage(
+            commander,
+            RequestTriage(uuid4(), first.request_id, priority.version, "ACCEPTED"),
+            telemetry=_telemetry(commander, uuid4()),
+        ),
+    )
+    stale = authority.assign_owner(
+        commander,
+        RequestOwner(uuid4(), first.request_id, 1, tenant.commander_id, "stale placement"),
+        telemetry=_telemetry(commander, uuid4()),
+    )
+    assert isinstance(stale, RecordProblem) and stale.code == "version-conflict"
+    ticket_id = _accepted_ticket(tenant, commander)
+    relation = _accepted_change(
+        tenant,
+        authority.relate_ticket(
+            commander,
+            RequestTicketRelation(
+                uuid4(),
+                first.request_id,
+                accepted.version,
+                ticket_id,
+                "required",
+                active=True,
+                reason="primary",
+            ),
+            telemetry=_telemetry(commander, uuid4()),
+        ),
+    )
+    return first, ticket_id, relation
+
+
+def _assert_ticket_reuse_refused(
+    tenant: TenantFixture,
+    authority: Requests,
+    commander: Actor,
+    competing: RequestCaptureResult,
+    ticket_id: UUID,
+) -> None:
+    priority = _accepted_change(
+        tenant,
+        authority.prioritize(
+            commander,
+            RequestPriority(uuid4(), competing.request_id, 1, "P2", "reviewed default"),
+            telemetry=_telemetry(commander, uuid4()),
+        ),
+    )
+    accepted = _accepted_change(
+        tenant,
+        authority.triage(
+            commander,
+            RequestTriage(uuid4(), competing.request_id, priority.version, "ACCEPTED"),
+            telemetry=_telemetry(commander, uuid4()),
+        ),
+    )
+    reused = authority.relate_ticket(
+        commander,
+        RequestTicketRelation(
+            uuid4(),
+            competing.request_id,
+            accepted.version,
+            ticket_id,
+            "required",
+            active=True,
+            reason="not reusable",
+        ),
+        telemetry=_telemetry(commander, uuid4()),
+    )
+    assert isinstance(reused, RecordProblem)
+    assert reused.code == "request-transition-forbidden"
+
+
+def _accepted_capture(
+    tenant: TenantFixture, authority: Requests, actor: Actor, text: str
+) -> RequestCaptureResult:
+    command = RequestCapture(uuid4(), "ctower", text)
+    result = _capture(authority, actor, command)
+    assert isinstance(result, RequestCaptureResult)
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    replay = _capture(authority, actor, command)
+    assert isinstance(replay, RequestCaptureResult)
+    return replay
+
+
+def _accepted_change(tenant: TenantFixture, result: object) -> RequestChangeResult:
+    assert isinstance(result, RequestChangeResult)
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    return result
+
+
+def _accepted_ticket(tenant: TenantFixture, actor: Actor) -> UUID:
+    command = TicketCommand(
+        client_command_id=uuid4(),
+        initial_custodian_id=tenant.commander_id,
+        priority="P2",
+        project_key="ctower",
+        source=SourceReference("request-test", f"ticket:{uuid4()}"),
+        title="Request fulfillment",
+    )
+    outcome = Work(PostgresRecord(tenant.database.runtime_dsn)).create_ticket(
+        actor, command, telemetry=_telemetry(actor, command.client_command_id)
+    )
+    assert not isinstance(outcome, RecordProblem)
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    return outcome.ticket.ticket_id
+
+
+def _close_ticket_fixture(tenant: TenantFixture, ticket_id: UUID) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            UPDATE lifecycle_episodes SET state = 'closed', closed_at = now()
+            WHERE tenant_id = %s AND ticket_id = %s
+            """,
+            (tenant.tenant_id, ticket_id),
+        )
 
 
 def _capture(

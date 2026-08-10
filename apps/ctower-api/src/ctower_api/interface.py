@@ -59,8 +59,8 @@ from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._project_event_routes import install_project_event_routes
-from ctower_api._request_routes import install_request_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
+from ctower_api._request_routes import install_request_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes

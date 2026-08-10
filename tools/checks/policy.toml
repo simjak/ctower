@@ -185,6 +185,7 @@ paths = [
   "packages/ctower-kernel/src/ctower_kernel/migration/**",
   "tools/migration/__init__.py",
   "tools/migration/ctower_project/**",
+  "tools/migration/operator_requests/**",
 ]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
@@ -262,7 +263,7 @@ allowed_dependencies = ["runtime-manifest-tools"]
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports", "process-execution-tools"]
 
 [[ownership]]
 name = "kernel-module-tests"
@@ -280,6 +281,7 @@ paths = [
   "tests/modules/projections/**",
   "tests/modules/proof/**",
   "tests/modules/record/**",
+  "tests/modules/requests/**",
   "tests/modules/runtime/**",
   "tests/modules/work/**",
   "tests/modules/workflow/**",

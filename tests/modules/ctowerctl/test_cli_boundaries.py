@@ -69,6 +69,8 @@ from ctowerctl._ops_commands import (
     query_command_names as ops_queries,
 )
 from ctowerctl._parser import authored_command_names, parse_arguments
+from ctowerctl._request_commands import mutation_command_names as request_mutations
+from ctowerctl._request_commands import query_command_names as request_queries
 from ctowerctl._session_commands import (
     mutation_command_names as session_mutations,
 )
@@ -122,6 +124,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | attention_mutations()
         | dream_dispatch_mutations()
         | dream_lane_mutations()
+        | request_mutations()
     )
     queries = (
         ticket_queries()
@@ -133,6 +136,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | knowledge_queries()
         | session_queries()
         | dream_dispatch_queries()
+        | request_queries()
     )
     refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}

@@ -21,8 +21,10 @@ Implementation labels are strict:
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
 
-The first-class Request aggregate is accepted target scope, not part of the current walking slice. The
-Mission Control ledger remains its authority until CT-I1-015's complete gated cutover.
+The first-class Request aggregate now exists as a tested Phase-1 development candidate: durable capture,
+append-only semantic facts, generated API/CLI operations, accepted-only read, restore evidence, and a
+read-only cutover analyzer. It has no portfolio authority. The Mission Control ledger remains authoritative
+until CT-I1-015's complete signed, fenced, reconciled one-way epoch succeeds.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery

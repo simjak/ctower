@@ -10,6 +10,9 @@ __all__ = ["RequestChangedPayload"]
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PROJECT = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+_MAX_CONTENT = 65536
+_MAX_SOURCE_KIND = 64
+_MAX_SOURCE_REF = 256
 _OPERATIONS = frozenset(
     {
         "capture",
@@ -48,26 +51,9 @@ class RequestChangedPayload:
     closure_outcome: str
 
     def __post_init__(self) -> None:
-        if self.operation not in _OPERATIONS:
-            raise ValueError("Request operation is outside the authored contract")
-        if not all(isinstance(item, UUID) for item in (self.request_id, self.submitted_by, self.owner_id)):
-            raise TypeError("Request identities must be UUIDs")
-        if self.request_number < 1 or self.version < 1:
-            raise ValueError("Request number and version must be positive")
-        if _PROJECT.fullmatch(self.project_key) is None:
-            raise ValueError("Request project is outside the authored contract")
-        if not 1 <= len(self.content) <= 65536 or _DIGEST.fullmatch(self.content_digest) is None:
-            raise ValueError("Request content is outside the authored contract")
-        if not 1 <= len(self.source_kind) <= 64 or not 1 <= len(self.source_ref) <= 256:
-            raise ValueError("Request source is outside the authored contract")
-        if self.triage not in {"UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"}:
-            raise ValueError("Request triage is outside the authored contract")
-        if self.priority not in {"P0", "P1", "P2"}:
-            raise ValueError("Request priority is outside the authored contract")
-        if not all(isinstance(item, UUID) for item in (*self.required_ticket_ids, *self.optional_ticket_ids)):
-            raise TypeError("Request ticket relations must contain UUIDs")
-        if self.closure_outcome not in {"open", "done"}:
-            raise ValueError("Request closure outcome is outside the authored contract")
+        _validate_header(self)
+        _validate_content(self)
+        _validate_state(self)
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -90,6 +76,41 @@ class RequestChangedPayload:
             "triage": self.triage,
             "version": self.version,
         }
+
+
+def _validate_header(payload: RequestChangedPayload) -> None:
+    if payload.operation not in _OPERATIONS:
+        raise ValueError("Request operation is outside the authored contract")
+    identities = (payload.request_id, payload.submitted_by, payload.owner_id)
+    if not all(isinstance(item, UUID) for item in identities):
+        raise TypeError("Request identities must be UUIDs")
+    if payload.request_number < 1 or payload.version < 1:
+        raise ValueError("Request number and version must be positive")
+    if _PROJECT.fullmatch(payload.project_key) is None:
+        raise ValueError("Request project is outside the authored contract")
+
+
+def _validate_content(payload: RequestChangedPayload) -> None:
+    if not 1 <= len(payload.content) <= _MAX_CONTENT:
+        raise ValueError("Request content is outside the authored contract")
+    if _DIGEST.fullmatch(payload.content_digest) is None:
+        raise ValueError("Request content is outside the authored contract")
+    if not 1 <= len(payload.source_kind) <= _MAX_SOURCE_KIND:
+        raise ValueError("Request source is outside the authored contract")
+    if not 1 <= len(payload.source_ref) <= _MAX_SOURCE_REF:
+        raise ValueError("Request source is outside the authored contract")
+
+
+def _validate_state(payload: RequestChangedPayload) -> None:
+    if payload.triage not in {"UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"}:
+        raise ValueError("Request triage is outside the authored contract")
+    if payload.priority not in {"P0", "P1", "P2"}:
+        raise ValueError("Request priority is outside the authored contract")
+    relations = (*payload.required_ticket_ids, *payload.optional_ticket_ids)
+    if not all(isinstance(item, UUID) for item in relations):
+        raise TypeError("Request ticket relations must contain UUIDs")
+    if payload.closure_outcome not in {"open", "done"}:
+        raise ValueError("Request closure outcome is outside the authored contract")
 
 
 def _validate_identity(payload: object, aggregate_id: UUID) -> None:
