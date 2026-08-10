@@ -10,10 +10,13 @@ from uuid import UUID
 import pytest
 
 from ctower_kernel.console import (
+    ConsoleGlobalSwitchCommand,
     ConsoleGrantFacts,
     ConsoleGrantIdentifiers,
+    ConsoleOutputBatch,
     ConsolePolicy,
     ConsoleSessionRef,
+    ConsoleSessionRevocation,
     ConsoleViewGrant,
     decide_view_grant,
 )
@@ -239,3 +242,43 @@ def test_session_ref_is_strict_and_never_accepts_a_wildcard_or_unbounded_value()
         _session_ref(runner_epoch=0)
     with pytest.raises(ValueError, match="opaque_backend_ref"):
         _session_ref(opaque_backend_ref="x" * 257)
+
+
+@pytest.mark.parametrize(
+    ("change", "message", "error"),
+    [
+        ({"tenant_id": "not-a-uuid"}, "UUID fields", TypeError),
+        ({"crew_name": "*"}, "crew_name", ValueError),
+        ({"assignment_kind": "*"}, "assignment_kind", ValueError),
+        ({"assignment_interval_sequence": 0}, "interval_sequence", ValueError),
+        ({"backend_incarnation": ""}, "backend_incarnation", ValueError),
+    ],
+)
+def test_session_reference_rejects_each_unbounded_identity_shape(
+    change: dict[str, object], message: str, error: type[Exception]
+) -> None:
+    with pytest.raises(error, match=message):
+        _session_ref(**change)
+
+
+def test_policy_and_stream_values_reject_malformed_metadata() -> None:
+    with pytest.raises(ValueError, match="policy_revision"):
+        _policy(policy_revision="*")
+    with pytest.raises(ValueError, match="source_cursor"):
+        ConsoleOutputBatch(payload=b"", source_cursor=-1)
+    with pytest.raises(ValueError, match="present together"):
+        ConsoleOutputBatch(payload=b"", source_cursor=0, gap=True)
+
+
+def test_control_fact_reasons_must_be_present_and_bounded() -> None:
+    with pytest.raises(ValueError, match="revocation reason"):
+        ConsoleSessionRevocation(ALLOWANCE_ID, "")
+    with pytest.raises(ValueError, match="kill-switch reason"):
+        ConsoleGlobalSwitchCommand(enabled=True, reason="x" * 501)
+
+
+def test_browser_binding_and_renewal_identity_are_exact() -> None:
+    unbound = replace(_facts().actor, human_binding_id=None)
+    assert _code(_facts(actor=unbound)) == "console-browser-session-required"
+    previous = _grant(human_binding_id=UUID("30000000-0000-0000-0000-000000000002"))
+    assert _code(_facts(), previous=previous) == "console-renewal-binding-mismatch"

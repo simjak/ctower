@@ -7,6 +7,8 @@ from subprocess import CompletedProcess
 from typing import cast
 from uuid import UUID
 
+import pytest
+
 from ctower_api.console_adapter import ConsoleBackendRegistration, TmuxConsoleAdapter
 from ctower_kernel.console import ConsoleBackendObservation, ConsoleOutputBatch, ConsoleSessionRef
 from ctower_kernel.record import RecordProblem
@@ -124,3 +126,94 @@ def test_adapter_source_has_no_record_tier_import() -> None:
     assert "psycopg" not in source
     assert "shell=True" not in source
     assert cast(object, source)
+
+
+def test_registration_and_adapter_configuration_fail_closed(tmp_path: Path) -> None:
+    log = tmp_path / "console.log"
+    log.write_bytes(b"output")
+    with pytest.raises(ValueError, match="identity"):
+        ConsoleBackendRegistration(
+            "", "target", log, _ref().runtime_attempt_id, "mission-control", 1
+        )
+    with pytest.raises(ValueError, match="epoch"):
+        ConsoleBackendRegistration(
+            "backend", "target", log, _ref().runtime_attempt_id, "mission-control", 0
+        )
+    with pytest.raises(ValueError, match="explicit"):
+        TmuxConsoleAdapter(
+            tmux_binary="",
+            socket_name="mc",
+            allowed_log_root=tmp_path,
+            registrations=(),
+        )
+
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+    registration = ConsoleBackendRegistration(
+        "backend", "target", log, _ref().runtime_attempt_id, "mission-control", 1
+    )
+    with pytest.raises(ValueError, match="allowlisted"):
+        TmuxConsoleAdapter(
+            tmux_binary="tmux",
+            socket_name="mc",
+            allowed_log_root=allowed,
+            registrations=(registration,),
+        )
+    with pytest.raises(ValueError, match="unique"):
+        TmuxConsoleAdapter(
+            tmux_binary="tmux",
+            socket_name="mc",
+            allowed_log_root=tmp_path,
+            registrations=(registration, registration),
+        )
+
+
+def test_tmux_process_and_incarnation_failures_are_typed(tmp_path: Path) -> None:
+    def absent(command: tuple[str, ...]) -> CompletedProcess[str]:
+        return CompletedProcess(command, 1, stdout="", stderr="absent")
+
+    unavailable, _ = _adapter(tmp_path, cast(_Runner, absent))
+    project_problem = unavailable.inspect(_ref())
+    assert isinstance(project_problem, RecordProblem)
+    assert project_problem.code == "console-backend-unavailable"
+
+    def incarnation(command: tuple[str, ...]) -> CompletedProcess[str]:
+        if command[-2:] == ("-v", "@project"):
+            return CompletedProcess(command, 0, stdout="ctower\n", stderr="")
+        return CompletedProcess(command, 1, stdout="", stderr="absent")
+
+    unavailable, _ = _adapter(tmp_path, cast(_Runner, incarnation))
+    incarnation_problem = unavailable.inspect(_ref())
+    assert isinstance(incarnation_problem, RecordProblem)
+    assert incarnation_problem.code == "console-backend-unavailable"
+
+    def malformed(command: tuple[str, ...]) -> CompletedProcess[str]:
+        if command[-2:] == ("-v", "@project"):
+            return CompletedProcess(command, 0, stdout="ctower\n", stderr="")
+        return CompletedProcess(command, 0, stdout="missing-delimiter\n", stderr="")
+
+    malformed_adapter, _ = _adapter(tmp_path, cast(_Runner, malformed))
+    malformed_problem = malformed_adapter.inspect(_ref())
+    assert isinstance(malformed_problem, RecordProblem)
+    assert malformed_problem.code == "console-adapter-malformed"
+
+
+def test_log_read_refuses_invalid_ranges_and_reports_truncation(tmp_path: Path) -> None:
+    adapter, log = _adapter(tmp_path, _Runner())
+    for ref, cursor, maximum, code in (
+        (_ref(adapter_key="other-v1"), 0, 1, "console-adapter-unregistered"),
+        (_ref(), -1, 1, "console-cursor-invalid"),
+        (_ref(), 0, 0, "console-cursor-invalid"),
+    ):
+        outcome = adapter.read(ref, after_cursor=cursor, maximum_bytes=maximum)
+        assert isinstance(outcome, RecordProblem)
+        assert outcome.code == code
+
+    truncated = adapter.read(_ref(), after_cursor=log.stat().st_size + 1, maximum_bytes=1)
+    assert isinstance(truncated, ConsoleOutputBatch)
+    assert truncated.gap
+    assert truncated.gap_reason == "source-truncated"
+    log.unlink()
+    absent = adapter.read(_ref(), after_cursor=0, maximum_bytes=1)
+    assert isinstance(absent, RecordProblem)
+    assert absent.code == "console-output-unavailable"

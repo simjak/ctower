@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from uuid import UUID
 
 import pytest
@@ -54,3 +55,13 @@ def test_wrapping_key_must_be_exactly_256_bits_and_reference_is_not_a_value() ->
         AesGcmConsoleCipher(wrapping_key=b"short", wrapping_key_reference="secret-ref")
     with pytest.raises(ValueError, match="reference"):
         AesGcmConsoleCipher(wrapping_key=MASTER_KEY, wrapping_key_reference="plaintext-secret")
+
+
+def test_decryption_rejects_a_different_wrapping_key_reference() -> None:
+    envelope = _cipher().encrypt(OBJECT_ONE, b"pane bytes", aad=b"tenant/session/1")
+    with pytest.raises(ValueError, match="reference mismatch"):
+        _cipher().decrypt(
+            replace(envelope, wrapping_key_reference="vault:other-console-key"),
+            reader="console_output_reader",
+            aad=b"tenant/session/1",
+        )

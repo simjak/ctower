@@ -5,6 +5,8 @@ from __future__ import annotations
 import base64
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from ctower_kernel.console import ConsoleStreamWindow, StreamDisposition, encode_console_chunks
 
 NOW = datetime(2026, 8, 10, 22, 0, tzinfo=UTC)
@@ -62,3 +64,29 @@ def test_malformed_cursor_or_unprovable_range_is_an_explicit_gap() -> None:
     window.mark_gap("cursor-unavailable")
     assert window.gap_required
     assert window.gap_reason == "cursor-unavailable"
+
+
+def test_stream_window_rejects_negative_and_empty_accounting_inputs() -> None:
+    window = _window()
+    with pytest.raises(ValueError, match="pending size"):
+        window.add_pending(-1)
+    with pytest.raises(ValueError, match="pending flush"):
+        window.flush_pending(1)
+    with pytest.raises(ValueError, match="gap reason"):
+        window.mark_gap("")
+    with pytest.raises(ValueError, match="stream size"):
+        window.admit_delivery(-1, at=NOW)
+    with pytest.raises(ValueError, match="rolling byte bounds"):
+        ConsoleStreamWindow(
+            delivery_window_bytes=0,
+            delivery_window_seconds=60,
+            replay_window_bytes=1,
+            replay_window_seconds=60,
+            pending_bytes=1,
+        )
+
+
+@pytest.mark.parametrize("size", [0, 16 * 1024 + 1])
+def test_chunk_encoder_refuses_out_of_contract_decoded_bounds(size: int) -> None:
+    with pytest.raises(ValueError, match="decoded_chunk_bytes"):
+        tuple(encode_console_chunks(b"payload", decoded_chunk_bytes=size))
