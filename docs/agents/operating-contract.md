@@ -60,7 +60,7 @@ your intent may no longer be valid.
 One line, maximum 8192 characters, trailing newline stripped.
 
 ```bash
-printf '%s\n' "${authority}" | ctl --base-url http://127.0.0.1:8080 ticket query "${ticket_id}"
+printf '%s\n' "${authority}" | ctl --base-url http://127.0.0.1:8080 ticket query "${ticket_id}" --project-key ctower
 ```
 
 Never place a credential in an argument, an environment variable, or a file the CLI reads. Missing or
@@ -197,7 +197,7 @@ transfer is a protected operation and is separately audited.
 For one-off interactive creation, let the client create the key:
 
 ```text
-run: ticket create --priority P2 --source-kind mission-control --source-ref R2257 --title …
+run: ticket create --priority P2 --project-key ctower --source-kind mission-control --source-ref R2257 --title …
 exit 0   -> accepted. record command_id and ticket_id. done.
 exit 75  -> do not enter create again. run `spool drain` with the same origin and authority.
 ```
@@ -227,12 +227,14 @@ The Board is the cross-ticket index. For source `mission-control / R2238`, use t
 ```bash
 printf '%s\n' "${authority}" |
   ctl --base-url "${base_url}" board query \
+    ctower \
     --source-kind mission-control --source-ref R2238
 
 # Only when cards is empty:
 printf '%s\n' "${authority}" |
   ctl --base-url "${base_url}" ticket create \
     --priority P2 \
+    --project-key ctower \
     --source-kind mission-control \
     --source-ref R2238 \
     --title "Mirror R2238"

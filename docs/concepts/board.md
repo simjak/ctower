@@ -1,87 +1,50 @@
-# Board lanes
+# Boards and portfolio
 
-The Board is the only cross-ticket work index. It is a read-only projection: a deterministic fold of ticket
-facts into six lanes. You cannot write to it, and no lane is a stored status you can set.
+The **Board** is the read-only list of tickets for one project. The **Portfolio** is the read-only summary
+across all configured projects.
 
-## The six lanes
+Both are **projections**. A projection is a view rebuilt from saved facts. You do not drag a card to change
+truth. You change the ticket, and the view updates from that change.
 
-`backlog`, `ready`, `in_progress`, `in_review`, `blocked`, `complete`.
+## Why there are two views
 
-## How a lane is derived
+The Board helps a person work inside one project. The Portfolio helps an operator see where work and human
+attention are concentrated across projects. Keeping them separate avoids mixing project authority while
+still giving one cross-project view.
 
-The fold is small enough to state exactly. From `packages/ctower-kernel/src/ctower_kernel/projections/`:
+## The six Board lanes
 
-```text
-base lane:
-    not admitted                    -> backlog
-    admitted, no active workflow    -> ready
-    active workflow,
-        stage activity_class ==
-        "verification"              -> in_review
-    otherwise                       -> in_progress
+- **Backlog** contains tickets that have not been admitted to active work.
+- **Ready** contains admitted tickets with no active workflow.
+- **In progress** contains active work stages.
+- **In review** contains active verification stages.
+- **Blocked** contains tickets with an open blocker that affects the Board.
+- **Complete** contains resolved or closed tickets.
 
-then, in precedence order:
-    lifecycle is resolved or closed -> complete   (underlying_lane cleared)
-    a blocker is open               -> blocked    (base lane kept as underlying_lane)
-```
+Blocked is an overlay. The card keeps the lane it will return to after the blocker is resolved. Complete
+takes precedence over an old blocker.
 
-Three consequences worth internalising:
+The Board derives In review from the stage's activity class, not from the stage name. An **activity class**
+states whether a stage is work or verification.
 
-1. **`in_review` comes from the stage's `activity_class`, not from a stage named "review".** A workflow that
-   calls its verification stage `security-audit` still lands in `in_review`. The Board never has to know
-   your stage vocabulary.
-2. **`blocked` is an overlay, not a destination.** The card keeps `underlying_lane` so you can see what it
-   will return to. Unblocking restores that lane rather than guessing.
-3. **`complete` wins over `blocked`.** A resolved ticket with a stale open blocker reads as complete, and
-   `underlying_lane` is cleared.
+## What the Portfolio shows
 
-Cancellation is specified as a separate terminal disposition rather than a lane. Nothing produces it at this
-revision — see [lifecycle episode](tickets.md#lifecycle-episode).
+Open `/portfolio` to see ticket counts by lane and project, items that need a human, and unread seat
+messages. The view reads each configured project Board and one Inbox projection.
 
-## What a card carries
+An unreachable Board is not shown as a project with zero work. It is excluded from totals and marked as not
+reached. An Inbox identity that cannot receive messages is not shown as zero unread. Threads that cannot be
+linked to a project stay in a separate unlinked count.
 
-Every `BoardCard` field is required by the contract; optional values are explicitly `null` rather than
-absent:
+## How to use the views
 
-| Field | Notes |
-|---|---|
-| `ticket_id`, `title`, `version` | Identity and aggregate version |
-| `lane`, `underlying_lane` | As derived above; `underlying_lane` is non-null only while blocked |
-| `priority` | `P0`, `P1`, or `P2` |
-| `stage_key`, `stage_label`, `activity_class` | `null` when no workflow is active; `activity_class` is `work` or `verification` |
-| `custodian_id`, `assignee_id` | Accountability versus current worker — see [custody](tickets.md#custody) |
-| `blocker_reason`, `blocker_opened_at` | Non-null while blocked |
-| `risk` | Derived, never a writable field |
-| `delivery_facts` | Derived delivery observations |
+Open `/board` and choose a project tab. Use the lane, priority, stage, owner, assignee, and source filters to
+narrow the list. Select a card to open the ticket.
 
-## Why the Board tells you how stale it is
+Open `/portfolio` when you need a cross-project check. Select a project row to move into its Board. The
+Portfolio has no write controls.
 
-A `BoardView` carries `source_watermark`, `projection_watermark`, and a `health` value of `CURRENT` or
-`STATE_UNKNOWN`.
+From the command line, use `ctl board query <project>`. All filters are optional and combine. See the
+[CLI reference](../reference/cli.md#board-and-health).
 
-A projection that has fallen behind, or cannot establish its own validity, says so. It does not serve
-plausible old rows as if they were current. This is the same discipline that makes a write report
-["committed here, acknowledgement pending"](durability.md): the system reports what it knows, including that
-it does not know.
-
-The specified — and [not yet built](proof.md#typed-evidence-slots) — evidence-slot rule extends this: once
-slots exist, Board summaries must show the unfilled and unknown counts and expose the slot keys in API and
-CLI detail, and a declared slot is never dropped from the denominator to make coverage look better.
-
-## Querying it
-
-```bash
-ctl --base-url http://127.0.0.1:8080 board query \
-  --source-kind mission-control --source-ref R2238
-```
-
-All seven filters are optional and combine: `--lane`, `--priority`, `--stage-key`, `--custodian-id`,
-`--assignee-id`, `--source-kind`, and `--source-ref`. The operation is `GET /v1/board`. It is a query,
-never spooled, and returns exit `0` on success.
-
-## Related
-
-- [Ticket and lifecycle episode](tickets.md) — the facts the fold reads.
-- [Project Delivery projection](project-delivery.md) — the other projection, at checkpoint rather than
-  ticket granularity.
-- [CLI reference](../reference/cli.md#board-and-health) — the exact flags.
+Always read the health and source notes. A missing or stale source is not an empty project.

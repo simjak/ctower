@@ -17,7 +17,8 @@ step, and nothing they do reaches the outside world without a narrow, short-live
 that records what happened.
 
 > [!IMPORTANT]
-> **Status: pre-alpha, version `0.0.0`.** The only supported install is the private-VPS, loopback-only E2
+> **Status: pre-alpha, repository version `0.21.0`.** The authored HTTP contract remains version `0.0.0`
+> because it has no compatibility promise. The only supported install is the private-VPS, loopback-only E2
 > shadow runtime for low-value reconstructible dogfood. There is no release, published package, hosted
 > service, external/product deployment, backup/restore product, product browser UI, runner, CP3-D deployment, or
 > source-of-truth authority. Do not use this to manage real work yet.
