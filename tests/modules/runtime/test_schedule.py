@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime, time
+from pathlib import Path
 
 import pytest
 
+from ctower_api.control_worker import load_routine_revisions
 from ctower_kernel.runtime import (
     CatchUpPolicy,
     ConcurrencyPolicy,
@@ -14,6 +16,8 @@ from ctower_kernel.runtime import (
     RoutineRevision,
     ScheduleKind,
 )
+
+ROOT = Path(__file__).parents[3]
 
 
 def test_wall_clock_once_records_dst_gap_and_uses_earlier_repeated_offset() -> None:
@@ -113,6 +117,43 @@ def test_minute_hour_set_fires_at_each_authored_utc_mark() -> None:
     )
     assert selected_hours.next_fire_after(datetime(2026, 8, 10, 8, 23, tzinfo=UTC)) == datetime(
         2026, 8, 10, 14, 23, tzinfo=UTC
+    )
+
+
+def test_loaded_hour_specific_beats_preserve_vilnius_wall_clock_across_dst() -> None:
+    beats = {
+        revision.routine_ref: revision
+        for revision in load_routine_revisions(ROOT / "packs")
+        if revision.routine_ref in {"ctower.beat.digest@1", "ctower.beat.sprint@1"}
+    }
+    digest = beats["ctower.beat.digest@1"]
+    sprint = beats["ctower.beat.sprint@1"]
+
+    def next_four(after: datetime) -> tuple[datetime, ...]:
+        fires: list[datetime] = []
+        for _ in range(4):
+            after = sprint.next_fire_after(after)
+            fires.append(after)
+        return tuple(fires)
+
+    assert digest.timezone == sprint.timezone == "Europe/Vilnius"
+    assert digest.next_fire_after(datetime(2026, 8, 10, tzinfo=UTC)) == datetime(
+        2026, 8, 10, 4, 12, tzinfo=UTC
+    )
+    assert digest.next_fire_after(datetime(2026, 12, 10, tzinfo=UTC)) == datetime(
+        2026, 12, 10, 5, 12, tzinfo=UTC
+    )
+    assert next_four(datetime(2026, 8, 10, 20, tzinfo=UTC)) == (
+        datetime(2026, 8, 10, 23, 23, tzinfo=UTC),
+        datetime(2026, 8, 11, 5, 23, tzinfo=UTC),
+        datetime(2026, 8, 11, 11, 23, tzinfo=UTC),
+        datetime(2026, 8, 11, 17, 23, tzinfo=UTC),
+    )
+    assert next_four(datetime(2026, 12, 10, 20, tzinfo=UTC)) == (
+        datetime(2026, 12, 11, 0, 23, tzinfo=UTC),
+        datetime(2026, 12, 11, 6, 23, tzinfo=UTC),
+        datetime(2026, 12, 11, 12, 23, tzinfo=UTC),
+        datetime(2026, 12, 11, 18, 23, tzinfo=UTC),
     )
 
 

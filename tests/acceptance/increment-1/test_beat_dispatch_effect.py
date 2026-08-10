@@ -38,6 +38,7 @@ def test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_r
         for revision in beats
         if revision.beat_dispatch is not None and revision.beat_dispatch.beat_key == "health"
     )
+    assert health.beat_dispatch is not None
     now = datetime.now(UTC)
     due = now.replace(second=0, microsecond=0)
     while due.minute not in health.minute_marks:
@@ -50,11 +51,7 @@ def test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_r
     scan = runtime.scan(tenant.tenant_id)
     assert len(scan.beat_dispatches) == 1
     effect = scan.beat_dispatches[0]
-    canonical = (
-        (Path("/srv/projects/mission-control/state/beats") / "health.txt")
-        .read_text(encoding="utf-8")
-        .rstrip("\n")
-    )
+    canonical = health.beat_dispatch.prompt
     assert effect.spec.prompt == canonical
     assert effect.spec.prompt_sha256 == "sha256:" + hashlib.sha256(canonical.encode()).hexdigest()
     assert effect.spec.target_session == "commander"

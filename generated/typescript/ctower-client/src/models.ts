@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:114afd023e702447140e1d004ed55d31c79d1a05c43b111f9fcc09848c039391
+// Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
 
 export type ActivityClass = "work" | "verification";
 
@@ -135,7 +135,7 @@ export type BeatSchedule = Readonly<{
   readonly "hours": null | ReadonlyArray<number>;
   readonly "kind": "minute_hour_set";
   readonly "minutes": ReadonlyArray<number>;
-  readonly "timezone": "UTC";
+  readonly "timezone": string;
 }>;
 
 export type BlockIntent = Readonly<{

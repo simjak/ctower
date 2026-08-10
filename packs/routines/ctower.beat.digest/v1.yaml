@@ -1,8 +1,8 @@
 {
   "schema_id": "ctower.routine/v3",
   "routine_ref": "ctower.beat.digest@1",
-  "revision_digest": "sha256:861bb079c7223bcc43e2c2d8ae883f6d41bf30a0e3077a6fb87e9b4500b7c6b9",
-  "schedule": {"kind": "minute_hour_set", "timezone": "UTC", "minutes": [12], "hours": [7]},
+  "revision_digest": "sha256:1f1e07c624a38955fef20445c5a1037ee4529cbfac29ca4474fb078b452b26a3",
+  "schedule": {"kind": "minute_hour_set", "timezone": "Europe/Vilnius", "minutes": [12], "hours": [7]},
   "dst_policy": "wall_clock_once",
   "concurrency": "always_enqueue_bounded",
   "catch_up": "skip_missed",

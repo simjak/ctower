@@ -453,7 +453,9 @@ new boundary or director-cron mutation.
 **Stable work:** `CT-I1-019`.
 
 After the digest read shape exists, register the five operator-ordered Mission Control beats as immutable
-UTC Routine revisions. Each revision pins the complete canonical prompt and its digest at registration;
+Routine revisions. Each revision pins its operator-authorized timezone and minute/hour marks plus the complete
+canonical prompt and its digest at registration. Digest and sprint use literal Europe/Vilnius hours so DST
+offset changes preserve the operator's civil-time intent.
 queued occurrences transactionally emit that same prompt for the fixed DIRECTOR target. Operator-only
 reads list the five registered revisions, their next fires, and emitted effects.
 
@@ -465,8 +467,9 @@ crontab entries only after the live health round trip is confirmed.
 
 **Exit:** AC-OPS-13 and the CT-I1-019 contract, schedule, PostgreSQL, API/CLI, and consumer suites pass; the
 shadow serve lists exactly five registered beat revisions; one health occurrence carries the exact full
-prompt through the consumer into DIRECTOR; a replay records zero injection; the UTC cron proof, fallback
-recommendation, same-candidate docs, full release gate, and Director receipt confirmation are recorded.
+prompt through the consumer into DIRECTOR; a replay records zero injection; the retired-cron proof, timezone
+schedule proof, fallback recommendation, same-candidate docs, full release gate, and Director receipt
+confirmation are recorded.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

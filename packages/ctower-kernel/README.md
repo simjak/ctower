@@ -17,7 +17,7 @@ lineage; four idempotent nightly dream effects whose consumption derives lane, c
 effort, and tier from immutable substrate bindings and links the output digest to Routine custody; one
 operator-authenticated, closed-registry ceremony that appends the canonical event and creates that immutable
 binding exactly once;
-five immutable UTC fleet-beat revisions whose queued occurrences emit digest-verified full prompts for the
+five immutable fleet-beat revisions whose queued occurrences emit digest-verified full prompts for the
 fixed DIRECTOR session, plus operator-only routine/effect reads that grant no delivery or consumption
 authority;
 independently attributable health; and a project-scoped typed event feed whose exact kind set is

@@ -2124,3 +2124,21 @@ Rejected alternatives:
 - Treating successful `tmux send-keys` as server consumption. No authenticated beat executor binding or
   durable target acknowledgement currently exists, so such a receipt would assert authority and proof the
   system does not possess.
+
+## D53 — Hour-specific fleet beats preserve Europe/Vilnius civil time (operator, 2026-08-11, issue #433)
+
+This supersedes D52 clause 1 only for schedule timezone custody. The operator's stated digest and sprint
+hours are Europe/Vilnius civil times, not UTC hours. Encoding them as UTC made both routines three hours
+late during EEST and would remain wrong by a different offset during EET.
+
+1. `ctower.beat.digest@1` pins minute `12`, hour `7`, and timezone `Europe/Vilnius`.
+2. `ctower.beat.sprint@1` pins minute `23`, hours `2, 8, 14, 20`, and timezone `Europe/Vilnius`.
+3. The Runtime resolves those literal civil-time marks through the installed IANA zone and records the
+   resulting UTC next-fire instant. Summer and winter schedule tests prove the offset follows DST.
+4. The three minute-only fleet beats remain UTC because their operator intent is an offset-independent
+   cadence rather than named civil hours. All other D52 custody and delivery boundaries remain unchanged.
+
+Rejected alternative:
+
+- Shifting the two schedules to fixed UTC hours. That reproduces the intended EEST instants only until the
+  next DST transition and silently moves the operator's civil-time schedule by one hour in winter.

@@ -34,7 +34,7 @@
       "required": ["kind", "timezone", "minutes", "hours"],
       "properties": {
         "kind": {"const": "minute_hour_set"},
-        "timezone": {"const": "UTC"},
+        "timezone": {"type": "string", "minLength": 1, "maxLength": 128},
         "minutes": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "integer", "minimum": 0, "maximum": 59}

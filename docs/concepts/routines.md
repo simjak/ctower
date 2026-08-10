@@ -20,8 +20,8 @@ The repository contains twelve fixed routine definitions:
 - a daily backup job definition;
 - an hourly record-anchor job definition; and
 - four nightly dream routines, one for each project view and one for the whole portfolio; and
-- five UTC fleet-beat routines for health, migration, bh-loop monitoring, sprint reconciliation, and the
-  operator morning digest.
+- five fleet-beat routines: UTC cadences for health, migration, and bh-loop monitoring, plus
+  Europe/Vilnius civil-time schedules for sprint reconciliation and the operator morning digest.
 
 The scheduler records occurrences for the fixed maintenance definitions. Their real backup, anchor, and
 synthetic effects are not all active product operations. The dream routines emit scoped dream-dispatch

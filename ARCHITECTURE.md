@@ -218,8 +218,9 @@ thread-to-ticket links visible from Board cards, including atomic public promoti
 ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
 caller-observed token counts; twelve fixed Routine revisions (three I1 maintenance revisions, four
-nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five UTC fleet-beat
-revisions whose immutable full-prompt effects target the external DIRECTOR delivery ledger); an accepted-only,
+nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
+revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
+full-prompt effects target the external DIRECTOR delivery ledger); an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,

@@ -25,9 +25,16 @@ EXPECTED_PROMPT_DIGESTS = {
     "migration": "sha256:a533640c4f206f3afd3fcb5bd9b1e0abc8c4b2495bc02cd13437739cd1400f6d",
     "sprint": "sha256:a0fd8e11dbd81634d66025298bc60868c3cc5967bd3fc9e821fd53cb444ec963",
 }
+EXPECTED_TIMEZONES = {
+    "bhloop": "UTC",
+    "digest": "Europe/Vilnius",
+    "health": "UTC",
+    "migration": "UTC",
+    "sprint": "Europe/Vilnius",
+}
 
 
-def test_five_fleet_beat_packs_pin_exact_prompts_and_utc_schedules() -> None:
+def test_five_fleet_beat_packs_pin_exact_prompts_and_schedules() -> None:
     schema = _json(ROOT / "contracts/runtime/routine-v3.schema.json")
     validator = Draft202012Validator(schema)
 
@@ -42,7 +49,7 @@ def test_five_fleet_beat_packs_pin_exact_prompts_and_utc_schedules() -> None:
         assert pack["routine_ref"] == f"ctower.beat.{beat_key}@1"
         assert pack["schedule"] == {
             "kind": "minute_hour_set",
-            "timezone": "UTC",
+            "timezone": EXPECTED_TIMEZONES[beat_key],
             "minutes": sorted(minutes),
             "hours": sorted(hours) if hours is not None else None,
         }
