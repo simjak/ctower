@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/simjak/ctower/compare/v0.22.0...v0.23.0) (2026-08-10)
+
+
+### Features
+
+* **rulings:** add immutable agreements ledger ([#422](https://github.com/simjak/ctower/issues/422)) ([a4f0eeb](https://github.com/simjak/ctower/commit/a4f0eeb88a0459046d975950292f75866db01f4b))
+
 ## [0.22.0](https://github.com/simjak/ctower/compare/v0.21.0...v0.22.0) (2026-08-10)
 
 
