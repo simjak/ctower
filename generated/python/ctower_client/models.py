@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
+Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
 """
 
 from __future__ import annotations
@@ -205,6 +205,10 @@ __all__ = [
     "ReviewDispatchConsumption",
     "ReviewDispatchEffect",
     "ReviewDispatchEffectList",
+    "RulingAppendRequest",
+    "RulingAppendResult",
+    "RulingList",
+    "RulingRow",
     "SeatCatalogRevision",
     "SeatCredentialIssueRequest",
     "SeatCredentialReceipt",
@@ -1366,6 +1370,25 @@ class ReviewDispatchConsumption(_BoundaryModel):
     consumed_at: _Rfc3339DateTime
 
 
+class RulingAppendRequest(_BoundaryModel):
+    supersedes_ruling_id: UUID | None = None
+    verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
+class RulingRow(_BoundaryModel):
+    durability_state: Literal["accepted"]
+    freshness: Annotated[int, Field(ge=1, le=9007199254740991)]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    recorded_at: _Rfc3339DateTime
+    recorded_by: UUID
+    ruling_id: UUID
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    superseded_by_ruling_id: UUID | None
+    supersedes_ruling_id: UUID | None
+    verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
+    verbatim_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
 class SeatCatalogRevision(_BoundaryModel):
     catalog_key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
     revision: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -2096,6 +2119,7 @@ class Problem(_BoundaryModel):
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
+        "invalid-ruling",
         "inbox-already-promoted",
         "inbox-acknowledgement-not-advancing",
         "inbox-message-recipient-mismatch",
@@ -2141,6 +2165,10 @@ class Problem(_BoundaryModel):
         "request-source-forbidden",
         "request-transition-forbidden",
         "request-triage-forbidden",
+        "ruling-already-superseded",
+        "ruling-not-found",
+        "ruling-project-unavailable",
+        "ruling-seat-not-found",
         "reauthentication-required",
         "request-body-too-large",
         "proof-candidate-author-mismatch",
@@ -2348,6 +2376,30 @@ class ReviewDispatchEffect(_BoundaryModel):
     consumption: ReviewDispatchConsumption | None
     verdict_ids: tuple[UUID, ...]
     status: Literal["emitted", "consumed", "verdict_linked"]
+
+
+class RulingAppendResult(_BoundaryModel):
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    recorded_at: _Rfc3339DateTime
+    recorded_by: UUID
+    ruling_id: UUID
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    supersedes_ruling_id: UUID | None
+
+
+class RulingList(_BoundaryModel):
+    answered_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    answered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    observed_at: _Rfc3339DateTime
+    requested_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    requested_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    rows: tuple[RulingRow, ...]
+    unanswered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class SeatCredentialIssueRequest(_BoundaryModel):

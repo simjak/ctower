@@ -46,6 +46,7 @@ from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.work.requests import PostgresRequests, Requests
+from ctower_kernel.work.rulings import PostgresRulings, Rulings
 from ctower_kernel.workflow import Workflow, WorkflowGraph
 from ctower_kernel.workflow.postgres import PostgresWorkflow, PostgresWorkflowPolicyPins
 
@@ -297,6 +298,7 @@ def application(
         workflow=workflow,
         work=work,
         requests=Requests(PostgresRequests(runtime_dsn), telemetry=recorder),
+        rulings=Rulings(PostgresRulings(runtime_dsn), telemetry=recorder),
         catalog=catalog if catalog_backed else None,
         projections=(
             Projections(PostgresProjections(projection_dsn)) if projection_dsn is not None else None

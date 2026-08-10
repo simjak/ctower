@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0059_request_authority.sql",
-    "schema_sha256": "sha256:0d15d3ed93ba31b848f1f6161d56f3d81edb9c9bca67226d19d8ceefe2b4865d",
+    "through": "0060_rulings_ledger.sql",
+    "schema_sha256": "sha256:c0a3014f9823d155887544ed48a9242f25f149fcb08ff74fda122c5ea5b8a7b5",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:0aa8aa0e2f9fd5e80b30d37dd6640a93c33ed3095edae870dacfe81f91ceb61a"
+    "schema_object_sum256": "sum256:c5f273c5d2bae6f3d34ba0937bf658322086cc77936fb46b38215288f63b5e9a"
   },
   "migrations": [
     {
@@ -557,6 +557,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_requests.py::test_request_capture_ack_replay_and_authoritative_list",
       "rollback_or_forward_compensation": "Preserve every Request number, UUID, inbound provenance event, append-only Request fact, command result, canonical event, outbox row, allocator high-water, source alias, and import manifest; append reviewed forward compensation and never restore a prior writer or reuse an issued Request number.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture the accepted Request, inbound-event, command-result, event, outbox, and allocator counts and high-waters by tenant plus a verified database backup; the new Request tables start empty until the one-way authority epoch."
+    },
+    {
+      "path": "0060_rulings_ledger.sql",
+      "sha256": "sha256:e2ccc5607188cb177e9c8227a37469ba00e00e687f3cafef46c623789ab10202",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_rulings.py::test_ruling_is_byte_exact_immutable_citable_and_superseded_by_a_new_fact",
+      "rollback_or_forward_compensation": "Preserve every byte-exact Ruling, stable identity, seat attribution, canonical event, command result, outbox row, and supersession link; append a reviewed successor or forward compensation and never edit or delete an accepted Ruling fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture Ruling, project-seat, event, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; the new Ruling table starts empty."
     }
   ]
 }

@@ -84,7 +84,8 @@
         "attention.finding_appended",
         "attention.finding_disposition_recorded",
         "knowledge.document_registered",
-        "request.changed"
+        "request.changed",
+        "ruling.recorded"
       ]
     },
     "origin": {
@@ -117,7 +118,7 @@
     },
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$"
     },
     "tenant_id": {
       "type": "string",
@@ -572,6 +573,22 @@
             },
             "payload": {
               "$ref": "#/$defs/requestChanged"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ruling.recorded"
+            },
+            "origin": {
+              "const": "api"
+            },
+            "stream_id": {
+              "pattern": "^ruling:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/rulingRecorded"
             }
           }
         }
@@ -2143,6 +2160,24 @@
         "submitted_by": {"type": "string", "format": "uuid"},
         "triage": {"enum": ["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"]},
         "version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "rulingRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_key", "recorded_at", "recorded_by", "ruling_id", "seat_key",
+        "supersedes_ruling_id", "verbatim", "verbatim_digest"
+      ],
+      "properties": {
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "recorded_by": {"type": "string", "format": "uuid"},
+        "ruling_id": {"type": "string", "format": "uuid"},
+        "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "supersedes_ruling_id": {"type": ["string", "null"], "format": "uuid"},
+        "verbatim": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "verbatim_digest": {"$ref": "#/$defs/sha256"}
       }
     }
   }

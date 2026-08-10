@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
+// Authored contract digest: sha256:3f954e98f80e0e0b3ba190c0471ff8920fd74bb78341d4bb83d2c5bbba227ddc
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -44,6 +44,11 @@ export type AppendAttentionFindingInput = Readonly<{
 export type AppendCtowerProjectImportCorrectionInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectImportCorrectionRequest;
+}>;
+
+export type AppendRulingInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RulingAppendRequest;
 }>;
 
 export type ApplyCompanyBundleInput = Readonly<{
@@ -194,6 +199,10 @@ export type GetProjectDeliveryInput = Readonly<{
   readonly "projectKey": string;
 }>;
 
+export type GetRulingInput = Readonly<{
+  readonly "rulingId": string;
+}>;
+
 export type GetSyntheticWorkflowRunInput = Readonly<{
   readonly "runId": string;
 }>;
@@ -249,6 +258,10 @@ export type ListRequestsInput = Readonly<{
 
 export type ListReviewDispatchEffectsInput = Readonly<{
   readonly "ticketId": string;
+}>;
+
+export type ListRulingsInput = Readonly<{
+  readonly "projectKey"?: string;
 }>;
 
 export type ListTicketAssignmentsInput = Readonly<{
@@ -425,6 +438,7 @@ export type OperationInputs = Readonly<{
   readonly "addTicketRelation": AddTicketRelationInput;
   readonly "appendAttentionFinding": AppendAttentionFindingInput;
   readonly "appendCtowerProjectImportCorrection": AppendCtowerProjectImportCorrectionInput;
+  readonly "appendRuling": AppendRulingInput;
   readonly "applyCompanyBundle": ApplyCompanyBundleInput;
   readonly "applyCtowerProjectImportBatch": ApplyCtowerProjectImportBatchInput;
   readonly "applyTicketIntent": ApplyTicketIntentInput;
@@ -452,6 +466,7 @@ export type OperationInputs = Readonly<{
   readonly "getCtowerProjectImportRun": GetCtowerProjectImportRunInput;
   readonly "getKnowledgeDocument": GetKnowledgeDocumentInput;
   readonly "getProjectDelivery": GetProjectDeliveryInput;
+  readonly "getRuling": GetRulingInput;
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
@@ -464,6 +479,7 @@ export type OperationInputs = Readonly<{
   readonly "listProjectSessions": ListProjectSessionsInput;
   readonly "listRequests": ListRequestsInput;
   readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
+  readonly "listRulings": ListRulingsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
@@ -503,6 +519,7 @@ export type OperationResults = Readonly<{
   readonly "addTicketRelation": Models.WorkReceipt;
   readonly "appendAttentionFinding": Models.AttentionFindingResult;
   readonly "appendCtowerProjectImportCorrection": Models.CtowerProjectMigrationReceipt;
+  readonly "appendRuling": Models.RulingAppendResult;
   readonly "applyCompanyBundle": Models.CompanyBundleCommandResult;
   readonly "applyCtowerProjectImportBatch": Models.CtowerProjectImportBatchResult;
   readonly "applyTicketIntent": Models.WorkReceipt;
@@ -530,6 +547,7 @@ export type OperationResults = Readonly<{
   readonly "getCtowerProjectImportRun": Models.CtowerProjectImportRun;
   readonly "getKnowledgeDocument": Models.KnowledgeDocument;
   readonly "getProjectDelivery": Models.ProjectDeliveryView;
+  readonly "getRuling": Models.RulingRow;
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
@@ -542,6 +560,7 @@ export type OperationResults = Readonly<{
   readonly "listProjectSessions": Models.ProjectSessionPage;
   readonly "listRequests": Models.RequestList;
   readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
+  readonly "listRulings": Models.RulingList;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "listTicketSessions": Models.TicketSessionList;
@@ -627,6 +646,12 @@ export class CtowerClient {
     input: AppendCtowerProjectImportCorrectionInput,
   ): Promise<Models.CtowerProjectMigrationReceipt> {
     return this.execute("appendCtowerProjectImportCorrection", input);
+  }
+
+  public async appendRuling(
+    input: AppendRulingInput,
+  ): Promise<Models.RulingAppendResult> {
+    return this.execute("appendRuling", input);
   }
 
   public async applyCompanyBundle(
@@ -791,6 +816,12 @@ export class CtowerClient {
     return this.execute("getProjectDelivery", input);
   }
 
+  public async getRuling(
+    input: GetRulingInput,
+  ): Promise<Models.RulingRow> {
+    return this.execute("getRuling", input);
+  }
+
   public async getSyntheticWorkflowRun(
     input: GetSyntheticWorkflowRunInput,
   ): Promise<Models.SyntheticRunResource> {
@@ -861,6 +892,12 @@ export class CtowerClient {
     input: ListReviewDispatchEffectsInput,
   ): Promise<Models.ReviewDispatchEffectList> {
     return this.execute("listReviewDispatchEffects", input);
+  }
+
+  public async listRulings(
+    input: ListRulingsInput,
+  ): Promise<Models.RulingList> {
+    return this.execute("listRulings", input);
   }
 
   public async listTicketAssignments(

@@ -35,6 +35,7 @@ from ctowerctl import (
     _migration_commands,
     _ops_commands,
     _request_commands,
+    _ruling_commands,
     _session_commands,
     _spool_commands,
     _synthetic_commands,
@@ -228,6 +229,7 @@ _MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "synthetic": _synthetic_commands.build_mutation,
     "attention": _attention_commands.build_mutation,
     "request": _request_commands.build_mutation,
+    "ruling": _ruling_commands.build_mutation,
     "dream-dispatch": _dream_dispatch_commands.build_mutation,
 }
 
@@ -279,7 +281,7 @@ def _execute_online_credential(
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
-    if area in {"ticket", "inbox", "knowledge", "dream-dispatch", "request"}:
+    if area in {"ticket", "inbox", "knowledge", "dream-dispatch", "request", "ruling"}:
         return _execute_agent_query(namespace, client)
     if area == "company":
         return _company_commands.execute_query(namespace, client)
@@ -301,6 +303,8 @@ def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) ->
         return _dream_dispatch_commands.execute_query(arguments, client)
     if arguments.area == "request":
         return _request_commands.execute_query(arguments, client)
+    if arguments.area == "ruling":
+        return _ruling_commands.execute_query(arguments, client)
     return _inbox_commands.execute_query(arguments, client)
 
 
