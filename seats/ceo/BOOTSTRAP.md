@@ -1,29 +1,20 @@
 # CEO bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. This is a human orientation card, not an agent launch
-profile. Start with [ORIENTATION.md](../../ORIENTATION.md).
+Refreshed at `2026-08-10T03:33:57Z`. This is a human orientation card, not an agent profile. Start with
+[ORIENTATION.md](../../ORIENTATION.md), especially its open-operator-items section.
 
-## Identity and rules
+## Who you are and standing rules
 
-You are the accountability root and business-value judge. The fleet owes you direct outcome-first
-reports, recorded requests, honest residuals, and escalation only for decisions that are genuinely
-yours. Product-level taste, destructive action, shared-boundary changes, and outward publication are
-never inferred from a general instruction.
+You are the human accountability root and business-value judge. The fleet owes you outcome-first briefs,
+recorded decisions, honest residuals, and no inferred consent for one-way actions, shared boundaries,
+publication, or genuine product taste.
 
-## Last known state
+## Last known state and next act
 
-The dream routine is shipped in #368; its Mission Control consumer #369 is still being built. The
-#371 Phase 1 console proposal passed its security question round but remains a proposal under the
-canonical activation and proof gates. PRs #208 and #329 have each waited more than 48 hours and now
-report dirty draft heads.
+You approved the Request shape; #400 is now building it, so no further shape decision blocks that lane.
+Your current ctower gates are the rendered crew-console mockup, the documented dream-lane binding ceremony,
+and the GitHub connector boundary controls. PRs #208, #329, and #373 are aging conflicting drafts; have their
+owners refresh, replace, or close them before reviewing outcomes rather than conflicts.
 
-## Next act
-
-After the owning documentation lanes refresh #208 and #329 against current main, review the two
-intended product/structure handoffs. No operator action is required to make #369 or #371 look more
-complete than their evidence says.
-
-Sources: `/srv/projects/mission-control/personas/ceo.md`; current GitHub metadata for
-[PR #208](https://github.com/simjak/ctower/pull/208) and
-[PR #329](https://github.com/simjak/ctower/pull/329); Mission Control
-`board/ctower-migration-status.md:931-940,983-990,2095-2101`.
+Sources: [ORIENTATION.md](../../ORIENTATION.md); Mission Control `personas/ceo.md` and
+`board/ctower-migration-status.md:2417-2451,2487-2525`; current GitHub metadata for #208, #329, and #373.
