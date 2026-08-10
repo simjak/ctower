@@ -2055,3 +2055,36 @@ Rejected alternatives:
   another aggregate would duplicate state and create reconciliation work.
 - Coupling digest delivery into this change. The digest has its own work item and consumes this stable read
   shape only after that item is active.
+
+## D51 — The native morning digest is a disposable, epistemically explicit read-model (engineering, 2026-08-10, issue #402)
+
+The morning digest composes existing accepted Request and Ruling facts without creating another authority,
+store, scheduler, or delivery transport.
+
+1. One pure kernel fold produces one artifact key for each Europe/Vilnius civil date. Its ordered sections
+   are open Requests with the complete record-derived decision brief, the prior civil day's Rulings with
+   their typed Request executions, and related Ticket timeline links with current proof counts.
+2. Each independent source and rendered section carries `complete|partial|unknown`, a visible count, a
+   nullable total, exact unreached scopes, and the relevant source watermark. Unread facts are `UNKNOWN`;
+   authoritative absent links are empty; the projection never coerces failure to an empty answer, invents
+   linkage, or drops visible rows.
+3. The generated operator-only HTTP read and protected CLI text/JSON renderer are the complete ctower
+   surface. Artifact identity and digest derive from canonical projection content. Neither route mutates
+   Record, stores a projection, or queues a read in the encrypted spool.
+4. Delivery remains outside the projection. The scheduled caller sends the exact rendered artifact through
+   Mission Control's existing `tools/notify`: durable rail 1 completes first, and the existing authenticated
+   bridge attempts rail 2 only where identity resolves. This candidate adds no sender claim, identity,
+   adapter, Slack/Hermes path, or new egress.
+5. The director alone owns the verified schedule switch and retirement of the interim cron. Shipping this
+   read-model neither changes nor disables that schedule.
+
+Rejected alternatives:
+
+- Persisting a daily digest row. Requests, Rulings, Tickets, and Proof remain authority; the digest is
+  reproducible disposable presentation.
+- Treating a failed source as an empty section. That creates false calm and violates the portfolio
+  projection's accepted epistemic rule.
+- Matching Ruling prose to Request text. Executions require the accepted typed Request relation; semantic
+  similarity is not an authority fact.
+- Adding a transport or scheduler inside ctower. Existing notification rails and director-owned scheduling
+  already supply those responsibilities without widening the trust boundary.

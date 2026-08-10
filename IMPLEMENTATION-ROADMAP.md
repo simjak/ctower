@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.22 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.23 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
@@ -61,6 +61,8 @@ INCREMENT 1 — durable task-management dogfood
  [CT-I1-016: immutable Agreements ledger over existing project seats]
               |
  [CT-I1-017: Request-derived decision briefs closed by linked Rulings]
+              |
+ [CT-I1-018: native morning digest read-model + existing-rail delivery]
               |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
@@ -384,7 +386,8 @@ import remains absent.
 **Exit:** AC-REQ-01..06 pass through the named CT-I1-015 suites; the exact v1 architecture records
 `no-new-boundary`; restore reconstructs Request authority and allocator state; the old writer and import
 operation are absent; and the first authoritative capture allocates strictly above the sealed high-water.
-This checkpoint joins CT-I1-009..014 and CP3-D; CT-I1-016 then completes the full normative I1 exit.
+This checkpoint joins CT-I1-009..014 and CP3-D; CT-I1-016..018 then complete the full normative
+I1 exit.
 
 ### I1.10 — Immutable Agreements ledger
 
@@ -420,6 +423,28 @@ consume this shape later and adds no scope to this checkpoint.
 **Exit:** AC-BRIEF-01..04 pass through the named contract and real-PostgreSQL suites; rendered evidence,
 record-only taint proof, bidirectional Request/Ruling queries, same-candidate generated artifacts and docs,
 the full release gate, and one independent maximum-effort judgment verdict are recorded.
+
+### I1.12 — Native morning digest read-model
+
+**Stable work:** `CT-I1-018`.
+
+After CT-I1-017, add one operator-only disposable projection over accepted Request and Ruling reads. One
+strict artifact key identifies each Europe/Vilnius civil date. Its ordered output contains record-derived
+open decision briefs, the prior civil day's Rulings with their typed Request executions, and related Ticket
+timeline links plus current proof counts. The generated API/client and protected CLI render the same
+artifact as strict JSON or deterministic STE text.
+
+Each source and section carries `complete|partial|unknown`, visible count, nullable total, exact unreached
+scopes, and watermarks. A missing source, unresolved relation, or proof count remains `UNKNOWN`; an
+authoritative absent relation is empty, and no prose matching or failure-to-empty coercion is allowed. The
+candidate adds no store, scheduler, identity, adapter, or Slack/Hermes path. One real artifact is delivered
+through the existing Mission Control notification rail; only the director may switch or retire the interim
+schedule after verification.
+
+**Exit:** AC-DIG-01..03 pass through the named CT-I1-018 suites; the exact API, CLI, and real PostgreSQL
+transcripts agree; one real notification delivery ID records rail-1 success and the honest rail-2 outcome;
+same-candidate docs and independent review pass; and source/identity/egress/scheduler inventories show no
+new boundary or director-cron mutation.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

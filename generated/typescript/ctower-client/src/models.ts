@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:efbafd630f39a9bab81ba04bcfe57966e8d1c9b313afb5f35bbe9ec19284d5f2
+// Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
 
 export type ActivityClass = "work" | "verification";
 
@@ -641,6 +641,27 @@ export type DeliverySurfaceAvailabilityQualifyingCheckpoint = Readonly<{
   readonly "state": "qualifying_checkpoint";
 }>;
 
+export type DigestDecisionBrief = Readonly<{
+  readonly "choices": ReadonlyArray<DigestDecisionChoice>;
+  readonly "origin": string;
+  readonly "recommendation": string;
+  readonly "safe_default": string;
+  readonly "what": string;
+}>;
+
+export type DigestDecisionChoice = Readonly<{
+  readonly "completeness": number;
+  readonly "label": string;
+  readonly "outcome": string;
+}>;
+
+export type DigestReadingState = "complete" | "partial" | "unknown";
+
+export type DigestUnreachedScope = Readonly<{
+  readonly "key": string;
+  readonly "reason": string;
+}>;
+
 export type DreamDispatchConsumeRequest = Readonly<{
   readonly "output_digest": string;
 }>;
@@ -1187,6 +1208,84 @@ export type MigrationWatermarks = Readonly<{
   readonly "projection_position": number;
   readonly "record_position": number;
   readonly "source_native": number;
+}>;
+
+export type MorningDigest = Readonly<{
+  readonly "artifact_key": string;
+  readonly "artifact_sha256": string;
+  readonly "digest_date": string;
+  readonly "observed_at": string;
+  readonly "open_decisions": MorningDigestDecisionSection;
+  readonly "proof": MorningDigestProofSection;
+  readonly "request_watermark": number | null;
+  readonly "ruling_watermark": number | null;
+  readonly "state": DigestReadingState;
+  readonly "timezone": "Europe/Vilnius";
+  readonly "yesterday_rulings": MorningDigestRulingSection;
+}>;
+
+export type MorningDigestDecision = Readonly<{
+  readonly "brief": DigestDecisionBrief;
+  readonly "project_key": string;
+  readonly "request_id": string;
+  readonly "request_reference": string;
+  readonly "state": DigestReadingState;
+  readonly "unknown_reason": string | null;
+}>;
+
+export type MorningDigestDecisionSection = Readonly<{
+  readonly "items": ReadonlyArray<MorningDigestDecision>;
+  readonly "state": DigestReadingState;
+  readonly "total_count": number | null;
+  readonly "unreached": ReadonlyArray<DigestUnreachedScope>;
+  readonly "visible_count": number;
+}>;
+
+export type MorningDigestExecution = Readonly<{
+  readonly "request_id": string;
+  readonly "request_reference": string;
+  readonly "state": "NEW" | "TRIAGED" | "WIP" | "BLOCKED" | "DONE";
+  readonly "ticket_ids": ReadonlyArray<string>;
+}>;
+
+export type MorningDigestProof = Readonly<{
+  readonly "current_proof_count": number | null;
+  readonly "project_key": string;
+  readonly "request_id": string;
+  readonly "request_reference": string;
+  readonly "tickets": ReadonlyArray<MorningDigestTicketLink>;
+}>;
+
+export type MorningDigestProofSection = Readonly<{
+  readonly "items": ReadonlyArray<MorningDigestProof>;
+  readonly "state": DigestReadingState;
+  readonly "total_count": number | null;
+  readonly "unreached": ReadonlyArray<DigestUnreachedScope>;
+  readonly "visible_count": number;
+}>;
+
+export type MorningDigestRuling = Readonly<{
+  readonly "executions": ReadonlyArray<MorningDigestExecution>;
+  readonly "project_key": string;
+  readonly "recorded_at": string;
+  readonly "ruling_id": string;
+  readonly "state": DigestReadingState;
+  readonly "unknown_reason": string | null;
+  readonly "verbatim": string;
+}>;
+
+export type MorningDigestRulingSection = Readonly<{
+  readonly "items": ReadonlyArray<MorningDigestRuling>;
+  readonly "state": DigestReadingState;
+  readonly "total_count": number | null;
+  readonly "unreached": ReadonlyArray<DigestUnreachedScope>;
+  readonly "visible_count": number;
+}>;
+
+export type MorningDigestTicketLink = Readonly<{
+  readonly "href": string;
+  readonly "purpose": "required" | "optional";
+  readonly "ticket_id": string;
 }>;
 
 export type MutableAssignmentKind = "current_assignee" | "stage_owner" | "reviewer_assignment";

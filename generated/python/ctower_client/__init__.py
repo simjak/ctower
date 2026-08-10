@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:efbafd630f39a9bab81ba04bcfe57966e8d1c9b313afb5f35bbe9ec19284d5f2
+Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -81,6 +81,10 @@ from ctower_client.models import (
     DeliverySurfaceAvailability,
     DeliverySurfaceAvailabilityNoQualifyingCheckpoint,
     DeliverySurfaceAvailabilityQualifyingCheckpoint,
+    DigestDecisionBrief,
+    DigestDecisionChoice,
+    DigestReadingState,
+    DigestUnreachedScope,
     DreamDispatchConsumeRequest,
     DreamDispatchConsumption,
     DreamDispatchEffect,
@@ -151,6 +155,15 @@ from ctower_client.models import (
     MigrationSourceIdentity,
     MigrationSourceLinkCorrection,
     MigrationWatermarks,
+    MorningDigest,
+    MorningDigestDecision,
+    MorningDigestDecisionSection,
+    MorningDigestExecution,
+    MorningDigestProof,
+    MorningDigestProofSection,
+    MorningDigestRuling,
+    MorningDigestRulingSection,
+    MorningDigestTicketLink,
     MutableAssignmentKind,
     PoisonDispositionAction,
     PoisonDispositionReceipt,
@@ -348,6 +361,10 @@ __all__ = [
     "DeliverySurfaceAvailability",
     "DeliverySurfaceAvailabilityNoQualifyingCheckpoint",
     "DeliverySurfaceAvailabilityQualifyingCheckpoint",
+    "DigestDecisionBrief",
+    "DigestDecisionChoice",
+    "DigestReadingState",
+    "DigestUnreachedScope",
     "DreamDispatchConsumeRequest",
     "DreamDispatchConsumption",
     "DreamDispatchEffect",
@@ -418,6 +435,15 @@ __all__ = [
     "MigrationSourceIdentity",
     "MigrationSourceLinkCorrection",
     "MigrationWatermarks",
+    "MorningDigest",
+    "MorningDigestDecision",
+    "MorningDigestDecisionSection",
+    "MorningDigestExecution",
+    "MorningDigestProof",
+    "MorningDigestProofSection",
+    "MorningDigestRuling",
+    "MorningDigestRulingSection",
+    "MorningDigestTicketLink",
     "MutableAssignmentKind",
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",

@@ -74,6 +74,13 @@ evaluation are independent expected-version facts; operator state is derived. Ac
 Record watermark and distinguish unanswered projects from empty projects. The one-time ledger helper is
 outside the kernel and has no Record connection.
 
+The native morning digest remains in `projections/`. Its pure fold accepts typed Request and Ruling readings
+plus their watermarks and unreached scopes. It emits one Europe/Vilnius artifact with record-derived open
+decision briefs, prior-day Rulings and typed Request executions, then related Ticket timeline proof links.
+It owns no persistence, source client, clock authority, renderer, scheduler, or notification transport.
+Unavailable sources and unresolved relations remain explicit partial or unknown results; an authoritative
+absent relation is empty.
+
 Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.
 Org writes require operator authority; project writes and reads reuse Record's persisted project-seat checks.
 The static-file Adapter resolves only bounded UTF-8 Markdown below its injected scope root and returns typed

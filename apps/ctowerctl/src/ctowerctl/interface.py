@@ -18,6 +18,7 @@ from ctower_client.models import (
     CompanyBundleExportResult,
     ControlHealth,
     HealthStatus,
+    MorningDigest,
     Problem,
     ProjectDeliveryView,
 )
@@ -27,6 +28,7 @@ from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
     _credential_commands,
+    _digest_commands,
     _dream_dispatch_commands,
     _dream_lane_commands,
     _inbox_commands,
@@ -281,17 +283,24 @@ def _execute_online_credential(
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
-    if area in {"ticket", "inbox", "knowledge", "dream-dispatch", "request", "ruling"}:
+    if area in {
+        "ticket",
+        "inbox",
+        "knowledge",
+        "dream-dispatch",
+        "request",
+        "ruling",
+    }:
         return _execute_agent_query(namespace, client)
-    if area == "company":
-        return _company_commands.execute_query(namespace, client)
-    if area in {"board", "control"}:
-        return _ops_commands.execute_query(namespace, client)
-    if area == "session":
-        return _session_commands.execute_query(namespace, client)
-    if area == "synthetic":
-        return _synthetic_commands.execute_query(namespace, client)
-    return _execute_project_query(namespace, client)
+    handlers: dict[str, Callable[[argparse.Namespace, CtowerClient], BaseModel]] = {
+        "digest": _digest_commands.execute_query,
+        "company": _company_commands.execute_query,
+        "board": _ops_commands.execute_query,
+        "control": _ops_commands.execute_query,
+        "session": _session_commands.execute_query,
+        "synthetic": _synthetic_commands.execute_query,
+    }
+    return handlers.get(area, _execute_project_query)(namespace, client)
 
 
 def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
@@ -348,6 +357,13 @@ def write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
         result, CompanyBundleExportResult
     ):
         write_text(stream, _company_commands.export_yaml(result))
+        return
+    if (
+        getattr(namespace, "cli_name", None) == "digest morning"
+        and getattr(namespace, "output", None) == "text"
+        and isinstance(result, MorningDigest)
+    ):
+        write_text(stream, _digest_commands.morning_text(result))
         return
     if (
         getattr(namespace, "cli_name", None) == "project delivery query"
