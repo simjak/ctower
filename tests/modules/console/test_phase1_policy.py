@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -17,6 +18,8 @@ from ctower_kernel.console import (
     decide_view_grant,
 )
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+
+__all__: tuple[str, ...] = ()
 
 NOW = datetime(2026, 8, 10, 22, 0, tzinfo=UTC)
 TENANT_ID = UUID("10000000-0000-0000-0000-000000000001")
@@ -32,7 +35,7 @@ NONCE = UUID("a0000000-0000-0000-0000-000000000001")
 
 
 def _policy(**changes: int | str) -> ConsolePolicy:
-    values: dict[str, int | str] = {
+    values: dict[str, Any] = {
         "grant_ttl_seconds": 300,
         "maximum_continuous_view_seconds": 1_800,
         "revocation_poll_seconds": 5,
@@ -48,11 +51,11 @@ def _policy(**changes: int | str) -> ConsolePolicy:
         "policy_revision": "console-phase1-r1",
     }
     values.update(changes)
-    return ConsolePolicy(**values)  # type: ignore[arg-type]
+    return ConsolePolicy(**values)
 
 
 def _session_ref(**changes: object) -> ConsoleSessionRef:
-    values: dict[str, object] = {
+    values: dict[str, Any] = {
         "tenant_id": TENANT_ID,
         "project_key": "ctower",
         "seat_principal_id": PRINCIPAL_ID,
@@ -69,12 +72,12 @@ def _session_ref(**changes: object) -> ConsoleSessionRef:
         "backend_incarnation": "$9:1786400000",
     }
     values.update(changes)
-    return ConsoleSessionRef(**values)  # type: ignore[arg-type]
+    return ConsoleSessionRef(**values)
 
 
 def _facts(**changes: object) -> ConsoleGrantFacts:
     ref = _session_ref()
-    values: dict[str, object] = {
+    values: dict[str, Any] = {
         "actor": Actor(
             PRINCIPAL_ID,
             TENANT_ID,
@@ -102,7 +105,7 @@ def _facts(**changes: object) -> ConsoleGrantFacts:
         "suspended_until": None,
     }
     values.update(changes)
-    return ConsoleGrantFacts(**values)  # type: ignore[arg-type]
+    return ConsoleGrantFacts(**values)
 
 
 def _ids() -> ConsoleGrantIdentifiers:
@@ -112,7 +115,7 @@ def _ids() -> ConsoleGrantIdentifiers:
 def _grant(**changes: object) -> ConsoleViewGrant:
     outcome = decide_view_grant(_facts(), _ids(), policy=_policy(), now=NOW)
     assert isinstance(outcome, ConsoleViewGrant)
-    return replace(outcome, **changes)
+    return replace(outcome, **cast(dict[str, Any], changes))
 
 
 def _code(facts: ConsoleGrantFacts, *, previous: ConsoleViewGrant | None = None) -> str:

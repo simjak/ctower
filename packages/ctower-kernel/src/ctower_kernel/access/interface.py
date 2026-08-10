@@ -13,7 +13,12 @@ from uuid import UUID
 import httpx
 
 from ctower_kernel.access import oidc
-from ctower_kernel.access.human_auth import HumanAuthentication, HumanLoginResult, LoginStart
+from ctower_kernel.access.human_auth import (
+    HumanAuthentication,
+    HumanBrowserSession,
+    HumanLoginResult,
+    LoginStart,
+)
 from ctower_kernel.record import (
     Actor,
     BootstrapCommand,
@@ -32,7 +37,13 @@ from ctower_kernel.record.credentials import (
 from ctower_kernel.record.human_identity import HumanIdentityRecord
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
-__all__ = ["Access", "HumanLoginResult", "LoginStart", "digest_capability"]
+__all__ = [
+    "Access",
+    "HumanBrowserSession",
+    "HumanLoginResult",
+    "LoginStart",
+    "digest_capability",
+]
 
 _DEFAULT_SESSION_TTL_SECONDS = 43_200
 

@@ -2088,3 +2088,46 @@ Rejected alternatives:
   similarity is not an authority fact.
 - Adding a transport or scheduler inside ctower. Existing notification rails and director-owned scheduling
   already supply those responsibilities without widening the trust boundary.
+
+## D52 — Console Phase 1 is an exact-grant, bounded, private viewer server foundation (engineering, 2026-08-11, issue #437)
+
+The contextual Console proposal at source commit `ddb760e2751b84b2824eb620c5bdd0356c79b291` is incorporated
+only for the complete Phase-1 server foundation. This activates CT-I1-019 without activating a product UI
+or the separately governed typing phase.
+
+1. One append-only operator allowance names the exact Project, non-Commander seat/crew engagement,
+   assignment interval, recorded work session, runtime attempt, runner identity and epoch, registered
+   backend reference, live tmux `@project`, and tmux session incarnation. Visibility and every later grant
+   decision rejoin these facts; process observation or caller claims cannot establish authority.
+2. The control plane alone mints a one-use `ConsoleViewGrant` bound to one authenticated human role binding,
+   browser session, Actor, Project, session reference, and explicit policy revision. Its TTL is at most five
+   minutes; renewal redecides every fact and one continuous chain is capped at thirty minutes.
+3. Raw output remains RESTRICTED. Each durable cursor object uses a fresh data key wrapped under a referenced
+   key-encryption key. The application service cannot select encrypted content; the dedicated NOLOGIN,
+   NOINHERIT `console_output_reader` recovers it through an audited path, and each access appends a fact.
+4. SSE is credential-free in the URL, single-stream-per-grant, durable-before-broadcast, and bounded at
+   16 KiB decoded chunks, 1 MiB delivery and replay per minute, and 256 KiB pending. Unprovable cursor state,
+   truncation, rate limiting, and slow consumers append and signal a gap. Expiry, revocation, a replacement
+   fence, or the global kill switch closes the stream by typed event within five seconds.
+5. Browser access reuses CT-I1-013's human session and requires one exact HTTPS Origin plus CSRF equality
+   across header, secure cookie, and persisted digest. Console listeners admit only literal loopback or
+   Tailscale addresses. CORS, wildcard/public/default binds, Funnel, and credentials in URLs are absent.
+6. The registered Adapter may inspect live tmux identity and read only its declared existing pipe-pane log.
+   It uses bounded argument-array process execution and has no Record-tier client, shell, pane-write,
+   key-injection, generic-process, or fallback path.
+7. CT-I1-019 proves only this server foundation. It does not realize the contextual browser panel or safe
+   terminal renderer, and it grants no input authority. Phase 2 still requires the complete Q3 controls and
+   its own stable ticket. The pre-existing `apps/ctower-ui` terminal reader satisfies none of the Phase-1
+   evidence because it does not use this identity, grant, custody, transport, or Adapter chain.
+
+Rejected alternatives:
+
+- Wrapping the current terminal reader in a grant check. Its direct capture and refresh boundary lacks the
+  required authority, custody, durable cursor, and exact-origin properties, so compatibility would create a
+  second weaker Console.
+- Sending raw terminal bytes directly from tmux to the browser. That would bypass durable cursor ordering,
+  encrypted custody, reader access facts, replay bounds, and typed gaps.
+- Treating an allowlist row or tmux name as viewer authority. Both can outlive the identity facts they once
+  described; the exact current join plus short-lived grant is the authority boundary.
+- Adding typing to the same candidate. A read stream cannot mint or carry command authority, and Q3's
+  final-admission, byte-vocabulary, custody, and containment controls remain separate work.

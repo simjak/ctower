@@ -68,6 +68,7 @@ from ctower_api._ruling_routes import install_ruling_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
+from ctower_api.console_routes import ConsoleRuntime, install_console_routes
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
@@ -188,6 +189,7 @@ def create_app(
     fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
     telemetry: TelemetryRecorder | None = None,
+    console: ConsoleRuntime | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
@@ -226,7 +228,13 @@ def create_app(
     )
     if dream_dispatch_runtime is not None:
         install_dream_dispatch_routes(app, access, record, dream_dispatch_runtime, recorder)
+    _install_console_boundary(app, access, console)
     return app
+
+
+def _install_console_boundary(app: FastAPI, access: Access, console: ConsoleRuntime | None) -> None:
+    if console is not None:
+        install_console_routes(app, access, console)
 
 
 def _install_application_routes(

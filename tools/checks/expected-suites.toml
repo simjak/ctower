@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-018"
+active_phase = "CT-I1-019"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -25,6 +25,7 @@ phase_order = [
   "CT-I1-016",
   "CT-I1-017",
   "CT-I1-018",
+  "CT-I1-019",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -91,6 +92,16 @@ command = ["{python}", "-m", "pytest", "tests/contracts/http", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "console-phase1-contracts"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/contracts/console"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/console", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "workflow-contracts"
 owner = "CT-L0-004"
 phase = "CT-L0-004"
@@ -139,6 +150,32 @@ path = "tests/modules/access"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/access", "-q"]
 timeout_seconds = 300
+
+[[suite]]
+id = "console-phase1-module"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/modules/console"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/console", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "console-phase1-acceptance"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_console_view_grants.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_console_view_grants.py",
+  "-q",
+]
+timeout_seconds = 900
 
 [[suite]]
 id = "record-module"

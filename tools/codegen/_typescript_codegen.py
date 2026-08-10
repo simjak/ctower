@@ -403,6 +403,11 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
             operation_id = operation.get("operationId")
             if not isinstance(operation_id, str):
                 raise TypeError(f"{method} {path} lacks operationId")
+            generated_client = operation.get("x-ctower-generated-client", True)
+            if not isinstance(generated_client, bool):
+                raise TypeError(f"{operation_id} has non-boolean x-ctower-generated-client")
+            if not generated_client:
+                continue
             success_models = _success_models(operation)
             operations.append(
                 _Operation(

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
 
+from ctower_api.console_routes import validate_console_origin
 from ctower_kernel.access.human_auth import HumanAuthentication, HumanBrowserSession
 from ctower_kernel.record import PrincipalKind, RecordProblem
-
-from modules.access._fakes import FakeHumanIdentity
+from ctower_kernel.record.human_identity import HumanIdentityRecord
+from modules.access._fakes import FakeHumanIdentity, FakeRecord
 
 
 def test_browser_authentication_binds_human_session_binding_actor_and_csrf() -> None:
@@ -26,7 +28,9 @@ def test_browser_authentication_binds_human_session_binding_actor_and_csrf() -> 
         now=now,
         ttl_seconds=3600,
     )
-    authentication = HumanAuthentication(store, clock=lambda: now)
+    authentication = HumanAuthentication(
+        cast(HumanIdentityRecord, FakeRecord(human_identity=store)), clock=lambda: now
+    )
 
     outcome = authentication.authenticate_browser_session(token, csrf_token=csrf)
 
@@ -51,7 +55,9 @@ def test_missing_wrong_or_whitespace_csrf_is_a_named_refusal() -> None:
         now=now,
         ttl_seconds=3600,
     )
-    authentication = HumanAuthentication(store, clock=lambda: now)
+    authentication = HumanAuthentication(
+        cast(HumanIdentityRecord, FakeRecord(human_identity=store)), clock=lambda: now
+    )
 
     for presented in (None, "wrong", f" {csrf}"):
         outcome = authentication.authenticate_browser_session(token, csrf_token=presented)
@@ -60,14 +66,14 @@ def test_missing_wrong_or_whitespace_csrf_is_a_named_refusal() -> None:
 
 
 def test_console_origin_requires_the_one_configured_same_origin() -> None:
-    from ctower_api._console_routes import validate_console_origin
-
-    assert validate_console_origin(
-        "https://ctower.tailnet.example", expected="https://ctower.tailnet.example"
-    ) is None
+    assert (
+        validate_console_origin(
+            "https://ctower.tailnet.example", expected="https://ctower.tailnet.example"
+        )
+        is None
+    )
     refusal = validate_console_origin(
         "https://foreign.example", expected="https://ctower.tailnet.example"
     )
     assert isinstance(refusal, RecordProblem)
     assert refusal.code == "console-origin-refused"
-

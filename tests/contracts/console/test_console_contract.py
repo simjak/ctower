@@ -29,7 +29,10 @@ def test_authored_console_contracts_are_strict_and_cover_grant_allowlist_and_str
     assert {path.name for path in contract_dir.glob("*.json")} == expected
     for name in expected - {"phase1-verification.json"}:
         schema = json.loads((contract_dir / name).read_text(encoding="utf-8"))
-        assert schema["additionalProperties"] is False
+        if "oneOf" in schema:
+            assert all(item["additionalProperties"] is False for item in schema["oneOf"])
+        else:
+            assert schema["additionalProperties"] is False
 
 
 def test_browser_stream_url_contains_no_grant_capability_or_cursor_credential() -> None:
@@ -61,7 +64,7 @@ def test_stream_contract_names_exact_sse_security_and_bounded_close_events() -> 
 
 
 def test_console_migration_names_append_only_facts_and_output_reader_role() -> None:
-    migration = (ROOT / "packages/ctower-kernel/migrations/0062_console_view_grants.sql").read_text(
+    migration = (ROOT / "packages/ctower-kernel/migrations/0063_console_view_grants.sql").read_text(
         encoding="utf-8"
     )
     for table in (
@@ -103,4 +106,10 @@ def test_phase1_verification_manifest_names_every_required_element_and_gate() ->
         "tailnet-loopback-bind-and-ss-sweep",
         "real-private-shadow-view-proof",
     }
-    assert manifest["gates"] == ["console-contracts", "console-module", "console-acceptance", "just check", "just verify"]
+    assert manifest["gates"] == [
+        "console-phase1-contracts",
+        "console-phase1-module",
+        "console-phase1-acceptance",
+        "just check",
+        "just verify",
+    ]

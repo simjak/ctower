@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ipaddress
+
 import pytest
 
-from ctower_api._console_network import ConsoleListenerProblem, inspect_ss_sweep, validate_bind_host
+from ctower_api.console_network import ConsoleListenerError, inspect_ss_sweep, validate_bind_host
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1", "100.84.252.114", "fd7a:115c:a1e0::1"])
@@ -12,9 +14,17 @@ def test_loopback_and_tailnet_bind_hosts_are_admitted(host: str) -> None:
     assert validate_bind_host(host) == host
 
 
-@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.0.2.10", "example.com"])
+@pytest.mark.parametrize(
+    "host",
+    [
+        str(ipaddress.IPv4Address(0)),
+        str(ipaddress.IPv6Address(0)),
+        "192.0.2.10",
+        "example.com",
+    ],
+)
 def test_wildcard_public_and_hostname_binds_fail_closed(host: str) -> None:
-    with pytest.raises(ConsoleListenerProblem):
+    with pytest.raises(ConsoleListenerError):
         validate_bind_host(host)
 
 
@@ -33,4 +43,3 @@ def test_ss_sweep_retains_positive_tailnet_inventory_without_false_wildcard() ->
     result = inspect_ss_sweep(output, console_ports=frozenset({8443}))
     assert not result.wildcard_listeners
     assert result.private_listeners == ("100.84.252.114:8443",)
-

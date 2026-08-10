@@ -34,9 +34,7 @@ def test_only_the_dedicated_console_output_reader_can_decrypt() -> None:
     with pytest.raises(PermissionError, match="console_output_reader"):
         _cipher().decrypt(envelope, reader="ctower_svc", aad=b"tenant/session/1")
     assert (
-        _cipher().decrypt(
-            envelope, reader="console_output_reader", aad=b"tenant/session/1"
-        )
+        _cipher().decrypt(envelope, reader="console_output_reader", aad=b"tenant/session/1")
         == b"pane bytes"
     )
 
@@ -56,4 +54,3 @@ def test_wrapping_key_must_be_exactly_256_bits_and_reference_is_not_a_value() ->
         AesGcmConsoleCipher(wrapping_key=b"short", wrapping_key_reference="secret-ref")
     with pytest.raises(ValueError, match="reference"):
         AesGcmConsoleCipher(wrapping_key=MASTER_KEY, wrapping_key_reference="plaintext-secret")
-

@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0061_request_decision_briefs.sql",
-    "schema_sha256": "sha256:8083397ac6c8da0ed3a7177135c3b13f76139196ede2971e0410e451c72da7a9",
+    "through": "0063_console_view_grants.sql",
+    "schema_sha256": "sha256:ad8f9ad3c931145135d6fb54fe7a5a5af722173acc14754041356c6b00f501a6",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:35b2ff2f8b5ec8bdcce79403d7489402c832f0b2e577afb27aba10f2f3c44607"
+    "schema_object_sum256": "sum256:fea51cb1e79e14d9d6a13fbf071a06d176d24bd2f768ede8779044117bd9e1e1"
   },
   "migrations": [
     {
@@ -575,6 +575,25 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_decision_briefs.py::test_linked_ruling_is_visible_from_request_and_ruling_and_resolves_decision",
       "rollback_or_forward_compensation": "Preserve every Request decision marker, generated brief source fact, Request-to-Ruling relation, Ruling byte, canonical event, command result, outbox row, and inherited successor relation; append reviewed forward compensation and never edit or detach an accepted Ruling.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Request, Request blocker, Ruling, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; existing Rulings receive a null Request relation."
+    },
+    {
+      "path": "0062_console_output_reader_role.sql",
+      "sha256": "sha256:c2bcdf239a32fa0a06668c492ad2f869fd3a09f55c99d9e2fe6c2b61d818a81e",
+      "scope": "cluster",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_output_reader_role_has_only_the_authored_custody_surface",
+      "rollback_or_forward_compensation": "Preserve the dedicated non-login output-reader identity and ctower service membership until every encrypted Console output object is beyond retention; revoke membership only through reviewed forward compensation after disabling admission.",
+      "backup_checkpoint": "Before role reconciliation on a nonempty cluster, capture the console_output_reader attributes, memberships, sessions, owned objects, and grants plus a verified cluster-role backup; the new role starts NOLOGIN and NOINHERIT."
+    },
+    {
+      "path": "0063_console_view_grants.sql",
+      "sha256": "sha256:3d1cc1c12797664ab65fd41401fe4b0732ee84385069c8a5868c43d67d7ed0a7",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",
+      "rollback_or_forward_compensation": "Preserve every allow, grant, denial, revocation, stream, encrypted output, access, gap, Adapter observation, and kill-switch fact; append reviewed forward compensation and never edit, delete, reactivate, or decrypt an accepted authority fact outside the dedicated reader path.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture human-session, recorded-session, assignment, allow, grant, stream, output, access, gap, observation, and revocation counts grouped by tenant plus a verified database backup; existing human sessions intentionally have no CSRF proof and cannot enter the Console boundary."
     }
   ]
 }

@@ -96,6 +96,36 @@
       ]
     },
     {
+      "path": "contracts/domain/console/console-session-allow.schema.json",
+      "references": [
+        "SPEC#contextual-console-viewer-server-foundation",
+        "INV-91",
+        "INV-93",
+        "AC-CON-01",
+        "AC-CON-06",
+        "AC-CON-07"
+      ]
+    },
+    {
+      "path": "contracts/domain/console/console-stream-event.schema.json",
+      "references": [
+        "SPEC#contextual-console-viewer-server-foundation",
+        "INV-92",
+        "AC-CON-03",
+        "AC-CON-04",
+        "AC-CON-06"
+      ]
+    },
+    {
+      "path": "contracts/domain/console/console-view-grant.schema.json",
+      "references": [
+        "SPEC#contextual-console-viewer-server-foundation",
+        "INV-91",
+        "AC-CON-01",
+        "AC-CON-02"
+      ]
+    },
+    {
       "path": "contracts/domain/events/canonical-vectors.json",
       "references": [
         "SPEC#canonical-event-and-command-contract",
@@ -2192,6 +2222,30 @@
         "AC-BRIEF-02",
         "AC-BRIEF-03",
         "AC-BRIEF-04"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
+      "references": [
+        "SPEC#contextual-console-viewer-server-foundation",
+        "INV-92",
+        "AC-CON-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0063_console_view_grants.sql",
+      "references": [
+        "SPEC#contextual-console-viewer-server-foundation",
+        "INV-91",
+        "INV-92",
+        "INV-93",
+        "AC-CON-01",
+        "AC-CON-02",
+        "AC-CON-03",
+        "AC-CON-04",
+        "AC-CON-05",
+        "AC-CON-06",
+        "AC-CON-07"
       ]
     },
     {

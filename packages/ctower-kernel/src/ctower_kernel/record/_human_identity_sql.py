@@ -21,6 +21,7 @@ from psycopg.types.json import Jsonb
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record._commands import reserve_command
 from ctower_kernel.record.human_identity import (
+    HumanBrowserSessionRecord,
     HumanRole,
     HumanRoleBindingIssue,
     HumanRoleBindingReceipt,
@@ -33,6 +34,7 @@ from ctower_kernel.record.transaction import authority_connection
 __all__ = [
     "actor_for_session",
     "bind_human_role",
+    "browser_human_session",
     "issue_human_session",
     "resolve_human_role_binding",
     "revoke_human_role",
@@ -202,6 +204,7 @@ def issue_human_session(
     role: HumanRole,
     *,
     session_digest: bytes,
+    csrf_digest: bytes,
     now: datetime,
     ttl_seconds: int,
 ) -> HumanSessionReceipt:
@@ -215,10 +218,19 @@ def issue_human_session(
             """
             INSERT INTO human_sessions (
                 session_id, tenant_id, session_digest, principal_id, binding_id,
-                issued_at, expires_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                issued_at, expires_at, csrf_digest
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (session_id, tenant_id, session_digest, principal_id, binding_id, now, expires_at),
+            (
+                session_id,
+                tenant_id,
+                session_digest,
+                principal_id,
+                binding_id,
+                now,
+                expires_at,
+                csrf_digest,
+            ),
         )
     return HumanSessionReceipt(
         binding_id=binding_id,
@@ -238,7 +250,7 @@ def actor_for_session(
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
             """
-            SELECT session.expires_at,
+            SELECT session.session_id, session.binding_id, session.expires_at,
                 session_revocation.session_id IS NOT NULL AS session_revoked,
                 binding.tenant_id, binding.principal_id, binding.role, binding.project_keys,
                 binding_revocation.binding_id IS NOT NULL AS binding_revoked
@@ -275,6 +287,66 @@ def actor_for_session(
     return _actor_from_binding_row(row)
 
 
+def browser_human_session(
+    dsn: str,
+    session_digest: bytes,
+    csrf_digest: bytes,
+    *,
+    now: datetime,
+) -> HumanBrowserSessionRecord | RecordProblem | None:
+    """Resolve one exact cookie+CSRF pair without leaking which half mismatched."""
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        row = connection.execute(
+            """
+            SELECT session.session_id, session.binding_id, session.expires_at,
+                session_revocation.session_id IS NOT NULL AS session_revoked,
+                binding.tenant_id, binding.principal_id, binding.role, binding.project_keys,
+                binding_revocation.binding_id IS NOT NULL AS binding_revoked
+            FROM human_sessions AS session
+            JOIN human_role_bindings AS binding
+              ON binding.binding_id = session.binding_id
+             AND binding.tenant_id = session.tenant_id
+            LEFT JOIN human_session_revocations AS session_revocation
+              ON session_revocation.session_id = session.session_id
+             AND session_revocation.tenant_id = session.tenant_id
+            LEFT JOIN human_role_binding_revocations AS binding_revocation
+              ON binding_revocation.binding_id = binding.binding_id
+             AND binding_revocation.tenant_id = binding.tenant_id
+            WHERE session.session_digest = %s AND session.csrf_digest = %s
+            """,
+            (session_digest, csrf_digest),
+        ).fetchone()
+    if row is None:
+        return RecordProblem(
+            code="auth-csrf-invalid",
+            detail="The browser CSRF proof is absent or does not match the session.",
+            status=403,
+            title="CSRF proof invalid",
+        )
+    if bool(row["session_revoked"]) or bool(row["binding_revoked"]):
+        return RecordProblem(
+            code="auth-session-invalid",
+            detail="The presented session has been revoked.",
+            status=401,
+            title="Session invalid",
+        )
+    if cast(datetime, row["expires_at"]) <= now:
+        return RecordProblem(
+            code="reauthentication-required",
+            detail="The session has expired and requires a fresh login.",
+            status=401,
+            title="Reauthentication required",
+        )
+    actor = _actor_from_binding_row(row)
+    return HumanBrowserSessionRecord(
+        actor=actor,
+        binding_id=cast(UUID, row["binding_id"]),
+        session_id=cast(UUID, row["session_id"]),
+    )
+
+
 def revoke_human_session(dsn: str, session_digest: bytes, *, reason: str, now: datetime) -> None:
     """Revoke one session by digest; a missing or already-revoked session is a no-op."""
 
@@ -305,6 +377,8 @@ def _actor_from_binding_row(row: dict[str, object]) -> Actor:
         project_grants=frozenset(project_keys),
         credential_scopes=frozenset(),
         seat_credential_id=None,
+        human_binding_id=cast(UUID | None, row.get("binding_id")),
+        human_session_id=cast(UUID | None, row.get("session_id")),
     )
 
 

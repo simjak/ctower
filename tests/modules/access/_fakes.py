@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.human_identity import (
+    HumanBrowserSessionRecord,
     HumanRole,
     HumanRoleBindingIssue,
     HumanRoleBindingReceipt,
@@ -37,6 +38,8 @@ class _StoredSession:
     binding_id: UUID
     role: HumanRole
     expires_at: datetime
+    session_id: UUID
+    csrf_digest: bytes
 
 
 class FakeHumanIdentity:
@@ -121,23 +124,27 @@ class FakeHumanIdentity:
         role: HumanRole,
         *,
         session_digest: bytes,
+        csrf_digest: bytes,
         now: datetime,
         ttl_seconds: int,
     ) -> HumanSessionReceipt:
         expires_at = now + timedelta(seconds=ttl_seconds)
+        session_id = uuid4()
         self._sessions[session_digest] = _StoredSession(
             principal_id=principal_id,
             tenant_id=tenant_id,
             binding_id=binding_id,
             role=role,
             expires_at=expires_at,
+            session_id=session_id,
+            csrf_digest=csrf_digest,
         )
         return HumanSessionReceipt(
             binding_id=binding_id,
             expires_at=expires_at,
             principal_id=principal_id,
             role=role,
-            session_id=uuid4(),
+            session_id=session_id,
         )
 
     def actor_for_session(
@@ -154,6 +161,27 @@ class FakeHumanIdentity:
             principal_id=session.principal_id,
             tenant_id=session.tenant_id,
             kind=PrincipalKind(session.role),
+            human_binding_id=session.binding_id,
+            human_session_id=session.session_id,
+        )
+
+    def browser_session(
+        self,
+        session_digest: bytes,
+        csrf_digest: bytes,
+        *,
+        now: datetime,
+    ) -> HumanBrowserSessionRecord | RecordProblem | None:
+        actor = self.actor_for_session(session_digest, now=now)
+        if actor is None or isinstance(actor, RecordProblem):
+            return actor
+        session = self._sessions[session_digest]
+        if session.csrf_digest != csrf_digest:
+            return _problem("auth-csrf-invalid", 403, "csrf mismatch")
+        return HumanBrowserSessionRecord(
+            actor=actor,
+            binding_id=session.binding_id,
+            session_id=session.session_id,
         )
 
     def revoke_session(self, session_digest: bytes, *, reason: str, now: datetime) -> None:

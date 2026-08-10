@@ -184,14 +184,15 @@ class DurabilityFinalizer(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class Actor:
-    """Authenticated tenant authority resolved from a credential digest."""
-
+    # Authenticated tenant authority resolved from one credential/session proof.
     principal_id: UUID
     tenant_id: UUID
     kind: PrincipalKind
     project_grants: frozenset[str] = frozenset()
     credential_scopes: frozenset[CredentialScope] = frozenset()
     seat_credential_id: UUID | None = None
+    human_binding_id: UUID | None = None
+    human_session_id: UUID | None = None
 
 
 class SeatCredentialStore(Protocol):

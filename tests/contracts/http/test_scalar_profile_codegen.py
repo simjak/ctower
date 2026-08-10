@@ -21,8 +21,8 @@ from ._generated_client_runtime import (
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
-AUTHORED_INTEGER_OCCURRENCES = 184
-AUTHORED_OPERATION_COUNT = 79
+AUTHORED_INTEGER_OCCURRENCES = 188
+AUTHORED_OPERATION_COUNT = 80
 RESPONSE_INTEGER_NODES = 144
 PROFILE_KEYS = (
     "x-ctower-rfc3339-profile",
@@ -216,6 +216,7 @@ def _operations(document: Mapping[str, object]) -> list[dict[str, object]]:
         for path in paths.values()
         for method, operation in path.items()
         if method in {"get", "post"}
+        and cast(dict[str, object], operation).get("x-ctower-generated-client", True) is not False
     ]
 
 

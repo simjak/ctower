@@ -123,6 +123,36 @@
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
+    "AC-CON-01": [
+      "contracts/domain/console/console-session-allow.schema.json",
+      "contracts/domain/console/console-view-grant.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "AC-CON-02": [
+      "contracts/domain/console/console-view-grant.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "AC-CON-03": [
+      "contracts/domain/console/console-stream-event.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "AC-CON-04": [
+      "contracts/domain/console/console-stream-event.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "AC-CON-05": [
+      "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "AC-CON-06": [
+      "contracts/domain/console/console-session-allow.schema.json",
+      "contracts/domain/console/console-stream-event.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "AC-CON-07": [
+      "contracts/domain/console/console-session-allow.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
     "AC-DIG-01": [
       "contracts/http/openapi.yaml"
     ],
@@ -1182,6 +1212,20 @@
     "INV-90": [
       "contracts/http/openapi.yaml"
     ],
+    "INV-91": [
+      "contracts/domain/console/console-session-allow.schema.json",
+      "contracts/domain/console/console-view-grant.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "INV-92": [
+      "contracts/domain/console/console-stream-event.schema.json",
+      "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
+    "INV-93": [
+      "contracts/domain/console/console-session-allow.schema.json",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+    ],
     "SPEC#accepted-first-class-operator-request-contract": [
       "contracts/domain/migration/request-batch-proof.schema.json",
       "contracts/domain/migration/request-import-manifest.schema.json",
@@ -1269,6 +1313,13 @@
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
+    ],
+    "SPEC#contextual-console-viewer-server-foundation": [
+      "contracts/domain/console/console-session-allow.schema.json",
+      "contracts/domain/console/console-stream-event.schema.json",
+      "contracts/domain/console/console-view-grant.schema.json",
+      "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
+      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
     ],
     "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
       "contracts/evidence/evidence-manifest-v2.schema.json",

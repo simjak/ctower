@@ -7,7 +7,7 @@ from subprocess import CompletedProcess
 from typing import cast
 from uuid import UUID
 
-from ctower_api._console_adapter import ConsoleBackendRegistration, TmuxConsoleAdapter
+from ctower_api.console_adapter import ConsoleBackendRegistration, TmuxConsoleAdapter
 from ctower_kernel.console import ConsoleBackendObservation, ConsoleOutputBatch, ConsoleSessionRef
 from ctower_kernel.record import RecordProblem
 
@@ -87,7 +87,7 @@ def test_adapter_uses_argument_arrays_and_proves_exact_project_and_incarnation(
             "-p",
             "-t",
             "mc:engineer-console-p1",
-            "#{session_id}\\t#{session_created}",
+            "#{session_id}\t#{session_created}",
         ),
     ]
 
@@ -110,17 +110,17 @@ def test_log_read_is_cursor_bounded_and_never_reaches_outside_registered_root(
     first = adapter.read(_ref(), after_cursor=0, maximum_bytes=6)
     assert isinstance(first, ConsoleOutputBatch)
     assert first.payload == b"first\n"
-    assert first.source_cursor == 6
+    first_cursor = len(b"first\n")
+    assert first.source_cursor == first_cursor
     log.write_bytes(log.read_bytes() + b"third\n")
-    rest = adapter.read(_ref(), after_cursor=6, maximum_bytes=1024)
+    rest = adapter.read(_ref(), after_cursor=first_cursor, maximum_bytes=1024)
     assert isinstance(rest, ConsoleOutputBatch)
     assert rest.payload == b"second\nthird\n"
 
 
 def test_adapter_source_has_no_record_tier_import() -> None:
-    source = Path("apps/ctower-api/src/ctower_api/_console_adapter.py").read_text(encoding="utf-8")
+    source = Path("apps/ctower-api/src/ctower_api/console_adapter.py").read_text(encoding="utf-8")
     assert "ctower_kernel.record.postgres" not in source
     assert "psycopg" not in source
     assert "shell=True" not in source
     assert cast(object, source)
-

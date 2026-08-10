@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.23 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.24 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-08-10 |
+| Last reviewed | 2026-08-11 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -63,6 +63,8 @@ INCREMENT 1 — durable task-management dogfood
  [CT-I1-017: Request-derived decision briefs closed by linked Rulings]
               |
  [CT-I1-018: native morning digest read-model + existing-rail delivery]
+              |
+ [CT-I1-019: contextual Console viewer server foundation]
               |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
@@ -445,6 +447,37 @@ schedule after verification.
 transcripts agree; one real notification delivery ID records rail-1 success and the honest rail-2 outcome;
 same-candidate docs and independent review pass; and source/identity/egress/scheduler inventories show no
 new boundary or director-cron mutation.
+
+### I1.13 — Contextual Console viewer server foundation
+
+**Stable work:** `CT-I1-019`.
+
+After CT-I1-018, incorporate only the Phase-1 server foundation from the approved Console source. Add one
+operator-authored allowance over the exact current Project, non-Commander seat/crew engagement, assignment
+interval, recorded work session, runtime attempt, runner/epoch, registered backend, live tmux `@project`,
+and incarnation. The control plane then mints a one-use human-binding/browser-session `ConsoleViewGrant`
+for at most five minutes, re-evaluates every fact on renewal, and limits one continuous view to thirty
+minutes.
+
+The browser routes reuse CT-I1-013's secure human session and require the exact configured private Origin
+plus CSRF equality across header, cookie, and persisted digest. The credential-free SSE path commits each
+cursor before broadcast, encrypts every RESTRICTED output object under a distinct data-key reference, and
+recovers it only through the audited dedicated output reader. Chunk, delivery, replay, pending-byte, denial,
+suspension, expiry, revocation, replacement-fence, and global-kill-switch bounds are explicit policy values.
+The registered Adapter may inspect exact live tmux identity and read only its declared existing pipe-pane
+log; it has no Record client, pane write, shell, or generic process route.
+
+Deploy the exact candidate as a private shadow on a literal loopback or Tailscale address. Archive the HTTPS
+positive probe, public/foreign negatives, real granted crew output metadata, typed expiry/revocation/fence
+closures, and `ss -tlnp` inventory without storing output bytes or credentials in ordinary evidence. A
+wildcard, public/default host, Funnel route, credential-bearing URL, unbounded stream, missing custody fact,
+or current-reader proof claim fails the checkpoint.
+
+**Exit:** AC-CON-01..07 pass through `console-phase1-contracts`, `console-phase1-module`, and
+`console-phase1-acceptance`; the same head passes `just check` and `just verify`; the real PostgreSQL/API/SSE
+and private/tailnet shadow evidence is digest-only and current; exact expiry, revocation, and fence refusals
+are typed; and same-candidate concept, reference, operator, security, architecture, and roadmap docs pass.
+This exit adds no product UI, safe terminal renderer, typing, or Phase-2 activation.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

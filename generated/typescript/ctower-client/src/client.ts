@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+// Authored contract digest: sha256:931db33201f46412991b07b0fb433e9cf59344839f05eb744e87441756e7bbf3
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -34,6 +34,10 @@ export type AddTicketRelationInput = Readonly<{
   readonly "ticketId": string;
   readonly "IdempotencyKey": string;
   readonly body: Models.RelationRequest;
+}>;
+
+export type AllowConsoleSessionInput = Readonly<{
+  readonly body: Models.ConsoleSessionAllowRequest;
 }>;
 
 export type AppendAttentionFindingInput = Readonly<{
@@ -440,6 +444,7 @@ export type OperationInputs = Readonly<{
   readonly "addKnowledgeDocument": AddKnowledgeDocumentInput;
   readonly "addTicketComment": AddTicketCommentInput;
   readonly "addTicketRelation": AddTicketRelationInput;
+  readonly "allowConsoleSession": AllowConsoleSessionInput;
   readonly "appendAttentionFinding": AppendAttentionFindingInput;
   readonly "appendCtowerProjectImportCorrection": AppendCtowerProjectImportCorrectionInput;
   readonly "appendRuling": AppendRulingInput;
@@ -522,6 +527,7 @@ export type OperationResults = Readonly<{
   readonly "addKnowledgeDocument": Models.KnowledgeAddResult;
   readonly "addTicketComment": Models.TicketCommentResult;
   readonly "addTicketRelation": Models.WorkReceipt;
+  readonly "allowConsoleSession": Models.ConsoleSessionAllowance;
   readonly "appendAttentionFinding": Models.AttentionFindingResult;
   readonly "appendCtowerProjectImportCorrection": Models.CtowerProjectMigrationReceipt;
   readonly "appendRuling": Models.RulingAppendResult;
@@ -640,6 +646,12 @@ export class CtowerClient {
     input: AddTicketRelationInput,
   ): Promise<Models.WorkReceipt> {
     return this.execute("addTicketRelation", input);
+  }
+
+  public async allowConsoleSession(
+    input: AllowConsoleSessionInput,
+  ): Promise<Models.ConsoleSessionAllowance> {
+    return this.execute("allowConsoleSession", input);
   }
 
   public async appendAttentionFinding(

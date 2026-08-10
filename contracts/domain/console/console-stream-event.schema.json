@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/console/console-stream-event.schema.json",
+  "title": "ConsoleStreamEvent",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cursor", "data", "object_digest", "type"],
+      "properties": {
+        "cursor": {"type": "integer", "minimum": 1},
+        "data": {"type": "string", "contentEncoding": "base64", "maxLength": 21848},
+        "object_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "type": {"type": "string", "const": "chunk"}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["next_cursor", "reason", "type"],
+      "properties": {
+        "next_cursor": {"type": ["integer", "null"], "minimum": 1},
+        "reason": {"type": "string", "enum": ["cursor_unavailable", "source_truncated", "unprovable_range", "slow_consumer"]},
+        "type": {"type": "string", "const": "gap"}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "type"],
+      "properties": {
+        "code": {"type": "string", "enum": ["expired", "revoked", "fenced", "rate_limited", "slow_consumer", "reauthentication_required", "globally_disabled"]},
+        "type": {"type": "string", "const": "closed"}
+      }
+    }
+  ]
+}

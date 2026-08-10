@@ -51,6 +51,7 @@ packages = [
   "ctower_kernel.attention",
   "ctower_kernel.board_context",
   "ctower_kernel.catalog",
+  "ctower_kernel.console",
   "ctower_kernel.inbox",
   "ctower_kernel.integrations",
   "ctower_kernel.knowledge",

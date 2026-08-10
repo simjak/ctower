@@ -30,7 +30,9 @@ def test_chunks_are_base64_and_decode_to_at_most_sixteen_kibibytes() -> None:
 def test_delivery_is_limited_to_one_mibibyte_in_a_rolling_sixty_seconds() -> None:
     window = _window()
     assert window.admit_delivery(1024 * 1024, at=NOW) is StreamDisposition.ADMITTED
-    assert window.admit_delivery(1, at=NOW + timedelta(seconds=59)) is StreamDisposition.RATE_LIMITED
+    assert (
+        window.admit_delivery(1, at=NOW + timedelta(seconds=59)) is StreamDisposition.RATE_LIMITED
+    )
     assert window.admit_delivery(1, at=NOW + timedelta(seconds=60)) is StreamDisposition.ADMITTED
 
 
@@ -60,4 +62,3 @@ def test_malformed_cursor_or_unprovable_range_is_an_explicit_gap() -> None:
     window.mark_gap("cursor-unavailable")
     assert window.gap_required
     assert window.gap_reason == "cursor-unavailable"
-

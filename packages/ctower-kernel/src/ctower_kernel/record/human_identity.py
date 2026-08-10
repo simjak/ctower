@@ -20,6 +20,7 @@ from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = [
     "HUMAN_ROLES",
+    "HumanBrowserSessionRecord",
     "HumanIdentityRecord",
     "HumanIdentityStore",
     "HumanRole",
@@ -134,6 +135,15 @@ class HumanSessionReceipt:
     session_id: UUID
 
 
+@dataclass(frozen=True, slots=True)
+class HumanBrowserSessionRecord:
+    """Internal exact session/binding identity after cookie and CSRF verification."""
+
+    actor: Actor
+    binding_id: UUID
+    session_id: UUID
+
+
 class HumanIdentityStore(Protocol):
     """Cohesive persistence boundary for human role bindings and their sessions."""
 
@@ -169,6 +179,7 @@ class HumanIdentityStore(Protocol):
         role: HumanRole,
         *,
         session_digest: bytes,
+        csrf_digest: bytes,
         now: datetime,
         ttl_seconds: int,
     ) -> HumanSessionReceipt: ...
@@ -176,6 +187,14 @@ class HumanIdentityStore(Protocol):
     def actor_for_session(
         self, session_digest: bytes, *, now: datetime
     ) -> Actor | RecordProblem | None: ...
+
+    def browser_session(
+        self,
+        session_digest: bytes,
+        csrf_digest: bytes,
+        *,
+        now: datetime,
+    ) -> HumanBrowserSessionRecord | RecordProblem | None: ...
 
     def revoke_session(self, session_digest: bytes, *, reason: str, now: datetime) -> None: ...
 

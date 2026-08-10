@@ -68,6 +68,9 @@
     "ctower.workspace/v1": "contracts/components/workspace.schema.json",
     "https://ctower.dev/contracts/compatibility/matrix-input/v1": "contracts/compatibility/matrix-input.schema.json",
     "https://ctower.dev/contracts/compatibility/matrix-result/v1": "contracts/compatibility/matrix-result.schema.json",
+    "https://ctower.dev/contracts/domain/console/console-session-allow.schema.json": "contracts/domain/console/console-session-allow.schema.json",
+    "https://ctower.dev/contracts/domain/console/console-stream-event.schema.json": "contracts/domain/console/console-stream-event.schema.json",
+    "https://ctower.dev/contracts/domain/console/console-view-grant.schema.json": "contracts/domain/console/console-view-grant.schema.json",
     "https://ctower.dev/contracts/domain/events/event-envelope.schema.json": "contracts/domain/events/event-envelope.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json": "contracts/domain/migration/ctower-project-alias-map.schema.json",
@@ -2917,6 +2920,243 @@
         "execution"
       ],
       "title": "WorkspaceComponent",
+      "type": "object"
+    },
+    "contracts/domain/console/console-session-allow.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/console/console-session-allow.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adapter_key": {
+          "const": "tmux-v1",
+          "type": "string"
+        },
+        "assignment_interval_sequence": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "assignment_kind": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "assignment_ticket_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "backend_incarnation": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "crew_name": {
+          "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+          "type": "string"
+        },
+        "loop_kind": {
+          "const": "standard",
+          "type": "string"
+        },
+        "opaque_backend_ref": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "type": "string"
+        },
+        "recorded_work_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "runner_epoch": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "runner_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "runtime_attempt_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seat_principal_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "sensitivity_class": {
+          "const": "restricted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "adapter_key",
+        "assignment_interval_sequence",
+        "assignment_kind",
+        "assignment_ticket_id",
+        "backend_incarnation",
+        "crew_name",
+        "loop_kind",
+        "opaque_backend_ref",
+        "project_key",
+        "recorded_work_session_id",
+        "runner_epoch",
+        "runner_id",
+        "runtime_attempt_id",
+        "seat_principal_id",
+        "sensitivity_class"
+      ],
+      "title": "ConsoleSessionAllow",
+      "type": "object"
+    },
+    "contracts/domain/console/console-stream-event.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/console/console-stream-event.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "cursor": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "data": {
+              "contentEncoding": "base64",
+              "maxLength": 21848,
+              "type": "string"
+            },
+            "object_digest": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "type": {
+              "const": "chunk",
+              "type": "string"
+            }
+          },
+          "required": [
+            "cursor",
+            "data",
+            "object_digest",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "next_cursor": {
+              "minimum": 1,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "reason": {
+              "enum": [
+                "cursor_unavailable",
+                "source_truncated",
+                "unprovable_range",
+                "slow_consumer"
+              ],
+              "type": "string"
+            },
+            "type": {
+              "const": "gap",
+              "type": "string"
+            }
+          },
+          "required": [
+            "next_cursor",
+            "reason",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "expired",
+                "revoked",
+                "fenced",
+                "rate_limited",
+                "slow_consumer",
+                "reauthentication_required",
+                "globally_disabled"
+              ],
+              "type": "string"
+            },
+            "type": {
+              "const": "closed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ConsoleStreamEvent"
+    },
+    "contracts/domain/console/console-view-grant.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/console/console-view-grant.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "console_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "grant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "maximum_uses": {
+          "const": 1,
+          "type": "integer"
+        },
+        "not_before": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "policy_revision": {
+          "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+          "type": "string"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "type": "string"
+        },
+        "renewed_from_grant_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "console_session_id",
+        "expires_at",
+        "grant_id",
+        "maximum_uses",
+        "not_before",
+        "policy_revision",
+        "project_key",
+        "renewed_from_grant_id"
+      ],
+      "title": "ConsoleViewGrant",
       "type": "object"
     },
     "contracts/domain/events/event-envelope.schema.json": {
@@ -16624,6 +16864,21 @@
       "id": "https://ctower.local/contracts/components/workspace.schema.json",
       "path": "contracts/components/workspace.schema.json",
       "sha256": "sha256:65de4f625a925db34172d102179343568bc9ba5ae4b1a089311b96156206a622"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/console/console-session-allow.schema.json",
+      "path": "contracts/domain/console/console-session-allow.schema.json",
+      "sha256": "sha256:856190d3fac63ac2309e1e688313e8f651b979755e4d533e2831c1c76d859fdd"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/console/console-stream-event.schema.json",
+      "path": "contracts/domain/console/console-stream-event.schema.json",
+      "sha256": "sha256:cde460306fa21343ea291f5203ed0d91822babd2b7f8e8a86ffee3ac8c4c49f6"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/console/console-view-grant.schema.json",
+      "path": "contracts/domain/console/console-view-grant.schema.json",
+      "sha256": "sha256:345a81e8c88b7a3bdd96919ad88e1b2d9b96b0a050a219b9ba41691f471c5298"
     },
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",

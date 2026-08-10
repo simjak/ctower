@@ -128,6 +128,9 @@ def _operation(path: str, method: str, value: Mapping[str, object]) -> _Operatio
     if not isinstance(operation_id, str):
         raise TypeError(f"{method} {path} lacks operationId")
     mutation, spool = _mutation_and_spool(operation_id, value)
+    generated_client = value.get("x-ctower-generated-client", True)
+    if not isinstance(generated_client, bool):
+        raise TypeError(f"{operation_id} has non-boolean x-ctower-generated-client")
     principal, refusal_only = _principal_and_refusal(
         operation_id,
         value,
@@ -140,7 +143,11 @@ def _operation(path: str, method: str, value: Mapping[str, object]) -> _Operatio
         method=cast(_Method, method.upper()),
         path=path,
         request_model=_request_model(value),
-        response_model=_response_model(value, refusal_only=refusal_only),
+        response_model=_response_model(
+            value,
+            refusal_only=refusal_only,
+            generated_client=generated_client,
+        ),
         cli_names=_cli_names(operation_id, value.get("x-ctower-cli")),
         mutation=mutation,
         spool_policy=spool,
@@ -186,6 +193,8 @@ def _principal_and_refusal(
 
 
 def _cli_names(operation_id: str, value: object) -> tuple[str, ...]:
+    if value is None:
+        return ()
     candidates = value if isinstance(value, list) else [value]
     names = tuple(item for item in candidates if isinstance(item, str) and item.strip() == item)
     if len(names) != len(candidates) or not names or len(names) != len(set(names)):
@@ -202,7 +211,14 @@ def _request_model(operation: Mapping[str, object]) -> str | None:
     return _schema_reference(_mapping(media.get("schema"), "requestBody schema"))
 
 
-def _response_model(operation: Mapping[str, object], *, refusal_only: bool) -> str | None:
+def _response_model(
+    operation: Mapping[str, object],
+    *,
+    refusal_only: bool,
+    generated_client: bool,
+) -> str | None:
+    if not generated_client:
+        return None
     responses = _mapping(operation.get("responses"), "responses")
     for status, value in sorted(responses.items()):
         if not status.startswith("2"):
