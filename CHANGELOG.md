@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/simjak/ctower/compare/v0.24.0...v0.25.0) (2026-08-10)
+
+
+### Features
+
+* add native morning digest read model ([#425](https://github.com/simjak/ctower/issues/425)) ([7d6827f](https://github.com/simjak/ctower/commit/7d6827ff9887cee4ae8a917b53aabfefe677804a))
+
 ## [0.24.0](https://github.com/simjak/ctower/compare/v0.23.0...v0.24.0) (2026-08-10)
 
 
