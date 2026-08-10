@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:931db33201f46412991b07b0fb433e9cf59344839f05eb744e87441756e7bbf3
+Authored contract digest: sha256:9162a2f2dfd4c43f871e05e1bfb8a12caa22173e68c6e8284fceab606a9e75c1
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ OPERATIONS = MappingProxyType(
             path="/v1/admin/console/sessions",
             request_model=_models.ConsoleSessionAllowRequest,
             response_model=_models.ConsoleSessionAllowance,
-            cli_names=('console session allow',),
+            cli_names=(),
             mutation=True,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
@@ -988,7 +988,7 @@ OPERATIONS = MappingProxyType(
             path="/v1/admin/console/sessions/{console_session_id}/revocation",
             request_model=_models.ConsoleSessionRevocationRequest,
             response_model=None,
-            cli_names=('console session revoke',),
+            cli_names=(),
             mutation=True,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
@@ -1040,7 +1040,7 @@ OPERATIONS = MappingProxyType(
             path="/v1/admin/console/kill-switch",
             request_model=_models.ConsoleKillSwitchRequest,
             response_model=None,
-            cli_names=('console kill-switch set',),
+            cli_names=(),
             mutation=True,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
@@ -1172,7 +1172,6 @@ CLI_OPERATIONS = MappingProxyType(
         "knowledge add": OPERATIONS["addKnowledgeDocument"],
         "ticket comment add": OPERATIONS["addTicketComment"],
         "ticket relation add": OPERATIONS["addTicketRelation"],
-        "console session allow": OPERATIONS["allowConsoleSession"],
         "attention finding append": OPERATIONS["appendAttentionFinding"],
         "migration ctower-project correction append": OPERATIONS["appendCtowerProjectImportCorrection"],
         "ruling append": OPERATIONS["appendRuling"],
@@ -1244,11 +1243,9 @@ CLI_OPERATIONS = MappingProxyType(
         "request ticket relate": OPERATIONS["relateRequestTicket"],
         "migration ctower-project fence observe": OPERATIONS["reportCtowerProjectFenceObservation"],
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
-        "console session revoke": OPERATIONS["revokeConsoleSession"],
         "credential seat revoke": OPERATIONS["revokeSeatCredential"],
         "synthetic run": OPERATIONS["runSyntheticWorkflow"],
         "inbox send": OPERATIONS["sendInboxMessage"],
-        "console kill-switch set": OPERATIONS["setConsoleKillSwitch"],
         "request blocker set": OPERATIONS["setRequestBlocker"],
         "session start": OPERATIONS["startTicketSession"],
         "ticket workflow start": OPERATIONS["startTicketWorkflow"],

@@ -48,7 +48,7 @@
     "/v1/admin/console/sessions": {
       "post": {
         "operationId": "allowConsoleSession",
-        "x-ctower-cli": "console session allow",
+        "x-ctower-cli": null,
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
@@ -69,7 +69,7 @@
       "post": {
         "operationId": "revokeConsoleSession",
         "x-ctower-generated-client": false,
-        "x-ctower-cli": "console session revoke",
+        "x-ctower-cli": null,
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
@@ -89,7 +89,7 @@
       "post": {
         "operationId": "setConsoleKillSwitch",
         "x-ctower-generated-client": false,
-        "x-ctower-cli": "console kill-switch set",
+        "x-ctower-cli": null,
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
