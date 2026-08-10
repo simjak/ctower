@@ -8,6 +8,7 @@ from typing import cast
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
+import psycopg
 from fastapi.testclient import TestClient
 from httpx import Response
 from support.acceptance import accept_pending_commands
@@ -45,6 +46,7 @@ HTTP_FORBIDDEN = 403
 EXIT_SUCCESS = 0
 EXPECTED_DECISION_CHOICES = 3
 EXPECTED_PROOF_ROWS = 2
+MAX_REQUEST_CONTENT = 65536
 _VILNIUS = ZoneInfo("Europe/Vilnius")
 
 
@@ -59,7 +61,7 @@ def test_real_morning_digest_composes_record_derived_briefs_and_links(
         tenant,
         operator,
         commander,
-        "Choose the production rollout window.",
+        "X" * MAX_REQUEST_CONTENT,
     )
     executed_request_id, executed_ticket_id = _blocked_request_with_proof(
         tenant,
@@ -69,6 +71,7 @@ def test_real_morning_digest_composes_record_derived_briefs_and_links(
     )
     ruling_id, ruling_recorded_at = _accepted_ruling(tenant, commander, executed_request_id)
     digest_date = (ruling_recorded_at.astimezone(_VILNIUS).date() + timedelta(days=1)).isoformat()
+    position_before = _record_position(tenant)
     response, denied = _digest_responses(tenant, digest_date)
 
     assert response.status_code == HTTP_OK
@@ -88,13 +91,24 @@ def test_real_morning_digest_composes_record_derived_briefs_and_links(
         (open_ticket_id, executed_ticket_id),
     )
     _assert_cli_transcript(tenant, digest_date, (open_ticket_id, executed_ticket_id))
+    assert _record_position(tenant) == position_before
     print(
         "REAL_MORNING_DIGEST"
         f" artifact={payload['artifact_key']} sha={payload['artifact_sha256']}"
         f" open_request={open_request_id} executed_request={executed_request_id}"
         f" ruling={ruling_id} proof={open_ticket_id},{executed_ticket_id}"
-        " state=complete cli=0"
+        f" state=complete cli=0 record_position={position_before}:unchanged"
     )
+
+
+def _record_position(tenant: TenantFixture) -> int:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            "SELECT COALESCE(MAX(record_position), 0) FROM events WHERE tenant_id = %s",
+            (tenant.tenant_id,),
+        ).fetchone()
+    assert row is not None
+    return int(row[0])
 
 
 def _digest_responses(tenant: TenantFixture, digest_date: str) -> tuple[Response, Response]:
@@ -159,6 +173,7 @@ def _assert_digest_payload(
     assert decision_rows[0]["unknown_reason"] is None
     brief = cast(dict[str, object], decision_rows[0]["brief"])
     assert brief["what"] == "This Request needs your decision before work can continue."
+    assert len(cast(str, brief["origin"])) == MAX_REQUEST_CONTENT
     assert len(cast(list[object], brief["choices"])) == EXPECTED_DECISION_CHOICES
     assert yesterday["total_count"] == yesterday["visible_count"] == 1
     assert ruling_rows[0]["ruling_id"] == str(ruling_id)

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:892385f214b27149dbb7c1b5e9bc9d45924973b9700a8232073bac541fee0f34
+Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
 """
 
 from __future__ import annotations
@@ -1920,9 +1920,9 @@ class DecisionBrief(_BoundaryModel):
 
 
 class DigestDecisionBrief(_BoundaryModel):
-    choices: tuple[DigestDecisionChoice, ...]
-    origin: Annotated[str, Field(min_length=1, max_length=1024)]
-    recommendation: Annotated[str, Field(min_length=1, max_length=2048)] | None
+    choices: Annotated[tuple[DigestDecisionChoice, ...], Field(min_length=3, max_length=3)]
+    origin: Annotated[str, Field(min_length=1, max_length=65536)]
+    recommendation: Annotated[str, Field(min_length=1, max_length=2048)]
     safe_default: Annotated[str, Field(min_length=1, max_length=2048)]
     what: Annotated[str, Field(min_length=1, max_length=65536)]
 

@@ -22,7 +22,6 @@ from ctower_kernel.projections.morning_digest import (
 
 __all__: tuple[str, ...] = ()
 
-_OPERATOR_ID = UUID("00000000-0000-7000-8000-000000000001")
 _REQUEST_ID = UUID("00000000-0000-7000-8000-000000000101")
 _EXECUTED_REQUEST_ID = UUID("00000000-0000-7000-8000-000000000102")
 _UNRELATED_REQUEST_ID = UUID("00000000-0000-7000-8000-000000000103")
@@ -49,14 +48,14 @@ def test_digest_composes_three_sections_and_prior_day_ruling_execution() -> None
                 project_key="ctower",
                 verbatim="Proceed with the bounded option.",
                 recorded_at=datetime(2026, 8, 9, 8, 15, tzinfo=UTC),
-                linked_request_ids=(_EXECUTED_REQUEST_ID,),
+                linked_request_id=_EXECUTED_REQUEST_ID,
             ),
             DigestRulingFact(
                 ruling_id=_TODAY_RULING_ID,
                 project_key="ctower",
                 verbatim="This belongs to today's next digest.",
                 recorded_at=datetime(2026, 8, 10, 4, 0, tzinfo=UTC),
-                linked_request_ids=(),
+                linked_request_id=None,
             ),
         ),
         watermark=44,
@@ -85,7 +84,7 @@ def test_ruling_fact_refuses_a_naive_recording_time() -> None:
             project_key="ctower",
             verbatim="Proceed.",
             recorded_at=_OBSERVED_AT.replace(tzinfo=None),
-            linked_request_ids=(),
+            linked_request_id=None,
         )
 
 
@@ -101,7 +100,7 @@ def test_unreached_request_source_is_unknown_never_a_zero() -> None:
                 project_key="ctower",
                 verbatim="Proceed with the bounded option.",
                 recorded_at=datetime(2026, 8, 9, 8, 15, tzinfo=UTC),
-                linked_request_ids=(_EXECUTED_REQUEST_ID,),
+                linked_request_id=_EXECUTED_REQUEST_ID,
             ),
         ),
         watermark=44,
@@ -176,38 +175,29 @@ def test_partial_source_preserves_visible_rows_and_withholds_the_total() -> None
     assert digest.yesterday_rulings.total_count == 0
 
 
-def test_missing_typed_brief_and_execution_link_render_unknown_not_invented_content() -> None:
-    request = DigestRequestFact(
-        request_id=_REQUEST_ID,
-        request_number=101,
-        project_key="ctower",
-        content="Choose the release window.",
+def test_open_decisions_follow_the_authoritative_brief_status() -> None:
+    open_request = replace(_open_decision(), state="DONE")
+    answered_brief = _open_decision().decision_brief
+    assert answered_brief is not None
+    answered_request = replace(
+        _open_decision(),
+        request_id=_EXECUTED_REQUEST_ID,
+        request_number=102,
         state="BLOCKED",
-        owner_id=_OPERATOR_ID,
-        blocker="operator-decision-required",
-        source_kind="mission-control",
-        source_ref="R101",
-        required_ticket_ids=(),
-        optional_ticket_ids=(),
-        current_proof_count=0,
-        decision_brief=None,
-    )
-    ruling = DigestRulingFact(
-        ruling_id=_RULING_ID,
-        project_key="ctower",
-        verbatim="Proceed with the bounded option.",
-        recorded_at=datetime(2026, 8, 9, 8, 15, tzinfo=UTC),
-        linked_request_ids=None,
+        decision_brief=replace(answered_brief, status="answered"),
     )
 
     digest = project_morning_digest(
-        SourceReading.complete((request,), watermark=41, observed_at=_OBSERVED_AT),
-        SourceReading.complete((ruling,), watermark=44, observed_at=_OBSERVED_AT),
+        SourceReading.complete(
+            (open_request, answered_request), watermark=41, observed_at=_OBSERVED_AT
+        ),
+        SourceReading.complete((), watermark=44, observed_at=_OBSERVED_AT),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
 
-    _assert_missing_links(digest)
+    assert tuple(item.request_id for item in digest.open_decisions.items) == (_REQUEST_ID,)
+    assert digest.open_decisions.state is ReadingState.COMPLETE
 
 
 def test_unknown_proof_count_marks_the_related_scope_partial() -> None:
@@ -246,7 +236,7 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
         requests,
         rulings,
         digest_date=_DIGEST_DATE,
-        observed_at=_OBSERVED_AT,
+        observed_at=datetime(2026, 8, 10, 6, 0, tzinfo=UTC),
     )
 
     assert first.state is ReadingState.COMPLETE
@@ -254,6 +244,7 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
     assert first.yesterday_rulings.total_count == 0
     assert first.proof.total_count == 0
     assert first.artifact_sha256 == second.artifact_sha256
+    assert first.observed_at != second.observed_at
     assert first.artifact_sha256.startswith("sha256:")
 
 
@@ -268,21 +259,21 @@ def test_prior_civil_day_uses_the_vilnius_fall_back_boundary() -> None:
                 "ctower",
                 "First hour.",
                 datetime(2026, 10, 24, 21, 30, tzinfo=UTC),
-                (),
+                None,
             ),
             DigestRulingFact(
                 final_id,
                 "ctower",
                 "Final hour.",
                 datetime(2026, 10, 25, 21, 30, tzinfo=UTC),
-                (),
+                None,
             ),
             DigestRulingFact(
                 excluded_id,
                 "ctower",
                 "Next civil day.",
                 datetime(2026, 10, 25, 22, 30, tzinfo=UTC),
-                (),
+                None,
             ),
         ),
         watermark=45,
@@ -321,41 +312,17 @@ def _assert_complete_digest(digest: MorningDigest) -> None:
     assert all(item.request_id != _UNRELATED_REQUEST_ID for item in digest.proof.items)
 
 
-def _assert_missing_links(digest: MorningDigest) -> None:
-    decision = digest.open_decisions.items[0]
-    assert decision.state is ReadingState.PARTIAL
-    assert decision.brief.what == "Choose the release window."
-    assert decision.brief.choices == ()
-    assert decision.brief.recommendation is None
-    assert decision.brief.safe_default == "No action. This Request stays blocked."
-    assert decision.unknown_reason == "decision-brief-not-recorded"
-    assert digest.open_decisions.unreached == (
-        UnreachedScope("R101:decision-brief", "decision-brief-not-recorded"),
-    )
-    projected_ruling = digest.yesterday_rulings.items[0]
-    assert projected_ruling.executions == ()
-    assert projected_ruling.unknown_reason == "execution-link-not-recorded"
-    assert digest.yesterday_rulings.unreached == (
-        UnreachedScope(f"ruling:{_RULING_ID}:execution-link", "execution-link-not-recorded"),
-    )
-    assert digest.state is ReadingState.PARTIAL
-
-
 def _open_decision() -> DigestRequestFact:
     return DigestRequestFact(
         request_id=_REQUEST_ID,
         request_number=101,
         project_key="ctower",
-        content="Choose the release window.",
         state="BLOCKED",
-        owner_id=_OPERATOR_ID,
-        blocker="operator-decision-required",
-        source_kind="mission-control",
-        source_ref="R101",
         required_ticket_ids=(),
         optional_ticket_ids=(_OPTIONAL_TICKET_ID,),
         current_proof_count=0,
         decision_brief=DecisionBriefFact(
+            status="open",
             what="Choose the release window.",
             origin="The operator asked to avoid a dark release.",
             choices=(
@@ -367,6 +334,11 @@ def _open_decision() -> DigestRequestFact:
                 DecisionChoiceFact(
                     label="Keep holding",
                     outcome="No release occurs today.",
+                    completeness=10,
+                ),
+                DecisionChoiceFact(
+                    label="Stop the release",
+                    outcome="The rollout is closed without production change.",
                     completeness=10,
                 ),
             ),
@@ -381,12 +353,7 @@ def _executed_request() -> DigestRequestFact:
         request_id=_EXECUTED_REQUEST_ID,
         request_number=102,
         project_key="ctower",
-        content="Ship the bounded change.",
         state="DONE",
-        owner_id=UUID("00000000-0000-7000-8000-000000000002"),
-        blocker=None,
-        source_kind="mission-control",
-        source_ref="R102",
         required_ticket_ids=(_TICKET_ID,),
         optional_ticket_ids=(),
         current_proof_count=1,
@@ -399,12 +366,7 @@ def _unrelated_request() -> DigestRequestFact:
         request_id=_UNRELATED_REQUEST_ID,
         request_number=103,
         project_key="ctower",
-        content="Unrelated historical work.",
         state="DONE",
-        owner_id=_OPERATOR_ID,
-        blocker=None,
-        source_kind="mission-control",
-        source_ref="R103",
         required_ticket_ids=(_UNRELATED_TICKET_ID,),
         optional_ticket_ids=(),
         current_proof_count=1,

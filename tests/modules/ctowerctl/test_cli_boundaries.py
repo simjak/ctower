@@ -42,6 +42,7 @@ from ctowerctl._company_commands import (
 from ctowerctl._company_commands import (
     query_command_names as company_queries,
 )
+from ctowerctl._digest_commands import query_command_names as digest_queries
 from ctowerctl._dream_dispatch_commands import (
     mutation_command_names as dream_dispatch_mutations,
 )
@@ -136,7 +137,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | knowledge_queries()
         | session_queries()
         | dream_dispatch_queries()
-        | ({"digest morning"} | request_queries() | _ruling_commands.query_command_names())
+        | (digest_queries() | request_queries() | _ruling_commands.query_command_names())
     )
     refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}

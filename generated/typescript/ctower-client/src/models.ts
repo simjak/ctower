@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:892385f214b27149dbb7c1b5e9bc9d45924973b9700a8232073bac541fee0f34
+// Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
 
 export type ActivityClass = "work" | "verification";
 
@@ -644,7 +644,7 @@ export type DeliverySurfaceAvailabilityQualifyingCheckpoint = Readonly<{
 export type DigestDecisionBrief = Readonly<{
   readonly "choices": ReadonlyArray<DigestDecisionChoice>;
   readonly "origin": string;
-  readonly "recommendation": string | null;
+  readonly "recommendation": string;
   readonly "safe_default": string;
   readonly "what": string;
 }>;

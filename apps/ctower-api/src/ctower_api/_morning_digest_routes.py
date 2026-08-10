@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Callable
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Request
@@ -48,13 +47,11 @@ class _MorningDigestRoutes:
         requests: Requests,
         rulings: Rulings,
         recorder: TelemetryRecorder,
-        clock: Callable[[], dt.datetime],
     ) -> None:
         self._access = access
         self._requests = requests
         self._rulings = rulings
         self._recorder = recorder
-        self._clock = clock
 
     async def get(self, request: Request, date: str | None = None) -> JSONResponse:
         actor = authenticate(
@@ -75,7 +72,7 @@ class _MorningDigestRoutes:
                 )
             )
         try:
-            observed_at = _aware_now(self._clock)
+            observed_at = dt.datetime.now(dt.UTC)
             digest_date = _digest_date(date, observed_at)
             telemetry = telemetry_context(request).bind(
                 tenant_id=str(actor.tenant_id), actor_id=str(actor.principal_id)
@@ -136,12 +133,7 @@ def _request_reading(
             request_id=row.request_id,
             request_number=row.request_number,
             project_key=row.project_key,
-            content=row.content,
             state=row.state,
-            owner_id=row.owner_id,
-            blocker=row.blocker,
-            source_kind=row.source_kind,
-            source_ref=row.source_ref,
             required_ticket_ids=row.required_ticket_ids,
             optional_ticket_ids=row.optional_ticket_ids,
             current_proof_count=row.proof_coverage,
@@ -178,7 +170,7 @@ def _ruling_reading(
             project_key=row.project_key,
             verbatim=row.verbatim,
             recorded_at=row.recorded_at,
-            linked_request_ids=() if row.request_id is None else (row.request_id,),
+            linked_request_id=row.request_id,
         )
         for row in outcome.rows
     )
@@ -203,6 +195,7 @@ def _decision_brief(row: RequestRow) -> DecisionBriefFact | None:
     if brief is None:
         return None
     return DecisionBriefFact(
+        status=brief.status,
         what=brief.eli,
         origin=brief.origin_quote,
         choices=tuple(
@@ -220,24 +213,14 @@ def install_morning_digest_routes(
     requests: Requests,
     rulings: Rulings,
     recorder: TelemetryRecorder,
-    *,
-    clock: Callable[[], dt.datetime] | None = None,
 ) -> None:
     routes = _MorningDigestRoutes(
         access,
         requests,
         rulings,
         recorder,
-        clock or (lambda: dt.datetime.now(dt.UTC)),
     )
     app.add_api_route("/v1/digests/morning", routes.get, methods=["GET"])
-
-
-def _aware_now(clock: Callable[[], dt.datetime]) -> dt.datetime:
-    observed_at = clock()
-    if observed_at.tzinfo is None:
-        raise ValueError("digest clock must be timezone-aware")
-    return observed_at
 
 
 def _digest_date(value: str | None, observed_at: dt.datetime) -> dt.date:

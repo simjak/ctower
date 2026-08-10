@@ -25,6 +25,7 @@ __all__ = [
 
 _VILNIUS = ZoneInfo("Europe/Vilnius")
 _MAX_COMPLETENESS = 10
+_DECISION_CHOICE_COUNT = 3
 
 
 class ReadingState(StrEnum):
@@ -133,11 +134,18 @@ class DecisionChoiceFact:
 
 @dataclass(frozen=True, slots=True)
 class DecisionBriefFact:
+    status: str
     what: str
     origin: str
     choices: tuple[DecisionChoiceFact, ...]
-    recommendation: str | None
+    recommendation: str
     safe_default: str
+
+    def __post_init__(self) -> None:
+        if self.status not in ("open", "answered"):
+            raise ValueError("decision brief status must be open or answered")
+        if len(self.choices) != _DECISION_CHOICE_COUNT:
+            raise ValueError("decision brief must carry exactly three choices")
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -156,12 +164,7 @@ class DigestRequestFact:
     request_id: UUID
     request_number: int
     project_key: str
-    content: str
     state: str
-    owner_id: UUID
-    blocker: str | None
-    source_kind: str
-    source_ref: str
     required_ticket_ids: tuple[UUID, ...]
     optional_ticket_ids: tuple[UUID, ...]
     current_proof_count: int | None
@@ -174,13 +177,13 @@ class DigestRequestFact:
 
 @dataclass(frozen=True, slots=True)
 class DigestRulingFact:
-    """Ruling fields plus a typed link when that source has recorded one."""
+    """Ruling fields plus its authoritative optional Request relation."""
 
     ruling_id: UUID
     project_key: str
     verbatim: str
     recorded_at: datetime
-    linked_request_ids: tuple[UUID, ...] | None
+    linked_request_id: UUID | None
 
     def __post_init__(self) -> None:
         if self.recorded_at.tzinfo is None:
@@ -324,6 +327,13 @@ class MorningDigest:
             "yesterday_rulings": self.yesterday_rulings.response_payload(),
         }
 
+    def artifact_payload(self) -> dict[str, object]:
+        """Stable content identity, excluding the time at which it was observed."""
+
+        payload = self.content_payload()
+        del payload["observed_at"]
+        return payload
+
 
 def project_morning_digest(
     requests: SourceReading[DigestRequestFact],
@@ -358,7 +368,7 @@ def project_morning_digest(
         proof=proof,
     )
     canonical = json.dumps(
-        digest.content_payload(),
+        digest.artifact_payload(),
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
@@ -386,54 +396,32 @@ def _decision_section(
             (
                 item
                 for item in reading.rows
-                if item.state == "BLOCKED" and item.blocker == "operator-decision-required"
+                if item.decision_brief is not None and item.decision_brief.status == "open"
             ),
             key=lambda item: item.request_number,
         )
     )
     decisions = tuple(_decision(item) for item in rows)
-    state = _combined_state(reading.state, *(item.state for item in decisions))
-    unreached = reading.unreached + tuple(
-        UnreachedScope(
-            f"{item.request_reference}:decision-brief",
-            item.unknown_reason,
-        )
-        for item in decisions
-        if item.unknown_reason is not None
-    )
     return DigestSection(
-        state,
+        reading.state,
         len(decisions),
         len(decisions) if reading.state is ReadingState.COMPLETE else None,
         decisions,
-        unreached,
+        reading.unreached,
     )
 
 
 def _decision(item: DigestRequestFact) -> DigestDecision:
-    if item.decision_brief is not None:
-        return DigestDecision(
-            item.request_id,
-            item.reference,
-            item.project_key,
-            ReadingState.COMPLETE,
-            item.decision_brief,
-            None,
-        )
-    brief = DecisionBriefFact(
-        what=item.content,
-        origin=f"{item.source_kind}:{item.source_ref}",
-        choices=(),
-        recommendation=None,
-        safe_default="No action. This Request stays blocked.",
-    )
+    brief = item.decision_brief
+    if brief is None or brief.status != "open":
+        raise ValueError("digest decisions require an authoritative open brief")
     return DigestDecision(
         item.request_id,
         item.reference,
         item.project_key,
-        ReadingState.PARTIAL,
+        ReadingState.COMPLETE,
         brief,
-        "decision-brief-not-recorded",
+        None,
     )
 
 
@@ -475,13 +463,12 @@ def _ruling(
     requests: SourceReading[DigestRequestFact],
     request_index: dict[UUID, DigestRequestFact],
 ) -> DigestRuling:
-    if item.linked_request_ids is None:
-        return _unknown_ruling(item, "execution-link-not-recorded")
-    if item.linked_request_ids and requests.state is ReadingState.UNKNOWN:
+    if item.linked_request_id is None:
+        executions: tuple[DigestExecution, ...] = ()
+    elif requests.state is ReadingState.UNKNOWN:
         return _unknown_ruling(item, "request-source-unreached")
-    executions: list[DigestExecution] = []
-    for request_id in item.linked_request_ids:
-        request = request_index.get(request_id)
+    else:
+        request = request_index.get(item.linked_request_id)
         if request is None:
             reason = (
                 "request-source-unreached"
@@ -489,13 +476,13 @@ def _ruling(
                 else "linked-request-not-found"
             )
             return _unknown_ruling(item, reason)
-        executions.append(
+        executions = (
             DigestExecution(
                 request.request_id,
                 request.reference,
                 request.state,
                 request.required_ticket_ids + request.optional_ticket_ids,
-            )
+            ),
         )
     return DigestRuling(
         item.ruling_id,
@@ -503,7 +490,7 @@ def _ruling(
         item.verbatim,
         item.recorded_at,
         ReadingState.COMPLETE,
-        tuple(executions),
+        executions,
         None,
     )
 

@@ -53,27 +53,16 @@ def _decision_lines(digest: MorningDigest) -> list[str]:
     lines: list[str] = []
     for decision in digest.open_decisions.items:
         decision_state = decision.state.value.upper()
-        lines.extend(
-            (
-                f"{decision.request_reference} · {decision.project_key} · {decision_state}",
-                f"What: {decision.brief.what}",
-                f"Origin: {decision.brief.origin}",
-            )
-        )
-        if decision.brief.choices:
-            lines.append("Choices:")
+        lines.append(f"{decision.request_reference} · {decision.project_key} · {decision_state}")
+        lines.extend(_field_lines("What", decision.brief.what))
+        lines.extend(_field_lines("Origin", decision.brief.origin))
+        lines.append("Choices:")
+        for choice in decision.brief.choices:
             lines.extend(
-                f"- {choice.label} ({choice.completeness}/10): {choice.outcome}"
-                for choice in decision.brief.choices
+                _bullet_lines(f"{choice.label} ({choice.completeness}/10): {choice.outcome}")
             )
-        elif decision.state.value == "complete":
-            lines.append("Choices: 0")
-        else:
-            lines.append(f"Choices: UNKNOWN ({decision.unknown_reason or 'not-recorded'})")
-        lines.append(
-            "Recommendation: " + (decision.brief.recommendation or "UNKNOWN (not-recorded)")
-        )
-        lines.append(f"Safe default: {decision.brief.safe_default}")
+        lines.extend(_field_lines("Recommendation", decision.brief.recommendation))
+        lines.extend(_field_lines("Safe default", decision.brief.safe_default))
         if decision.unknown_reason is not None:
             lines.append(f"Unknown: {decision.unknown_reason}")
     return lines
@@ -82,12 +71,8 @@ def _decision_lines(digest: MorningDigest) -> list[str]:
 def _ruling_lines(digest: MorningDigest) -> list[str]:
     lines: list[str] = []
     for ruling in digest.yesterday_rulings.items:
-        lines.extend(
-            (
-                f"{ruling.ruling_id} · {ruling.project_key} · {ruling.state.value.upper()}",
-                f"Ruling: {ruling.verbatim}",
-            )
-        )
+        lines.append(f"{ruling.ruling_id} · {ruling.project_key} · {ruling.state.value.upper()}")
+        lines.extend(_field_lines("Ruling", ruling.verbatim))
         if ruling.executions:
             lines.append("Executions:")
             lines.extend(
@@ -122,3 +107,16 @@ def _count(
 
 def _unreached(lines: list[str], scopes: tuple[DigestUnreachedScope, ...]) -> None:
     lines.extend(f"Unreached: {item.key} ({item.reason})" for item in scopes)
+
+
+def _field_lines(label: str, value: str) -> list[str]:
+    return _prefixed_lines(f"{label}: ", value)
+
+
+def _bullet_lines(value: str) -> list[str]:
+    return _prefixed_lines("- ", value)
+
+
+def _prefixed_lines(prefix: str, value: str) -> list[str]:
+    parts = value.splitlines() or [""]
+    return [f"{prefix}{parts[0]}", *(f"  {part}" for part in parts[1:])]

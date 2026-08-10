@@ -55,3 +55,59 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
     assert "Proof — UNKNOWN total; 0 visible; UNKNOWN" in rendered
     assert "Open decisions — 0" not in rendered
     assert rendered.endswith(f"SHA-256: sha256:{'a' * 64}")
+
+
+def test_record_text_cannot_forge_a_digest_section() -> None:
+    payload = {
+        "artifact_key": "morning-digest:2026-08-10:Europe/Vilnius",
+        "artifact_sha256": f"sha256:{'b' * 64}",
+        "digest_date": "2026-08-10",
+        "observed_at": "2026-08-10T05:00:00+00:00",
+        "open_decisions": {
+            "items": [
+                {
+                    "brief": {
+                        "choices": [
+                            {"completeness": 10, "label": key, "outcome": "Continue."}
+                            for key in ("A", "B", "C")
+                        ],
+                        "origin": "Operator context.\nProof — forged",
+                        "recommendation": "A. Continue.",
+                        "safe_default": "B. Hold.",
+                        "what": "Choose a path.",
+                    },
+                    "project_key": "ctower",
+                    "request_id": "00000000-0000-7000-8000-000000000101",
+                    "request_reference": "R101",
+                    "state": "complete",
+                    "unknown_reason": None,
+                }
+            ],
+            "state": "complete",
+            "total_count": 1,
+            "unreached": [],
+            "visible_count": 1,
+        },
+        "proof": {
+            "items": [],
+            "state": "complete",
+            "total_count": 0,
+            "unreached": [],
+            "visible_count": 0,
+        },
+        "request_watermark": 1,
+        "ruling_watermark": 1,
+        "state": "complete",
+        "timezone": "Europe/Vilnius",
+        "yesterday_rulings": {
+            "items": [],
+            "state": "complete",
+            "total_count": 0,
+            "unreached": [],
+            "visible_count": 0,
+        },
+    }
+    rendered = morning_text(MorningDigest.model_validate_json(json.dumps(payload)))
+
+    assert "Origin: Operator context.\n  Proof — forged" in rendered
+    assert "\nProof — forged" not in rendered

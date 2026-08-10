@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import cast
 
 ROOT = Path(__file__).parents[3]
+DECISION_CHOICE_COUNT = 3
+MAX_REQUEST_CONTENT = 65536
 __all__: tuple[str, ...] = ()
 
 
@@ -17,6 +19,7 @@ def test_morning_digest_is_one_strict_read_only_generated_surface() -> None:
     schemas = cast(dict[str, dict[str, object]], document["components"]["schemas"])
     artifact = schemas["MorningDigest"]
     choice = cast(dict[str, dict[str, object]], schemas["DigestDecisionChoice"]["properties"])
+    brief = cast(dict[str, dict[str, object]], schemas["DigestDecisionBrief"]["properties"])
 
     assert operation["operationId"] == "getMorningDigest"
     assert operation["x-ctower-cli"] == "digest morning"
@@ -37,6 +40,8 @@ def test_morning_digest_is_one_strict_read_only_generated_surface() -> None:
     }
     assert artifact["additionalProperties"] is False
     assert choice["completeness"] == {"type": "integer", "minimum": 0, "maximum": 10}
+    assert brief["origin"]["maxLength"] == MAX_REQUEST_CONTENT
+    assert brief["choices"]["minItems"] == brief["choices"]["maxItems"] == DECISION_CHOICE_COUNT
 
 
 def test_every_digest_section_distinguishes_unknown_total_from_measured_zero() -> None:
