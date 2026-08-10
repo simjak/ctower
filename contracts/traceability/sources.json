@@ -2099,6 +2099,56 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/request-batch-proof.schema.json",
+      "references": [
+        "SPEC#accepted-first-class-operator-request-contract",
+        "INV-86",
+        "AC-REQ-06"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/request-import-manifest.schema.json",
+      "references": [
+        "SPEC#accepted-first-class-operator-request-contract",
+        "INV-86",
+        "AC-REQ-06"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/request-owner-map.schema.json",
+      "references": [
+        "SPEC#accepted-first-class-operator-request-contract",
+        "INV-86",
+        "AC-REQ-06"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/request-source-fence.schema.json",
+      "references": [
+        "SPEC#accepted-first-class-operator-request-contract",
+        "INV-86",
+        "AC-REQ-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0059_request_authority.sql",
+      "references": [
+        "SPEC#accepted-first-class-operator-request-contract",
+        "INV-81",
+        "INV-82",
+        "INV-83",
+        "INV-84",
+        "INV-85",
+        "INV-86",
+        "AC-REQ-01",
+        "AC-REQ-02",
+        "AC-REQ-03",
+        "AC-REQ-04",
+        "AC-REQ-05",
+        "AC-REQ-06"
+      ]
+    },
+    {
       "path": "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "references": [
         "SPEC#event-driven-default-and-routine-revisions",

@@ -47,6 +47,10 @@
     "ctower.persona/v1": "contracts/components/persona.schema.json",
     "ctower.project-delivery/v1": "contracts/domain/project-delivery/project-delivery.schema.json",
     "ctower.project/v1": "contracts/components/project.schema.json",
+    "ctower.request-batch-proof/v1": "contracts/domain/migration/request-batch-proof.schema.json",
+    "ctower.request-import-manifest/v1": "contracts/domain/migration/request-import-manifest.schema.json",
+    "ctower.request-owner-map/v1": "contracts/domain/migration/request-owner-map.schema.json",
+    "ctower.request-source-fence/v1": "contracts/domain/migration/request-source-fence.schema.json",
     "ctower.review-plan/v1": "contracts/workflow/review-plan.schema.json",
     "ctower.scheduling-policy/v1": "contracts/domain/task-management/scheduling-policy.schema.json",
     "ctower.seat-catalog/v1": "contracts/components/seat-catalog.schema.json",
@@ -85,6 +89,10 @@
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-link.schema.json": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json": "contracts/domain/migration/ctower-project-source-selection.schema.json",
     "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json": "contracts/domain/migration/migration-boundary.schema.json",
+    "https://ctower.dev/contracts/domain/migration/request-batch-proof.schema.json": "contracts/domain/migration/request-batch-proof.schema.json",
+    "https://ctower.dev/contracts/domain/migration/request-import-manifest.schema.json": "contracts/domain/migration/request-import-manifest.schema.json",
+    "https://ctower.dev/contracts/domain/migration/request-owner-map.schema.json": "contracts/domain/migration/request-owner-map.schema.json",
+    "https://ctower.dev/contracts/domain/migration/request-source-fence.schema.json": "contracts/domain/migration/request-source-fence.schema.json",
     "https://ctower.dev/contracts/domain/outbox-delivery.schema.json": "contracts/domain/outbox-delivery.schema.json",
     "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json": "contracts/domain/project-delivery/project-delivery.schema.json",
     "https://ctower.dev/contracts/domain/task-management/board-view.schema.json": "contracts/domain/task-management/board-view.schema.json",
@@ -3451,12 +3459,14 @@
             },
             "intent": {
               "enum": [
+                "create_request",
                 "create_ticket",
                 "link_ticket"
               ]
             },
             "outcome": {
               "enum": [
+                "request_created",
                 "ticket_created",
                 "ticket_linked"
               ]
@@ -3464,6 +3474,13 @@
             "project_key": {
               "pattern": "^[a-z][a-z0-9._-]{2,127}$",
               "type": "string"
+            },
+            "request_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "source_kind": {
               "maxLength": 64,
@@ -3477,7 +3494,10 @@
             },
             "ticket_id": {
               "format": "uuid",
-              "type": "string"
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -3487,7 +3507,8 @@
             "project_key",
             "source_kind",
             "source_ref",
-            "ticket_id"
+            "ticket_id",
+            "request_id"
           ],
           "type": "object"
         },
@@ -3504,6 +3525,7 @@
             "intent": {
               "enum": [
                 "discussion",
+                "create_request",
                 "create_ticket",
                 "link_ticket"
               ]
@@ -3511,6 +3533,7 @@
             "outcome": {
               "enum": [
                 "discussion",
+                "request_created",
                 "ticket_created",
                 "ticket_linked",
                 "quarantined"
@@ -3523,6 +3546,13 @@
             "project_key": {
               "pattern": "^[a-z][a-z0-9._-]{2,127}$",
               "type": "string"
+            },
+            "request_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "source_kind": {
               "maxLength": 64,
@@ -3559,7 +3589,8 @@
             "source_kind",
             "source_ref",
             "taint",
-            "ticket_id"
+            "ticket_id",
+            "request_id"
           ],
           "type": "object"
         },
@@ -3798,7 +3829,11 @@
                 "source_link",
                 "correction_appended",
                 "reconciled",
-                "fence_observed"
+                "fence_observed",
+                "request_cutover_prepared",
+                "request_batch_reconciled",
+                "request_cutover_completed",
+                "request_cutover_quarantined"
               ]
             },
             "project_key": {
@@ -4013,6 +4048,131 @@
             "episode_number",
             "priority",
             "reason"
+          ],
+          "type": "object"
+        },
+        "requestChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "blockers": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "closure_outcome": {
+              "enum": [
+                "open",
+                "done"
+              ]
+            },
+            "content": {
+              "maxLength": 65536,
+              "minLength": 1,
+              "type": "string"
+            },
+            "content_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "operation": {
+              "enum": [
+                "capture",
+                "import",
+                "triage",
+                "priority",
+                "owner",
+                "ticket_relation",
+                "blocker",
+                "closure_evaluation"
+              ]
+            },
+            "optional_ticket_ids": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "owner_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ]
+            },
+            "priority_default": {
+              "type": "boolean"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "request_number": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "required_ticket_ids": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "source_kind": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "submitted_by": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "triage": {
+              "enum": [
+                "UNTRIAGED",
+                "ACCEPTED",
+                "DUPLICATE",
+                "REJECTED"
+              ]
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "blockers",
+            "closure_outcome",
+            "content",
+            "content_digest",
+            "operation",
+            "optional_ticket_ids",
+            "owner_id",
+            "priority",
+            "priority_default",
+            "project_key",
+            "request_id",
+            "request_number",
+            "required_ticket_ids",
+            "source_kind",
+            "source_ref",
+            "submitted_by",
+            "triage",
+            "version"
           ],
           "type": "object"
         },
@@ -5051,6 +5211,22 @@
                   "pattern": "^knowledge-document:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "request.changed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/requestChanged"
+                },
+                "stream_id": {
+                  "pattern": "^request:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -5115,7 +5291,8 @@
             "ticket.label_applied",
             "attention.finding_appended",
             "attention.finding_disposition_recorded",
-            "knowledge.document_registered"
+            "knowledge.document_registered",
+            "request.changed"
           ],
           "type": "string"
         },
@@ -5148,7 +5325,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -10189,6 +10366,799 @@
       "$id": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "Shared strict ctower-project migration boundary definitions"
+    },
+    "contracts/domain/migration/request-batch-proof.schema.json": {
+      "$defs": {
+        "comparison": {
+          "additionalProperties": false,
+          "properties": {
+            "content_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "created_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "durability_state": {
+              "const": "accepted"
+            },
+            "equal": {
+              "const": true
+            },
+            "id": {
+              "pattern": "^R[1-9][0-9]*$",
+              "type": "string"
+            },
+            "implicit_ticket_count": {
+              "const": 0
+            },
+            "original_owner_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "owner_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ]
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "relationships_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "request_number": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "source_alias": {
+              "pattern": "^R[1-9][0-9]*$",
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "NEW",
+                "TRIAGED"
+              ]
+            },
+            "triage": {
+              "enum": [
+                "UNTRIAGED",
+                "ACCEPTED"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "request_id",
+            "request_number",
+            "project_key",
+            "owner_id",
+            "original_owner_sha256",
+            "content_sha256",
+            "source_alias",
+            "created_at",
+            "relationships_sha256",
+            "triage",
+            "priority",
+            "state",
+            "durability_state",
+            "implicit_ticket_count",
+            "equal"
+          ],
+          "type": "object"
+        },
+        "projectCount": {
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_key",
+            "count"
+          ],
+          "type": "object"
+        },
+        "projectCounts": {
+          "items": {
+            "$ref": "#/$defs/projectCount"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/request-batch-proof.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "batch_index": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "batch_target_count": {
+          "maximum": 25,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "batch_target_count_by_project": {
+          "$ref": "#/$defs/projectCounts"
+        },
+        "cumulative_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cumulative_count_by_project": {
+          "$ref": "#/$defs/projectCounts"
+        },
+        "manifest_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "proof_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/comparison"
+          },
+          "maxItems": 25,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/comparison"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.request-batch-proof/v1"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "source_count": {
+          "maximum": 25,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_count_by_project": {
+          "$ref": "#/$defs/projectCounts"
+        },
+        "target_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "target_count_by_project": {
+          "$ref": "#/$defs/projectCounts"
+        },
+        "target_watermark": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema",
+        "manifest_digest",
+        "batch_index",
+        "source_count",
+        "source_count_by_project",
+        "batch_target_count",
+        "batch_target_count_by_project",
+        "cumulative_count",
+        "cumulative_count_by_project",
+        "target_count",
+        "target_count_by_project",
+        "target_watermark",
+        "rows",
+        "samples",
+        "proof_digest",
+        "signature"
+      ],
+      "title": "Signed every-row Request import batch reconciliation",
+      "type": "object"
+    },
+    "contracts/domain/migration/request-import-manifest.schema.json": {
+      "$defs": {
+        "projectCount": {
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_key",
+            "count"
+          ],
+          "type": "object"
+        },
+        "projectCounts": {
+          "items": {
+            "$ref": "#/$defs/projectCount"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "row": {
+          "additionalProperties": false,
+          "properties": {
+            "command_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "content_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "created_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "id": {
+              "pattern": "^R[1-9][0-9]*$",
+              "type": "string"
+            },
+            "latest_line": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "latest_row_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "mapped_principal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "original_owner_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ]
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "projection": {
+              "additionalProperties": false,
+              "properties": {
+                "blocker": {
+                  "type": "boolean"
+                },
+                "priority": {
+                  "enum": [
+                    "P0",
+                    "P1",
+                    "P2"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "NEW",
+                    "TRIAGED"
+                  ]
+                },
+                "triage": {
+                  "enum": [
+                    "UNTRIAGED",
+                    "ACCEPTED"
+                  ]
+                }
+              },
+              "required": [
+                "blocker",
+                "priority",
+                "state",
+                "triage"
+              ],
+              "type": "object"
+            },
+            "refines": {
+              "items": {
+                "pattern": "^R[1-9][0-9]*$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "relationships_sha256": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "request_number": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "source_owner": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_status": {
+              "enum": [
+                "NEW",
+                "TRIAGED",
+                "WIP",
+                "BLOCKED"
+              ]
+            },
+            "updated_at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "request_number",
+            "request_id",
+            "command_id",
+            "content_sha256",
+            "created_at",
+            "latest_line",
+            "latest_row_sha256",
+            "mapped_principal_id",
+            "original_owner_sha256",
+            "priority",
+            "project_key",
+            "projection",
+            "refines",
+            "relationships_sha256",
+            "source_owner",
+            "source_status",
+            "updated_at"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/request-import-manifest.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "archive_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "batch_size": {
+          "const": 25
+        },
+        "batches": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "batch_digest": {
+                "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+              },
+              "batch_index": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "cumulative_count": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "sample_ids": {
+                "items": {
+                  "pattern": "^R[1-9][0-9]*$",
+                  "type": "string"
+                },
+                "maxItems": 3,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "source_count": {
+                "maximum": 25,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "source_count_by_project": {
+                "$ref": "#/$defs/projectCounts"
+              }
+            },
+            "required": [
+              "batch_index",
+              "batch_digest",
+              "source_count",
+              "source_count_by_project",
+              "cumulative_count",
+              "sample_ids"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "logical_requests": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "open_by_project": {
+              "$ref": "#/$defs/projectCounts"
+            },
+            "open_requests": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "physical_rows": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "physical_rows",
+            "logical_requests",
+            "open_requests",
+            "open_by_project"
+          ],
+          "type": "object"
+        },
+        "fence_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "ledger_sha256": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "manifest_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "maximum_request_number": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "open_request_ids": {
+          "items": {
+            "pattern": "^R[1-9][0-9]*$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "owner_mapping_sha256": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/row"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "rows_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "sampling_seed": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "schema": {
+          "const": "ctower.request-import-manifest/v1"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "source_identity": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/request-source-fence.schema.json#/$defs/sourceIdentity"
+        },
+        "target_authority_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "target_tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "archive_ref",
+        "batch_size",
+        "counts",
+        "fence_digest",
+        "ledger_sha256",
+        "maximum_request_number",
+        "open_request_ids",
+        "owner_mapping_sha256",
+        "rows_digest",
+        "rows",
+        "sampling_seed",
+        "batches",
+        "source_identity",
+        "target_authority_digest",
+        "target_tenant_id",
+        "manifest_digest",
+        "signature"
+      ],
+      "title": "Signed exact Mission Control open-Request denominator",
+      "type": "object"
+    },
+    "contracts/domain/migration/request-owner-map.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/request-owner-map.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "mappings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "principal_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "project_key": {
+                "pattern": "^[a-z][a-z0-9-]{2,63}$",
+                "type": "string"
+              },
+              "source_owner": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "project_key",
+              "source_owner",
+              "principal_id"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "request_reviews": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^R[1-9][0-9]*$",
+                "type": "string"
+              },
+              "priority": {
+                "enum": [
+                  "P0",
+                  "P1",
+                  "P2"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "priority"
+            ],
+            "type": "object"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "reviewed_by": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.request-owner-map/v1"
+        },
+        "target_authority_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "target_tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "target_tenant_id",
+        "target_authority_digest",
+        "reviewed_at",
+        "reviewed_by",
+        "mappings",
+        "request_reviews"
+      ],
+      "title": "Reviewed Request owner and priority mapping",
+      "type": "object"
+    },
+    "contracts/domain/migration/request-source-fence.schema.json": {
+      "$defs": {
+        "sourceIdentity": {
+          "additionalProperties": false,
+          "properties": {
+            "device": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "inode": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "mode": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "mtime_ns": {
+              "pattern": "^[0-9]{1,20}$",
+              "type": "string"
+            },
+            "size": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "device",
+            "inode",
+            "mode",
+            "mtime_ns",
+            "size"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/request-source-fence.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "callers": {
+                "items": {
+                  "properties": {
+                    "state": {
+                      "const": "refuses"
+                    }
+                  }
+                }
+              },
+              "mutation_entrypoints_removed": {
+                "const": false
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "phase": {
+                "const": "final"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "callers": {
+                "items": {
+                  "properties": {
+                    "state": {
+                      "const": "removed"
+                    }
+                  }
+                }
+              },
+              "mutation_entrypoints_removed": {
+                "const": true
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "callers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/safeRelativePath"
+              },
+              "sha256": {
+                "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+              },
+              "state": {
+                "enum": [
+                  "refuses",
+                  "removed"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "state"
+            ],
+            "type": "object"
+          },
+          "maxItems": 64,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fence_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "filesystem_read_only": {
+          "const": true
+        },
+        "ledger_sha256": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "mutation_entrypoints_removed": {
+          "type": "boolean"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "freeze",
+            "batch",
+            "final"
+          ]
+        },
+        "schema": {
+          "const": "ctower.request-source-fence/v1"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "source_identity": {
+          "$ref": "#/$defs/sourceIdentity"
+        },
+        "writer_refuses": {
+          "const": true
+        }
+      },
+      "required": [
+        "schema",
+        "phase",
+        "ledger_sha256",
+        "source_identity",
+        "writer_refuses",
+        "mutation_entrypoints_removed",
+        "filesystem_read_only",
+        "callers",
+        "observed_at",
+        "fence_digest",
+        "signature"
+      ],
+      "title": "Signed Mission Control Request writer-fence observation",
+      "type": "object"
     },
     "contracts/domain/outbox-delivery.schema.json": {
       "$defs": {
@@ -15574,7 +16544,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:abc959ec7ea6e276550002424d55d256ec691afd9d4271b4efafd5211dac5389"
+      "sha256": "sha256:06a1734fa29dbf627953a722ca55a683af9b248cad7468cde29d9e1a14c3b8a2"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
@@ -15700,6 +16670,26 @@
       "id": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json",
       "path": "contracts/domain/migration/migration-boundary.schema.json",
       "sha256": "sha256:2e4c3068825484167dd92265a968cba36e54a1810af4098bb54de45b7bfc700a"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/request-batch-proof.schema.json",
+      "path": "contracts/domain/migration/request-batch-proof.schema.json",
+      "sha256": "sha256:67103d5df31f3e06feba3a4360e023b258fc316758ff04ac1dd9f529a7980246"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/request-import-manifest.schema.json",
+      "path": "contracts/domain/migration/request-import-manifest.schema.json",
+      "sha256": "sha256:d359143521a627c7b17bf9d5982e417de92e47c1b5149111bd41529a5397c604"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/request-owner-map.schema.json",
+      "path": "contracts/domain/migration/request-owner-map.schema.json",
+      "sha256": "sha256:4a13baf5b508725c51dbf4ecfbcecbc3d791114bc72c83f201ad0a6202b8de02"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/request-source-fence.schema.json",
+      "path": "contracts/domain/migration/request-source-fence.schema.json",
+      "sha256": "sha256:e79daa24b9f04022cd8df43326dd6dad455d3cdee204a0ab642214938f55fee4"
     },
     {
       "id": "https://ctower.dev/contracts/domain/outbox-delivery.schema.json",

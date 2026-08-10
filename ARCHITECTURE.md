@@ -21,8 +21,10 @@ Implementation labels are strict:
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
 
-The first-class Request aggregate is accepted target scope, not part of the current walking slice. The
-Mission Control ledger remains its authority until CT-I1-015's complete gated cutover.
+The first-class Request aggregate now exists as a tested Phase-1 development candidate: durable capture,
+append-only semantic facts, generated API/CLI operations, accepted-only read, restore evidence, and a
+read-only cutover analyzer. It has no portfolio authority. The Mission Control ledger remains authoritative
+until CT-I1-015's complete signed, fenced, reconciled one-way epoch succeeds.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery
@@ -566,7 +568,8 @@ catch-up are downstream. A Request closes from its current disposition, relation
 digest. Changing any dependency invalidates the prior evaluation, so a rebuilt row may honestly leave
 `DONE`. No mutable status exists.
 
-CT-I1-015 is a one-way authority replacement. The old Mission Control writer is fenced before the complete
+CT-I1-015 is a one-way authority replacement. Migration `0059` installs the existing-tenant native-capture
+fence before the candidate service is exposed, and the old Mission Control writer is fenced before the complete
 ledger denominator is signed; the exact open set is imported through one manifest-bound operator command;
 every row and count is reconciled; the old writer and import operation are removed; only then may the first
 portfolio capture allocate above the sealed high-water. General Ticket/corpus import remains dormant.

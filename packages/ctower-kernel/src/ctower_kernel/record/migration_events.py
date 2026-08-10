@@ -22,6 +22,9 @@ _OPERATIONS = frozenset(
         "correction_appended",
         "reconciled",
         "fence_observed",
+        "request_cutover_prepared",
+        "request_batch_reconciled",
+        "request_cutover_completed",
     }
 )
 MAX_TARGET_LENGTH = 256

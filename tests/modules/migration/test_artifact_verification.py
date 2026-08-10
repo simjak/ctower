@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from ctower_kernel.migration import _artifact
+from ctower_kernel.record import artifacts as _artifact
 from tools.migration.ctower_project.ctower_project_source.canonical import canonical_bytes
 
 from ._reviewed import reviewed_source

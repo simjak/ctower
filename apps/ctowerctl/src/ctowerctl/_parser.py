@@ -42,6 +42,7 @@ from ctowerctl._parser_support import (
     _version,
     _version_reason,
 )
+from ctowerctl._request_parser import request_parser
 
 __all__: tuple[str, ...] = ()
 
@@ -80,6 +81,7 @@ def _parser() -> argparse.ArgumentParser:
     _bootstrap_parser(areas.add_parser("bootstrap"))
     _credential_parser(areas.add_parser("credential"))
     _intake_parser(areas.add_parser("intake"))
+    request_parser(areas.add_parser("request"))
     _inbox_parser(areas.add_parser("inbox"))
     knowledge_parser(areas.add_parser("knowledge"))
     _ticket_parser(areas.add_parser("ticket"))

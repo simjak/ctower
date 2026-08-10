@@ -225,6 +225,8 @@ def _intake_result() -> dict[str, object]:
         "outcome": "discussion",
         "project_key": "ctower",
         "quarantine_reason": None,
+        "request_id": None,
+        "request_number": None,
         "source": {"kind": "test", "ref": "generated:response"},
         "thread_id": UUID,
         "thread_version": 1,

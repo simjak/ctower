@@ -12,6 +12,7 @@ ideas explain how ctower keeps work and proof together.
 | You want to understand | Read |
 |---|---|
 | The permanent record for one promised result | [Tickets](tickets.md) |
+| Captured operator intent and outcome accountability | [Requests](requests.md) |
 | The steps that work follows | [Stages](stages.md) |
 | The checks that can allow or refuse a move | [Gates](gates.md) |
 | Durable roles and the short-lived teams that fill them | [Seats and crews](seats-and-crews.md) |
@@ -33,8 +34,6 @@ A **projection** is a read-only view built from saved facts. The Board and Portf
 cannot edit them directly.
 
 A **refusal** is a safe no. Ctower changes nothing and tells you which rule was not met.
-
-Operator Requests are coming soon. They do not have a concept page yet.
 
 ## Current boundary
 

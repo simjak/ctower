@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -179,6 +179,17 @@ from ctower_client.models import (
     RelationRequest,
     ReopenedAuditData,
     ReopenIntent,
+    RequestBlockerRequest,
+    RequestCaptureRequest,
+    RequestCaptureResult,
+    RequestChangeResult,
+    RequestClosureEvaluationRequest,
+    RequestList,
+    RequestOwnerRequest,
+    RequestPriorityRequest,
+    RequestRow,
+    RequestTicketRelationRequest,
+    RequestTriageRequest,
     ResolveCloseRequest,
     ReviewDispatchConsumeRequest,
     ReviewDispatchConsumption,
@@ -428,6 +439,17 @@ __all__ = [
     "RelationRequest",
     "ReopenIntent",
     "ReopenedAuditData",
+    "RequestBlockerRequest",
+    "RequestCaptureRequest",
+    "RequestCaptureResult",
+    "RequestChangeResult",
+    "RequestClosureEvaluationRequest",
+    "RequestList",
+    "RequestOwnerRequest",
+    "RequestPriorityRequest",
+    "RequestRow",
+    "RequestTicketRelationRequest",
+    "RequestTriageRequest",
     "ResolveCloseRequest",
     "ReviewDispatchConsumeRequest",
     "ReviewDispatchConsumption",

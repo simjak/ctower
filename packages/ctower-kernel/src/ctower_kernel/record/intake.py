@@ -21,6 +21,7 @@ class IntakeIntent(StrEnum):
     """Explicit caller-selected intake semantics; no classifier is involved."""
 
     DISCUSSION = "discussion"
+    CREATE_REQUEST = "create_request"
     CREATE_TICKET = "create_ticket"
     LINK_TICKET = "link_ticket"
 
@@ -37,6 +38,7 @@ class IntakeOutcome(StrEnum):
     """One durable semantic outcome for an inbound event."""
 
     DISCUSSION = "discussion"
+    REQUEST_CREATED = "request_created"
     TICKET_CREATED = "ticket_created"
     TICKET_LINKED = "ticket_linked"
     QUARANTINED = "quarantined"
@@ -130,6 +132,8 @@ class IntakeCommandResult:
     thread_version: int
     ticket_id: UUID | None = None
     ticket_version: int | None = None
+    request_id: UUID | None = None
+    request_number: int | None = None
     quarantine_reason: str | None = None
 
     def response_payload(self) -> dict[str, object]:
@@ -146,4 +150,6 @@ class IntakeCommandResult:
             "thread_version": self.thread_version,
             "ticket_id": str(self.ticket_id) if self.ticket_id else None,
             "ticket_version": self.ticket_version,
+            "request_id": str(self.request_id) if self.request_id else None,
+            "request_number": self.request_number,
         }

@@ -63,16 +63,60 @@ def project_scope_refusal(
     arbitrary collection of Project grants as fleet authority.
     """
 
-    principal = connection.execute(
-        "SELECT kind FROM principals WHERE tenant_id = %s AND principal_id = %s",
-        (tenant_id, principal_id),
-    ).fetchone()
-    if principal is not None and principal["kind"] == "operator":
+    principal = _scope_principal(connection, tenant_id, principal_id)
+    human_grants = _human_project_grants(principal)
+    if principal is not None and principal["kind"] == "operator" and human_grants is None:
         return None
     requested = set(project_keys)
     if not requested and not operator_only:
         return None
-    grants = {
+    grants = (human_grants or set()) | _seat_project_grants(connection, tenant_id, principal_id)
+    if not operator_only and requested <= grants:
+        return None
+    return RecordProblem(
+        code="project-scope-denied",
+        detail="The authenticated project seat cannot reach a ticket from another project.",
+        status=403,
+        title="Project scope denied",
+        command_id=command_id,
+    )
+
+
+def _scope_principal(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, principal_id: UUID
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT principal.kind,
+               binding.project_keys AS human_project_keys
+        FROM principals AS principal
+        LEFT JOIN human_role_bindings AS binding
+          ON binding.tenant_id = principal.tenant_id
+         AND binding.principal_id = principal.principal_id
+        LEFT JOIN human_role_binding_revocations AS revocation
+          ON revocation.tenant_id = binding.tenant_id
+         AND revocation.binding_id = binding.binding_id
+        WHERE principal.tenant_id = %s AND principal.principal_id = %s
+          AND (binding.binding_id IS NULL OR revocation.binding_id IS NULL)
+        ORDER BY binding.granted_at DESC NULLS LAST
+        LIMIT 1
+        """,
+        (tenant_id, principal_id),
+    ).fetchone()
+
+
+def _human_project_grants(principal: dict[str, object] | None) -> set[str] | None:
+    return (
+        set(cast(list[str], principal["human_project_keys"]))
+        if principal is not None and principal["human_project_keys"] is not None
+        else None
+    )
+
+
+def _seat_project_grants(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, principal_id: UUID
+) -> set[str]:
+    return {
         str(row["project_key"])
         for row in connection.execute(
             """
@@ -83,15 +127,6 @@ def project_scope_refusal(
             (tenant_id, principal_id),
         ).fetchall()
     }
-    if not operator_only and requested <= grants:
-        return None
-    return RecordProblem(
-        code="project-scope-denied",
-        detail="The authenticated project seat cannot reach a ticket from another project.",
-        status=403,
-        title="Project scope denied",
-        command_id=command_id,
-    )
 
 
 def project_mutation_refusal(

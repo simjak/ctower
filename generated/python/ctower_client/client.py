@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
 """
 
 from __future__ import annotations
@@ -84,6 +84,16 @@ from ctower_client.models import (
     ProjectSessionPage,
     ProofReceipt,
     RelationRequest,
+    RequestBlockerRequest,
+    RequestCaptureRequest,
+    RequestCaptureResult,
+    RequestChangeResult,
+    RequestClosureEvaluationRequest,
+    RequestList,
+    RequestOwnerRequest,
+    RequestPriorityRequest,
+    RequestTicketRelationRequest,
+    RequestTriageRequest,
     ResolveCloseRequest,
     ReviewDispatchConsumeRequest,
     ReviewDispatchEffectList,
@@ -380,6 +390,28 @@ class CtowerClient:
         return _response(response, {200: ApplyLabelResult, 202: ApplyLabelResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def assign_request_owner(
+        self,
+        request_id: UUID,
+        request: RequestOwnerRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/owner",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bind_ctower_project_alias_plan(
         self,
         request: CtowerProjectAliasPlanBindRequest,
@@ -464,6 +496,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: BootstrapReceipt, 202: BootstrapReceipt}, {401: Problem, 403: Problem, 409: Problem, 410: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def capture_request(
+        self,
+        request: RequestCaptureRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestCaptureResult:
+        response = self._http.post(
+            "/v1/requests",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: RequestCaptureResult, 202: RequestCaptureResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_assignment(
@@ -616,6 +669,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: TicketCommandResult, 202: TicketCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def evaluate_request_closure(
+        self,
+        request_id: UUID,
+        request: RequestClosureEvaluationRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/closure-evaluations",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def export_company_bundle(
@@ -971,6 +1046,24 @@ class CtowerClient:
         return _response(response, {200: ProjectSessionPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_requests(
+        self,
+        *,
+        project_key: str | None = None,
+    ) -> RequestList:
+        response = self._http.get(
+            "/v1/requests",
+            params={**({"project_key": project_key} if project_key is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: RequestList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_review_dispatch_effects(
         self,
         ticket_id: UUID,
@@ -1083,6 +1176,28 @@ class CtowerClient:
             ),
         )
         _refusal(response, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def prioritize_request(
+        self,
+        request_id: UUID,
+        request: RequestPriorityRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/priority",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def promote_inbox_thread(
@@ -1294,6 +1409,28 @@ class CtowerClient:
         return _response(response, {200: SessionReceipt, 202: SessionReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def relate_request_ticket(
+        self,
+        request_id: UUID,
+        request: RequestTicketRelationRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/ticket-relations",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def report_ctower_project_fence_observation(
         self,
         request: CtowerProjectFenceObservationRequest,
@@ -1399,6 +1536,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: InboxSendResult, 202: InboxSendResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def set_request_blocker(
+        self,
+        request_id: UUID,
+        request: RequestBlockerRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/blockers",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_session(
@@ -1508,6 +1667,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def triage_request(
+        self,
+        request_id: UUID,
+        request: RequestTriageRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/triage",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def validate_company_bundle(

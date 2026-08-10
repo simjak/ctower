@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **67 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **75 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -39,14 +39,14 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 96 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 149 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
 
 | Parameter | In | Constraint |
 |---|---|---|
-| `ticket_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
+| `ticket_id`, `request_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
 | `project_key` | path | `^[a-z][a-z0-9-]{2,63}$` |
 | `cursor` | query | integer ≥ 0, default 0 |
 | `limit` | query | integer 1–100, default 50 |
@@ -106,6 +106,29 @@ authenticated principal. A Commander may establish its own custody; an operator 
 an operator must explicitly name an eligible Commander. Supplying a UUID requests that placement, but the
 server authorizes the actor before accepting it.
 
+### Requests
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/requests` | `captureRequest` | `request capture` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `GET` | `/v1/requests` | `listRequests` | `request list` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `POST` | `/v1/requests/{request_id}/priority` | `prioritizeRequest` | `request prioritize` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/requests/{request_id}/triage` | `triageRequest` | `request triage` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/requests/{request_id}/owner` | `assignRequestOwner` | `request owner assign` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/requests/{request_id}/ticket-relations` | `relateRequestTicket` | `request ticket relate` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/requests/{request_id}/blockers` | `setRequestBlocker` | `request blocker set` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/requests/{request_id}/closure-evaluations` | `evaluateRequestClosure` | `request closure evaluate` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+
+Capture accepts only `project_key` and `text`; the authenticated Actor, submitter, initial owner, native
+source alias, UUIDv7 identity, and tenant-wide permanent `R<number>` are server facts. Capture creates no
+Ticket. Every semantic change appends an independent fact under `expected_version`; there is no writable
+Request status.
+
+The list is an accepted-only read at a named Record watermark. It reports requested, answered, and
+unanswered projects separately, so an unanswered source never contributes a fabricated empty result.
+Mutation `202` responses remain `durability_pending`; accepted list rows and totals exclude them. The
+operator migration helper is deliberately absent from this ordinary HTTP surface.
+
 ### Intake
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
@@ -113,9 +136,13 @@ server authorizes the actor before accepting it.
 | `POST` | `/v1/intake` | `submitIntake` | `intake submit` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `413`, `422` |
 | `POST` | `/v1/intake/events/{inbound_event_id}/promotion` | `promoteIntakeEvent` | `intake promote` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `413`, `422` |
 
-`413` is the request-body bound (`request-body-too-large`). Promotion is idempotent: promoting an event that
-already produced a ticket returns that ticket rather than creating a second one, and an event that is not
-eligible is refused as `intake-promotion-ineligible` without changing anything.
+`413` is the request-body bound (`request-body-too-large`). Both operations accept explicit
+`create_request`, `create_ticket`, and `link_ticket` intents (`submitIntake` also defaults to `discussion`).
+`create_request` carries no Ticket mutation fields and accepts only authenticated native provenance;
+caller-declared external provenance refuses as `request-source-forbidden`. Promotion is idempotent:
+promoting an event that already produced a Request or Ticket returns that authority instead of creating a
+second one, and an event that is not eligible is refused as `intake-promotion-ineligible` without changing
+anything.
 
 ### Inbox
 

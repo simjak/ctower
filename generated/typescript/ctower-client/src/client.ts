@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
+// Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -68,6 +68,12 @@ export type ApplyTicketLabelInput = Readonly<{
   readonly body: Models.ApplyLabelRequest;
 }>;
 
+export type AssignRequestOwnerInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestOwnerRequest;
+}>;
+
 export type BindCtowerProjectAliasPlanInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectAliasPlanBindRequest;
@@ -87,6 +93,11 @@ export type BootstrapFirstTenantInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly "XCtowerBootstrapCapability": string;
   readonly body: Models.BootstrapRequest;
+}>;
+
+export type CaptureRequestInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestCaptureRequest;
 }>;
 
 export type ChangeTicketAssignmentInput = Readonly<{
@@ -127,6 +138,12 @@ export type CreateCtowerProjectImportRunInput = Readonly<{
 export type CreateTicketInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.TicketCreateRequest;
+}>;
+
+export type EvaluateRequestClosureInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestClosureEvaluationRequest;
 }>;
 
 export type ExportCompanyBundleInput = Readonly<{
@@ -226,6 +243,10 @@ export type ListProjectSessionsInput = Readonly<{
   readonly "limit"?: number;
 }>;
 
+export type ListRequestsInput = Readonly<{
+  readonly "projectKey"?: string;
+}>;
+
 export type ListReviewDispatchEffectsInput = Readonly<{
   readonly "ticketId": string;
 }>;
@@ -254,6 +275,12 @@ export type PlanCompanyBundleInput = Readonly<{
 export type PrepareCtowerProjectCutoverInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectEpochRefusalRequest;
+}>;
+
+export type PrioritizeRequestInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestPriorityRequest;
 }>;
 
 export type PromoteInboxThreadInput = Readonly<{
@@ -313,6 +340,12 @@ export type RecordTicketSessionFactInput = Readonly<{
   readonly body: Models.SessionFactRequest;
 }>;
 
+export type RelateRequestTicketInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestTicketRelationRequest;
+}>;
+
 export type ReportCtowerProjectFenceObservationInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectFenceObservationRequest;
@@ -338,6 +371,12 @@ export type RunSyntheticWorkflowInput = Readonly<{
 export type SendInboxMessageInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.InboxSendRequest;
+}>;
+
+export type SetRequestBlockerInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestBlockerRequest;
 }>;
 
 export type StartTicketSessionInput = Readonly<{
@@ -369,6 +408,12 @@ export type TransitionWorkflowInput = Readonly<{
   readonly body: Models.WorkflowTransitionRequest;
 }>;
 
+export type TriageRequestInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestTriageRequest;
+}>;
+
 export type ValidateCompanyBundleInput = Readonly<{
   readonly body: Models.CompanyBundleRequest;
 }>;
@@ -384,10 +429,12 @@ export type OperationInputs = Readonly<{
   readonly "applyCtowerProjectImportBatch": ApplyCtowerProjectImportBatchInput;
   readonly "applyTicketIntent": ApplyTicketIntentInput;
   readonly "applyTicketLabel": ApplyTicketLabelInput;
+  readonly "assignRequestOwner": AssignRequestOwnerInput;
   readonly "bindCtowerProjectAliasPlan": BindCtowerProjectAliasPlanInput;
   readonly "bindCtowerProjectExportEquality": BindCtowerProjectExportEqualityInput;
   readonly "bindDreamLane": BindDreamLaneInput;
   readonly "bootstrapFirstTenant": BootstrapFirstTenantInput;
+  readonly "captureRequest": CaptureRequestInput;
   readonly "changeTicketAssignment": ChangeTicketAssignmentInput;
   readonly "changeTicketPriority": ChangeTicketPriorityInput;
   readonly "commitCtowerProjectDevelopmentEpoch": CommitCtowerProjectDevelopmentEpochInput;
@@ -395,6 +442,7 @@ export type OperationInputs = Readonly<{
   readonly "consumeReviewDispatchEffect": ConsumeReviewDispatchEffectInput;
   readonly "createCtowerProjectImportRun": CreateCtowerProjectImportRunInput;
   readonly "createTicket": CreateTicketInput;
+  readonly "evaluateRequestClosure": EvaluateRequestClosureInput;
   readonly "exportCompanyBundle": ExportCompanyBundleInput;
   readonly "finalizeCtowerProjectImportRun": FinalizeCtowerProjectImportRunInput;
   readonly "freezeProofCriteria": FreezeProofCriteriaInput;
@@ -414,12 +462,14 @@ export type OperationInputs = Readonly<{
   readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
+  readonly "listRequests": ListRequestsInput;
   readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
+  readonly "prioritizeRequest": PrioritizeRequestInput;
   readonly "promoteInboxThread": PromoteInboxThreadInput;
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
   readonly "readInboxMessageState": ReadInboxMessageStateInput;
@@ -430,16 +480,19 @@ export type OperationInputs = Readonly<{
   readonly "recordProofVerdict": RecordProofVerdictInput;
   readonly "recordTicketChangeReference": RecordTicketChangeReferenceInput;
   readonly "recordTicketSessionFact": RecordTicketSessionFactInput;
+  readonly "relateRequestTicket": RelateRequestTicketInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
   readonly "revokeSeatCredential": RevokeSeatCredentialInput;
   readonly "runSyntheticWorkflow": RunSyntheticWorkflowInput;
   readonly "sendInboxMessage": SendInboxMessageInput;
+  readonly "setRequestBlocker": SetRequestBlockerInput;
   readonly "startTicketSession": StartTicketSessionInput;
   readonly "startTicketWorkflow": StartTicketWorkflowInput;
   readonly "submitIntake": SubmitIntakeInput;
   readonly "transferTicketCustody": TransferTicketCustodyInput;
   readonly "transitionWorkflow": TransitionWorkflowInput;
+  readonly "triageRequest": TriageRequestInput;
   readonly "validateCompanyBundle": ValidateCompanyBundleInput;
 }>;
 
@@ -454,10 +507,12 @@ export type OperationResults = Readonly<{
   readonly "applyCtowerProjectImportBatch": Models.CtowerProjectImportBatchResult;
   readonly "applyTicketIntent": Models.WorkReceipt;
   readonly "applyTicketLabel": Models.ApplyLabelResult;
+  readonly "assignRequestOwner": Models.RequestChangeResult;
   readonly "bindCtowerProjectAliasPlan": Models.CtowerProjectImportRun;
   readonly "bindCtowerProjectExportEquality": Models.CtowerProjectImportRun;
   readonly "bindDreamLane": Models.DreamLaneBindingReceipt;
   readonly "bootstrapFirstTenant": Models.BootstrapReceipt;
+  readonly "captureRequest": Models.RequestCaptureResult;
   readonly "changeTicketAssignment": Models.WorkReceipt;
   readonly "changeTicketPriority": Models.WorkReceipt;
   readonly "commitCtowerProjectDevelopmentEpoch": never;
@@ -465,6 +520,7 @@ export type OperationResults = Readonly<{
   readonly "consumeReviewDispatchEffect": Models.WorkReceipt;
   readonly "createCtowerProjectImportRun": Models.CtowerProjectImportRun;
   readonly "createTicket": Models.TicketCommandResult;
+  readonly "evaluateRequestClosure": Models.RequestChangeResult;
   readonly "exportCompanyBundle": Models.CompanyBundleExportResult;
   readonly "finalizeCtowerProjectImportRun": Models.CtowerProjectReconciliationResult;
   readonly "freezeProofCriteria": Models.ProofReceipt;
@@ -484,12 +540,14 @@ export type OperationResults = Readonly<{
   readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
   readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
+  readonly "listRequests": Models.RequestList;
   readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "listTicketSessions": Models.TicketSessionList;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
+  readonly "prioritizeRequest": Models.RequestChangeResult;
   readonly "promoteInboxThread": Models.InboxPromotionResult;
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
   readonly "readInboxMessageState": Models.InboxReadState;
@@ -500,16 +558,19 @@ export type OperationResults = Readonly<{
   readonly "recordProofVerdict": Models.ProofReceipt;
   readonly "recordTicketChangeReference": Models.ChangeReferenceResult;
   readonly "recordTicketSessionFact": Models.SessionReceipt;
+  readonly "relateRequestTicket": Models.RequestChangeResult;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
   readonly "revokeSeatCredential": Models.SeatCredentialReceipt;
   readonly "runSyntheticWorkflow": Models.SyntheticRunReceipt;
   readonly "sendInboxMessage": Models.InboxSendResult;
+  readonly "setRequestBlocker": Models.RequestChangeResult;
   readonly "startTicketSession": Models.SessionReceipt;
   readonly "startTicketWorkflow": Models.WorkflowReceipt;
   readonly "submitIntake": Models.IntakeCommandResult;
   readonly "transferTicketCustody": Models.TicketCommandResult;
   readonly "transitionWorkflow": Models.WorkflowReceipt;
+  readonly "triageRequest": Models.RequestChangeResult;
   readonly "validateCompanyBundle": Models.CompanyBundleValidationResult;
 }>;
 
@@ -592,6 +653,12 @@ export class CtowerClient {
     return this.execute("applyTicketLabel", input);
   }
 
+  public async assignRequestOwner(
+    input: AssignRequestOwnerInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("assignRequestOwner", input);
+  }
+
   public async bindCtowerProjectAliasPlan(
     input: BindCtowerProjectAliasPlanInput,
   ): Promise<Models.CtowerProjectImportRun> {
@@ -614,6 +681,12 @@ export class CtowerClient {
     input: BootstrapFirstTenantInput,
   ): Promise<Models.BootstrapReceipt> {
     return this.execute("bootstrapFirstTenant", input);
+  }
+
+  public async captureRequest(
+    input: CaptureRequestInput,
+  ): Promise<Models.RequestCaptureResult> {
+    return this.execute("captureRequest", input);
   }
 
   public async changeTicketAssignment(
@@ -656,6 +729,12 @@ export class CtowerClient {
     input: CreateTicketInput,
   ): Promise<Models.TicketCommandResult> {
     return this.execute("createTicket", input);
+  }
+
+  public async evaluateRequestClosure(
+    input: EvaluateRequestClosureInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("evaluateRequestClosure", input);
   }
 
   public async exportCompanyBundle(
@@ -772,6 +851,12 @@ export class CtowerClient {
     return this.execute("listProjectSessions", input);
   }
 
+  public async listRequests(
+    input: ListRequestsInput,
+  ): Promise<Models.RequestList> {
+    return this.execute("listRequests", input);
+  }
+
   public async listReviewDispatchEffects(
     input: ListReviewDispatchEffectsInput,
   ): Promise<Models.ReviewDispatchEffectList> {
@@ -806,6 +891,12 @@ export class CtowerClient {
     input: PrepareCtowerProjectCutoverInput,
   ): Promise<never> {
     return this.execute("prepareCtowerProjectCutover", input);
+  }
+
+  public async prioritizeRequest(
+    input: PrioritizeRequestInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("prioritizeRequest", input);
   }
 
   public async promoteInboxThread(
@@ -868,6 +959,12 @@ export class CtowerClient {
     return this.execute("recordTicketSessionFact", input);
   }
 
+  public async relateRequestTicket(
+    input: RelateRequestTicketInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("relateRequestTicket", input);
+  }
+
   public async reportCtowerProjectFenceObservation(
     input: ReportCtowerProjectFenceObservationInput,
   ): Promise<Models.CtowerProjectMigrationReceipt> {
@@ -898,6 +995,12 @@ export class CtowerClient {
     return this.execute("sendInboxMessage", input);
   }
 
+  public async setRequestBlocker(
+    input: SetRequestBlockerInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("setRequestBlocker", input);
+  }
+
   public async startTicketSession(
     input: StartTicketSessionInput,
   ): Promise<Models.SessionReceipt> {
@@ -926,6 +1029,12 @@ export class CtowerClient {
     input: TransitionWorkflowInput,
   ): Promise<Models.WorkflowReceipt> {
     return this.execute("transitionWorkflow", input);
+  }
+
+  public async triageRequest(
+    input: TriageRequestInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("triageRequest", input);
   }
 
   public async validateCompanyBundle(

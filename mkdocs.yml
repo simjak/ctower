@@ -37,6 +37,7 @@ nav:
   - Concepts:
       - concepts/index.md
       - The whole picture in one map: concepts/map.md
+      - Requests: concepts/requests.md
       - Tickets: concepts/tickets.md
       - Stages: concepts/stages.md
       - Gates: concepts/gates.md

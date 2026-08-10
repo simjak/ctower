@@ -18,6 +18,7 @@ from ctower_kernel.record import (
 )
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.record.intake import (
+    InboundSource,
     IntakeCommandResult,
     IntakeIntent,
     IntakePromotionCommand,
@@ -140,6 +141,14 @@ def _submit_refusal(actor: Actor, command: IntakeSubmitCommand) -> RecordProblem
     shape = _shape_refusal(command)
     if shape is not None:
         return shape
+    source = _request_source_refusal(
+        command.client_command_id,
+        command.intent,
+        command.source,
+        command.taint,
+    )
+    if source is not None:
+        return source
     if command.taint is IntakeTaint.QUARANTINE_REQUIRED:
         return None
     return _intent_refusal(
@@ -216,6 +225,25 @@ def _source_ref_refusal(command: IntakeSubmitCommand) -> RecordProblem | None:
     )
 
 
+def _request_source_refusal(
+    command_id: UUID,
+    intent: IntakeIntent,
+    source: InboundSource,
+    taint: IntakeTaint,
+) -> RecordProblem | None:
+    if intent is not IntakeIntent.CREATE_REQUEST:
+        return None
+    if source.kind == "native" and taint is IntakeTaint.AUTHENTICATED:
+        return None
+    return RecordProblem(
+        code="request-source-forbidden",
+        detail="Ordinary Request intake accepts only authenticated native provenance.",
+        status=422,
+        title="Request source forbidden",
+        command_id=command_id,
+    )
+
+
 def _intent_refusal(
     actor: Actor,
     command_id: UUID,
@@ -230,6 +258,10 @@ def _intent_refusal(
     if intent is IntakeIntent.DISCUSSION:
         if any(value is not None for value in (*create_fields, target_id, target_version)):
             return _invalid(command_id, "Discussion intake cannot contain ticket mutation fields")
+        return None
+    if intent is IntakeIntent.CREATE_REQUEST:
+        if any(value is not None for value in (*create_fields, target_id, target_version)):
+            return _invalid(command_id, "Create-request intake forbids ticket mutation fields")
         return None
     if intent is IntakeIntent.CREATE_TICKET:
         return _create_refusal(

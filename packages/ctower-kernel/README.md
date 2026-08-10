@@ -67,6 +67,13 @@ Record package facade keeps core authority types at `ctower_kernel.record` and g
 result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening
 those leaf symbols.
 
+Work also owns the Phase-1 Request aggregate. Record persistence atomically allocates one tenant-wide
+permanent `R<number>`, records inbound provenance plus initial facts, and returns the existing honest
+durability result without creating a Ticket. Priority, triage, owner, Ticket relation, blocker, and closure
+evaluation are independent expected-version facts; operator state is derived. Accepted reads name their
+Record watermark and distinguish unanswered projects from empty projects. The one-time ledger helper is
+outside the kernel and has no Record connection.
+
 Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.
 Org writes require operator authority; project writes and reads reuse Record's persisted project-seat checks.
 The static-file Adapter resolves only bounded UTF-8 Markdown below its injected scope root and returns typed

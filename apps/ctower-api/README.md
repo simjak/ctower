@@ -24,6 +24,9 @@ bounded direct snapshot or a stable static-source reference, persists the resolv
 fact, and authorizes project scope from the persisted project-seat authority. The development composition
 mounts the kernel's bundled static-file Adapter; handlers never read arbitrary filesystem paths.
 Durable decisions remain in the owning kernel Modules; the API never connects around those Interfaces.
+The Request routes are the same thin composition: capture and six expected-version fact commands delegate
+to Work, while list is accepted-only and read-only. Payloads cannot claim Actor, owner, source, number, or
+state, and no ordinary Request import route exists.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers
 never catch up the projection. One common mutation envelope asks Record to reconcile the exact command root and

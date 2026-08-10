@@ -63,6 +63,10 @@ Bearer authority and the one-use bootstrap capability are read as one bounded li
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server
 authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.
 
+Request capture and the explicit priority, triage, owner, Ticket-relation, blocker, and closure-evaluation
+commands use the same protected generated-client/spool path. Request list is online-only. The CLI supplies
+neither Actor nor owner/source/state authority and creates no Ticket implicitly.
+
 A mutation is encrypted and durably appended before its first network send only when the generated operation
 behind it carries `spool_policy: allowed`. Reads, `bootstrap first-tenant`, and the authenticated online-only
 `migration ctower-project` operations carry `spool_policy: forbidden`: they are never appended, and they fail

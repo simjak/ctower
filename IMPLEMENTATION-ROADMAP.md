@@ -373,8 +373,9 @@ The same candidate fences every Mission Control Request writer, seals and signs 
 full-ledger high-water, imports the exact frozen open set in serial batches of at most 25 through the one
 operator-authenticated manifest-bound command, reconciles every row plus full/per-project counts and the
 deterministic samples, and removes both the old mutation entrypoints and import operation before admitting
-the first portfolio capture above the high-water. Failure quarantines the run; rollback never re-enables the
-old writer. General Ticket/corpus bulk import remains absent.
+the first portfolio capture above the high-water. Failure records its exact typed refusal and leaves the
+epoch durably fenced in `prepared`; rollback never re-enables the old writer. General Ticket/corpus bulk
+import remains absent.
 
 **Exit:** AC-REQ-01..06 pass through the named CT-I1-015 suites; the exact v1 architecture records
 `no-new-boundary`; restore reconstructs Request authority and allocator state; the old writer and import

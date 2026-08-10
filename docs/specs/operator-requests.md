@@ -265,8 +265,9 @@ The cutover procedure is exact:
    filesystem boundary whose unknown state blocks progress. Only then hash/archive the complete JSONL bytes and
    sign a manifest containing source identity/digest, lineage proof, maximum `R`, exact open-ID set, per-row
    latest digest, status, project, owner, timestamps, and relationship data. Continuously recheck fence state,
-   file identity, size, digest, and high-water at every batch and again at the authority epoch; any change aborts
-   and quarantines the run.
+   file identity, size, digest, and high-water at every batch and again at the authority epoch. Any change
+   refuses that command and leaves the epoch durably fenced in `prepared`; the persisted typed refusal names
+   the exact drift. There is no separate quarantine transition to imply a disposition that no operator made.
 3. Map each source owner to exactly one existing principal in that same project in a reviewed manifest, and
    preserve the source owner string as an immutable alias on that mapping. A missing, ambiguous, foreign-project,
    or inactive mapping blocks cutover. Provision or repair the canonical principal before a new freeze; never

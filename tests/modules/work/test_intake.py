@@ -17,6 +17,7 @@ from ctower_kernel.record.intake import (
     IntakeOutcome,
     IntakePromotionCommand,
     IntakeSubmitCommand,
+    IntakeTaint,
 )
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake
@@ -114,6 +115,25 @@ def test_non_mission_control_source_ref_shape_does_not_claim_project_scope() -> 
 
     assert isinstance(outcome, IntakeCommandResult)
     assert len(writer.digests) == 1
+
+
+def test_create_request_refuses_external_provenance_before_record() -> None:
+    writer = _Writer()
+    actor = Actor(uuid4(), uuid4(), PrincipalKind.COMMANDER)
+    command = IntakeSubmitCommand(
+        uuid4(),
+        "ctower",
+        InboundSource("slack", "channel:message"),
+        "External source cannot mint Request provenance",
+        intent=IntakeIntent.CREATE_REQUEST,
+        taint=IntakeTaint.EXTERNAL_UNTRUSTED,
+    )
+
+    outcome = Intake(writer).submit(actor, command, telemetry=_telemetry())
+
+    assert isinstance(outcome, RecordProblem)
+    assert outcome.code == "request-source-forbidden"
+    assert writer.digests == []
 
 
 def test_importer_p0_and_mixed_discussion_are_refused_before_record() -> None:
