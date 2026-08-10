@@ -28,6 +28,20 @@ OIDC session, `ConsoleViewGrant`, session allowlist, restricted output custody, 
 The build may proceed only by satisfying every mandatory control below. Missing or unknown evidence is a
 refusal, not a partial pass.
 
+## Phase-1 prerequisite update — 2026-08-11
+
+D52 and CT-I1-019 now canonically activate and implement the complete Phase-1 **viewer server foundation**
+on the Console candidate: exact current-session allowances, human-bound one-use view grants, bounded durable
+SSE, RESTRICTED per-object output custody, dedicated reader access facts, typed expiry/revocation/fences,
+global containment, and private literal-bind proof. The statements below that call Phase 1 unimplemented or
+the proposal non-canonical record the state at this verdict's 2026-08-10 signing; D52 supersedes those two
+prerequisite assumptions for the viewer server only.
+
+That update does not activate typing. CT-I1-019 contains no `ConsoleTypeGrant`, input route, input custody,
+final admission, mux write, or browser UI. Phase 2 must still satisfy CT-C01 through CT-C08 and every named
+test in this verdict as one separately activated exact candidate. The pre-existing `apps/ctower-ui` terminal
+reader remains outside both proof chains.
+
 ## Exact boundary and consequence
 
 The only cleared mutation path is:

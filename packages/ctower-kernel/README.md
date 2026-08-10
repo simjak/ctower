@@ -81,6 +81,17 @@ It owns no persistence, source client, clock authority, renderer, scheduler, or 
 Unavailable sources and unresolved relations remain explicit partial or unknown results; an authoritative
 absent relation is empty.
 
+Console Phase 1 is isolated in `console/`. `ConsoleViewer` is the small public Interface over a pure exact
+grant decision, append-only PostgreSQL authority, encrypted output custody, and an injected read-only runtime
+Adapter. The authority rejoins the current assignment and recorded work session and persists allowances,
+denials, suspensions, human-bound one-use grants, stream claims/closes, revocations, global switch facts,
+encrypted cursors, reader accesses, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and
+enforces the five-minute grant, thirty-minute continuous-view, five-second close poll, 16 KiB chunk,
+1 MiB/min delivery/replay, and 256 KiB pending ceilings. Each output object has a fresh AES-GCM data key
+wrapped under a referenced key-encryption key; only the dedicated `console_output_reader` path can decrypt
+after an access fact is appended. The kernel imports no app, web, CLI, tmux, or process implementation and
+contains no input authority.
+
 Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.
 Org writes require operator authority; project writes and reads reuse Record's persisted project-seat checks.
 The static-file Adapter resolves only bounded UTF-8 Markdown below its injected scope root and returns typed

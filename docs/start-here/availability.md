@@ -22,6 +22,8 @@ The checked-in Compose file supports disposable PostgreSQL acceptance tests only
 - Read the canonical design and decisions.
 - Run repository verification against synthetic/disposable fixtures.
 - Exercise the protected CLI/spool and CompanyBundle guides against disposable verifier fixtures.
+- Exercise the [Phase-1 Console viewer](../operations/console-viewer.md) only as its private, digest-only
+  verifier shadow against disposable PostgreSQL and one explicitly registered live target.
 - Improve documentation, contracts, tests, or one complete development vertical through the contribution
   process.
 
