@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+Authored contract digest: sha256:114afd023e702447140e1d004ed55d31c79d1a05c43b111f9fcc09848c039391
 """
 
 from __future__ import annotations
@@ -30,6 +30,11 @@ __all__ = [
     "AttentionFindingResult",
     "AuditEvent",
     "AuditPage",
+    "BeatDispatchEffect",
+    "BeatDispatchEffectList",
+    "BeatRoutine",
+    "BeatRoutineList",
+    "BeatSchedule",
     "BlockIntent",
     "BlockerOpenedAuditData",
     "BlockerResolvedAuditData",
@@ -638,6 +643,27 @@ class AssignmentKind(StrEnum):
     STAGE_OWNER = "stage_owner"
     REVIEWER_ASSIGNMENT = "reviewer_assignment"
     RUNNER_LEASE_OWNER = "runner_lease_owner"
+
+
+class BeatDispatchEffect(_BoundaryModel):
+    effect_id: UUID
+    occurrence_id: UUID
+    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    scheduled_for: _Rfc3339DateTime
+    beat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    prompt_source: Annotated[str, Field(pattern="^state/beats/[a-z][a-z0-9._-]*\\.txt$")]
+    prompt_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    prompt: Annotated[str, Field(min_length=1, max_length=16384)]
+    target_session: Literal["commander", "mc-commander-manibo"]
+    emitted_at: _Rfc3339DateTime
+
+
+class BeatSchedule(_BoundaryModel):
+    kind: Literal["minute_hour_set"]
+    timezone: Literal["UTC"]
+    minutes: Annotated[tuple[Annotated[int, Field(ge=0, le=59)], ...], Field(min_length=1)]
+    hours: None | Annotated[tuple[Annotated[int, Field(ge=0, le=23)], ...], Field(min_length=1)]
 
 
 class BlockIntent(_BoundaryModel):
@@ -1645,6 +1671,21 @@ class AttentionFindingResult(_BoundaryModel):
     durability_state: DurabilityState
     event_ids: tuple[UUID, ...]
     recorded_at: _Rfc3339DateTime
+
+
+class BeatDispatchEffectList(_BoundaryModel):
+    effects: tuple[BeatDispatchEffect, ...]
+
+
+class BeatRoutine(_BoundaryModel):
+    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    schedule: BeatSchedule
+    beat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    prompt_source: Annotated[str, Field(pattern="^state/beats/[a-z][a-z0-9._-]*\\.txt$")]
+    prompt_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    target_session: Literal["commander", "mc-commander-manibo"]
+    next_fire_at: _Rfc3339DateTime
 
 
 class BootstrapReceipt(_BoundaryModel):
@@ -2756,6 +2797,10 @@ class WorkflowReceipt(_BoundaryModel):
 class AssignmentList(_BoundaryModel):
     assignments: tuple[AssignmentInterval, ...]
     ticket_id: UUID
+
+
+class BeatRoutineList(_BoundaryModel):
+    routines: tuple[BeatRoutine, ...]
 
 
 class BundleAction(_BoundaryModel):

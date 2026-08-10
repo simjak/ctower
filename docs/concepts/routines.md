@@ -14,21 +14,27 @@ into one latest occurrence, or enqueue a bounded number of missed occurrences, a
 
 ## What runs today
 
-The repository contains seven fixed routine definitions:
+The repository contains twelve fixed routine definitions:
 
 - a daily synthetic four-stage check;
 - a daily backup job definition;
 - an hourly record-anchor job definition; and
-- four nightly dream routines, one for each project view and one for the whole portfolio.
+- four nightly dream routines, one for each project view and one for the whole portfolio; and
+- five UTC fleet-beat routines for health, migration, bh-loop monitoring, sprint reconciliation, and the
+  operator morning digest.
 
 The scheduler records occurrences for the fixed maintenance definitions. Their real backup, anchor, and
-synthetic effects are not all active product operations. The dream routines do emit scoped dream-dispatch
-effects.
+synthetic effects are not all active product operations. The dream routines emit scoped dream-dispatch
+effects. Each fleet beat copies the full canonical Mission Control prompt into its immutable revision, then
+emits that same full prompt with the occurrence. Mission Control delivery therefore cannot drift if a source
+text changes after registration.
 
 ## How to use routines
 
-There is no general routine editor or routine-list command today. Operators inspect routine health through
-the control-plane health surfaces and use the exact dream commands for dream effects.
+There is no general routine editor today. Operators inspect the registered fleet subset with
+`beat-dispatch routines`, list pending immutable effects with `beat-dispatch list`, and use the exact dream
+commands for dream effects. Both beat reads are operator-only. Ctower records the schedule and effect; the
+external Mission Control consumer owns DIRECTOR-session injection and its append-only delivery ledger.
 
 New users should treat routines as scheduled system work, not as tickets they can edit from the Board. If a
 routine creates or checks ticket work, the resulting saved facts remain the source of truth.

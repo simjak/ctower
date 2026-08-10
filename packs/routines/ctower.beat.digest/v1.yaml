@@ -1,0 +1,19 @@
+{
+  "schema_id": "ctower.routine/v3",
+  "routine_ref": "ctower.beat.digest@1",
+  "revision_digest": "sha256:861bb079c7223bcc43e2c2d8ae883f6d41bf30a0e3077a6fb87e9b4500b7c6b9",
+  "schedule": {"kind": "minute_hour_set", "timezone": "UTC", "minutes": [12], "hours": [7]},
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 86400,
+  "handler_kind": "beat_dispatch",
+  "component_digests": ["sha256:fcf425433a5d4d75274ba1c631e3f6acdf24997388510b5406014601fc6a9775"],
+  "beat_dispatch": {
+    "beat_key": "digest", "prompt_source": "state/beats/digest.txt",
+    "prompt_sha256": "sha256:fcf425433a5d4d75274ba1c631e3f6acdf24997388510b5406014601fc6a9775",
+    "prompt": "OPERATOR MORNING DIGEST (standing, ordered 2026-08-09; decision-brief standard + STE100 apply; system-cron since 2026-08-10 — never expires; late beats absent). ONE compact Slack message via tools/slack-say: (1) DECISIONS WAITING — every open operator-gated item, EACH a self-contained mini-brief (what in plain words, origin with his words, choices as outcomes, recommendation, safe default); verify each still open before listing. (2) YESTERDAY'S DECISIONS → what we executed. (3) CLOSED since last digest with the proof word (merged/released/verified). Ids in parentheses, plain sentences, no id-soup, tasks never time. Nothing waiting and nothing closed = the one line. Never invent; verify vs gh/req first.",
+    "target_session": "commander"
+  }
+}

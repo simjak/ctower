@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+// Authored contract digest: sha256:114afd023e702447140e1d004ed55d31c79d1a05c43b111f9fcc09848c039391
 
 export type ActivityClass = "work" | "verification";
 
@@ -96,6 +96,46 @@ export type AuditPage = Readonly<{
   readonly "events": ReadonlyArray<AuditEvent>;
   readonly "next_cursor": number | null;
   readonly "ticket_id": string;
+}>;
+
+export type BeatDispatchEffect = Readonly<{
+  readonly "beat_key": string;
+  readonly "effect_id": string;
+  readonly "emitted_at": string;
+  readonly "occurrence_id": string;
+  readonly "prompt": string;
+  readonly "prompt_sha256": string;
+  readonly "prompt_source": string;
+  readonly "revision_digest": string;
+  readonly "routine_ref": string;
+  readonly "scheduled_for": string;
+  readonly "target_session": "commander" | "mc-commander-manibo";
+}>;
+
+export type BeatDispatchEffectList = Readonly<{
+  readonly "effects": ReadonlyArray<BeatDispatchEffect>;
+}>;
+
+export type BeatRoutine = Readonly<{
+  readonly "beat_key": string;
+  readonly "next_fire_at": string;
+  readonly "prompt_sha256": string;
+  readonly "prompt_source": string;
+  readonly "revision_digest": string;
+  readonly "routine_ref": string;
+  readonly "schedule": BeatSchedule;
+  readonly "target_session": "commander" | "mc-commander-manibo";
+}>;
+
+export type BeatRoutineList = Readonly<{
+  readonly "routines": ReadonlyArray<BeatRoutine>;
+}>;
+
+export type BeatSchedule = Readonly<{
+  readonly "hours": null | ReadonlyArray<number>;
+  readonly "kind": "minute_hour_set";
+  readonly "minutes": ReadonlyArray<number>;
+  readonly "timezone": "UTC";
 }>;
 
 export type BlockIntent = Readonly<{

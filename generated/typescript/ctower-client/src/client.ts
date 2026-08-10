@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+// Authored contract digest: sha256:114afd023e702447140e1d004ed55d31c79d1a05c43b111f9fcc09848c039391
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -229,6 +229,14 @@ export type IngestInboxNotificationInput = Readonly<{
 export type IssueSeatCredentialInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.SeatCredentialIssueRequest;
+}>;
+
+export type ListBeatDispatchEffectsInput = Readonly<{
+
+}>;
+
+export type ListBeatRoutinesInput = Readonly<{
+
 }>;
 
 export type ListDreamDispatchEffectsInput = Readonly<{
@@ -477,6 +485,8 @@ export type OperationInputs = Readonly<{
   readonly "getTicketTimeline": GetTicketTimelineInput;
   readonly "ingestInboxNotification": IngestInboxNotificationInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
+  readonly "listBeatDispatchEffects": ListBeatDispatchEffectsInput;
+  readonly "listBeatRoutines": ListBeatRoutinesInput;
   readonly "listDreamDispatchEffects": ListDreamDispatchEffectsInput;
   readonly "listInboxThreads": ListInboxThreadsInput;
   readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
@@ -559,6 +569,8 @@ export type OperationResults = Readonly<{
   readonly "getTicketTimeline": Models.TimelineResponse;
   readonly "ingestInboxNotification": Models.InboxSendResult;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
+  readonly "listBeatDispatchEffects": Models.BeatDispatchEffectList;
+  readonly "listBeatRoutines": Models.BeatRoutineList;
   readonly "listDreamDispatchEffects": Models.DreamDispatchEffectList;
   readonly "listInboxThreads": Models.InboxThreadList;
   readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
@@ -862,6 +874,18 @@ export class CtowerClient {
     input: IssueSeatCredentialInput,
   ): Promise<Models.SeatCredentialReceipt> {
     return this.execute("issueSeatCredential", input);
+  }
+
+  public async listBeatDispatchEffects(
+    input: ListBeatDispatchEffectsInput,
+  ): Promise<Models.BeatDispatchEffectList> {
+    return this.execute("listBeatDispatchEffects", input);
+  }
+
+  public async listBeatRoutines(
+    input: ListBeatRoutinesInput,
+  ): Promise<Models.BeatRoutineList> {
+    return this.execute("listBeatRoutines", input);
   }
 
   public async listDreamDispatchEffects(

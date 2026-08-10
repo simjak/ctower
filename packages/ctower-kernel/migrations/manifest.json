@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0061_request_decision_briefs.sql",
-    "schema_sha256": "sha256:8083397ac6c8da0ed3a7177135c3b13f76139196ede2971e0410e451c72da7a9",
+    "through": "0062_beat_dispatch_effect.sql",
+    "schema_sha256": "sha256:292273235312784c6145f6436d01d2d7f835257667836ce295ca59524e167cbd",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:35b2ff2f8b5ec8bdcce79403d7489402c832f0b2e577afb27aba10f2f3c44607"
+    "schema_object_sum256": "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644"
   },
   "migrations": [
     {
@@ -575,6 +575,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_decision_briefs.py::test_linked_ruling_is_visible_from_request_and_ruling_and_resolves_decision",
       "rollback_or_forward_compensation": "Preserve every Request decision marker, generated brief source fact, Request-to-Ruling relation, Ruling byte, canonical event, command result, outbox row, and inherited successor relation; append reviewed forward compensation and never edit or detach an accepted Ruling.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Request, Request blocker, Ruling, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; existing Rulings receive a null Request relation."
+    },
+    {
+      "path": "0062_beat_dispatch_effect.sql",
+      "sha256": "sha256:6c15d0e8c2fef574575a9ef1165cd73e7d198fc2513ce78c6c83729f8b521c2b",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_routines",
+      "rollback_or_forward_compensation": "Preserve every immutable fleet-beat revision, occurrence, full-prompt effect, schedule decision, command result, event, and outbox row; append a reviewed successor revision or forward compensation and never edit or delete an accepted beat fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture routine revision, trigger, occurrence, operation-job, command-result, event, outbox, and dream-effect counts grouped by tenant plus a verified database backup; verify all preexisting schedule and handler shapes are unchanged after the forward transition."
     }
   ]
 }

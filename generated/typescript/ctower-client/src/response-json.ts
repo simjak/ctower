@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+// Authored contract digest: sha256:114afd023e702447140e1d004ed55d31c79d1a05c43b111f9fcc09848c039391
 
 export type JsonNumberNode = Readonly<{
   kind: "number";

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+Authored contract digest: sha256:114afd023e702447140e1d004ed55d31c79d1a05c43b111f9fcc09848c039391
 """
 
 from __future__ import annotations
@@ -578,6 +578,32 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "listBeatDispatchEffects": OperationSpec(
+            operation_id="listBeatDispatchEffects",
+            client_method="list_beat_dispatch_effects",
+            method="GET",
+            path="/v1/runtime/beat-dispatches",
+            request_model=None,
+            response_model=_models.BeatDispatchEffectList,
+            cli_names=('beat-dispatch list',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "listBeatRoutines": OperationSpec(
+            operation_id="listBeatRoutines",
+            client_method="list_beat_routines",
+            method="GET",
+            path="/v1/runtime/beat-routines",
+            request_model=None,
+            response_model=_models.BeatRoutineList,
+            cli_names=('beat-dispatch routines',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "listDreamDispatchEffects": OperationSpec(
             operation_id="listDreamDispatchEffects",
             client_method="list_dream_dispatch_effects",
@@ -1124,6 +1150,8 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket timeline": OPERATIONS["getTicketTimeline"],
         "inbox notify": OPERATIONS["ingestInboxNotification"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
+        "beat-dispatch list": OPERATIONS["listBeatDispatchEffects"],
+        "beat-dispatch routines": OPERATIONS["listBeatRoutines"],
         "dream-dispatch list": OPERATIONS["listDreamDispatchEffects"],
         "inbox list": OPERATIONS["listInboxThreads"],
         "knowledge list": OPERATIONS["listKnowledgeDocuments"],

@@ -42,6 +42,12 @@ principal's immutable binding exactly once. It uses the closed codex/primary/fal
 declared by the authored contract; it never accepts a principal or model-family label, and it is not queued
 for later execution.
 
+`beat-dispatch routines` lists the five registered fleet-beat revisions, exact UTC schedules, pinned prompt
+digests, fixed DIRECTOR target, and next fires. `beat-dispatch list` returns the immutable full-prompt
+effects. Both are online-only operator reads: they do not queue, mutate server custody, or accept caller
+schedule/prompt/target labels. Mission Control's sibling beat consumer performs ledger-deduplicated tmux
+delivery while a beat-specific lane-binding ceremony remains unapproved.
+
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted
 criteria to the sole installed gate policy. Evidence add accepts literal content or a bounded content file,

@@ -96,6 +96,47 @@ def test_hourly_empty_and_invalid_due_inputs_are_explicit() -> None:
         routine.plan_due((instant, instant))
 
 
+def test_minute_hour_set_fires_at_each_authored_utc_mark() -> None:
+    every_hour = replace(
+        _daily("UTC", time(1, 0)),
+        schedule_kind=ScheduleKind.MINUTE_HOUR_SET,
+        local_time=None,
+        minute_marks=(14, 34, 54),
+    )
+    selected_hours = replace(every_hour, minute_marks=(23,), hour_marks=(2, 8, 14, 20))
+
+    assert every_hour.next_fire_after(datetime(2026, 8, 10, 9, 14, tzinfo=UTC)) == datetime(
+        2026, 8, 10, 9, 34, tzinfo=UTC
+    )
+    assert every_hour.next_fire_after(datetime(2026, 8, 10, 9, 54, tzinfo=UTC)) == datetime(
+        2026, 8, 10, 10, 14, tzinfo=UTC
+    )
+    assert selected_hours.next_fire_after(datetime(2026, 8, 10, 8, 23, tzinfo=UTC)) == datetime(
+        2026, 8, 10, 14, 23, tzinfo=UTC
+    )
+
+
+def test_minute_hour_set_rejects_invalid_or_missing_marks() -> None:
+    base = _daily("UTC", time(1, 0))
+    with pytest.raises(ValueError, match="minute marks"):
+        replace(base, schedule_kind=ScheduleKind.MINUTE_HOUR_SET, local_time=None)
+    with pytest.raises(ValueError, match="minute marks"):
+        replace(
+            base,
+            schedule_kind=ScheduleKind.MINUTE_HOUR_SET,
+            local_time=None,
+            minute_marks=(60,),
+        )
+    with pytest.raises(ValueError, match="hour marks"):
+        replace(
+            base,
+            schedule_kind=ScheduleKind.MINUTE_HOUR_SET,
+            local_time=None,
+            minute_marks=(12,),
+            hour_marks=(24,),
+        )
+
+
 def test_routine_revision_rejects_invalid_authored_contract_values() -> None:
     routine = _daily("UTC", time(1, 0))
 

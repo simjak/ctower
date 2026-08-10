@@ -64,6 +64,8 @@ INCREMENT 1 — durable task-management dogfood
               |
  [CT-I1-018: native morning digest read-model + existing-rail delivery]
               |
+ [CT-I1-019: five immutable fleet-beat routines + external DIRECTOR ledger]
+              |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
 INCREMENT 2 — autonomous generic workflow + one golden path
@@ -445,6 +447,26 @@ schedule after verification.
 transcripts agree; one real notification delivery ID records rail-1 success and the honest rail-2 outcome;
 same-candidate docs and independent review pass; and source/identity/egress/scheduler inventories show no
 new boundary or director-cron mutation.
+
+### I1.13 — Fleet beats as fixed Routines
+
+**Stable work:** `CT-I1-019`.
+
+After the digest read shape exists, register the five operator-ordered Mission Control beats as immutable
+UTC Routine revisions. Each revision pins the complete canonical prompt and its digest at registration;
+queued occurrences transactionally emit that same prompt for the fixed DIRECTOR target. Operator-only
+reads list the five registered revisions, their next fires, and emitted effects.
+
+A sibling Mission Control consumer polls at one-minute cadence, claims each occurrence in an append-only
+ledger before injection, records one delivered result, and marks a later replay with zero reinjections. It
+refuses an interrupted ambiguous claim rather than risking a duplicate. Ctower receives no consumption
+claim until a separate authenticated beat-lane ceremony is approved. The director retires the five fallback
+crontab entries only after the live health round trip is confirmed.
+
+**Exit:** AC-OPS-13 and the CT-I1-019 contract, schedule, PostgreSQL, API/CLI, and consumer suites pass; the
+shadow serve lists exactly five registered beat revisions; one health occurrence carries the exact full
+prompt through the consumer into DIRECTOR; a replay records zero injection; the UTC cron proof, fallback
+recommendation, same-candidate docs, full release gate, and Director receipt confirmation are recorded.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

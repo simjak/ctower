@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-v3.schema.json",
+  "title": "FleetBeatRoutineRevision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "routine_ref", "revision_digest", "schedule", "dst_policy",
+    "concurrency", "catch_up", "catch_up_cap", "timeout_seconds", "handler_kind",
+    "component_digests", "beat_dispatch"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.routine/v3"},
+    "routine_ref": {"type": "string", "pattern": "^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "revision_digest": {"$ref": "#/$defs/digest"},
+    "schedule": {"$ref": "#/$defs/schedule"},
+    "dst_policy": {"const": "wall_clock_once"},
+    "concurrency": {"const": "always_enqueue_bounded"},
+    "catch_up": {"const": "skip_missed"},
+    "catch_up_cap": {"const": 1},
+    "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 86400},
+    "handler_kind": {"const": "beat_dispatch"},
+    "component_digests": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/digest"}
+    },
+    "beat_dispatch": {"$ref": "#/$defs/beatDispatch"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "stableKey": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+    "schedule": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "timezone", "minutes", "hours"],
+      "properties": {
+        "kind": {"const": "minute_hour_set"},
+        "timezone": {"const": "UTC"},
+        "minutes": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 0, "maximum": 59}
+        },
+        "hours": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "array", "minItems": 1, "uniqueItems": true,
+             "items": {"type": "integer", "minimum": 0, "maximum": 23}}
+          ]
+        }
+      }
+    },
+    "beatDispatch": {
+      "type": "object", "additionalProperties": false,
+      "required": ["beat_key", "prompt_source", "prompt_sha256", "prompt", "target_session"],
+      "properties": {
+        "beat_key": {"$ref": "#/$defs/stableKey"},
+        "prompt_source": {"type": "string", "pattern": "^state/beats/[a-z][a-z0-9._-]*\\.txt$"},
+        "prompt_sha256": {"$ref": "#/$defs/digest"},
+        "prompt": {"type": "string", "minLength": 1, "maxLength": 16384},
+        "target_session": {"enum": ["commander", "mc-commander-manibo"]}
+      }
+    }
+  }
+}

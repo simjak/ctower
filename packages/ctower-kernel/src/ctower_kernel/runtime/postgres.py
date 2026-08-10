@@ -19,6 +19,10 @@ from ctower_kernel.runtime import (
     SyntheticRunCommand,
     SyntheticRunReceipt,
 )
+from ctower_kernel.runtime._beat_dispatch_sql import (
+    list_beat_dispatches as _list_beat_dispatches,
+)
+from ctower_kernel.runtime._beat_dispatch_sql import list_beat_routines as _list_beat_routines
 from ctower_kernel.runtime._dream_dispatch_sql import (
     bind_dream_lane as _bind_dream_lane,
 )
@@ -35,6 +39,7 @@ from ctower_kernel.runtime._synthetic_sql import claim_synthetic as _claim_synth
 from ctower_kernel.runtime._synthetic_sql import complete_synthetic as _complete_synthetic
 from ctower_kernel.runtime._synthetic_sql import start_synthetic as _start_synthetic
 from ctower_kernel.runtime._synthetic_sql import synthetic_run as _synthetic_run
+from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatRoutine
 from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
 
 __all__ = ["PostgresRuntime"]
@@ -63,6 +68,12 @@ class PostgresRuntime:
 
     def list_dream_dispatches(self, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
         return _list_dream_dispatches(self._dsn, actor)
+
+    def list_beat_dispatches(self, actor: Actor) -> tuple[BeatDispatchEffect, ...]:
+        return _list_beat_dispatches(self._dsn, actor)
+
+    def list_beat_routines(self, actor: Actor) -> tuple[BeatRoutine, ...]:
+        return _list_beat_routines(self._dsn, actor)
 
     def consume_dream_dispatch(
         self, actor: Actor, command: DreamDispatchConsumeCommand
