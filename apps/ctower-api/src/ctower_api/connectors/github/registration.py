@@ -136,6 +136,14 @@ class GitHubRuntimeRegistration:
     def build(self, resolve_secret: Callable[[str], str]) -> GitHubIssueConnector:
         auth = GitHubAppAuth(
             self.config,
-            resolve_private_key=lambda binding, _revision: resolve_secret(binding),
+            resolve_private_key=lambda binding, revision: resolve_secret(
+                _revision_secret_reference(binding, revision)
+            ),
         )
         return GitHubIssueConnector(self.config, auth=auth)
+
+
+def _revision_secret_reference(binding: str, revision: str) -> str:
+    """Resolve one exact deployment key revision without accepting an old binding value."""
+
+    return f"{binding}__SHA256_{revision.removeprefix('sha256:').upper()}"

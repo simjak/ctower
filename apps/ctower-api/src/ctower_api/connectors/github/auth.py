@@ -101,7 +101,11 @@ class GitHubAppAuth:
             and now + _REFRESH_MARGIN < cached.expires_at
         ):
             return cached.value
-        minted = self._mint(now)
+        minted = self._mint(
+            now,
+            binding=self._binding,
+            binding_revision=self._binding_revision,
+        )
         self._cached_token = minted
         return minted.value
 
@@ -115,9 +119,20 @@ class GitHubAppAuth:
         GitHubConnectorConfig.model_validate(candidate.model_dump())
         if binding_revision == self._binding_revision:
             raise GitHubAuthError("GitHub App key rotation requires a new binding revision")
+        self._cached_token = None
+        self._revoked = True
+        current_identity = self._key_identity(self._binding, self._binding_revision)
+        replacement_identity = self._key_identity(binding, binding_revision)
+        if replacement_identity == current_identity:
+            raise GitHubAuthError("GitHub App key rotation cannot reuse the old private key")
+        minted = self._mint(
+            self._aware_now(),
+            binding=binding,
+            binding_revision=binding_revision,
+        )
         self._binding = binding
         self._binding_revision = binding_revision
-        self._cached_token = None
+        self._cached_token = minted
         self._revoked = False
 
     def revoke(self) -> None:
@@ -137,8 +152,14 @@ class GitHubAppAuth:
         if response.status_code != httpx.codes.NO_CONTENT:
             raise GitHubAuthError("GitHub installation-token revocation failed closed")
 
-    def _mint(self, now: datetime) -> _CachedToken:
-        jwt_value = self._signed_jwt(now)
+    def _mint(
+        self,
+        now: datetime,
+        *,
+        binding: str,
+        binding_revision: str,
+    ) -> _CachedToken:
+        jwt_value = self._signed_jwt(now, binding=binding, binding_revision=binding_revision)
         try:
             response = self._request(
                 "POST",
@@ -164,7 +185,7 @@ class GitHubAppAuth:
                 "GitHub installation-token grant violated least privilege"
             ) from None
         self._verify_grant(parsed, now)
-        return _CachedToken(parsed.token, parsed.expires_at, self._binding_revision)
+        return _CachedToken(parsed.token, parsed.expires_at, binding_revision)
 
     def _verify_grant(self, response: _TokenResponse, now: datetime) -> None:
         repository = response.repositories[0]
@@ -179,7 +200,7 @@ class GitHubAppAuth:
         ):
             raise GitHubAuthError("GitHub installation-token grant violated least privilege")
 
-    def _signed_jwt(self, now: datetime) -> str:
+    def _signed_jwt(self, now: datetime, *, binding: str, binding_revision: str) -> str:
         header = _base64_json({"alg": "RS256", "typ": "JWT"})
         claims = _base64_json(
             {
@@ -190,12 +211,19 @@ class GitHubAppAuth:
         )
         signing_input = f"{header}.{claims}".encode("ascii")
         try:
-            pem = self._resolve_private_key(self._binding, self._binding_revision)
+            pem = self._resolve_private_key(binding, binding_revision)
             key = _rsa_private_key(pem)
             signature = key.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
-        except (TypeError, ValueError, UnicodeError):
+        except (LookupError, OSError, RuntimeError, TypeError, UnicodeError, ValueError):
             raise GitHubAuthError("GitHub App private-key resolution or signing failed") from None
         return f"{header}.{claims}.{_base64_bytes(signature)}"
+
+    def _key_identity(self, binding: str, binding_revision: str) -> rsa.RSAPublicNumbers:
+        try:
+            pem = self._resolve_private_key(binding, binding_revision)
+            return _rsa_private_key(pem).public_key().public_numbers()
+        except (LookupError, OSError, RuntimeError, TypeError, UnicodeError, ValueError):
+            raise GitHubAuthError("GitHub App private-key resolution or signing failed") from None
 
     def _request(
         self,

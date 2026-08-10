@@ -128,6 +128,16 @@ class GitHubIssueConnector:
     def diagnostic(self) -> str | None:
         return self._diagnostic
 
+    def rotate_private_key(self, *, binding: str, binding_revision: str) -> None:
+        """Run the trusted replacement-key proof before reopening provider authentication."""
+
+        self._auth.rotate_private_key(binding=binding, binding_revision=binding_revision)
+
+    def revoke_credentials(self) -> None:
+        """Invalidate local authority before the connected provider revocation drill."""
+
+        self._auth.revoke()
+
     def fetch_page(
         self, request: FetchIssuePage, attempt: ConnectorAttempt
     ) -> FetchIssuePageResult:

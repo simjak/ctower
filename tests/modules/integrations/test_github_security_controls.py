@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 from uuid import UUID
@@ -14,6 +14,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from ctower_api.connector_loop import ConnectorLoop, build_connector_loop
 from ctower_api.connectors.github import (
     GitHubAppAuth,
     GitHubAuthError,
@@ -22,13 +23,26 @@ from ctower_api.connectors.github import (
     GitHubIssueConnector,
     GitHubRuntimeRegistration,
 )
+from ctower_api.control_worker import build_worker
 from ctower_kernel.catalog.interface import JsonValue
-from ctower_kernel.integrations import ConnectorAttempt, ConnectorCursorToken, FetchIssuePage
+from ctower_kernel.integrations import (
+    ConnectorAttempt,
+    ConnectorCursorToken,
+    FetchIssuePage,
+    FetchIssuePageResult,
+)
+from ctower_kernel.projections import Projections
+from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.runtime import Routine
 from modules.integrations.github_test_support import (
     Clock,
     MintingTransport,
+    SecretPath,
+    SecretPathTransport,
+    assert_jwt_signed_by,
     connector_config,
     decode_jwt_part,
+    live_tainted_private_key,
     private_key_pem,
 )
 
@@ -201,35 +215,68 @@ def test_github_egress_rejects_redirects_and_destination_drift() -> None:
     assert len(observed) == 1 and observed[0].url.host == "api.github.com"
 
 
-def test_github_key_rotation_rebinds_without_old_key_reuse() -> None:
+def test_github_key_rotation_rebinds_without_old_key_reuse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     clock = Clock()
-    transport = MintingTransport(clock)
-    keys = {
-        "sha256:" + "a" * 64: private_key_pem(),
-        "sha256:" + "c" * 64: private_key_pem(),
-    }
+    clock.now = datetime.now(tz=UTC)
+    transport = SecretPathTransport(clock, path="rotation", canary="ROTATION-CREDENTIAL-CANARY")
+    client = httpx.Client(transport=httpx.MockTransport(transport.handle))
+    monkeypatch.setattr(httpx, "Client", lambda *_args, **_kwargs: client)
+    runtime = GitHubRuntimeRegistration.from_catalog(
+        _catalog_payload(),
+        revision_id=_uuid("22222222-2222-4222-8222-222222222222"),
+        revision_digest=_REVISION,
+    )
+    old_key = private_key_pem()
+    replacement_key = private_key_pem()
+    old_reference = _revision_secret_reference(
+        "GITHUB_FEEDBACK_APP_PRIVATE_KEY", "sha256:" + "a" * 64
+    )
+    replacement_reference = _revision_secret_reference(
+        "GITHUB_FEEDBACK_APP_PRIVATE_KEY_V2", "sha256:" + "c" * 64
+    )
+    keys = {old_reference: old_key, replacement_reference: old_key}
     resolved: list[str] = []
 
-    def resolver(_binding: str, revision: str) -> str:
-        resolved.append(revision)
-        return keys[revision]
+    def resolver(reference: str) -> str:
+        resolved.append(reference)
+        return keys[reference]
 
-    auth = GitHubAppAuth(
-        connector_config(),
-        resolve_private_key=resolver,
-        client=httpx.Client(transport=httpx.MockTransport(transport.handle)),
-        clock=clock,
-    )
-    auth.installation_token()
-    auth.rotate_private_key(
+    connector = runtime.build(resolver)
+    initial = connector.fetch_page(_fetch_request(), _attempt())
+    with pytest.raises(GitHubAuthError, match="reuse the old private key"):
+        connector.rotate_private_key(
+            binding="GITHUB_FEEDBACK_APP_PRIVATE_KEY_V2",
+            binding_revision="sha256:" + "c" * 64,
+        )
+    refused = connector.fetch_page(_fetch_request(), _attempt())
+
+    keys[replacement_reference] = replacement_key
+    connector.rotate_private_key(
         binding="GITHUB_FEEDBACK_APP_PRIVATE_KEY_V2",
         binding_revision="sha256:" + "c" * 64,
     )
-    transport.opaque_value = "replacement-value"
-    auth.installation_token()
+    result = connector.fetch_page(_fetch_request(), _attempt())
+    assert_jwt_signed_by(transport.jwt_taints[-1], replacement_key)
 
-    assert resolved == ["sha256:" + "a" * 64, "sha256:" + "c" * 64]
-    assert len(transport.mint_requests) == _SECOND_MINT
+    revoked = _revoke_through_control_worker(runtime, connector)
+
+    assert refused.kind == "fetch_failure" and refused.reason == "authentication"
+    assert initial.kind == "page"
+    assert result.kind == "page"
+    assert revoked.kind == "fetch_failure" and revoked.reason == "authentication"
+    assert resolved == [
+        old_reference,
+        old_reference,
+        replacement_reference,
+        old_reference,
+        replacement_reference,
+        replacement_reference,
+    ]
+    assert transport.mint_count == _SECOND_MINT
+    assert transport.issue_count == _SECOND_MINT
+    assert transport.revoke_count == 1
 
 
 def test_github_revocation_drill_invalidates_cached_tokens_and_fails_closed() -> None:
@@ -242,12 +289,13 @@ def test_github_revocation_drill_invalidates_cached_tokens_and_fails_closed() ->
         auth.installation_token()
     assert len(transport.mint_requests) == 1
 
+    transport.opaque_value = "replacement-value"
     auth.rotate_private_key(
         binding="GITHUB_FEEDBACK_APP_PRIVATE_KEY_V2",
         binding_revision="sha256:" + "c" * 64,
     )
-    transport.opaque_value = "replacement-value"
     assert auth.installation_token().get_secret_value() == "replacement-value"
+    assert len(transport.mint_requests) == _SECOND_MINT
 
 
 def test_github_authentication_refusals_fail_closed() -> None:
@@ -334,54 +382,70 @@ def test_github_signing_and_clock_failures_are_redacted() -> None:
         naive_clock.installation_token()
 
 
+@pytest.mark.parametrize(
+    "path",
+    ("success", "http-failure", "malformed-response", "refresh", "rotation", "revocation"),
+)
 def test_github_secret_taint_never_reaches_observable_outputs(
+    path: str,
     caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    private_taint = "PRIVATE-KEY-TAINT"
-    credential_taint = "INSTALLATION-CREDENTIAL-TAINT"
+    private_taints = ["PRIVATE-KEY-TAINT-OLD"]
+    if path == "rotation":
+        private_taints.append("PRIVATE-KEY-TAINT-REPLACEMENT")
+    installation_canary = "INSTALLATION-CREDENTIAL-CANARY"
     clock = Clock()
+    transport = SecretPathTransport(clock, path=cast(SecretPath, path), canary=installation_canary)
+    keys = {
+        "sha256:" + "a" * 64: live_tainted_private_key(private_taints[0]),
+        "sha256:" + "c" * 64: live_tainted_private_key(private_taints[-1]),
+    }
+    resolved: list[tuple[str, str]] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path.endswith("/access_tokens"):
-            return httpx.Response(
-                201,
-                request=request,
-                json={
-                    "token": credential_taint,
-                    "expires_at": (clock.now + timedelta(hours=1)).isoformat(),
-                    "permissions": {"issues": "write", "metadata": "read"},
-                    "repositories": [
-                        {"id": 98_765, "name": "feedback", "full_name": "ctower/feedback"}
-                    ],
-                    "repository_selection": "selected",
-                },
-            )
-        return httpx.Response(503, request=request, text=credential_taint)
+    def resolver(binding: str, revision: str) -> str:
+        resolved.append((binding, revision))
+        return keys[revision]
 
+    client = httpx.Client(transport=httpx.MockTransport(transport.handle))
     caplog.set_level(logging.DEBUG)
     auth = GitHubAppAuth(
         connector_config(),
-        resolve_private_key=lambda _binding, _revision: _tainted_key(private_taint),
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        resolve_private_key=resolver,
+        client=client,
         clock=clock,
     )
     connector = GitHubIssueConnector(
         connector_config(),
         auth=auth,
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        client=client,
     )
-    result = connector.fetch_page(_fetch_request(), _attempt())
-    observable = "\n".join(
-        (
-            repr(auth),
-            repr(result),
-            connector.diagnostic or "",
-            caplog.text,
-            json.dumps(result.model_dump(mode="json")),
+    results: list[object] = [connector.fetch_page(_fetch_request(), _attempt())]
+    if path == "refresh":
+        clock.advance(timedelta(minutes=56))
+        results.append(connector.fetch_page(_fetch_request(), _attempt()))
+    elif path == "rotation":
+        connector.rotate_private_key(
+            binding="GITHUB_FEEDBACK_APP_PRIVATE_KEY_V2",
+            binding_revision="sha256:" + "c" * 64,
         )
+        results.append(connector.fetch_page(_fetch_request(), _attempt()))
+    elif path == "revocation":
+        connector.revoke_credentials()
+        results.append(connector.fetch_page(_fetch_request(), _attempt()))
+
+    captured = capsys.readouterr()
+    observable = _observable_surface_dump(
+        auth,
+        connector,
+        results,
+        transport,
+        caplog,
+        (captured.out, captured.err),
     )
-    assert private_taint not in observable
-    assert credential_taint not in observable
+    secret_taints = [*private_taints, *transport.jwt_taints, *transport.token_taints]
+    _assert_secret_path_reached(path, transport, resolved)
+    assert all(taint and taint not in observable for taint in secret_taints)
     assert "Bearer " not in observable
 
 
@@ -405,12 +469,15 @@ def _auth(
 ) -> tuple[Clock, MintingTransport, list[tuple[str, str]], GitHubAppAuth]:
     clock = Clock()
     transport = MintingTransport(clock, opaque_value=opaque_value)
-    key = private_key_pem()
+    keys = {
+        "sha256:" + "a" * 64: private_key_pem(),
+        "sha256:" + "c" * 64: private_key_pem(),
+    }
     resolved: list[tuple[str, str]] = []
 
     def resolver(binding: str, revision: str) -> str:
         resolved.append((binding, revision))
-        return key
+        return keys[revision]
 
     selected_handler = handler if handler is not None else transport.handle
     auth = GitHubAppAuth(
@@ -420,6 +487,83 @@ def _auth(
         clock=clock,
     )
     return clock, transport, resolved, auth
+
+
+def _revoke_through_control_worker(
+    runtime: GitHubRuntimeRegistration, connector: GitHubIssueConnector
+) -> FetchIssuePageResult:
+    loop = build_connector_loop(
+        runtime,
+        connector=connector,
+        actor=Actor(
+            _uuid("11111111-1111-4111-8111-111111111111"),
+            _uuid("22222222-2222-4222-8222-222222222222"),
+            PrincipalKind.COMMANDER,
+        ),
+        runtime_dsn="postgresql://runtime-reference",
+    )
+    worker = build_worker(
+        cast(Routine, object()),
+        cast(Projections, object()),
+        pack_root=ROOT / "packs",
+        standing_integrations=(loop,),
+    )
+    composed = cast(ConnectorLoop, worker.standing_integrations[0])
+    assert composed.connector is connector
+    assert isinstance(composed.connector, GitHubIssueConnector)
+    composed.connector.revoke_credentials()
+    return composed.connector.fetch_page(_fetch_request(), _attempt())
+
+
+def _observable_surface_dump(
+    auth: GitHubAppAuth,
+    connector: GitHubIssueConnector,
+    results: list[object],
+    transport: SecretPathTransport,
+    caplog: pytest.LogCaptureFixture,
+    captured_output: tuple[str, str],
+) -> str:
+    serialized = [
+        result.model_dump(mode="json") if hasattr(result, "model_dump") else repr(result)
+        for result in results
+    ]
+    surfaces = {
+        "exceptions": [],
+        "structured_failures": serialized,
+        "logs": [record.getMessage() for record in caplog.records],
+        "telemetry": [],
+        "record_messages": serialized,
+        "inbox_messages": [],
+        "status": connector.diagnostic,
+        "receipts": serialized,
+        "snapshots": [repr(auth), repr(connector), repr(results)],
+        "fixtures": transport.safe_requests,
+        "cli_output": list(captured_output),
+        "urls": [request["url"] for request in transport.safe_requests],
+        "captured_headers": [request["headers"] for request in transport.safe_requests],
+        "gate_artifacts": serialized,
+    }
+    return json.dumps(surfaces, sort_keys=True, default=repr)
+
+
+def _assert_secret_path_reached(
+    path: str,
+    transport: SecretPathTransport,
+    resolved: list[tuple[str, str]],
+) -> None:
+    expected_counts = {
+        "success": (1, 1, 0),
+        "http-failure": (1, 1, 0),
+        "malformed-response": (1, 0, 0),
+        "refresh": (2, 2, 0),
+        "rotation": (2, 2, 0),
+        "revocation": (1, 1, 1),
+    }
+    assert (transport.mint_count, transport.issue_count, transport.revoke_count) == expected_counts[
+        path
+    ]
+    assert resolved
+    assert transport.jwt_taints and transport.token_taints
 
 
 def _fetch_request() -> FetchIssuePage:
@@ -472,5 +616,5 @@ def _uuid(value: str) -> UUID:
     return UUID(value)
 
 
-def _tainted_key(taint: str) -> str:
-    return private_key_pem().replace("PRIVATE KEY", f"PRIVATE KEY {taint}", 1)
+def _revision_secret_reference(binding: str, revision: str) -> str:
+    return f"{binding}__SHA256_{revision.removeprefix('sha256:').upper()}"

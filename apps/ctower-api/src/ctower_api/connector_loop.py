@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import cast
 
 from ctower_api.connectors import CONNECTOR_REGISTRATIONS
@@ -33,6 +33,7 @@ class ConnectorLoop:
     service: IssueConnectorService
     actor: Actor
     registration: ConnectorRegistration
+    connector: IssueConnector = field(repr=False)
 
     def tick(self) -> ConnectorSyncBatch:
         return self.service.tick(self.actor, self.registration)
@@ -141,4 +142,4 @@ def build_connector_loop(
         record.event_audit,
         BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
     )
-    return ConnectorLoop(service, actor, runtime.registration)
+    return ConnectorLoop(service, actor, runtime.registration, connector)
