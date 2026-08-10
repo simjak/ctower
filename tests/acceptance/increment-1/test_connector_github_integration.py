@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from pathlib import Path
 from typing import cast
 from uuid import UUID
 
@@ -42,7 +43,12 @@ def test_github_issue_roundtrip_uses_real_postgres_and_mock_transport(
         payload, revision_id=revision_id, revision_digest=digest
     )
     clock = Clock()
-    mint = MintingTransport(clock)
+    mint = MintingTransport(
+        clock,
+        owner=runtime.config.repository_owner,
+        repository=runtime.config.repository_name,
+        repository_id=runtime.config.repository_id,
+    )
     auth = GitHubAppAuth(
         runtime.config,
         resolve_private_key=lambda _binding, _revision: private_key_pem(),
@@ -74,7 +80,7 @@ def test_github_issue_roundtrip_uses_real_postgres_and_mock_transport(
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
 
     provider.issue["body"] = "Feedback body after reporter edit"
-    provider.issue["updated_at"] = "2026-08-10T12:04:00Z"
+    provider.issue["updated_at"] = "2026-08-10T19:13:28Z"
     clock.now += timedelta(seconds=60)
     assert sync.tick(actor, runtime.registration).ticket_updates == 1
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
@@ -89,18 +95,10 @@ def test_github_issue_roundtrip_uses_real_postgres_and_mock_transport(
 
 class _Provider:
     def __init__(self) -> None:
-        self.issue: dict[str, object] = {
-            "id": 4290,
-            "number": 429,
-            "title": "GitHub connector",
-            "body": "Feedback body",
-            "labels": [{"name": "bug"}],
-            "user": {"id": 42, "login": "reporter"},
-            "state": "open",
-            "updated_at": "2026-08-10T12:01:00Z",
-            "html_url": "https://github.com/ctower/feedback/issues/429",
-            "repository_url": "https://api.github.com/repos/ctower/feedback",
-        }
+        fixture_path = Path(__file__).with_name("fixtures") / "github-issue-429.json"
+        loaded = json.loads(fixture_path.read_text(encoding="utf-8"))
+        assert isinstance(loaded, dict)
+        self.issue = cast(dict[str, object], loaded)
         self.comments: list[str] = []
         self.comment_posts = 0
         self.close_patches = 0
@@ -122,7 +120,7 @@ class _Provider:
         if request.method == "PATCH":
             self.close_patches += 1
             self.issue["state"] = "closed"
-            self.issue["updated_at"] = "2026-08-10T12:05:00Z"
+            self.issue["updated_at"] = "2026-08-10T19:14:28Z"
             return httpx.Response(200, request=request, json={"state": "closed"})
         raise AssertionError(request)
 
@@ -137,18 +135,18 @@ def _payload(commander_id: UUID) -> dict[str, JsonValue]:
         "github": {
             "app_client_id": "Iv1.0123456789abcdef",
             "installation_id": 12345,
-            "repository_id": 98765,
-            "repository_owner": "ctower",
-            "repository_name": "feedback",
+            "repository_id": 1305439141,
+            "repository_owner": "simjak",
+            "repository_name": "ctower",
             "private_key_binding_revision": "sha256:" + "a" * 64,
             "repository_selection": "selected",
             "permissions": {"issues": "write", "metadata": "read"},
-            "import_updated_after": "2026-08-10T12:00:00Z",
+            "import_updated_after": "2026-08-10T19:00:00Z",
             "page_size": 50,
             "poll_interval_seconds": 60,
         },
         "ctower": {"project_key": "ctower", "initial_custodian_id": str(commander_id)},
-        "label_map": [{"github": "bug", "ctower": "security"}],
+        "label_map": [{"github": "enhancement", "ctower": "security"}],
         "private_key_binding": "GITHUB_FEEDBACK_APP_PRIVATE_KEY",
     }
 
@@ -160,7 +158,7 @@ def _linked_ticket(tenant: TenantFixture) -> UUID:
             SELECT ticket_id FROM connector_issue_links
             WHERE tenant_id = %s
               AND connector_registration_key = 'github.feedback'
-              AND external_ref = 'github:98765:429'
+              AND external_ref = 'github:1305439141:429'
             """,
             (tenant.tenant_id,),
         ).fetchone()
@@ -178,7 +176,7 @@ def _assert_mapping(tenant: TenantFixture, ticket_id: UUID) -> None:
             (tenant.tenant_id, ticket_id),
         ).fetchone()
     assert row == {
-        "title": "GitHub connector",
+        "title": "Connector Phase 2: GitHub issues connector under GH-C01..C08",
         "source_kind": "github-issue",
-        "source_ref": "github:98765:429",
+        "source_ref": "github:1305439141:429",
     }

@@ -46,11 +46,13 @@ class MintingTransport:
         opaque_value: str = "opaque-token-value",
         owner: str = "ctower",
         repository: str = "feedback",
+        repository_id: int = 98_765,
     ) -> None:
         self.clock = clock
         self.opaque_value = opaque_value
         self.owner = owner
         self.repository = repository
+        self.repository_id = repository_id
         self.mint_requests: list[httpx.Request] = []
         self.issue_requests: list[httpx.Request] = []
         self.revoke_requests: list[httpx.Request] = []
@@ -67,7 +69,7 @@ class MintingTransport:
                     "permissions": {"issues": "write", "metadata": "read"},
                     "repositories": [
                         {
-                            "id": 98_765,
+                            "id": self.repository_id,
                             "name": self.repository,
                             "full_name": f"{self.owner}/{self.repository}",
                         }

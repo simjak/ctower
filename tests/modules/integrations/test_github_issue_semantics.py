@@ -7,6 +7,7 @@ from datetime import timedelta
 from uuid import UUID
 
 import httpx
+import pytest
 
 from ctower_api.connectors.github import GitHubAppAuth, GitHubCursor, GitHubIssueConnector
 from ctower_kernel.integrations import (
@@ -23,6 +24,8 @@ from modules.integrations.github_test_support import (
     connector_config,
     private_key_pem,
 )
+
+__all__: tuple[str, ...] = ()
 
 
 def test_github_pull_requests_are_excluded() -> None:
@@ -88,6 +91,148 @@ def test_github_comment_and_close_reconciles_exactly_once() -> None:
     assert closes == _EXPECTED_CLOSE_CALLS
 
 
+def test_github_invalid_cursor_is_refused() -> None:
+    connector = _connector(lambda request: httpx.Response(200, request=request, json=[]))
+    result = connector.fetch_page(
+        FetchIssuePage(cursor=ConnectorCursorToken(value="not-json"), page_size=50), _attempt()
+    )
+    assert result.kind == "fetch_failure"
+    assert result.reason == "invalid_payload"
+
+
+def test_github_cursor_schema_and_timezone_are_strict() -> None:
+    with pytest.raises(ValueError, match="schema is unsupported"):
+        GitHubCursor.model_validate(
+            {
+                "schema": "ctower.github-cursor/v2",
+                "updated_at": Clock().now,
+                "issue_id": 0,
+                "page": 1,
+            }
+        )
+    with pytest.raises(ValueError, match="watermark must be timezone-aware"):
+        GitHubCursor(updated_at=Clock().now.replace(tzinfo=None), issue_id=0, page=1)
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "not-json",
+        "not-list",
+        "page-bound",
+        "not-object",
+        "unsupported-field",
+        "invalid-id",
+        "invalid-updated-at",
+        "naive-updated-at",
+        "invalid-body",
+        "repository-drift",
+        "invalid-labels",
+        "duplicate-labels",
+        "invalid-state",
+        "missing-title",
+        "normalized-contract",
+    ],
+)
+def test_github_malformed_issue_payloads_are_refused(failure: str) -> None:
+    values = _malformed_values(failure)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if failure == "not-json":
+            return httpx.Response(200, request=request, content=b"{")
+        return httpx.Response(200, request=request, json=values)
+
+    result = _connector(handler).fetch_page(
+        FetchIssuePage(
+            cursor=ConnectorCursorToken(
+                value=GitHubCursor(
+                    updated_at=Clock().now - timedelta(days=1), issue_id=0, page=1
+                ).encode()
+            ),
+            page_size=50,
+        ),
+        _attempt(),
+    )
+    assert result.kind == "fetch_failure"
+    assert result.reason in {"invalid_payload", "contract_violation"}
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        '<https://attacker.example/repos/ctower/feedback/issues?page=2>; rel="next"',
+        '<https://api.github.com/repos/ctower/feedback/issues?page=one>; rel="next"',
+        '<https://api.github.com/repos/ctower/feedback/issues?page=1>; rel="next"',
+    ],
+)
+def test_github_pagination_destination_and_progress_are_strict(link: str) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, request=request, json=[], headers={"link": link})
+
+    result = _connector(handler).fetch_page(
+        FetchIssuePage(
+            cursor=ConnectorCursorToken(
+                value=GitHubCursor(
+                    updated_at=Clock().now - timedelta(days=1), issue_id=0, page=1
+                ).encode()
+            ),
+            page_size=50,
+        ),
+        _attempt(),
+    )
+    assert result.kind == "fetch_failure"
+    assert result.reason == "invalid_payload"
+
+
+def test_github_valid_pagination_advances_page_cursor() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        link = '<https://api.github.com/repos/ctower/feedback/issues?page=2>; rel="next"'
+        return httpx.Response(200, request=request, json=[], headers={"link": link})
+
+    result = _connector(handler).fetch_page(
+        FetchIssuePage(
+            cursor=ConnectorCursorToken(
+                value=GitHubCursor(
+                    updated_at=Clock().now - timedelta(days=1), issue_id=0, page=1
+                ).encode()
+            ),
+            page_size=50,
+        ),
+        _attempt(),
+    )
+    assert isinstance(result, ExternalIssuePage)
+    assert GitHubCursor.decode(result.next_cursor).page == _NEXT_PAGE
+
+
+def test_github_close_refuses_invalid_identity_and_bounded_comments() -> None:
+    connector = _connector(
+        lambda request: httpx.Response(200, request=request, json=[{"body": "x"}] * 101)
+    )
+    invalid = connector.comment_and_close(
+        CloseExternalIssue(
+            external_ref="github:other:7",
+            command_id=UUID("22222222-2222-4222-8222-222222222222"),
+            marker="<!-- ctower-sync:22222222-2222-4222-8222-222222222222 -->",
+            comment="Proof-gated close",
+        ),
+        _attempt(),
+    )
+    assert invalid.kind == "close_failure"
+    assert invalid.reason == "invalid_payload"
+
+    bounded = connector.comment_and_close(
+        CloseExternalIssue(
+            external_ref="github:98765:7",
+            command_id=UUID("33333333-3333-4333-8333-333333333333"),
+            marker="<!-- ctower-sync:33333333-3333-4333-8333-333333333333 -->",
+            comment="Proof-gated close",
+        ),
+        _attempt(),
+    )
+    assert bounded.kind == "close_failure"
+    assert bounded.reason == "invalid_payload"
+
+
 def _fetch(
     values: list[dict[str, object]],
     *,
@@ -151,4 +296,29 @@ def _issue(
     }
 
 
+def _malformed_values(failure: str) -> object:
+    issue = _issue(7, 70)
+    variants: dict[str, object] = {
+        "not-json": [issue],
+        "not-list": {"issue": issue},
+        "page-bound": [issue] * 51,
+        "not-object": ["issue"],
+        "unsupported-field": [{**issue, "unexpected": True}],
+        "invalid-id": [{**issue, "id": True}],
+        "invalid-updated-at": [{**issue, "updated_at": "yesterday"}],
+        "naive-updated-at": [{**issue, "updated_at": "2026-08-10T12:00:00"}],
+        "invalid-body": [{**issue, "body": 42}],
+        "repository-drift": [
+            {**issue, "repository_url": "https://api.github.com/repos/attacker/issues"}
+        ],
+        "invalid-labels": [{**issue, "labels": "bug"}],
+        "duplicate-labels": [{**issue, "labels": [{"name": "bug"}, {"name": "bug"}]}],
+        "invalid-state": [{**issue, "state": "deleted"}],
+        "missing-title": [{key: value for key, value in issue.items() if key != "title"}],
+        "normalized-contract": [{**issue, "title": ""}],
+    }
+    return variants[failure]
+
+
 _EXPECTED_CLOSE_CALLS = 2
+_NEXT_PAGE = 2

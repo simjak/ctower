@@ -250,6 +250,90 @@ def test_github_revocation_drill_invalidates_cached_tokens_and_fails_closed() ->
     assert auth.installation_token().get_secret_value() == "replacement-value"
 
 
+def test_github_authentication_refusals_fail_closed() -> None:
+    _clock, _transport, _resolved, auth = _auth()
+    with pytest.raises(GitHubAuthError, match="new binding revision"):
+        auth.rotate_private_key(
+            binding="GITHUB_FEEDBACK_APP_PRIVATE_KEY_V2",
+            binding_revision="sha256:" + "a" * 64,
+        )
+
+    auth.revoke()
+    with pytest.raises(GitHubAuthError, match="revoked"):
+        auth.installation_token()
+
+    clock = Clock()
+    mint = MintingTransport(clock)
+
+    def failed_revoke(request: httpx.Request) -> httpx.Response:
+        if request.method == "DELETE":
+            return httpx.Response(503, request=request)
+        return mint.handle(request)
+
+    failed = _auth(handler=failed_revoke)[3]
+    failed.installation_token()
+    with pytest.raises(GitHubAuthError, match="revocation failed closed"):
+        failed.revoke()
+
+    def unsupported_revoke(request: httpx.Request) -> httpx.Response:
+        if request.method == "DELETE":
+            return httpx.Response(200, request=request)
+        return mint.handle(request)
+
+    unsupported = _auth(handler=unsupported_revoke)[3]
+    unsupported.installation_token()
+    with pytest.raises(GitHubAuthError, match="revocation failed closed"):
+        unsupported.revoke()
+
+
+@pytest.mark.parametrize("failure", ["status", "http", "json", "naive-expiry", "short-grant"])
+def test_github_token_mint_refuses_invalid_provider_grants(failure: str) -> None:
+    clock = Clock()
+    mint = MintingTransport(clock)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = mint.handle(request)
+        if failure == "status":
+            return httpx.Response(200, request=request, json=response.json())
+        if failure == "http":
+            return httpx.Response(503, request=request)
+        if failure == "json":
+            return httpx.Response(201, request=request, content=b"{")
+        payload = cast(dict[str, object], response.json())
+        if failure == "naive-expiry":
+            payload["expires_at"] = clock.now.replace(tzinfo=None).isoformat()
+        else:
+            payload["expires_at"] = (clock.now + timedelta(minutes=4)).isoformat()
+        return httpx.Response(201, request=request, json=payload)
+
+    auth = _auth(handler=handler)[3]
+    with pytest.raises(GitHubAuthError):
+        auth.installation_token()
+
+
+def test_github_signing_and_clock_failures_are_redacted() -> None:
+    clock = Clock()
+    mint = MintingTransport(clock)
+    bad_key = GitHubAppAuth(
+        connector_config(),
+        resolve_private_key=lambda _binding, _revision: "not-a-private-key",
+        client=httpx.Client(transport=httpx.MockTransport(mint.handle)),
+        clock=clock,
+    )
+    with pytest.raises(GitHubAuthError, match="resolution or signing failed") as key_error:
+        bad_key.installation_token()
+    assert "not-a-private-key" not in str(key_error.value)
+
+    naive_clock = GitHubAppAuth(
+        connector_config(),
+        resolve_private_key=lambda _binding, _revision: private_key_pem(),
+        client=httpx.Client(transport=httpx.MockTransport(mint.handle)),
+        clock=lambda: clock.now.replace(tzinfo=None),
+    )
+    with pytest.raises(GitHubAuthError, match="timezone-aware"):
+        naive_clock.installation_token()
+
+
 def test_github_secret_taint_never_reaches_observable_outputs(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
