@@ -679,6 +679,34 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "github-connector-controls"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/modules/integrations"
+patterns = ["test_github_*.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/modules/integrations/test_github_security_controls.py",
+  "tests/modules/integrations/test_github_issue_semantics.py",
+  "tests/modules/integrations/test_github_connector_conformance.py",
+  "-q",
+]
+timeout_seconds = 300
+
+[[suite]]
+id = "github-connector-acceptance"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_connector_github_integration.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_connector_github_integration.py", "-q"]
+timeout_seconds = 900
+
+[[suite]]
 id = "request-contracts"
 owner = "CT-I1-015"
 phase = "CT-I1-015"

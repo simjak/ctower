@@ -44,6 +44,7 @@ packages = [
   "ctower_api",
   "ctower_api.connectors",
   "ctower_api.connectors.gitlab",
+  "ctower_api.connectors.github",
   "ctower_client",
   "ctower_contracts",
   "ctower_kernel",

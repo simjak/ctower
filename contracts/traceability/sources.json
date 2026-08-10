@@ -2237,6 +2237,16 @@
       ]
     },
     {
+      "path": "contracts/components/integration-v3.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-GH-01",
+        "AC-GH-02",
+        "AC-GH-03"
+      ]
+    },
+    {
       "path": "contracts/domain/integrations/gitlab-issue-sync.schema.json",
       "references": [
         "SPEC#canonical-event-and-command-contract",

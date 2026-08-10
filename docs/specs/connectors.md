@@ -1,19 +1,16 @@
 # Issue connector framework proposal
 
 Status: subordinate proposal for [GitHub issue #381](https://github.com/simjak/ctower/issues/381). Its
-Phase-1 internal extraction is adopted by `SPEC.md` and D43 in this candidate. The later product phases
-remain proposals and are not activated.
+Phase-1 internal extraction is adopted by `SPEC.md` and D43. Phase 2 GitHub Issues is adopted by D52 and
+CT-I1-019; Phases 3 and 4 remain proposals and are not activated.
 
 This document proposes how ctower can turn the shipped GitLab issue integration into one narrow issue-
 connector framework, add GitHub Issues as the second implementation, and put every connector-created ticket
 through explicit project-commander triage. It is deliberately limited to issue trackers with the proven
 poll, normalize, update, and proof-gated close-back shape.
 
-`SPEC.md` remains authoritative. Today it accepts only GitLab product behavior under D39 and the
-provider-neutral internal ownership seam under D43. GitHub and later phases remain deferred; their
-activation requires stable CT tickets and dependencies in `SPEC.md`, an append-only decision that
-supersedes D43's product-scope deferral, and corresponding repairs to `ARCHITECTURE.md` and
-`IMPLEMENTATION-ROADMAP.md`.
+`SPEC.md` remains authoritative. It accepts GitLab under D39, the provider-neutral ownership seam under
+D43, and the narrow GitHub Issues provider under D52. Triage/priority and connector-N remain deferred.
 
 ## Outcome
 
@@ -30,8 +27,8 @@ After all four proposed phases are accepted:
 - credentials remain deployment-resolved references. No provider token enters Catalog, Work, Record,
   Proof, logs, browser state, or connector cursors.
 
-Only the Phase-1 core/adapter extraction and multi-registration composition described below exist in this
-candidate. GitHub, triage/priority, connector-N validation, and the corresponding product scope do not.
+Phase 1 and the Phase-2 GitHub provider described below exist in this candidate. Triage/priority,
+connector-N validation, and the corresponding generalized product scope do not.
 
 ## Evidence and current boundary
 
@@ -352,7 +349,7 @@ or choose close eligibility.
 
 ### CX-12 — GitHub proves the plug point while core stays frozen
 
-**New in #381.** GitHub Issues is not accepted until it passes the unchanged shared conformance suite and a
+**Accepted by D52/#429.** GitHub Issues passes the unchanged shared conformance suite and a
 real fixture repository round trip without changes to the core freeze set below. A connector-specific test
 fixture or static registry row is not a core change.
 
@@ -724,6 +721,6 @@ claim of existing implementation.
 
 ## Sign-off
 
-Phase 1 is implemented under `SPEC.md` and D43. The later phases remain ready for architecture, security,
+Phases 1 and 2 are implemented under `SPEC.md`, D43, and D52. The later phases remain ready for architecture, security,
 product-authority, and sequencing review; this proposal does not authorize or supersede their canonical
 activation requirements.

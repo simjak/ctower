@@ -55,6 +55,9 @@ _EXPECTED_SCHEMAS: dict[ComponentKind, str] = {
     ComponentKind.LABEL_VOCABULARY: "ctower.label-vocabulary/v1",
     ComponentKind.ATTENTION_KIND_CATALOG: "ctower.attention-kind-catalog/v1",
 }
+_ADDITIONAL_SCHEMAS: dict[ComponentKind, frozenset[str]] = {
+    ComponentKind.INTEGRATION: frozenset({"ctower.integration/v3"}),
+}
 _FORBIDDEN_KEYS = frozenset(
     {
         "access_token",
@@ -379,7 +382,10 @@ def _validate_payload_contract(
 ) -> CatalogProblem | None:
     component = resource.component
     expected_schema = _EXPECTED_SCHEMAS.get(component.kind)
-    if expected_schema is None or component.schema_ref != expected_schema:
+    allowed_schemas = _ADDITIONAL_SCHEMAS.get(component.kind, frozenset())
+    if expected_schema is None or (
+        component.schema_ref != expected_schema and component.schema_ref not in allowed_schemas
+    ):
         return _problem(
             "bundle-reference-invalid",
             "Component kind and schema reference do not resolve to one authored contract.",

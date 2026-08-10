@@ -82,7 +82,7 @@ def build_active_connector_loops(
         loops.append(
             build_connector_loop(
                 runtime,
-                connector=runtime.build(resolve_secret(runtime.token_binding)),
+                connector=runtime.build(resolve_secret),
                 actor=actor,
                 runtime_dsn=runtime_dsn,
             )
