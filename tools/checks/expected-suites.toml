@@ -704,8 +704,10 @@ path = "tests/acceptance/increment-1"
 patterns = [
   "test_requests.py",
   "test_request_channels.py",
+  "test_request_authority.py",
   "test_request_restore.py",
   "test_request_cutover.py",
+  "test_request_relation_exclusivity.py",
 ]
 command = [
   "{python}",
@@ -713,8 +715,10 @@ command = [
   "pytest",
   "tests/acceptance/increment-1/test_requests.py",
   "tests/acceptance/increment-1/test_request_channels.py",
+  "tests/acceptance/increment-1/test_request_authority.py",
   "tests/acceptance/increment-1/test_request_restore.py",
   "tests/acceptance/increment-1/test_request_cutover.py",
+  "tests/acceptance/increment-1/test_request_relation_exclusivity.py",
   "-q",
 ]
 timeout_seconds = 900

@@ -12,6 +12,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from support.acceptance import accept_pending_commands
+from support.project_hierarchy import declare_ctower_project
 from support.server import application, running_api
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
@@ -23,6 +24,8 @@ __all__: tuple[str, ...] = ()
 
 EXIT_SUCCESS = 0
 EXIT_TEMPORARY = 75
+HTTP_PENDING = 202
+HTTP_CONFLICT = 409
 HTTP_UNPROCESSABLE = 422
 HTTP_UNAUTHORIZED = 401
 TRIAGED_VERSION = 3
@@ -127,6 +130,125 @@ def test_capture_schema_rejects_identity_and_authority_claims_before_mutation(
 
     assert response.status_code == HTTP_UNPROCESSABLE
     assert response.json()["code"] == "validation-error"
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        assert (
+            cast(tuple[int], connection.execute("SELECT count(*) FROM requests").fetchone())[0] == 0
+        )
+
+
+def test_create_request_intake_refuses_external_submit_and_promotion_provenance(
+    tenant: TenantFixture,
+) -> None:
+    """OR-01/05: ordinary intake cannot mint external Request provenance."""
+
+    declare_ctower_project(tenant)
+    external_command = uuid4()
+    discussion_command = uuid4()
+    promotion_command = uuid4()
+    with TestClient(application(tenant.database.runtime_dsn)) as client:
+        external = client.post(
+            "/v1/intake",
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(external_command),
+                **telemetry_headers(external_command),
+            },
+            json={
+                "content": "Caller-declared external Request",
+                "intent": "create_request",
+                "project_key": "ctower",
+                "source": {"kind": "slack", "ref": "channel:message"},
+                "taint": "external_untrusted",
+            },
+        )
+        discussion = client.post(
+            "/v1/intake",
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(discussion_command),
+                **telemetry_headers(discussion_command),
+            },
+            json={
+                "content": "External discussion remains discussion provenance",
+                "project_key": "ctower",
+                "source": {"kind": "slack", "ref": "channel:other-message"},
+                "taint": "authenticated",
+            },
+        )
+        assert discussion.status_code == HTTP_PENDING, discussion.text
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        promotion = client.post(
+            f"/v1/intake/events/{discussion.json()['inbound_event_id']}/promotion",
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(promotion_command),
+                **telemetry_headers(promotion_command),
+            },
+            json={"expected_thread_version": 1, "intent": "create_request"},
+        )
+
+    assert external.status_code == promotion.status_code == HTTP_UNPROCESSABLE
+    assert external.json()["code"] == promotion.json()["code"] == "request-source-forbidden"
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        requests, inbound = cast(
+            tuple[int, int],
+            connection.execute(
+                """
+                SELECT
+                  (SELECT count(*) FROM requests WHERE tenant_id = %s),
+                  (SELECT count(*) FROM inbound_events WHERE tenant_id = %s)
+                """,
+                (tenant.tenant_id, tenant.tenant_id),
+            ).fetchone(),
+        )
+    assert requests == 0
+    assert inbound == 1
+
+
+def test_existing_tenant_capture_is_fenced_before_authority_epoch(
+    tenant: TenantFixture,
+) -> None:
+    """OR-06: migration-time fencing exists before either native capture seam is exposed."""
+
+    declare_ctower_project(tenant)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO request_native_capture_fences (tenant_id, reason, fenced_at)
+            VALUES (%s, 'legacy-request-ledger-cutover', now())
+            """,
+            (tenant.tenant_id,),
+        )
+    request_command = uuid4()
+    intake_command = uuid4()
+    with TestClient(application(tenant.database.runtime_dsn)) as client:
+        request_capture = client.post(
+            "/v1/requests",
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(request_command),
+                **telemetry_headers(request_command),
+            },
+            json={"project_key": "ctower", "text": "Must wait for cutover"},
+        )
+        intake_capture = client.post(
+            "/v1/intake",
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(intake_command),
+                **telemetry_headers(intake_command),
+            },
+            json={
+                "content": "Must also wait for cutover",
+                "intent": "create_request",
+                "project_key": "ctower",
+                "source": {"kind": "native", "ref": "native:intake"},
+            },
+        )
+
+    assert request_capture.status_code == intake_capture.status_code == HTTP_CONFLICT
+    assert request_capture.json()["code"] == "migration-import-finalization-refused"
+    assert intake_capture.json()["code"] == "migration-import-finalization-refused"
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         assert (
             cast(tuple[int], connection.execute("SELECT count(*) FROM requests").fetchone())[0] == 0

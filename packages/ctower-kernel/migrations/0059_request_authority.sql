@@ -154,6 +154,65 @@ CREATE TABLE request_ticket_relation_facts (
 CREATE INDEX request_ticket_relation_latest
     ON request_ticket_relation_facts (tenant_id, request_id, ticket_id, request_version DESC);
 
+-- Machine-owned current-holder projection. The primary key is the database
+-- chokepoint for the invariant that one fulfillment Ticket has at most one
+-- current Request holder; callers can append facts but cannot write this table.
+CREATE TABLE request_ticket_holders (
+    tenant_id uuid NOT NULL,
+    ticket_id uuid NOT NULL,
+    request_id uuid NOT NULL,
+    purpose text NOT NULL CHECK (purpose IN ('required', 'optional')),
+    relation_fact_id uuid NOT NULL REFERENCES request_ticket_relation_facts(relation_fact_id),
+    recorded_at timestamptz NOT NULL,
+    PRIMARY KEY (tenant_id, ticket_id),
+    FOREIGN KEY (request_id, tenant_id) REFERENCES requests(request_id, tenant_id),
+    FOREIGN KEY (ticket_id, tenant_id) REFERENCES tickets(ticket_id, tenant_id)
+);
+
+CREATE FUNCTION project_request_ticket_holder() RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+DECLARE
+    affected integer;
+BEGIN
+    IF NEW.active THEN
+        INSERT INTO public.request_ticket_holders (
+            tenant_id, ticket_id, request_id, purpose, relation_fact_id, recorded_at
+        ) VALUES (
+            NEW.tenant_id, NEW.ticket_id, NEW.request_id, NEW.purpose,
+            NEW.relation_fact_id, NEW.recorded_at
+        )
+        ON CONFLICT (tenant_id, ticket_id) DO UPDATE
+        SET purpose = EXCLUDED.purpose,
+            relation_fact_id = EXCLUDED.relation_fact_id,
+            recorded_at = EXCLUDED.recorded_at
+        WHERE public.request_ticket_holders.request_id = EXCLUDED.request_id;
+        GET DIAGNOSTICS affected = ROW_COUNT;
+        IF affected <> 1 THEN
+            RAISE unique_violation
+                USING MESSAGE = 'fulfillment Ticket already has a current Request holder';
+        END IF;
+    ELSE
+        DELETE FROM public.request_ticket_holders
+        WHERE tenant_id = NEW.tenant_id
+          AND ticket_id = NEW.ticket_id
+          AND request_id = NEW.request_id;
+        GET DIAGNOSTICS affected = ROW_COUNT;
+        IF affected <> 1 THEN
+            RAISE check_violation
+                USING MESSAGE = 'fulfillment Ticket is not held by the releasing Request';
+        END IF;
+    END IF;
+    RETURN NEW;
+END
+$$;
+REVOKE ALL ON FUNCTION project_request_ticket_holder() FROM PUBLIC;
+CREATE TRIGGER request_ticket_relation_holder_projection
+    AFTER INSERT ON request_ticket_relation_facts
+    FOR EACH ROW EXECUTE FUNCTION project_request_ticket_holder();
+
 CREATE TABLE request_blocker_facts (
     blocker_fact_id uuid PRIMARY KEY,
     request_id uuid NOT NULL,
@@ -231,7 +290,7 @@ CREATE TABLE request_cutover_epoch_facts (
     manifest_digest bytea NOT NULL REFERENCES request_import_manifests(manifest_digest),
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     sequence integer NOT NULL CHECK (sequence >= 1),
-    state text NOT NULL CHECK (state IN ('prepared', 'completed', 'quarantined')),
+    state text NOT NULL CHECK (state IN ('prepared', 'completed')),
     fence_digest bytea NOT NULL CHECK (octet_length(fence_digest) = 32),
     reason text NOT NULL CHECK (length(reason) BETWEEN 1 AND 500),
     recorded_by uuid NOT NULL,
@@ -241,6 +300,17 @@ CREATE TABLE request_cutover_epoch_facts (
     UNIQUE (manifest_digest, sequence),
     UNIQUE (tenant_id, command_id)
 );
+
+-- Applying this migration to an existing portfolio fences native Request
+-- capture before the new binary can be exposed. Fresh tenants have no legacy
+-- Request ledger and therefore need no cutover fence.
+CREATE TABLE request_native_capture_fences (
+    tenant_id uuid PRIMARY KEY REFERENCES tenants(tenant_id),
+    reason text NOT NULL CHECK (reason = 'legacy-request-ledger-cutover'),
+    fenced_at timestamptz NOT NULL
+);
+INSERT INTO request_native_capture_fences (tenant_id, reason, fenced_at)
+SELECT tenant_id, 'legacy-request-ledger-cutover', transaction_timestamp() FROM tenants;
 
 CREATE TABLE request_import_rows (
     manifest_digest bytea NOT NULL REFERENCES request_import_manifests(manifest_digest),
@@ -338,6 +408,9 @@ CREATE TRIGGER request_import_manifests_immutable
 CREATE TRIGGER request_cutover_epoch_facts_immutable
     BEFORE UPDATE OR DELETE ON request_cutover_epoch_facts
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
+CREATE TRIGGER request_native_capture_fences_immutable
+    BEFORE UPDATE OR DELETE ON request_native_capture_fences
+    FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
 CREATE TRIGGER request_import_rows_immutable
     BEFORE UPDATE OR DELETE ON request_import_rows
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
@@ -353,8 +426,10 @@ CREATE TRIGGER request_refinement_facts_immutable
 
 REVOKE ALL ON request_number_allocators, requests, request_owner_facts,
     request_priority_facts, request_triage_facts, request_ticket_relation_facts,
+    request_ticket_holders,
     request_blocker_facts, request_closure_evaluations, request_attention_facts,
-    request_import_manifests, request_cutover_epoch_facts, request_import_rows,
+    request_import_manifests, request_cutover_epoch_facts, request_native_capture_fences,
+    request_import_rows,
     request_import_batch_proofs, request_owner_aliases, request_refinement_facts
     FROM PUBLIC, ctower_svc, ctower_projection;
 GRANT SELECT, INSERT ON request_number_allocators, requests, request_owner_facts,
@@ -363,11 +438,14 @@ GRANT SELECT, INSERT ON request_number_allocators, requests, request_owner_facts
     request_import_manifests, request_cutover_epoch_facts, request_import_rows,
     request_import_batch_proofs, request_owner_aliases, request_refinement_facts
     TO ctower_svc;
+GRANT SELECT ON request_ticket_holders, request_native_capture_fences TO ctower_svc;
 GRANT UPDATE (last_number, advanced_at) ON request_number_allocators TO ctower_svc;
 GRANT UPDATE (version) ON requests TO ctower_svc;
 GRANT SELECT ON requests, request_owner_facts, request_priority_facts,
-    request_triage_facts, request_ticket_relation_facts, request_blocker_facts,
+    request_triage_facts, request_ticket_relation_facts, request_ticket_holders,
+    request_blocker_facts,
     request_closure_evaluations, request_attention_facts, request_import_manifests,
-    request_cutover_epoch_facts, request_import_rows, request_import_batch_proofs,
+    request_cutover_epoch_facts, request_native_capture_fences, request_import_rows,
+    request_import_batch_proofs,
     request_owner_aliases, request_refinement_facts
     TO ctower_projection;

@@ -105,6 +105,7 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
     assert rows[0]["triage"] == "UNTRIAGED"
     assert rows[0]["priority"] == "P2"
     assert rows[0]["priority_default"] is True
+    assert rows[0]["proof_coverage"] == 0
     assert rows[0]["project_key"] == "ctower"
     assert rows[0]["freshness"] == second["accepted_position"]
     _assert_capture_storage(tenant)

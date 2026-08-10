@@ -224,11 +224,13 @@ explicit complete selection.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `intake submit` | — | required: `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--command-id`, `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
-| `intake promote` | `<inbound_event_id>` | required: `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: `--command-id`, the ticket fields below |
+| `intake submit` | — | required: `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--command-id`, `--intent {discussion,create_request,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
+| `intake promote` | `<inbound_event_id>` | required: `--expected-thread-version`, `--intent {create_request,create_ticket,link_ticket}`; optional: `--command-id`, the ticket fields below |
 
 Both accept the same optional ticket fields: `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--title`,
 `--target-ticket-id`, `--expected-ticket-version`. Both are mutations and are spoolable.
+`create_request` forbids every ticket field and accepts only authenticated `native` provenance; an ordinary
+caller-declared external source refuses as `request-source-forbidden`.
 
 Submitting without `--thread-id` starts a new thread; supplying one appends to that thread and then
 `--expected-thread-version` is required. Supplying exactly one of the pair is a usage refusal, not a guess.

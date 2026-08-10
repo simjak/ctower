@@ -134,6 +134,10 @@ def _preparation_refusal(
     command: RequestCutoverPrepare,
     manifest: dict[str, Any],
 ) -> RecordProblem | None:
+    connection.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+        (f"request-cutover-tenant:{actor.tenant_id}",),
+    )
     if manifest["target_tenant_id"] != str(actor.tenant_id):
         return _problem(command, "migration-digest-mismatch", "target tenant binding differs")
     inventory = target_authority_inventory(connection, actor.tenant_id)

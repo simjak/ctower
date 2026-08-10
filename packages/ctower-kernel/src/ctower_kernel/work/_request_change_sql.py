@@ -53,6 +53,13 @@ def change_request(
     with authority_connection(dsn) as connection:
         connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         connection.execute("SET ROLE ctower_svc")
+        epoch = request_mutation_epoch_refusal(
+            connection,
+            actor.tenant_id,
+            command.client_command_id,
+        )
+        if epoch is not None:
+            return epoch
         transaction = RecordTransaction(connection)
         replay = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
         if replay is not None:
@@ -259,12 +266,17 @@ def _authority_refusal(
     owns_request = (
         current_owner(connection, actor.tenant_id, command.request_id) == actor.principal_id
     )
+    owns_request_seat = (
+        owns_request
+        and actor.kind is PrincipalKind.COMMANDER
+        and _is_project_seat(connection, actor, project_key)
+    )
     allowed, code = _authority_decision(
         command,
         operator=operator,
         exact_commander=exact_commander,
         human_commander=human_commander,
-        owns_request=owns_request,
+        owns_request=owns_request_seat,
     )
     if allowed:
         return None
@@ -302,6 +314,21 @@ def _is_exact_commander(
               AND seat_key = %s
             """,
             (actor.tenant_id, actor.principal_id, project_key, f"{project_key}-commander"),
+        ).fetchone()
+        is not None
+    )
+
+
+def _is_project_seat(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, project_key: str
+) -> bool:
+    return (
+        connection.execute(
+            """
+            SELECT 1 FROM project_seats
+            WHERE tenant_id = %s AND principal_id = %s AND project_key = %s
+            """,
+            (actor.tenant_id, actor.principal_id, project_key),
         ).fetchone()
         is not None
     )

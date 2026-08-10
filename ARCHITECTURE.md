@@ -568,7 +568,8 @@ catch-up are downstream. A Request closes from its current disposition, relation
 digest. Changing any dependency invalidates the prior evaluation, so a rebuilt row may honestly leave
 `DONE`. No mutable status exists.
 
-CT-I1-015 is a one-way authority replacement. The old Mission Control writer is fenced before the complete
+CT-I1-015 is a one-way authority replacement. Migration `0059` installs the existing-tenant native-capture
+fence before the candidate service is exposed, and the old Mission Control writer is fenced before the complete
 ledger denominator is signed; the exact open set is imported through one manifest-bound operator command;
 every row and count is reconciled; the old writer and import operation are removed; only then may the first
 portfolio capture allocate above the sealed high-water. General Ticket/corpus import remains dormant.

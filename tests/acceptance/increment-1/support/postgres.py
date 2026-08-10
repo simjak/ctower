@@ -104,6 +104,26 @@ def stop_postgres(server: PostgresServer) -> None:
     asyncio.run(_compose(server, "down", "--volumes"))
 
 
+def postgres_17_command(server: PostgresServer, *arguments: str) -> tuple[str, ...]:
+    """Run a PostgreSQL client from the exact pinned server image."""
+
+    docker = shutil.which("docker")
+    if docker is None:
+        raise RuntimeError("docker is required for PostgreSQL client acceptance")
+    return (
+        docker,
+        "compose",
+        "-p",
+        server.project,
+        "-f",
+        str(COMPOSE),
+        "exec",
+        "-T",
+        "postgres",
+        *arguments,
+    )
+
+
 @contextmanager
 def suspend_postgres_backend(server: PostgresServer, pid: int) -> Iterator[None]:
     """Pause one exact backend so timed termination deterministically cannot complete."""

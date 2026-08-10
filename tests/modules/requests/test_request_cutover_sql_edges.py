@@ -59,21 +59,39 @@ class _Connection:
 def test_mutation_epoch_guard_covers_every_fence_state() -> None:
     tenant_id, command_id = uuid4(), uuid4()
     assert (
-        guard.request_mutation_epoch_refusal(cast(Any, _Connection(None)), tenant_id, command_id)
+        guard.request_mutation_epoch_refusal(
+            cast(
+                Any,
+                _Connection(
+                    {"state": None, "acceptance_position": None, "pre_epoch_fenced": False}
+                ),
+            ),
+            tenant_id,
+            command_id,
+        )
         is None
     )
-    prepared = _epoch_problem({"state": "prepared", "acceptance_position": None})
-    pending = _epoch_problem({"state": "completed", "acceptance_position": None})
-    quarantined = _epoch_problem({"state": "quarantined", "acceptance_position": 1})
+    pre_epoch = _epoch_problem(
+        {"state": None, "acceptance_position": None, "pre_epoch_fenced": True}
+    )
+    prepared = _epoch_problem(
+        {"state": "prepared", "acceptance_position": None, "pre_epoch_fenced": True}
+    )
+    pending = _epoch_problem(
+        {"state": "completed", "acceptance_position": None, "pre_epoch_fenced": True}
+    )
     accepted = guard.request_mutation_epoch_refusal(
-        cast(Any, _Connection({"state": "completed", "acceptance_position": 1})),
+        cast(
+            Any,
+            _Connection({"state": "completed", "acceptance_position": 1, "pre_epoch_fenced": True}),
+        ),
         tenant_id,
         command_id,
     )
-    assert (prepared.code, pending.code, quarantined.code, accepted) == (
+    assert (pre_epoch.code, prepared.code, pending.code, accepted) == (
+        "migration-import-finalization-refused",
         "migration-import-finalization-refused",
         "durability_pending",
-        "migration-import-finalization-refused",
         None,
     )
 
@@ -156,21 +174,23 @@ def test_prepare_refuses_every_authority_drift(monkeypatch: pytest.MonkeyPatch) 
         == "migration-digest-mismatch"
     )
     assert (
-        _prepare_problem(_Connection({"exists": 1}), actor, command, manifest).code
+        _prepare_problem(_Connection(None, {"exists": 1}), actor, command, manifest).code
         == "migration-run-conflict"
     )
     assert (
-        _prepare_problem(_Connection(None, {"exists": 1}), actor, command, manifest).code
+        _prepare_problem(_Connection(None, None, {"exists": 1}), actor, command, manifest).code
         == "migration-run-conflict"
     )
     monkeypatch.setattr(prepare, "owner_is_active_and_addressable", lambda *_args: False)
     assert (
-        _prepare_problem(_Connection(None, None), actor, command, manifest).code
+        _prepare_problem(_Connection(None, None, None), actor, command, manifest).code
         == "migration-operation-drift"
     )
     manifest["rows"] = []
     assert (
-        prepare._preparation_refusal(cast(Any, _Connection(None, None)), actor, command, manifest)
+        prepare._preparation_refusal(
+            cast(Any, _Connection(None, None, None)), actor, command, manifest
+        )
         is None
     )
 

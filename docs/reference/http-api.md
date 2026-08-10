@@ -136,9 +136,13 @@ operator migration helper is deliberately absent from this ordinary HTTP surface
 | `POST` | `/v1/intake` | `submitIntake` | `intake submit` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `413`, `422` |
 | `POST` | `/v1/intake/events/{inbound_event_id}/promotion` | `promoteIntakeEvent` | `intake promote` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `413`, `422` |
 
-`413` is the request-body bound (`request-body-too-large`). Promotion is idempotent: promoting an event that
-already produced a ticket returns that ticket rather than creating a second one, and an event that is not
-eligible is refused as `intake-promotion-ineligible` without changing anything.
+`413` is the request-body bound (`request-body-too-large`). Both operations accept explicit
+`create_request`, `create_ticket`, and `link_ticket` intents (`submitIntake` also defaults to `discussion`).
+`create_request` carries no Ticket mutation fields and accepts only authenticated native provenance;
+caller-declared external provenance refuses as `request-source-forbidden`. Promotion is idempotent:
+promoting an event that already produced a Request or Ticket returns that authority instead of creating a
+second one, and an event that is not eligible is refused as `intake-promotion-ineligible` without changing
+anything.
 
 ### Inbox
 

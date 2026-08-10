@@ -47,6 +47,9 @@ def test_request_storage_has_one_allocator_and_append_only_semantic_facts() -> N
     assert migration.count("CREATE TABLE request_number_allocators") == 1
     assert "UNIQUE (tenant_id, request_number)" in migration
     assert "UNIQUE (tenant_id, source_kind, source_ref)" in migration
+    assert "CREATE TABLE request_ticket_holders" in migration
+    assert "PRIMARY KEY (tenant_id, ticket_id)" in migration
+    assert "CREATE TRIGGER request_ticket_relation_holder_projection" in migration
     for table in (
         "request_owner_facts",
         "request_priority_facts",
@@ -56,6 +59,7 @@ def test_request_storage_has_one_allocator_and_append_only_semantic_facts() -> N
         "request_closure_evaluations",
         "request_attention_facts",
         "request_import_manifests",
+        "request_native_capture_fences",
     ):
         assert f"CREATE TRIGGER {table}_immutable" in migration
     assert "GRANT UPDATE (last_number, advanced_at) ON request_number_allocators" in migration

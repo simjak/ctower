@@ -208,6 +208,7 @@ def prepare_action(
             actor,
             command,
             project_key=project_key,
+            source=source,
             request_ids=request_ids,
             now=now,
         )
@@ -266,6 +267,7 @@ def _prepare_request_action(
     command: IntakeSubmitCommand | IntakePromotionCommand,
     *,
     project_key: str | None,
+    source: InboundSource | None,
     request_ids: tuple[UUID, UUID] | None,
     now: datetime | None,
 ) -> IntakeAction | RecordProblem:
@@ -274,6 +276,15 @@ def _prepare_request_action(
     )
     if resolved_project is None or request_ids is None or now is None:
         raise RuntimeError("create-request intake identifiers are unavailable")
+    inbound_source = command.source if isinstance(command, IntakeSubmitCommand) else source
+    if inbound_source is None or inbound_source.kind != "native":
+        return RecordProblem(
+            code="request-source-forbidden",
+            detail="Ordinary Request intake accepts only native provenance.",
+            status=422,
+            title="Request source forbidden",
+            command_id=command.client_command_id,
+        )
     epoch = _request_epoch_refusal(connection, actor, command.client_command_id)
     if epoch is not None:
         return epoch
@@ -361,17 +372,31 @@ def _request_epoch_refusal(
 ) -> RecordProblem | None:
     row = connection.execute(
         """
-        SELECT fact.state, confirmation.acceptance_position
-        FROM request_cutover_epoch_facts AS fact
+        SELECT fact.state, confirmation.acceptance_position,
+               EXISTS (
+                   SELECT 1 FROM request_native_capture_fences AS fence
+                   WHERE fence.tenant_id = %s
+               ) AS pre_epoch_fenced
+        FROM (VALUES (1)) AS singleton(value)
+        LEFT JOIN LATERAL (
+            SELECT candidate.state, candidate.tenant_id, candidate.recorded_by,
+                   candidate.command_id
+            FROM request_cutover_epoch_facts AS candidate
+            WHERE candidate.tenant_id = %s
+            ORDER BY candidate.sequence DESC LIMIT 1
+        ) AS fact ON true
         LEFT JOIN durability_acceptance_confirmations AS confirmation
           ON confirmation.tenant_id = fact.tenant_id
          AND confirmation.principal_id = fact.recorded_by
          AND confirmation.client_command_id = fact.command_id
-        WHERE fact.tenant_id = %s ORDER BY fact.sequence DESC LIMIT 1
         """,
-        (actor.tenant_id,),
+        (actor.tenant_id, actor.tenant_id),
     ).fetchone()
-    if row is None or (row["state"] == "completed" and row["acceptance_position"] is not None):
+    if row is None:
+        raise RuntimeError("Request epoch guard did not return its singleton row")
+    if row["state"] is None and not bool(row["pre_epoch_fenced"]):
+        return None
+    if row["state"] == "completed" and row["acceptance_position"] is not None:
         return None
     return RecordProblem(
         code="migration-import-finalization-refused",

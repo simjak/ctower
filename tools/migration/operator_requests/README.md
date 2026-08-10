@@ -10,6 +10,14 @@ manifest, import in strict order, wait for off-host acceptance, reconcile every
 row and count, compare deterministic samples through the public Request read,
 persist signed batch proofs, and complete only after the final removal fence.
 
+The portfolio deployment order is fixed. Apply migration `0059` to the existing
+database as the first deployment phase; that transaction inserts a native-capture
+fence for every existing tenant. Only after it commits may the candidate binary
+replace the old service. The binary checks that marker at both Request write seams,
+so capture is already fenced when the new endpoint becomes reachable; there is no
+deploy-to-prepare capture window. Fresh tenants have no legacy ledger and therefore
+do not receive this migration-time cutover marker.
+
 The dry run fails closed when the ledger is writable, its fence proof is absent
 or unbound, an open row lacks an explicit project or owner mapping, a required
 priority review is absent, history is inconsistent, a prohibited class appears,

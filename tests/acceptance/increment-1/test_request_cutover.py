@@ -32,6 +32,8 @@ from ctower_kernel.work.requests import (
     PostgresRequests,
     RequestCapture,
     RequestCaptureResult,
+    RequestChangeResult,
+    RequestPriority,
     Requests,
 )
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
@@ -156,6 +158,30 @@ def _execute_epoch(
         actor, complete, telemetry=_telemetry(actor, complete.client_command_id)
     )
     assert isinstance(completed, RequestCutoverResult)
+    native = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    first_row = cast(dict[str, object], cast(list[object], manifest["rows"])[0])
+    commander = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    retry_key = uuid4()
+    mutation = RequestPriority(
+        retry_key,
+        UUID(cast(str, first_row["request_id"])),
+        1,
+        "P1",
+        "post-epoch replayable pending",
+    )
+    pending = native.prioritize(
+        commander,
+        mutation,
+        telemetry=_telemetry(commander, retry_key),
+    )
+    assert isinstance(pending, RecordProblem) and pending.code == "durability_pending"
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    accepted = native.prioritize(
+        commander,
+        mutation,
+        telemetry=_telemetry(commander, retry_key),
+    )
+    assert isinstance(accepted, RequestChangeResult)
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     return imported, reconciliation, completed
 

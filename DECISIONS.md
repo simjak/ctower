@@ -1965,3 +1965,24 @@ Rejected alternatives:
 - Editing D46 in place. Accepted decisions remain append-only history and are superseded by a later entry.
 - Treating governance regeneration as permission for product code, contracts, endpoints, runtime behavior,
   or compatibility work. Phase 0 remains canonical adoption only.
+
+## D48 — A failed Request cutover stays fenced in `prepared`; it does not invent quarantine disposition (engineering, 2026-08-10, PR #412 round 1)
+
+The first Request authority candidate declared a `quarantined` epoch state and migration event but provided
+no command that could write either. Independent review correctly found that the contract promised a state
+transition the product could never make. This entry supersedes only D46's inherited OR-06 failure wording;
+the one-way fence, denominator, reconciliation, durability, and no-rollback requirements remain unchanged.
+
+1. A drift or reconciliation mismatch persists its exact typed refused command result and leaves the epoch
+   in `prepared`. That state is already fail-closed for every native Request mutation and import completion.
+2. The epoch state machine has exactly `prepared -> completed`. It does not infer an operator disposition
+   from a failed command, and therefore exposes no unwritten `quarantined` state or event.
+3. Recovery is a new, separately authorized cutover decision or forward compensation while the old writer
+   remains fenced. Rollback never re-enables it, and no client, projection, or local ledger repairs Record.
+
+Rejected alternatives:
+
+- Keeping dead schema/event members as a promise to add a writer later. The candidate must be complete now.
+- Automatically quarantining on every refusal. Input, transient durability, and operator mistakes are not
+  equivalent dispositions, and a trigger cannot honestly decide among them.
+- Re-enabling native or legacy capture after failure. That recreates the split-brain window OR-06 removes.

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,6 +17,7 @@ from support.postgres import (
     PostgresServer,
     create_database,
     drop_database,
+    postgres_17_command,
 )
 from support.recovery import accepted_roots, signature_verification
 from support.tenant_fixture import TenantFixture
@@ -51,11 +51,13 @@ _REQUEST_TABLES = (
     "request_priority_facts",
     "request_triage_facts",
     "request_ticket_relation_facts",
+    "request_ticket_holders",
     "request_blocker_facts",
     "request_closure_evaluations",
     "request_attention_facts",
     "request_import_manifests",
     "request_cutover_epoch_facts",
+    "request_native_capture_fences",
     "request_import_rows",
     "request_import_batch_proofs",
     "request_owner_aliases",
@@ -172,7 +174,7 @@ def _restore_and_verify(
 ) -> int:
     restored = create_database(postgres_17)
     try:
-        _physical_restore(tenant.database.admin_dsn, restored.admin_dsn, dump)
+        _physical_restore(postgres_17, tenant.database.name, restored.name, dump)
         restored_inventory = _inventory(
             restored.admin_dsn,
             tenant.tenant_id,
@@ -245,19 +247,33 @@ def _read_projection(authority: Requests, actor: Actor) -> dict[str, object]:
     return outcome.response_payload()
 
 
-def _physical_restore(source_dsn: str, target_dsn: str, dump: Path) -> None:
-    pg_dump = shutil.which("pg_dump")
-    pg_restore = shutil.which("pg_restore")
-    if pg_dump is None or pg_restore is None:
-        raise RuntimeError("PostgreSQL client tools are required for restore acceptance")
+def _physical_restore(
+    server: PostgresServer,
+    source_database: str,
+    target_database: str,
+    dump: Path,
+) -> None:
+    container_dump = f"/var/lib/postgresql/data/{dump.name}"
     run(
-        (pg_dump, "--format=custom", f"--file={dump}", source_dsn),
+        postgres_17_command(
+            server,
+            "pg_dump",
+            "--format=custom",
+            f"--file={container_dump}",
+            f"postgresql://postgres@127.0.0.1:5432/{source_database}",
+        ),
         check=True,
         timeout_seconds=_PROCESS_TIMEOUT_SECONDS,
         capture_output=True,
     )
     run(
-        (pg_restore, "--no-owner", f"--dbname={target_dsn}", str(dump)),
+        postgres_17_command(
+            server,
+            "pg_restore",
+            "--no-owner",
+            f"--dbname=postgresql://postgres@127.0.0.1:5432/{target_database}",
+            container_dump,
+        ),
         check=True,
         timeout_seconds=_PROCESS_TIMEOUT_SECONDS,
         capture_output=True,

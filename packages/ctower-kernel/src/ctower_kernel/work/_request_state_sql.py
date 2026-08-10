@@ -417,7 +417,7 @@ def _has_active_required_ticket(
               ON episode.tenant_id = ticket.tenant_id AND episode.ticket_id = ticket.ticket_id
              AND episode.episode_number = ticket.current_episode
             WHERE ticket.tenant_id = %s AND ticket.ticket_id = ANY(%s)
-              AND episode.state IN ('active', 'waiting') LIMIT 1
+              AND episode.state = 'active' LIMIT 1
             """,
             (tenant_id, list(tickets)),
         ).fetchone()

@@ -307,7 +307,8 @@ def _addressable_owner(
             JOIN principals AS principal
               ON principal.tenant_id = seat.tenant_id AND principal.principal_id = seat.principal_id
             WHERE seat.tenant_id = %s AND seat.principal_id = %s
-              AND seat.project_key = %s AND NOT principal.disabled
+              AND seat.project_key = %s AND principal.kind = 'commander'
+              AND NOT principal.disabled
             UNION ALL
             SELECT 1 FROM human_role_bindings AS binding
             JOIN principals AS principal
@@ -317,6 +318,7 @@ def _addressable_owner(
               ON revocation.binding_id = binding.binding_id
              AND revocation.tenant_id = binding.tenant_id
             WHERE binding.tenant_id = %s AND binding.principal_id = %s
+              AND binding.role IN ('operator', 'commander')
               AND %s = ANY(binding.project_keys) AND revocation.binding_id IS NULL
               AND NOT principal.disabled
             LIMIT 1
@@ -464,13 +466,12 @@ def _current_relation(
 ) -> UUID | None:
     row = connection.execute(
         """
-        SELECT request_id, active FROM request_ticket_relation_facts
+        SELECT request_id FROM request_ticket_holders
         WHERE tenant_id = %s AND ticket_id = %s
-        ORDER BY request_version DESC LIMIT 1
         """,
         (tenant_id, ticket_id),
     ).fetchone()
-    return cast(UUID, row["request_id"]) if row is not None and bool(row["active"]) else None
+    return cast(UUID, row["request_id"]) if row is not None else None
 
 
 def _append_blocker(

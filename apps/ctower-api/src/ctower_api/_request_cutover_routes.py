@@ -79,7 +79,7 @@ class _CutoverResultBoundary(_Boundary):
     operation: Literal["prepare", "import", "reconcile_batch", "complete"]
     request_id: UUID | None
     request_number: Annotated[int, Field(ge=1)] | None
-    state: Literal["prepared", "completed", "quarantined"]
+    state: Literal["prepared", "completed"]
     target_watermark: Annotated[int, Field(ge=1)]
 
 

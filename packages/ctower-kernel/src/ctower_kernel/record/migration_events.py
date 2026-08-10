@@ -25,7 +25,6 @@ _OPERATIONS = frozenset(
         "request_cutover_prepared",
         "request_batch_reconciled",
         "request_cutover_completed",
-        "request_cutover_quarantined",
     }
 )
 MAX_TARGET_LENGTH = 256

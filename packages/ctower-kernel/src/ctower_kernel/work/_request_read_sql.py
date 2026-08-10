@@ -203,6 +203,18 @@ SELECT accepted.request_id, accepted.request_number, accepted.project_key,
        latest_triage.disposition,
        COALESCE(relation.required_ticket_ids, ARRAY[]::uuid[]) AS required_ticket_ids,
        COALESCE(relation.optional_ticket_ids, ARRAY[]::uuid[]) AS optional_ticket_ids,
+       COALESCE((
+           SELECT count(*) FROM proof_bundles AS bundle
+           WHERE bundle.tenant_id = accepted.tenant_id
+             AND bundle.ticket_id = ANY(
+                 COALESCE(relation.required_ticket_ids, ARRAY[]::uuid[])
+             )
+             AND NOT EXISTS (
+                 SELECT 1 FROM proof_invalidations AS invalidation
+                 WHERE invalidation.tenant_id = bundle.tenant_id
+                   AND invalidation.proof_id = bundle.proof_id
+             )
+       ), 0) AS proof_coverage,
        blocker.blocker,
        closure.outcome AS closure_outcome,
        owner_alias.source_owner_digest
@@ -240,7 +252,7 @@ def _request_row(row: dict[str, object], *, state: str) -> RequestRow:
         required_ticket_ids=tuple(cast(list[UUID], row["required_ticket_ids"])),
         optional_ticket_ids=tuple(cast(list[UUID], row["optional_ticket_ids"])),
         blocker=cast(str | None, row["blocker"]),
-        proof_coverage=None,
+        proof_coverage=int(cast(int, row["proof_coverage"])),
         durability_state="accepted",
         freshness=int(cast(int, row["acceptance_position"])),
         source_kind=str(row["source_kind"]),

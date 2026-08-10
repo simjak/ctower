@@ -59,6 +59,13 @@ def capture_request(
 ) -> RequestCaptureResult | RecordProblem:
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
+        epoch = request_mutation_epoch_refusal(
+            connection,
+            actor.tenant_id,
+            command.client_command_id,
+        )
+        if epoch is not None:
+            return epoch
         transaction = RecordTransaction(connection)
         replay = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
         if replay is not None:

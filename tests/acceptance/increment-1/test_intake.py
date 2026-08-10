@@ -83,7 +83,7 @@ def test_authenticated_discussion_promotes_once_to_request_without_ticket(
         discussion = _submit(
             client,
             tenant,
-            _discussion("chat", f"request:{uuid4()}"),
+            _discussion("native", f"request:{uuid4()}"),
             uuid4(),
         ).json()
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)

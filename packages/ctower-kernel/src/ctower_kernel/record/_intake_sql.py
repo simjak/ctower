@@ -262,6 +262,7 @@ def _prepare_submit_after_durability(
         connection,
         actor,
         command,
+        source=command.source,
         ticket_ids=identifiers.ticket,
         request_ids=request_ids,
         now=now,
