@@ -37,10 +37,17 @@ nav:
   - Concepts:
       - concepts/index.md
       - The whole picture in one map: concepts/map.md
-      - Ticket and lifecycle episode: concepts/tickets.md
-      - Workflow revision and execution policy: concepts/workflows.md
+      - Tickets: concepts/tickets.md
+      - Stages: concepts/stages.md
+      - Gates: concepts/gates.md
+      - Seats and crews: concepts/seats-and-crews.md
+      - Chat: concepts/chat.md
+      - Terminal read: concepts/terminal-read.md
+      - Routines: concepts/routines.md
+      - Dream cycle: concepts/dream-cycle.md
+      - Workflow details: concepts/workflows.md
       - Proof, evidence, and verdicts: concepts/proof.md
-      - Board lanes: concepts/board.md
+      - Boards and portfolio: concepts/board.md
       - Project Delivery projection: concepts/project-delivery.md
       - Durability and acceptance: concepts/durability.md
   - Reference:

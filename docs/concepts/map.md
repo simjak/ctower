@@ -41,8 +41,9 @@ held instead of acted on. *Built.*
 run is missed and what happens if the last one is still going, so a slow night does not produce a pile-up.
 *Built, for a fixed set of operations.*
 
-**2b. Webhooks, events, mentions, manual and retry triggers.** The other reasons work might become due.
-*Specified, not built.* Today something has to call ctower.
+**2b. Connectors and other triggers.** A configured GitLab issue connector can poll one bounded source and
+turn issue changes into ticket facts. Generic webhooks, mentions, and other provider connectors are not
+built.
 
 **3. It becomes a ticket.** The permanent record: an id that never changes, exactly one person or agent
 accountable at any moment, a priority, links to related tickets, and a complete history of what happened.
@@ -106,17 +107,16 @@ A check that never ran is never recorded as a pass. *Built.*
 permission, and the receipt comes back in and is stored against the ticket. *Specified, not built* — this is
 the part of the design that has not been written yet.
 
-**12. You can see it all.** A board with six lanes, a per-project delivery view, and the full history of any
-ticket. These are rebuilt from the recorded facts rather than typed in, and a stale read announces itself
-instead of pretending to be current. *Built.*
+**12. You can see it all.** A board with six lanes, a cross-project portfolio, a per-project delivery view,
+and the full history of any ticket. These are rebuilt from the recorded facts rather than typed in, and a
+stale read announces itself instead of pretending to be current. *Built.*
 
 **12a. Needs You.** The queue of decisions that genuinely need a human: product taste, a new security or
-architecture line, something destructive, or an incident. *Present in the kernel, with no API to read it
-yet.*
+architecture line, something destructive, or an incident. Typed finding and disposition writes exist. A
+public read for the complete queue does not exist yet.
 
-**13. It learns.** After the fact, a retro compares what was expected with what happened and proposes a
-change. If accepted, that change becomes a new version of the rules — which is the dotted line back to
-step 1, and the reason the loop is a loop. *Specified, not built.*
+**13. It learns.** The nightly dream cycle can review recent project or portfolio work and bind one output
+digest to the scheduled occurrence. The full ticket retro that changes workflow rules is still planned.
 
 ## The source, and editing it
 
@@ -129,7 +129,7 @@ graph LR
 
     THREAD["2. Work arrives"]
     TRIGS["2a. Scheduled routine"]
-    TRIGP["2b. Webhook or event: not built"]
+    TRIGP["2b. One issue connector; others planned"]
 
     TICKET["3. It becomes a ticket"]
 
@@ -153,9 +153,9 @@ graph LR
     EFF["11. It reaches the world: not built"]
 
     BOARD["12. You can see it all"]
-    ATT["12a. Needs You: no API yet"]
+    ATT["12a. Findings write API; queue read planned"]
 
-    RETRO["13. It learns: not built"]
+    RETRO["13. Nightly dream built; full retro planned"]
 
     CAT --> PROF
     CAT --> THREAD

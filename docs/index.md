@@ -11,7 +11,8 @@ ctower holds those facts outside the worker, in a database behind one authentica
 write path. The worker becomes replaceable. The record does not.
 
 !!! warning "Pre-alpha: read this before you plan anything"
-    Version `0.0.0`. The only supported installation is the private-VPS, loopback-only E2 shadow runtime
+    Repository version `0.21.0`. The HTTP contract remains version `0.0.0` because it has no compatibility
+    promise. The only supported installation is the private-VPS, loopback-only E2 shadow runtime
     for low-value reconstructible dogfood. There is **no published package, hosted service,
     external/product deployment, or production runtime**, no product browser UI, and no runner. See
     [What you can and cannot do today](#what-you-can-and-cannot-do-today).

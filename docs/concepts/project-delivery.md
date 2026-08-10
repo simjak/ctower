@@ -96,8 +96,7 @@ than returning a stale row.
 ## Implementation status
 
 The read-only contract, the strict schema, and the CLI text/JSON projection are implemented. This evidence
-is available through the command line only; showing the same data in a browser starts later, at the planned
-stage the roadmap calls `CT-I2-005` / I2.4.
+is available through the command line only. A product browser view is planned for a later increment.
 
 ## Related
 

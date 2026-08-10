@@ -2,7 +2,8 @@
 
 **Already dogfooding on this box?** No checkout, no `--base-url`: once the private-VPS runtime has run
 `ctower-private-vps expose-cli`, `ctowerctl`/`ctl`/`ctower-shadow-ctl` are on `PATH` and resolve their
-instance from `~/.config/ctower/cli-instances.json` — run `ctower-shadow-ctl ticket query TICKET_ID` from
+instance from `~/.config/ctower/cli-instances.json` — run
+`ctower-shadow-ctl ticket query TICKET_ID --project-key PROJECT` from
 any directory. Skip to [What the commands look like](#6-what-the-commands-look-like).
 
 By the end of this page you will have a verified checkout and you will have watched one ticket travel the
@@ -152,6 +153,7 @@ Creating a ticket:
 printf '%s\n' "${authority}" |
   ctl --base-url http://127.0.0.1:8080 ticket create \
     --priority P1 \
+    --project-key ctower \
     --source-kind operator-cli \
     --source-ref operator-cli:first-ticket \
     --title "First durable ticket"

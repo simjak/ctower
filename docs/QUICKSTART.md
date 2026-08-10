@@ -1,39 +1,106 @@
-# The operator's ctower quickstart
+# Start with the ctower board
 
-Ctower is a shadow copy of work for now. Use it to inspect low-value, replaceable work. Keep Mission Control and GitHub or GitLab as the other records until the shadow label is removed.
+This guide takes you from no ctower context to reading real work on the local shadow instance. A **shadow
+instance** is a test copy for low-value, replaceable work. It is not the only record and it is not a
+production service.
 
-## See your work
+You do not need to know how the agent fleet works. You do not need a repository checkout for the browser
+path.
 
-Open `/board`. It is the read-only dashboard for tickets. The tabs at the top switch between `manibo`, `ctower`, and `bh-loop`. A healthy board sorts tickets into Backlog, Ready, In progress, In review, Blocked, and Complete. Open a card to see that ticket.
+## Before you start
 
-Open `/inbox` to see messages addressed to the current ctower identity. A thread can carry a permanent link to the ticket made from it.
+You need:
 
-On the served shadow instance checked on 7 August 2026, all five URLs returned a page: `/board`, each of its three project tabs, and `/inbox`. The pages also reported current read problems instead of showing false empty lists. The `ctower` and `manibo` tabs could not read one board field. The `bh-loop` tab received `0 of 0` and refused to call that an empty project. `/inbox` reported that its record call returned 404.
+- access to the machine that runs the private shadow instance;
+- the local browser URL from the operator; and
+- a project name that you are allowed to read.
 
-The browser has no write authority. The New ticket control is disabled and says why. The separate Inbox
-controls ask the server-authorized send and promotion operations to append a message or create/link a
-ticket; their server actions hold the development credential and the API still decides authorization. See
-the [dogfood Inbox controls reference](reference/dogfood-inbox-controls.md).
+The common project names are shown as tabs on the Board. Use only the projects your credential allows.
 
-## How a ticket moves
+## 1. Open the Board
 
-The process that runs today has four steps:
+Open `/board` on the shadow instance.
 
-1. **Capture:** record the promise, source, priority, and accountable owner.
-2. **Frame:** agree what must be true and lock those checks to this version of the work.
-3. **Verify:** attach proof and record a pass from an allowed second person.
-4. **Close:** ask ctower to resolve and then close the ticket.
+You should see six lanes: Backlog, Ready, In progress, In review, Blocked, and Complete. You should also see
+a source and health note. If a read failed, the page says that the record was not reached. It does not show
+a false empty Board.
 
-The accountable Commander keeps ownership from capture through close. Agents use `ctowerctl` to request each move. The person who set the checks cannot record the pass. Ctower makes the move only when the next step is allowed and its requirements are present.
+This is your first working result. You can now see which tickets exist and where each one is in the work
+index.
 
-## The close gate
+## 2. Choose one project
 
-No evidence, no close. Moving a card does not prove completion.
+Select a project tab at the top of the Board.
 
-Before close, ctower checks that the ticket has evidence for the current version of the work and a required passing decision. Missing, old, mismatched, or self-approved proof causes a refusal. Nothing moves, and the refusal names what is missing.
+Each tab makes a separate project-scoped read. **Project-scoped** means that the request can return facts
+for that project only. A card from another project is not folded into the selected view.
 
-## Where evidence lives
+Use the Board filters if you need a smaller list. The filters can narrow by lane, priority, stage, current
+owner, assignee, or source.
 
-Evidence lives on the ticket, not in chat, a status file, or a terminal. The ticket record keeps the named check, the exact work version, the proof's fingerprint, who supplied it, who recorded the decision, and the ordered history of ownership and changes.
+## 3. Read one ticket
 
-Use the ticket page when its record is readable. Until then, agents and operators can inspect the same ticket and its history with `ctowerctl`. External proof such as a test run or source-host record stays at its source; the ticket keeps the exact reference that joins it to this work.
+Select a card.
+
+The ticket keeps one permanent identity. Its workflow stage, Board lane, owner, assignee, blockers, proof,
+and history are separate facts. This is why a blocked card can still be in a verification stage.
+
+Look for:
+
+- the promised result in the title;
+- the current custodian, which is the accountable owner;
+- the current stage;
+- any blocker and its resolution condition; and
+- the source and health notes.
+
+The browser is read-only for tickets. The disabled **New ticket** control explains that ticket creation
+uses the protected command line today.
+
+## 4. Check the Portfolio
+
+Open `/portfolio`.
+
+The Portfolio combines one Board read per configured project with one Inbox read. It shows ticket counts by
+lane, work that needs human attention, and unread seat messages.
+
+Check the “boards answered” line before reading totals. A project whose Board did not answer is excluded. It
+is not counted as zero work.
+
+Use the Portfolio for the cross-project question. Return to the Board for ticket-by-ticket work.
+
+## 5. Read and send a message
+
+Open `/inbox` and select a thread. A **thread** is the ordered message history between two project seats.
+
+Type a message in the send box and select **Send**. The server decides who you are and who the other
+participant is. The browser does not submit either identity.
+
+If the server confirms the message, it appears at the bottom of the thread. If acknowledgement is still
+pending, the text stays in the box and the page offers a safe retry. A refusal shows the server's plain
+reason and changes nothing.
+
+If the conversation becomes actionable, use the promote control. You can create a new ticket from the
+thread or link an existing ticket. Promotion keeps a permanent link in both directions.
+
+## 6. Observe a crew when needed
+
+Open `/team` to see durable seats and their current crews. A **seat** is a durable accountable role. A
+**crew** is one temporary engagement of that seat.
+
+Select a seat to see its live crews. Select a crew to see its read-only terminal capture. The capture is
+for live observation only. It can be incomplete and it is not proof that work passed.
+
+## What you can do now
+
+You can now:
+
+- find a project ticket on the Board;
+- tell a stage from a Board lane;
+- check whether a view answered or failed;
+- use the Portfolio without treating missing projects as zero;
+- read and send an Inbox message; and
+- inspect a live crew without giving the browser terminal control.
+
+Next, read [Tickets](concepts/tickets.md), [Stages](concepts/stages.md), and
+[Gates](concepts/gates.md). The [site quickstart](quickstart.md) explains repository verification and the
+protected command line.

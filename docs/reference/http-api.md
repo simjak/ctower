@@ -1,7 +1,8 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **66 operations**.
+durable-ticket slice*, version `0.0.0`. It declares **67 operations**. The API schema version is separate
+from the repository release version.
 
 !!! warning "Development contract, not a supported API"
     This surface exists so the CLI, the generated clients, and the tests share one definition. It is not a
@@ -67,6 +68,13 @@ means it is sent online or not at all.
 |---|---|---|---|---|---|---|
 | `POST` | `/v1/bootstrap/first-tenant` | `bootstrapFirstTenant` | `bootstrap first-tenant` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `410`, `422` |
 
+### Project-seat credentials
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/admin/seat-credentials` | `issueSeatCredential` | `credential seat issue` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422`, `503` |
+| `POST` | `/v1/admin/seat-credentials/{credential_id}/revocation` | `revokeSeatCredential` | `credential seat revoke` | mutation | forbidden | `200`, `202`, `401`, `403`, `404`, `409`, `422`, `503` |
+
 ### Tickets
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
@@ -88,6 +96,10 @@ means it is sent online or not at all.
 | `POST` | `/v1/tickets/{ticket_id}/workflow/resolve-close` | `resolveCloseWorkflow` | `ticket resolve` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/start` | `startTicketWorkflow` | `ticket workflow start` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/transition` | `transitionWorkflow` | `ticket transition` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
+| `GET` | `/v1/tickets/{ticket_id}/workflow/review-dispatches` | `listReviewDispatchEffects` | `ticket review-dispatch list` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `POST` | `/v1/tickets/{ticket_id}/workflow/review-dispatches/{effect_id}/consume` | `consumeReviewDispatchEffect` | `ticket review-dispatch consume` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/tickets/{ticket_id}/change-references` | `recordTicketChangeReference` | `ticket change-reference add` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/tickets/{ticket_id}/labels` | `applyTicketLabel` | `ticket label apply` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 
 `TicketCreateRequest.initial_custodian_id` is optional at this HTTP boundary. Omission selects the
 authenticated principal. A Commander may establish its own custody; an operator omission is refused and
@@ -144,6 +156,31 @@ only threads with unread incoming messages. `readInboxThread` returns messages i
 fact-derived `read_through_position`; reading does not advance it or reduce unread counts.
 `readInboxMessageState` is likewise pure and returns every message's fact-derived `sent`, `delivered`, or
 `read` state with nullable delivery/read event IDs and timestamps.
+
+### Knowledge
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/knowledge/documents` | `addKnowledgeDocument` | `knowledge add` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422`, `503` |
+| `GET` | `/v1/knowledge/documents` | `listKnowledgeDocuments` | `knowledge list` | query | forbidden | `200`, `401`, `403`, `422` |
+| `GET` | `/v1/knowledge/documents/{document_id}` | `getKnowledgeDocument` | `knowledge get` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+
+### Attention findings
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/attention/findings` | `appendAttentionFinding` | `attention finding append` | mutation | allowed | `202`, `401`, `403`, `404`, `422` |
+| `POST` | `/v1/attention/findings/{finding_id}/disposition` | `recordAttentionFindingDisposition` | `attention finding disposition` | mutation | allowed | `202`, `401`, `403`, `404`, `409`, `422` |
+
+### Recorded work sessions and project events
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `GET` | `/v1/tickets/{ticket_id}/sessions` | `listTicketSessions` | `session ticket` | query | forbidden | `200`, `401`, `404`, `422` |
+| `POST` | `/v1/tickets/{ticket_id}/sessions` | `startTicketSession` | `session start` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/tickets/{ticket_id}/sessions/{session_id}/facts` | `recordTicketSessionFact` | `session transition`<br>`session close` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `GET` | `/v1/projects/{project_key}/sessions` | `listProjectSessions` | `session project` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `GET` | `/v1/projects/{project_key}/events` | `listProjectEvents` | `project events` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 
 ### Projections and health
 
