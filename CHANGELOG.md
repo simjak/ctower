@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/simjak/ctower/compare/v0.23.0...v0.24.0) (2026-08-10)
+
+
+### Features
+
+* **requests:** render record-derived decision briefs ([#424](https://github.com/simjak/ctower/issues/424)) ([c21db24](https://github.com/simjak/ctower/commit/c21db24aefb5cf31f088127d01cfdde8b7f03c37))
+
 ## [0.23.0](https://github.com/simjak/ctower/compare/v0.22.0...v0.23.0) (2026-08-10)
 
 
