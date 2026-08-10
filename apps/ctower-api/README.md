@@ -49,7 +49,8 @@ non-operators and second bindings receive typed refusals.
 The same composition exposes the five registered fleet-beat revisions and their immutable effects through
 operator-only reads. The registration read includes exact timezone-local minute/hour marks and next fire
 time; digest and sprint use literal Europe/Vilnius hours so their UTC instants follow DST. Each
-effect carries the full digest-verified prompt baked into the revision and the fixed `commander` target; the
+corrected digest replaces only the tenant's active trigger, so this read remains exactly five while prior
+revision/effect facts remain immutable. Each effect carries the full digest-verified prompt baked into the revision and the fixed `commander` target; the
 API neither injects tmux input nor accepts a delivery claim. Server-side delivery custody remains absent
 until a separately authorized lane-binding ceremony exists.
 The artifact contains a closed first-party connector registry whose only admitted implementation is the real

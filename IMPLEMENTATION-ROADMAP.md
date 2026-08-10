@@ -455,7 +455,8 @@ new boundary or director-cron mutation.
 After the digest read shape exists, register the five operator-ordered Mission Control beats as immutable
 Routine revisions. Each revision pins its operator-authorized timezone and minute/hour marks plus the complete
 canonical prompt and its digest at registration. Digest and sprint use literal Europe/Vilnius hours so DST
-offset changes preserve the operator's civil-time intent.
+offset changes preserve the operator's civil-time intent. A corrected immutable digest replaces only the
+tenant's active trigger; prior revisions, occurrences, and effects remain historical facts.
 queued occurrences transactionally emit that same prompt for the fixed DIRECTOR target. Operator-only
 reads list the five registered revisions, their next fires, and emitted effects.
 
@@ -466,7 +467,7 @@ claim until a separate authenticated beat-lane ceremony is approved. The directo
 crontab entries only after the live health round trip is confirmed.
 
 **Exit:** AC-OPS-13 and the CT-I1-019 contract, schedule, PostgreSQL, API/CLI, and consumer suites pass; the
-shadow serve lists exactly five registered beat revisions; one health occurrence carries the exact full
+shadow serve lists exactly five active beat revisions after corrected-revision registration; one health occurrence carries the exact full
 prompt through the consumer into DIRECTOR; a replay records zero injection; the retired-cron proof, timezone
 schedule proof, fallback recommendation, same-candidate docs, full release gate, and Director receipt
 confirmation are recorded.

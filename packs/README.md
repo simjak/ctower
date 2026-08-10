@@ -17,5 +17,6 @@ The twelve authored Routine revisions comprise three CP3-B maintenance revisions
 revisions, and five fleet-beat revisions. Each declared revision digest is recomputed from its complete
 canonical authored body before registration. Beat revisions pin the canonical prompt text, source label,
 content digest, timezone-local minute/hour set, and `commander` delivery target. Digest and sprint pin
-literal Europe/Vilnius hours so their UTC instants follow DST; emitted effects remain external
+literal Europe/Vilnius hours so their UTC instants follow DST. Registering a corrected digest replaces only
+the tenant's active trigger and preserves prior immutable facts; emitted effects remain external
 delivery intents rather than arbitrary Runtime dispatch.

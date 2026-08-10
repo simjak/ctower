@@ -53,6 +53,12 @@ def register(
         connection.execute("SET ROLE ctower_svc")
         now = _database_now(connection)
         _control_worker_principal(connection, tenant_id, now)
+        locked_tenant = connection.execute(
+            "SELECT tenant_id FROM tenants WHERE tenant_id = %s FOR UPDATE",
+            (tenant_id,),
+        ).fetchone()
+        if locked_tenant is None:
+            raise ValueError("Routine tenant does not exist")
         initial_fire = first_fire_at or revision.next_fire_after(now)
         connection.execute(
             """
@@ -102,6 +108,17 @@ def register(
         ).fetchone()
         if stored is None or _revision(stored) != revision:
             raise ValueError("Routine revision digest conflicts with stored content")
+        connection.execute(
+            """
+            DELETE FROM routine_triggers AS trigger
+            USING routine_revisions AS registered
+            WHERE trigger.tenant_id = %s
+              AND trigger.revision_digest = registered.revision_digest
+              AND registered.routine_ref = %s
+              AND registered.revision_digest <> %s
+            """,
+            (tenant_id, revision.routine_ref, _digest(revision.revision_digest)),
+        )
         connection.execute(
             """
             INSERT INTO routine_triggers (

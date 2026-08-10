@@ -44,7 +44,8 @@ for later execution.
 
 `beat-dispatch routines` lists the five registered fleet-beat revisions, exact timezone-local schedules,
 pinned prompt digests, fixed DIRECTOR target, and next fires. Digest and sprint retain literal
-Europe/Vilnius hours across DST. `beat-dispatch list` returns the immutable full-prompt
+Europe/Vilnius hours across DST. Corrected digests replace only the active trigger, so the command continues
+to list exactly five while prior revision/effect facts remain immutable. `beat-dispatch list` returns the immutable full-prompt
 effects. Both are online-only operator reads: they do not queue, mutate server custody, or accept caller
 schedule/prompt/target labels. Mission Control's sibling beat consumer performs ledger-deduplicated tmux
 delivery while a beat-specific lane-binding ceremony remains unapproved.

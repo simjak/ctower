@@ -27,7 +27,8 @@ The scheduler records occurrences for the fixed maintenance definitions. Their r
 synthetic effects are not all active product operations. The dream routines emit scoped dream-dispatch
 effects. Each fleet beat copies the full canonical Mission Control prompt into its immutable revision, then
 emits that same full prompt with the occurrence. Mission Control delivery therefore cannot drift if a source
-text changes after registration.
+text changes after registration. A corrected digest serially replaces only the tenant's active trigger;
+older revisions, occurrences, and effects remain immutable history.
 
 ## How to use routines
 

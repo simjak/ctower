@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -91,3 +92,51 @@ def test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_r
         "TEST-POSTGRES beat_routines=5 health_effects=1 full_prompt=exact "
         "target=commander operation_jobs=1"
     )
+
+
+def test_corrected_beat_revision_replaces_only_the_active_trigger(
+    tenant: TenantFixture,
+) -> None:
+    root = Path(__file__).parents[3]
+    store = PostgresRuntime(tenant.database.runtime_dsn)
+    runtime = Routine(store)
+    corrected = next(
+        revision
+        for revision in load_routine_revisions(root / "packs")
+        if revision.routine_ref == "ctower.beat.digest@1"
+    )
+    stale = replace(
+        corrected,
+        revision_digest="sha256:861bb079c7223bcc43e2c2d8ae883f6d41bf30a0e3077a6fb87e9b4500b7c6b9",
+        timezone="UTC",
+    )
+    due = datetime.now(UTC).replace(second=0, microsecond=0)
+
+    runtime.register(tenant.tenant_id, stale, first_fire_at=due)
+    emitted = runtime.scan(tenant.tenant_id).beat_dispatches
+    runtime.register(tenant.tenant_id, corrected)
+
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    listed = store.list_beat_routines(operator)
+    assert [(item.routine_ref, item.revision_digest, item.timezone) for item in listed] == [
+        (corrected.routine_ref, corrected.revision_digest, "Europe/Vilnius")
+    ]
+    assert len(emitted) == 1
+    assert [item.effect_id for item in store.list_beat_dispatches(operator)] == [
+        emitted[0].effect_id
+    ]
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        counts = connection.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM routine_revisions WHERE routine_ref = %s),
+              (SELECT count(*) FROM routine_beat_dispatch_specs WHERE beat_key = 'digest'),
+              (SELECT count(*)
+                 FROM routine_triggers AS trigger
+                 JOIN routine_revisions AS revision USING (revision_digest)
+                WHERE trigger.tenant_id = %s AND revision.routine_ref = %s)
+            """,
+            (corrected.routine_ref, tenant.tenant_id, corrected.routine_ref),
+        ).fetchone()
+    assert counts == (2, 2, 1)

@@ -220,7 +220,8 @@ authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed dur
 caller-observed token counts; twelve fixed Routine revisions (three I1 maintenance revisions, four
 nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
 revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
-full-prompt effects target the external DIRECTOR delivery ledger); an accepted-only,
+full-prompt effects target the external DIRECTOR delivery ledger; corrected digests replace only the
+tenant's active trigger and preserve prior revision/effect history); an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
