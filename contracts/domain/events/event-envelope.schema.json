@@ -2166,13 +2166,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "project_key", "recorded_at", "recorded_by", "ruling_id", "seat_key",
+        "decision_blocker_fact_id", "project_key", "recorded_at", "recorded_by", "request_id",
+        "ruling_id", "seat_key",
         "supersedes_ruling_id", "verbatim", "verbatim_digest"
       ],
       "properties": {
+        "decision_blocker_fact_id": {"type": ["string", "null"], "format": "uuid"},
         "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
         "recorded_at": {"type": "string", "format": "date-time"},
         "recorded_by": {"type": "string", "format": "uuid"},
+        "request_id": {"type": ["string", "null"], "format": "uuid"},
         "ruling_id": {"type": "string", "format": "uuid"},
         "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
         "supersedes_ruling_id": {"type": ["string", "null"], "format": "uuid"},

@@ -36,6 +36,7 @@ def test_ruling_http_surface_is_strict_generated_and_has_no_claimed_identity() -
     assert payload["additionalProperties"] is False
     assert payload["required"] == ["verbatim"]
     assert set(cast(dict[str, object], payload["properties"])) == {
+        "request_id",
         "supersedes_ruling_id",
         "verbatim",
     }

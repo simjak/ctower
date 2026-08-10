@@ -86,6 +86,14 @@ class Rulings:
                     "Invalid Ruling",
                     command.client_command_id,
                 )
+            elif command.request_id is not None and command.supersedes_ruling_id is not None:
+                refusal = RecordProblem(
+                    "invalid-ruling",
+                    "A Ruling cannot name both a Request and a predecessor.",
+                    422,
+                    "Invalid Ruling",
+                    command.client_command_id,
+                )
         if refusal is not None:
             return refusal
         outcome = self._store.append(

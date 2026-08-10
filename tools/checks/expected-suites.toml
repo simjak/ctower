@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-017"
+active_phase = "CT-I1-018"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -24,6 +24,7 @@ phase_order = [
   "CT-I1-015",
   "CT-I1-016",
   "CT-I1-017",
+  "CT-I1-018",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -752,9 +753,36 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
-id = "morning-digest-contracts"
+id = "decision-brief-contracts"
 owner = "CT-I1-017"
 phase = "CT-I1-017"
+status = "required"
+path = "tests/contracts/decision_briefs"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/decision_briefs", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "decision-brief-acceptance"
+owner = "CT-I1-017"
+phase = "CT-I1-017"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_decision_brief*.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_decision_brief_replay.py",
+  "tests/acceptance/increment-1/test_decision_briefs.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "morning-digest-contracts"
+owner = "CT-I1-018"
+phase = "CT-I1-018"
 status = "required"
 path = "tests/contracts/digest"
 patterns = ["test_*.py"]
@@ -763,8 +791,8 @@ timeout_seconds = 120
 
 [[suite]]
 id = "morning-digest-projection"
-owner = "CT-I1-017"
-phase = "CT-I1-017"
+owner = "CT-I1-018"
+phase = "CT-I1-018"
 status = "required"
 path = "tests/modules/projections"
 patterns = ["test_morning_digest*.py"]
@@ -774,6 +802,21 @@ command = [
   "pytest",
   "tests/modules/projections/test_morning_digest.py",
   "tests/modules/projections/test_morning_digest_routes.py",
+  "-q",
+]
+timeout_seconds = 120
+
+[[suite]]
+id = "morning-digest-cli"
+owner = "CT-I1-018"
+phase = "CT-I1-018"
+status = "required"
+path = "tests/modules/ctowerctl"
+patterns = ["test_morning_digest.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
   "tests/modules/ctowerctl/test_morning_digest.py",
   "-q",
 ]
@@ -781,8 +824,8 @@ timeout_seconds = 120
 
 [[suite]]
 id = "morning-digest-acceptance"
-owner = "CT-I1-017"
-phase = "CT-I1-017"
+owner = "CT-I1-018"
+phase = "CT-I1-018"
 status = "required"
 path = "tests/acceptance/increment-1"
 patterns = ["test_morning_digest.py"]

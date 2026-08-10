@@ -23,6 +23,8 @@ from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import MorningDigest as HttpMorningDigest
 from ctower_kernel.access import Access
 from ctower_kernel.projections.morning_digest import (
+    DecisionBriefFact,
+    DecisionChoiceFact,
     DigestRequestFact,
     DigestRulingFact,
     SourceReading,
@@ -31,7 +33,7 @@ from ctower_kernel.projections.morning_digest import (
 )
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
-from ctower_kernel.work.requests import RequestList, Requests
+from ctower_kernel.work.requests import RequestList, RequestRow, Requests
 from ctower_kernel.work.rulings import RulingList, Rulings
 
 __all__: tuple[str, ...] = ()
@@ -143,7 +145,7 @@ def _request_reading(
             required_ticket_ids=row.required_ticket_ids,
             optional_ticket_ids=row.optional_ticket_ids,
             current_proof_count=row.proof_coverage,
-            decision_brief=None,
+            decision_brief=_decision_brief(row),
         )
         for row in outcome.rows
     )
@@ -176,7 +178,7 @@ def _ruling_reading(
             project_key=row.project_key,
             verbatim=row.verbatim,
             recorded_at=row.recorded_at,
-            linked_request_ids=None,
+            linked_request_ids=() if row.request_id is None else (row.request_id,),
         )
         for row in outcome.rows
     )
@@ -193,6 +195,22 @@ def _ruling_reading(
         )
     return SourceReading.complete(
         rows, watermark=outcome.watermark, observed_at=outcome.observed_at
+    )
+
+
+def _decision_brief(row: RequestRow) -> DecisionBriefFact | None:
+    brief = row.decision_brief
+    if brief is None:
+        return None
+    return DecisionBriefFact(
+        what=brief.eli,
+        origin=brief.origin_quote,
+        choices=tuple(
+            DecisionChoiceFact(choice.key, choice.outcome, choice.completeness)
+            for choice in brief.choices
+        ),
+        recommendation=(f"{brief.recommendation.choice_key}. {brief.recommendation.reason}"),
+        safe_default=f"{brief.safe_default.choice_key}. {brief.safe_default.reason}",
     )
 
 

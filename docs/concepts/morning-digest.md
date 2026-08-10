@@ -14,15 +14,16 @@ creates no new authority or projection row.
 ## Open decisions
 
 A blocked Request carrying the recorded `operator-decision-required` marker enters this section. Every row
-uses the operator decision-brief shape: the issue in plain language, origin, choices with completeness,
-recommendation, and safe default. If the complete brief fact is not recorded yet, the Request stays visible
-with the available shape and names `decision-brief-not-recorded`; the digest does not invent choices.
+uses the complete record-derived operator decision brief: the issue in plain language, origin, choices with
+completeness, recommendation, and safe default. The digest copies that accepted read shape and accepts no
+caller or model prose.
 
 ## Yesterday's Rulings and execution
 
 “Yesterday” means the prior Europe/Vilnius civil day, including daylight-saving boundaries. Ruling words
-stay byte-exact. Execution appears only from a typed Ruling-to-Request link. If that link source is absent,
-the Ruling stays visible and execution is `UNKNOWN`; text similarity never creates a relationship.
+stay byte-exact. Execution appears only from the Ruling's typed Request relation. An authoritative absent
+relation means zero executions; an unavailable Request source or unresolved relation keeps the Ruling
+visible and marks execution `UNKNOWN`. Text similarity never creates a relationship.
 
 ## Proof
 
@@ -34,9 +35,9 @@ proof total `UNKNOWN` while preserving every visible proof row.
 
 ## Partial and unknown sources
 
-Every section publishes its state, visible count, nullable total, unreached scopes, and source watermark. A
-complete empty source has total `0`. A partial or failed source has total `null`, while every answered row
-remains visible. The text renderer says `UNKNOWN total` for the latter.
+Every section publishes its state, visible count, nullable total, and unreached scopes; the artifact carries
+both source watermarks. A complete empty source has total `0`. A partial or failed source has total `null`,
+while every answered row remains visible. The text renderer says `UNKNOWN total` for the latter.
 
 The operator-only [CLI command](../reference/cli.md#morning-digest) and
 [HTTP operation](../reference/http-api.md#morning-digest) expose the same strict artifact. Notification

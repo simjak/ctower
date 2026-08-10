@@ -113,18 +113,21 @@
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "SPEC#recorded-work-sessions",
+        "SPEC#request-derived-operator-decision-briefs",
         "INV-03",
         "INV-04",
         "INV-05",
         "INV-75",
         "INV-79",
+        "INV-89",
         "AC-DUR-02",
         "AC-DUR-03",
         "AC-INBOX-01",
         "AC-INBOX-03",
         "AC-SES-02",
         "AC-RUL-01",
-        "AC-RUL-02"
+        "AC-RUL-02",
+        "AC-BRIEF-02"
       ]
     },
     {
@@ -604,6 +607,7 @@
         "SPEC#native-inbox-delivery-and-read-facts",
         "SPEC#operational-health-and-degraded-behavior",
         "SPEC#recorded-work-sessions",
+        "SPEC#request-derived-operator-decision-briefs",
         "SPEC#task-management-foundation",
         "SPEC#workflow-and-verification-architecture",
         "INV-03",
@@ -616,6 +620,7 @@
         "INV-80",
         "INV-88",
         "INV-89",
+        "INV-90",
         "AC-DIG-01",
         "AC-DIG-02",
         "AC-DIG-03",
@@ -644,7 +649,11 @@
         "AC-RUL-01",
         "AC-RUL-02",
         "AC-RUL-03",
-        "AC-RUL-04"
+        "AC-RUL-04",
+        "AC-BRIEF-01",
+        "AC-BRIEF-02",
+        "AC-BRIEF-03",
+        "AC-BRIEF-04"
       ]
     },
     {
@@ -2172,6 +2181,17 @@
         "AC-RUL-02",
         "AC-RUL-03",
         "AC-RUL-04"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql",
+      "references": [
+        "SPEC#request-derived-operator-decision-briefs",
+        "INV-89",
+        "AC-BRIEF-01",
+        "AC-BRIEF-02",
+        "AC-BRIEF-03",
+        "AC-BRIEF-04"
       ]
     },
     {

@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
+from httpx import Response
 from support.acceptance import accept_pending_commands
 from support.server import application, running_api
 from support.telemetry import telemetry_headers
@@ -42,33 +43,33 @@ __all__: tuple[str, ...] = ()
 HTTP_OK = 200
 HTTP_FORBIDDEN = 403
 EXIT_SUCCESS = 0
+EXPECTED_DECISION_CHOICES = 3
+EXPECTED_PROOF_ROWS = 2
 _VILNIUS = ZoneInfo("Europe/Vilnius")
 
 
-def test_real_morning_digest_composes_live_records_and_renders_unknowns(
+def test_real_morning_digest_composes_record_derived_briefs_and_links(
     tenant: TenantFixture,
 ) -> None:
-    """AC-DIG-01/02/03: one live artifact has decisions, rulings, proof, and honest gaps."""
+    """AC-DIG-01/02/03: one live artifact composes every accepted typed fact."""
 
     operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
     commander = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    request_id, ticket_id = _blocked_request_with_proof(tenant, operator, commander)
-    ruling_id, ruling_recorded_at = _accepted_ruling(tenant, commander)
+    open_request_id, open_ticket_id = _blocked_request_with_proof(
+        tenant,
+        operator,
+        commander,
+        "Choose the production rollout window.",
+    )
+    executed_request_id, executed_ticket_id = _blocked_request_with_proof(
+        tenant,
+        operator,
+        commander,
+        "Choose whether the reviewed rollout should proceed.",
+    )
+    ruling_id, ruling_recorded_at = _accepted_ruling(tenant, commander, executed_request_id)
     digest_date = (ruling_recorded_at.astimezone(_VILNIUS).date() + timedelta(days=1)).isoformat()
-    headers = {
-        "Authorization": f"Bearer {tenant.operator_credential}",
-        **telemetry_headers(),
-    }
-    with TestClient(application(tenant.database.runtime_dsn)) as client:
-        response = client.get("/v1/digests/morning", params={"date": digest_date}, headers=headers)
-        denied = client.get(
-            "/v1/digests/morning",
-            params={"date": digest_date},
-            headers={
-                "Authorization": f"Bearer {tenant.commander_credential}",
-                **telemetry_headers(),
-            },
-        )
+    response, denied = _digest_responses(tenant, digest_date)
 
     assert response.status_code == HTTP_OK
     assert denied.status_code == HTTP_FORBIDDEN
@@ -76,8 +77,48 @@ def test_real_morning_digest_composes_live_records_and_renders_unknowns(
     decisions = cast(dict[str, object], payload["open_decisions"])
     yesterday = cast(dict[str, object], payload["yesterday_rulings"])
     proof = cast(dict[str, object], payload["proof"])
-    _assert_digest_payload(payload, decisions, yesterday, proof, request_id, ruling_id, ticket_id)
+    _assert_digest_payload(
+        payload,
+        decisions,
+        yesterday,
+        proof,
+        open_request_id,
+        executed_request_id,
+        ruling_id,
+        (open_ticket_id, executed_ticket_id),
+    )
+    _assert_cli_transcript(tenant, digest_date, (open_ticket_id, executed_ticket_id))
+    print(
+        "REAL_MORNING_DIGEST"
+        f" artifact={payload['artifact_key']} sha={payload['artifact_sha256']}"
+        f" open_request={open_request_id} executed_request={executed_request_id}"
+        f" ruling={ruling_id} proof={open_ticket_id},{executed_ticket_id}"
+        " state=complete cli=0"
+    )
 
+
+def _digest_responses(tenant: TenantFixture, digest_date: str) -> tuple[Response, Response]:
+    operator_headers = {
+        "Authorization": f"Bearer {tenant.operator_credential}",
+        **telemetry_headers(),
+    }
+    commander_headers = {
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        **telemetry_headers(),
+    }
+    with TestClient(application(tenant.database.runtime_dsn)) as client:
+        response = client.get(
+            "/v1/digests/morning", params={"date": digest_date}, headers=operator_headers
+        )
+        denied = client.get(
+            "/v1/digests/morning", params={"date": digest_date}, headers=commander_headers
+        )
+    return response, denied
+
+
+def _assert_cli_transcript(
+    tenant: TenantFixture, digest_date: str, ticket_ids: tuple[UUID, UUID]
+) -> None:
     output = io.StringIO()
     errors = io.StringIO()
     with running_api(tenant.database.runtime_dsn) as base_url:
@@ -90,16 +131,12 @@ def test_real_morning_digest_composes_live_records_and_renders_unknowns(
     transcript = output.getvalue()
     assert status == EXIT_SUCCESS
     assert errors.getvalue() == ""
-    assert "Open decisions — 1; PARTIAL" in transcript
-    assert "Executions: UNKNOWN (execution-link-not-recorded)" in transcript
-    assert "Proof — UNKNOWN total; 1 visible; PARTIAL" in transcript
-    assert f"required: {ticket_id} /v1/tickets/{ticket_id}/timeline" in transcript
-    print(
-        "REAL_MORNING_DIGEST"
-        f" artifact={payload['artifact_key']} sha={payload['artifact_sha256']}"
-        f" request={request_id} ruling={ruling_id} proof={ticket_id}"
-        " state=partial cli=0"
-    )
+    assert "Open decisions — 1; COMPLETE" in transcript
+    assert "Executions:" in transcript
+    assert "Executions: UNKNOWN" not in transcript
+    assert "Proof — 2; COMPLETE" in transcript
+    for ticket_id in ticket_ids:
+        assert f"required: {ticket_id} /v1/tickets/{ticket_id}/timeline" in transcript
 
 
 def _assert_digest_payload(
@@ -107,38 +144,49 @@ def _assert_digest_payload(
     decisions: dict[str, object],
     yesterday: dict[str, object],
     proof: dict[str, object],
-    request_id: UUID,
+    open_request_id: UUID,
+    executed_request_id: UUID,
     ruling_id: UUID,
-    ticket_id: UUID,
+    ticket_ids: tuple[UUID, UUID],
 ) -> None:
     decision_rows = cast(list[dict[str, object]], decisions["items"])
     ruling_rows = cast(list[dict[str, object]], yesterday["items"])
     proof_rows = cast(list[dict[str, object]], proof["items"])
-    assert payload["state"] == "partial"
+    assert payload["state"] == "complete"
     assert decisions["total_count"] == decisions["visible_count"] == 1
-    assert decision_rows[0]["request_id"] == str(request_id)
-    assert decision_rows[0]["unknown_reason"] == "decision-brief-not-recorded"
+    assert decisions["state"] == "complete"
+    assert decision_rows[0]["request_id"] == str(open_request_id)
+    assert decision_rows[0]["unknown_reason"] is None
+    brief = cast(dict[str, object], decision_rows[0]["brief"])
+    assert brief["what"] == "This Request needs your decision before work can continue."
+    assert len(cast(list[object], brief["choices"])) == EXPECTED_DECISION_CHOICES
     assert yesterday["total_count"] == yesterday["visible_count"] == 1
     assert ruling_rows[0]["ruling_id"] == str(ruling_id)
-    assert ruling_rows[0]["unknown_reason"] == "execution-link-not-recorded"
-    assert proof["state"] == "partial"
-    assert proof["total_count"] is None
-    assert proof["visible_count"] == 1
-    links = cast(list[dict[str, object]], proof_rows[0]["tickets"])
+    assert ruling_rows[0]["unknown_reason"] is None
+    executions = cast(list[dict[str, object]], ruling_rows[0]["executions"])
+    assert executions[0]["request_id"] == str(executed_request_id)
+    assert proof["state"] == "complete"
+    assert proof["total_count"] == proof["visible_count"] == EXPECTED_PROOF_ROWS
+    assert all(row["current_proof_count"] == 0 for row in proof_rows)
+    links = [link for row in proof_rows for link in cast(list[dict[str, object]], row["tickets"])]
     assert links == [
         {
             "href": f"/v1/tickets/{ticket_id}/timeline",
             "purpose": "required",
             "ticket_id": str(ticket_id),
         }
+        for ticket_id in ticket_ids
     ]
 
 
 def _blocked_request_with_proof(
-    tenant: TenantFixture, operator: Actor, commander: Actor
+    tenant: TenantFixture,
+    operator: Actor,
+    commander: Actor,
+    content: str,
 ) -> tuple[UUID, UUID]:
     requests = Requests(PostgresRequests(tenant.database.runtime_dsn))
-    capture = RequestCapture(uuid4(), "ctower", "Choose the production rollout window.")
+    capture = RequestCapture(uuid4(), "ctower", content)
     captured = requests.capture(
         operator, capture, telemetry=_telemetry(operator, capture.client_command_id)
     )
@@ -207,9 +255,11 @@ def _accepted_ticket(tenant: TenantFixture, actor: Actor) -> UUID:
     return outcome.ticket.ticket_id
 
 
-def _accepted_ruling(tenant: TenantFixture, actor: Actor) -> tuple[UUID, datetime]:
+def _accepted_ruling(
+    tenant: TenantFixture, actor: Actor, request_id: UUID
+) -> tuple[UUID, datetime]:
     authority = Rulings(PostgresRulings(tenant.database.runtime_dsn))
-    command = RulingAppend(uuid4(), "Use the 09:00 Vilnius rollout window.")
+    command = RulingAppend(uuid4(), "Use the 09:00 Vilnius rollout window.", request_id=request_id)
     outcome = authority.append(
         actor, command, telemetry=_telemetry(actor, command.client_command_id)
     )

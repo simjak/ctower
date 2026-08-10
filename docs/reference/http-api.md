@@ -127,7 +127,11 @@ Request status.
 The list is an accepted-only read at a named Record watermark. It reports requested, answered, and
 unanswered projects separately, so an unanswered source never contributes a fabricated empty result.
 Mutation `202` responses remain `durability_pending`; accepted list rows and totals exclude them. The
-operator migration helper is deliberately absent from this ordinary HTTP surface.
+operator migration helper is deliberately absent from this ordinary HTTP surface. A row whose exact
+accepted decision blocker is active includes the complete record-derived `decision_brief`; other rows carry
+`null`. An accepted Ruling answers only the exact active blocker occurrence it was bound to; a later marker
+reopens and an inactive latest marker returns `null`. The list declares no caller input for brief text,
+choices, recommendation, or safe default.
 
 ### Rulings
 
@@ -137,10 +141,13 @@ operator migration helper is deliberately absent from this ordinary HTTP surface
 | `GET` | `/v1/rulings` | `listRulings` | `ruling list` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `GET` | `/v1/rulings/{ruling_id}` | `getRuling` | `ruling get` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 
-Append accepts exact `verbatim` words and an optional `supersedes_ruling_id`. The server derives Project,
-principal, and seat from the existing authenticated project seat. Reads expose only accepted facts and keep
-the stable Ruling ID, server date, byte digest, attribution, and both supersession directions. Listing names
-requested, answered, and unanswered Projects plus the Record watermark; pending facts are absent.
+Append accepts exact `verbatim` words and either an optional `request_id` or an optional
+`supersedes_ruling_id`; the two cannot be combined. The server derives Project, principal, and seat from the
+existing authenticated project seat. A Request-linked append must name a current decision Request in that
+same Project. Reads expose only accepted facts and keep the stable Ruling ID, server date, byte digest,
+attribution, both supersession directions, and the linked Request UUID and `R<number>` reference. A
+successor inherits its predecessor's Request link. Listing names requested, answered, and unanswered
+Projects plus the Record watermark; pending facts are absent.
 
 ### Morning digest
 

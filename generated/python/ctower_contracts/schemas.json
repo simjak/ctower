@@ -4251,6 +4251,13 @@
         "rulingRecorded": {
           "additionalProperties": false,
           "properties": {
+            "decision_blocker_fact_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "project_key": {
               "pattern": "^[a-z][a-z0-9-]{2,63}$",
               "type": "string"
@@ -4262,6 +4269,13 @@
             "recorded_by": {
               "format": "uuid",
               "type": "string"
+            },
+            "request_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "ruling_id": {
               "format": "uuid",
@@ -4288,9 +4302,11 @@
             }
           },
           "required": [
+            "decision_blocker_fact_id",
             "project_key",
             "recorded_at",
             "recorded_by",
+            "request_id",
             "ruling_id",
             "seat_key",
             "supersedes_ruling_id",
@@ -16612,7 +16628,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:64a6f2c5109516797b5a7f0c014cca840e917f64a7feacb43acce034c35f8976"
+      "sha256": "sha256:50bf5fcf2316489ff09c31919b8d5ed5f5694917fa333de5cb8af3d32d1c12a2"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",

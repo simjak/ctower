@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:634fc3a2c112440c99cfa2faeaca2e8a630d1eb9051ec03d4d8e8c6bcc99cf04
+Authored contract digest: sha256:892385f214b27149dbb7c1b5e9bc9d45924973b9700a8232073bac541fee0f34
 """
 
 from __future__ import annotations
@@ -83,6 +83,9 @@ __all__ = [
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
+    "DecisionBrief",
+    "DecisionBriefChoice",
+    "DecisionBriefSelection",
     "DeferIntent",
     "DeferredAuditData",
     "DeliverySurfaceAvailability",
@@ -840,6 +843,17 @@ class CustodyTransferredPayload(_BoundaryModel):
     to_custodian_id: UUID
 
 
+class DecisionBriefChoice(_BoundaryModel):
+    completeness: Annotated[int, Field(ge=0, le=10)]
+    key: Literal["A", "B", "C"]
+    outcome: Annotated[str, Field(min_length=1, max_length=160)]
+
+
+class DecisionBriefSelection(_BoundaryModel):
+    choice_key: Literal["A", "B", "C"]
+    reason: Annotated[str, Field(min_length=1, max_length=160)]
+
+
 class DeferIntent(_BoundaryModel):
     kind: Literal["defer"]
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -1414,6 +1428,7 @@ class ReviewDispatchConsumption(_BoundaryModel):
 
 
 class RulingAppendRequest(_BoundaryModel):
+    request_id: UUID | None = None
     supersedes_ruling_id: UUID | None = None
     verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
 
@@ -1424,6 +1439,8 @@ class RulingRow(_BoundaryModel):
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     recorded_at: _Rfc3339DateTime
     recorded_by: UUID
+    request_id: UUID | None
+    request_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")] | None
     ruling_id: UUID
     seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     superseded_by_ruling_id: UUID | None
@@ -1891,6 +1908,17 @@ class CustodyTransferredAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
+class DecisionBrief(_BoundaryModel):
+    choices: Annotated[tuple[DecisionBriefChoice, ...], Field(min_length=3, max_length=3)]
+    eli: Annotated[str, Field(min_length=1, max_length=160)]
+    origin_quote: Annotated[str, Field(min_length=1, max_length=65536)]
+    recommendation: DecisionBriefSelection
+    rendered: Annotated[str, Field(min_length=1, max_length=400000)]
+    ruling_id: UUID | None
+    safe_default: DecisionBriefSelection
+    status: Literal["open", "answered"]
+
+
 class DigestDecisionBrief(_BoundaryModel):
     choices: tuple[DigestDecisionChoice, ...]
     origin: Annotated[str, Field(min_length=1, max_length=1024)]
@@ -2237,6 +2265,9 @@ class Problem(_BoundaryModel):
         "ruling-already-superseded",
         "ruling-not-found",
         "ruling-project-unavailable",
+        "ruling-request-already-answered",
+        "ruling-request-not-decision",
+        "ruling-request-not-found",
         "ruling-seat-not-found",
         "reauthentication-required",
         "request-body-too-large",
@@ -2397,34 +2428,6 @@ class RequestPriorityRequest(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
-class RequestRow(_BoundaryModel):
-    age_seconds: Annotated[int, Field(ge=0, le=9007199254740991)]
-    blocker: str | None
-    content: Annotated[str, Field(min_length=1, max_length=65536)]
-    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    created_at: _Rfc3339DateTime
-    durability_state: Literal["accepted"]
-    freshness: Annotated[int, Field(ge=1, le=9007199254740991)]
-    optional_ticket_ids: tuple[UUID, ...]
-    owner: Annotated[str, Field(min_length=1, max_length=120)]
-    owner_id: UUID
-    priority: Priority
-    priority_default: bool
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    proof_coverage: Annotated[int, Field(ge=0, le=9007199254740991)] | None
-    reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
-    request_id: UUID
-    request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
-    required_ticket_ids: tuple[UUID, ...]
-    source_kind: Annotated[str, Field(min_length=1, max_length=64)]
-    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
-    original_owner_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
-    state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
-    ticket_count: Annotated[int, Field(ge=0, le=9007199254740991)]
-    triage: Literal["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"]
-    unknown_reason: str | None
-
-
 class ReviewDispatchEffect(_BoundaryModel):
     effect_id: UUID
     workflow_run_id: UUID
@@ -2455,6 +2458,7 @@ class RulingAppendResult(_BoundaryModel):
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     recorded_at: _Rfc3339DateTime
     recorded_by: UUID
+    request_id: UUID | None
     ruling_id: UUID
     seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     supersedes_ruling_id: UUID | None
@@ -2864,15 +2868,33 @@ class ProjectSessionPage(_BoundaryModel):
     sessions: tuple[TicketSession, ...]
 
 
-class RequestList(_BoundaryModel):
-    answered_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
-    answered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
-    observed_at: _Rfc3339DateTime
-    requested_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
-    requested_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
-    rows: tuple[RequestRow, ...]
-    unanswered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
-    watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+class RequestRow(_BoundaryModel):
+    age_seconds: Annotated[int, Field(ge=0, le=9007199254740991)]
+    blocker: str | None
+    content: Annotated[str, Field(min_length=1, max_length=65536)]
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    created_at: _Rfc3339DateTime
+    decision_brief: DecisionBrief | None
+    durability_state: Literal["accepted"]
+    freshness: Annotated[int, Field(ge=1, le=9007199254740991)]
+    optional_ticket_ids: tuple[UUID, ...]
+    owner: Annotated[str, Field(min_length=1, max_length=120)]
+    owner_id: UUID
+    priority: Priority
+    priority_default: bool
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    proof_coverage: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    request_id: UUID
+    request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    required_ticket_ids: tuple[UUID, ...]
+    source_kind: Annotated[str, Field(min_length=1, max_length=64)]
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    original_owner_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    ticket_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    triage: Literal["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"]
+    unknown_reason: str | None
 
 
 class ReviewDispatchEffectList(_BoundaryModel):
@@ -3005,6 +3027,17 @@ class MorningDigestDecisionSection(_BoundaryModel):
 
 
 type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment
+
+
+class RequestList(_BoundaryModel):
+    answered_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    answered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    observed_at: _Rfc3339DateTime
+    requested_project_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    requested_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    rows: tuple[RequestRow, ...]
+    unanswered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class TimelineResponse(_BoundaryModel):

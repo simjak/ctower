@@ -121,14 +121,17 @@ may remain without a Ticket; relations are explicit and never change Ticket cust
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ruling append` | `<verbatim>` | optional: `--command-id`, `--supersedes <ruling_id>` |
+| `ruling append` | `<verbatim>` | optional: `--command-id`, at most one of `--request-id <request_id>` or `--supersedes <ruling_id>` |
 | `ruling list` | — | optional: `--project-key` |
 | `ruling get` | `<ruling_id>` | — |
 
 Append uses the protected encrypted spool and derives Project, principal, and seat from the authenticated
 existing project-seat credential. Preserve the returned command and Ruling IDs when an append is pending;
 replay the same command instead of creating a second intent. Corrections append a new Ruling with
-`--supersedes`; they never edit the old words. List and get are accepted-only online reads. See
+`--supersedes`; they never edit the old words. `--request-id` answers a current decision Request and cannot
+be combined with `--supersedes`; the root binds to the exact active decision occurrence and a correction
+inherits the predecessor's link. A later marker is a new answerable occurrence. List and get are
+accepted-only online reads. See
 [Rulings and the Agreements ledger](../concepts/rulings.md).
 
 ## Morning digest
@@ -139,7 +142,7 @@ replay the same command instead of creating a second intent. Corrections append 
 
 This operator-only online read defaults to today's Europe/Vilnius artifact and deterministic STE text.
 JSON returns the exact generated boundary. The command is never spooled and sends no notification. Unknown
-totals, unreached scopes, missing decision briefs, and missing execution links remain explicit. See the
+totals, unreached scopes, and unresolved execution relations remain explicit. See the
 [morning digest concept](../concepts/morning-digest.md).
 
 ## Ticket: capture and reads

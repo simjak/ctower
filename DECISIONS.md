@@ -2020,17 +2020,54 @@ Rejected alternatives:
 - Adding a generic principal, policy, or document abstraction. The existing seat domain and one cohesive
   ledger fully meet the current requirement.
 
-## D50 — The native morning digest is a disposable, epistemically explicit read-model (engineering, 2026-08-10, issue #402)
+## D50 — Decision briefs are Request-record projections answered by linked Rulings (engineering, 2026-08-10, issue #403)
+
+Operator decision asks must be complete without allowing a caller, model, or digest renderer to invent the
+facts presented for judgment.
+
+1. The latest accepted active Request blocker with the exact key `operator-decision-required` marks one
+   decision. No separate Decision aggregate or mutable brief record is added.
+2. The accepted Request read builds the full brief from Request facts: a fixed plain ELI, the exact Request
+   content as origin, three fixed outcome choices with bounded completeness scores, a recommendation chosen
+   from accepted triage with its reason, and a fixed safe default with its reason. It also returns one
+   ready-to-send rendering.
+3. Request and query payloads have no fields for ELI, choices, scores, recommendation, safe default, or
+   rendering. No model call, caller prose, or other call-time fact participates in the projection.
+4. An answer is an immutable Ruling whose optional `request_id` is constrained to the same tenant and
+   Project and whose root is bound to the exact latest accepted active decision blocker fact. Pending
+   Rulings do not resolve accepted state. Accepted reads expose Request-to-Ruling and Ruling-to-Request
+   links; every Ruling successor inherits both the Request and decision-occurrence relation.
+5. An accepted linked Ruling removes only its exact decision occurrence from derived Request state. A later
+   active marker is a new open occurrence that an older Ruling cannot resolve, and an inactive latest marker
+   renders no brief. The append-only blocker facts stay intact, and every unrelated blocker keeps its
+   authority.
+6. The digest layer may consume the rendered brief through its own stable ticket. This decision adds no
+   digest behavior, principal class, adapter, ingress, egress, browser authority, or trust boundary and
+   records `no-new-boundary`.
+
+Rejected alternatives:
+
+- Accepting caller-authored brief fields. That would let a tainted caller rewrite the issue, choices, or
+  recommendation shown to the operator.
+- Generating the brief with a model at read time. That would make the same accepted Request render different
+  judgment facts and would create an unrecorded source of authority.
+- Writing a second Decision record. The Request already owns the need and the Ruling already owns the answer;
+  another aggregate would duplicate state and create reconciliation work.
+- Coupling digest delivery into this change. The digest has its own work item and consumes this stable read
+  shape only after that item is active.
+
+## D51 — The native morning digest is a disposable, epistemically explicit read-model (engineering, 2026-08-10, issue #402)
 
 The morning digest composes existing accepted Request and Ruling facts without creating another authority,
 store, scheduler, or delivery transport.
 
 1. One pure kernel fold produces one artifact key for each Europe/Vilnius civil date. Its ordered sections
-   are open `operator-decision-required` Requests in the operator brief shape, the prior civil day's Rulings
-   with recorded Request executions, and related Ticket timeline links with current proof counts.
+   are open Requests with the complete record-derived decision brief, the prior civil day's Rulings with
+   their typed Request executions, and related Ticket timeline links with current proof counts.
 2. Each independent source and rendered section carries `complete|partial|unknown`, a visible count, a
-   nullable total, exact unreached scopes, and the source watermark. Unread or not-yet-recorded facts are
-   `UNKNOWN`; the projection never coerces them to an empty answer, invents linkage, or drops visible rows.
+   nullable total, exact unreached scopes, and the relevant source watermark. Unread facts are `UNKNOWN`;
+   authoritative absent links are empty; the projection never coerces failure to an empty answer, invents
+   linkage, or drops visible rows.
 3. The generated operator-only HTTP read and protected CLI text/JSON renderer are the complete ctower
    surface. Artifact identity and digest derive from canonical projection content. Neither route mutates
    Record, stores a projection, or queues a read in the encrypted spool.
@@ -2047,7 +2084,7 @@ Rejected alternatives:
   reproducible disposable presentation.
 - Treating a failed source as an empty section. That creates false calm and violates the portfolio
   projection's accepted epistemic rule.
-- Matching Ruling prose to Request text. Executions require a recorded typed link; semantic similarity is
-  not an authority fact.
+- Matching Ruling prose to Request text. Executions require the accepted typed Request relation; semantic
+  similarity is not an authority fact.
 - Adding a transport or scheduler inside ctower. Existing notification rails and director-owned scheduling
   already supply those responsibilities without widening the trust boundary.

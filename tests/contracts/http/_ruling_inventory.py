@@ -14,5 +14,8 @@ RULING_PROBLEM_CODES = {
     "ruling-already-superseded",
     "ruling-not-found",
     "ruling-project-unavailable",
+    "ruling-request-already-answered",
+    "ruling-request-not-decision",
+    "ruling-request-not-found",
     "ruling-seat-not-found",
 }
