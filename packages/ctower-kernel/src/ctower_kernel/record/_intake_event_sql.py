@@ -16,11 +16,13 @@ from ctower_kernel.record.events import (
     InboundEventPromotedPayload,
     InboundEventRecordedPayload,
 )
+from ctower_kernel.record.identifiers import uuid7
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.request_events import RequestChangedPayload
 from ctower_kernel.record.ticket_creation import ticket_created_commit
 from ctower_kernel.record.transaction import EventCommit
 from ctower_kernel.telemetry import TelemetryContext
@@ -61,6 +63,7 @@ def submit_commits(
             outcome=result.outcome.value,
             content_digest=f"sha256:{hashlib.sha256(command.content.encode()).hexdigest()}",
             ticket_id=result.ticket_id,
+            request_id=result.request_id,
         ),
         prev_hash=state.previous_hash,
         request_sha256=request_digest,
@@ -79,6 +82,17 @@ def submit_commits(
     )
     if ticket is not None:
         commits.append(ticket)
+    request = _request_commit(
+        actor,
+        action,
+        result,
+        content=command.content,
+        request_digest=request_digest,
+        now=now,
+        telemetry=telemetry,
+    )
+    if request is not None:
+        commits.append(request)
     return tuple(commits)
 
 
@@ -112,6 +126,7 @@ def promotion_commits(
             intent=command.intent.value,
             outcome=result.outcome.value,
             ticket_id=cast(UUID, result.ticket_id),
+            request_id=result.request_id,
         ),
         prev_hash=bytes(cast(bytes, inbound["event_hash"])),
         request_sha256=request_digest,
@@ -130,6 +145,17 @@ def promotion_commits(
     )
     if ticket is not None:
         commits.append(ticket)
+    request = _request_commit(
+        actor,
+        action,
+        result,
+        content=str(inbound["content"]),
+        request_digest=request_digest,
+        now=now,
+        telemetry=telemetry,
+    )
+    if request is not None:
+        commits.append(request)
     return tuple(commits)
 
 
@@ -155,3 +181,63 @@ def _ticket_commit(
         now=now,
         telemetry=telemetry,
     )
+
+
+def _request_commit(
+    actor: Actor,
+    action: IntakeAction,
+    result: IntakeCommandResult,
+    *,
+    content: str,
+    request_digest: bytes,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> EventCommit | None:
+    if (
+        action.request_id is None
+        or action.request_number is None
+        or action.request_owner_id is None
+        or action.request_event_id is None
+    ):
+        return None
+    event = EventEnvelope(
+        actor_principal_id=actor.principal_id,
+        aggregate_id=action.request_id,
+        causation_id=result.inbound_event_id,
+        client_command_id=result.command_id,
+        correlation_id=telemetry.correlation_uuid(result.command_id),
+        event_id=action.request_event_id,
+        kind=EventKind.REQUEST_CHANGED,
+        origin=EventOrigin.API,
+        payload=RequestChangedPayload(
+            operation="capture",
+            request_id=action.request_id,
+            request_number=action.request_number,
+            project_key=result.project_key,
+            version=1,
+            content=content,
+            content_digest=f"sha256:{hashlib.sha256(content.encode()).hexdigest()}",
+            source_kind=result.source.kind,
+            source_ref=result.source.ref,
+            submitted_by=actor.principal_id,
+            owner_id=action.request_owner_id,
+            triage="UNTRIAGED",
+            priority="P2",
+            priority_default=True,
+            required_ticket_ids=(),
+            optional_ticket_ids=(),
+            blockers=(),
+            closure_outcome="open",
+        ),
+        prev_hash=bytes(32),
+        request_sha256=request_digest,
+        sequence=1,
+        server_time=now,
+        stream_id=f"request:{action.request_id}",
+        tenant_id=actor.tenant_id,
+    )
+    return EventCommit(event, _outbox_id(now))
+
+
+def _outbox_id(now: datetime) -> UUID:
+    return uuid7(now)

@@ -307,6 +307,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0039_project_seat_credentials.sql",
             "0040_project_scoped_reads.sql",
             "0041_recorded_work_sessions.sql",
+            "0046_human_oidc_identity.sql",
             "0047_board_source_index.sql",
             "0048_native_inbox.sql",
             "0049_review_dispatch_effect.sql",

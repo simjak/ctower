@@ -26,6 +26,7 @@ from ctower_kernel.record.transaction import (
     project_scope_refusal,
 )
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.work._request_cutover_guard import request_mutation_epoch_refusal
 from ctower_kernel.work._request_types import (
     RequestCapture,
     RequestCaptureResult,
@@ -83,10 +84,14 @@ def _capture_reserved(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> RequestCaptureResult | RecordProblem:
+    epoch = request_mutation_epoch_refusal(connection, actor.tenant_id, command.client_command_id)
+    if epoch is not None:
+        return _refuse(transaction, actor, command, request_digest, epoch, now)
     refusal = _capture_scope_refusal(connection, actor, command)
     if refusal is not None:
         return _refuse(transaction, actor, command, request_digest, refusal, now)
     owner_id = _initial_owner(connection, actor, command.project_key)
+    commander_id = _project_commander(connection, actor, command.project_key)
     identity = _capture_identity(actor, command, now)
     subjects = (
         ("inbound_thread", identity.thread_id),
@@ -103,7 +108,15 @@ def _capture_reserved(
     )
     if durable is not None:
         return durable
-    result = _persist_capture(connection, actor, command, identity, owner_id=owner_id, now=now)
+    result = _persist_capture(
+        connection,
+        actor,
+        command,
+        identity,
+        owner_id=owner_id,
+        commander_id=commander_id,
+        now=now,
+    )
     transaction.commit_batch(
         _capture_commits(
             actor,
@@ -154,7 +167,7 @@ def _capture_identity(actor: Actor, command: RequestCapture, now: datetime) -> _
         inbound_event_id,
         uuid7(now),
         uuid7(now),
-        "ctower-seat-request",
+        "native",
         f"{actor.principal_id}:{command.client_command_id}",
     )
 
@@ -166,6 +179,7 @@ def _persist_capture(
     identity: _CaptureIdentity,
     *,
     owner_id: UUID,
+    commander_id: UUID,
     now: datetime,
 ) -> RequestCaptureResult:
     request_number = _allocate_number(connection, actor.tenant_id, now)
@@ -181,7 +195,13 @@ def _persist_capture(
         now=now,
     )
     _insert_initial_facts(
-        connection, actor, command, identity.request_id, owner_id=owner_id, now=now
+        connection,
+        actor,
+        command,
+        identity.request_id,
+        owner_id=owner_id,
+        commander_id=commander_id,
+        now=now,
     )
     return RequestCaptureResult(
         command.client_command_id,
@@ -294,6 +314,7 @@ def _insert_initial_facts(
     request_id: UUID,
     *,
     owner_id: UUID,
+    commander_id: UUID,
     now: datetime,
 ) -> None:
     common = (request_id, actor.tenant_id, actor.principal_id, command.client_command_id, now)
@@ -336,7 +357,7 @@ def _insert_initial_facts(
             uuid7(now),
             request_id,
             actor.tenant_id,
-            owner_id,
+            commander_id,
             actor.principal_id,
             command.client_command_id,
             now,
@@ -412,6 +433,7 @@ def _inbound_event(
             outcome="request_created",
             content_digest=f"sha256:{hashlib.sha256(command.text.encode()).hexdigest()}",
             ticket_id=None,
+            request_id=result.request_id,
         ),
         prev_hash=_ZERO_HASH,
         request_sha256=request_digest,
@@ -497,11 +519,33 @@ def _initial_owner(
         """
         SELECT principal_id FROM project_seats
         WHERE tenant_id = %s AND project_key = %s AND principal_id = %s
+        UNION ALL
+        SELECT binding.principal_id
+        FROM human_role_bindings AS binding
+        LEFT JOIN human_role_binding_revocations AS revocation
+          ON revocation.binding_id = binding.binding_id
+         AND revocation.tenant_id = binding.tenant_id
+        WHERE binding.tenant_id = %s AND binding.principal_id = %s
+          AND %s = ANY(binding.project_keys) AND revocation.binding_id IS NULL
+        LIMIT 1
         """,
-        (actor.tenant_id, project_key, actor.principal_id),
+        (
+            actor.tenant_id,
+            project_key,
+            actor.principal_id,
+            actor.tenant_id,
+            actor.principal_id,
+            project_key,
+        ),
     ).fetchone()
     if addressable is not None:
         return actor.principal_id
+    return _project_commander(connection, actor, project_key)
+
+
+def _project_commander(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, project_key: str
+) -> UUID:
     commander = connection.execute(
         """
         SELECT principal.principal_id

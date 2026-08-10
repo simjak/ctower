@@ -270,6 +270,7 @@ _EXPECTED_PROBLEM_CODES = {
     "durability_pending",
     "i1-7c-required",
     "idempotency-conflict",
+    "invalid-request",
     "intake-already-promoted",
     "intake-promotion-ineligible",
     "intake-source-project-mismatch",

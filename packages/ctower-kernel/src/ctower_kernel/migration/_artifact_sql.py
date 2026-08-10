@@ -19,14 +19,14 @@ from ctower_client.models import (
     CtowerProjectImportRun,
     CtowerProjectImportRunCreateRequest,
 )
-from ctower_kernel.migration._artifact import (
+from ctower_kernel.record import Actor
+from ctower_kernel.record.artifacts import (
     ArtifactError,
     TrustedReviewerKeys,
     parse_artifact,
     reviewer_key,
     verify_signed_artifact,
 )
-from ctower_kernel.record import Actor
 
 __all__ = [
     "persist_export_graph",

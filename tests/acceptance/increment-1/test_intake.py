@@ -76,6 +76,52 @@ def test_create_link_promotion_cas_quarantine_and_restart_replay(
     _assert_target_refusals(tenant, second_tenant, target_ticket)
 
 
+def test_authenticated_discussion_promotes_once_to_request_without_ticket(
+    tenant: TenantFixture,
+) -> None:
+    with _client(tenant) as client:
+        discussion = _submit(
+            client,
+            tenant,
+            _discussion("chat", f"request:{uuid4()}"),
+            uuid4(),
+        ).json()
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    inbound_event_id = UUID(discussion["inbound_event_id"])
+    command_id = uuid4()
+    body = {"expected_thread_version": 1, "intent": "create_request"}
+    with _client(tenant) as client:
+        promoted = _promote(client, tenant, inbound_event_id, body, command_id)
+        replay = _promote(client, tenant, inbound_event_id, body, command_id)
+        duplicate = _promote(
+            client,
+            tenant,
+            inbound_event_id,
+            {"expected_thread_version": 2, "intent": "create_request"},
+            uuid4(),
+        )
+    payload = promoted.json()
+    assert promoted.status_code == HTTP_PENDING
+    assert replay.json() == payload
+    assert payload["outcome"] == "request_created"
+    assert payload["request_id"] is not None and payload["request_number"] == 1
+    assert payload["ticket_id"] is None and len(payload["event_ids"]) == SECOND_VERSION
+    assert duplicate.status_code == HTTP_CONFLICT
+    assert duplicate.json()["code"] == "intake-already-promoted"
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        counts = connection.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM requests WHERE tenant_id = %s),
+              (SELECT count(*) FROM tickets WHERE tenant_id = %s),
+              (SELECT count(*) FROM events
+               WHERE tenant_id = %s AND kind = 'request.changed')
+            """,
+            (tenant.tenant_id, tenant.tenant_id, tenant.tenant_id),
+        ).fetchone()
+    assert counts == (1, 0, 1)
+
+
 def _seed_create_link_and_quarantine(
     tenant: TenantFixture,
 ) -> tuple[dict[str, object], UUID]:

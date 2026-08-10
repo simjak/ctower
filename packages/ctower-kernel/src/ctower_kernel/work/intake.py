@@ -231,6 +231,10 @@ def _intent_refusal(
         if any(value is not None for value in (*create_fields, target_id, target_version)):
             return _invalid(command_id, "Discussion intake cannot contain ticket mutation fields")
         return None
+    if intent is IntakeIntent.CREATE_REQUEST:
+        if any(value is not None for value in (*create_fields, target_id, target_version)):
+            return _invalid(command_id, "Create-request intake forbids ticket mutation fields")
+        return None
     if intent is IntakeIntent.CREATE_TICKET:
         return _create_refusal(
             actor,

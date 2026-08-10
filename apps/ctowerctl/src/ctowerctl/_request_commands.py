@@ -63,6 +63,7 @@ def _change_payload(name: str, arguments: argparse.Namespace) -> BaseModel:
     if name == "request ticket relate":
         return RequestTicketRelationRequest(
             active=not cast(bool, arguments.inactive),
+            expected_ticket_version=cast(int, arguments.expected_ticket_version),
             expected_version=expected_version,
             purpose=cast(Literal["required", "optional"], arguments.purpose),
             reason=cast(str, arguments.reason),

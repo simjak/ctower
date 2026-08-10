@@ -50,6 +50,7 @@ from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
+from ctower_kernel.work.request_cutover import PostgresRequestCutover, RequestCutover
 from ctower_kernel.work.requests import PostgresRequests, Requests
 from ctower_kernel.workflow import Workflow, WorkflowGraph
 from ctower_kernel.workflow.postgres import PostgresWorkflow, PostgresWorkflowPolicyPins
@@ -142,6 +143,7 @@ def api_main() -> None:
             ),
             work=Work(record, writer=PostgresWork(runtime_dsn)),
             requests=Requests(PostgresRequests(runtime_dsn)),
+            request_cutover=RequestCutover(PostgresRequestCutover(runtime_dsn)),
             catalog=PostgresCatalog(
                 runtime_dsn,
                 CATALOG,

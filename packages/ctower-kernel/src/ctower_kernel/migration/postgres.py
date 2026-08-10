@@ -27,8 +27,8 @@ from ctower_kernel.migration import (
     _reconciliation_sql,
     _run_sql,
 )
-from ctower_kernel.migration._artifact import TrustedReviewerKeys
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.artifacts import TrustedReviewerKeys
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["PostgresMigration"]

@@ -285,6 +285,12 @@ def _change_refusal(actor: Actor, command: RequestChange) -> RecordProblem | Non
     )
     if scope is not None:
         return scope
+    if isinstance(command, RequestTicketRelation):
+        capture_scope = credential_scope_refusal(
+            actor, CredentialScope.CAPTURE, command_id=command.client_command_id
+        )
+        if capture_scope is not None:
+            return capture_scope
     prohibited = prohibited_data_refusal(
         tuple(
             value
@@ -305,6 +311,8 @@ def _base_shape_detail(command: RequestChange) -> str | None:
     reason = getattr(command, "reason", None)
     if command.expected_version < 1:
         return "Request version or reason is invalid"
+    if isinstance(command, RequestTicketRelation) and command.expected_ticket_version < 1:
+        return "Request Ticket version is invalid"
     if isinstance(reason, str) and (
         reason.strip() != reason or not 1 <= len(reason) <= _MAX_REASON_LENGTH
     ):

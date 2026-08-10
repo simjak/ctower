@@ -476,7 +476,6 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             RequestChangedPayload,
             "request",
             _API_OR_IMPORT,
-            project_feed=True,
         ),
     )
 }

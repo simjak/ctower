@@ -1,4 +1,4 @@
-"""Operator Request cutover dry-run entry point; it exposes no mutation transport."""
+"""Read-only Request cutover preflight; execution is a separate explicit command."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 import httpx
+import rfc8785
 
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
 from tools.migration.operator_requests.dry_run import analyze_cutover
@@ -24,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--signing-key-map", type=Path)
     parser.add_argument("--signing-key-ref")
     parser.add_argument("--signing-key-version", type=int)
+    parser.add_argument("--manifest-output", type=Path)
     arguments = parser.parse_args(argv)
     signer = _signer(arguments)
     try:
@@ -49,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     print(json.dumps(report, separators=(",", ":"), sort_keys=True))
+    manifest = report.get("manifest")
+    if arguments.manifest_output is not None and isinstance(manifest, dict):
+        arguments.manifest_output.write_bytes(rfc8785.dumps(manifest))
     return 0 if report["eligible"] else 3
 
 

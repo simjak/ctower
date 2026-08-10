@@ -1,4 +1,4 @@
-"""Canonical reviewed-artifact verification at the accepting boundary."""
+"""Canonical signed-artifact verification at the lower Record boundary."""
 
 from __future__ import annotations
 

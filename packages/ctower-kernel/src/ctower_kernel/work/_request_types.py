@@ -54,6 +54,7 @@ class RequestCaptureResult:
 
     def response_payload(self) -> dict[str, object]:
         return {
+            "accepted_position": None,
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
             "event_ids": [str(item) for item in self.event_ids],
@@ -128,6 +129,7 @@ class RequestTicketRelation:
     client_command_id: UUID
     request_id: UUID
     expected_version: int
+    expected_ticket_version: int
     ticket_id: UUID
     purpose: str
     active: bool
@@ -137,6 +139,7 @@ class RequestTicketRelation:
         return {
             "active": self.active,
             "expected_version": self.expected_version,
+            "expected_ticket_version": self.expected_ticket_version,
             "purpose": self.purpose,
             "reason": self.reason,
             "request_id": str(self.request_id),
@@ -206,6 +209,7 @@ class RequestChangeResult:
 
     def response_payload(self) -> dict[str, object]:
         return {
+            "accepted_position": None,
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
             "event_ids": [str(item) for item in self.event_ids],
@@ -226,6 +230,7 @@ class RequestRow:
     request_number: int
     project_key: str
     content: str
+    content_sha256: str
     state: str
     triage: str
     owner_id: UUID
@@ -240,6 +245,8 @@ class RequestRow:
     durability_state: str
     freshness: int
     source_kind: str
+    source_ref: str
+    original_owner_sha256: str | None
     unknown_reason: str | None = None
 
     def response_payload(self, *, observed_at: datetime) -> dict[str, object]:
@@ -247,6 +254,8 @@ class RequestRow:
             "age_seconds": max(0, int((observed_at - self.created_at).total_seconds())),
             "blocker": self.blocker,
             "content": self.content,
+            "content_sha256": self.content_sha256,
+            "created_at": self.created_at.isoformat(),
             "durability_state": self.durability_state,
             "freshness": self.freshness,
             "optional_ticket_ids": [str(item) for item in self.optional_ticket_ids],
@@ -261,7 +270,10 @@ class RequestRow:
             "request_number": self.request_number,
             "required_ticket_ids": [str(item) for item in self.required_ticket_ids],
             "source_kind": self.source_kind,
+            "source_ref": self.source_ref,
+            "original_owner_sha256": self.original_owner_sha256,
             "state": self.state,
+            "ticket_count": len(self.required_ticket_ids) + len(self.optional_ticket_ids),
             "triage": self.triage,
             "unknown_reason": self.unknown_reason,
         }

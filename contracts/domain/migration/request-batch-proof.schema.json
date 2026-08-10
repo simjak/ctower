@@ -1,0 +1,111 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/request-batch-proof.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Signed every-row Request import batch reconciliation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "manifest_digest",
+    "batch_index",
+    "source_count",
+    "source_count_by_project",
+    "batch_target_count",
+    "batch_target_count_by_project",
+    "cumulative_count",
+    "cumulative_count_by_project",
+    "target_count",
+    "target_count_by_project",
+    "target_watermark",
+    "rows",
+    "samples",
+    "proof_digest",
+    "signature"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.request-batch-proof/v1"},
+    "manifest_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "batch_index": {"type": "integer", "minimum": 0},
+    "source_count": {"type": "integer", "minimum": 1, "maximum": 25},
+    "source_count_by_project": {"$ref": "#/$defs/projectCounts"},
+    "batch_target_count": {"type": "integer", "minimum": 1, "maximum": 25},
+    "batch_target_count_by_project": {"$ref": "#/$defs/projectCounts"},
+    "cumulative_count": {"type": "integer", "minimum": 1},
+    "cumulative_count_by_project": {"$ref": "#/$defs/projectCounts"},
+    "target_count": {"type": "integer", "minimum": 1},
+    "target_count_by_project": {"$ref": "#/$defs/projectCounts"},
+    "target_watermark": {"type": "integer", "minimum": 1},
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/comparison"}
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/comparison"}
+    },
+    "proof_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "signature": {"$ref": "migration-boundary.schema.json#/$defs/detachedSignature"}
+  },
+  "$defs": {
+    "projectCounts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/projectCount"}
+    },
+    "projectCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_key", "count"],
+      "properties": {
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "request_id",
+        "request_number",
+        "project_key",
+        "owner_id",
+        "original_owner_sha256",
+        "content_sha256",
+        "source_alias",
+        "created_at",
+        "relationships_sha256",
+        "triage",
+        "priority",
+        "state",
+        "durability_state",
+        "implicit_ticket_count",
+        "equal"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+        "request_id": {"type": "string", "format": "uuid"},
+        "request_number": {"type": "integer", "minimum": 1},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "owner_id": {"type": "string", "format": "uuid"},
+        "original_owner_sha256": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "content_sha256": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "source_alias": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "relationships_sha256": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "triage": {"enum": ["UNTRIAGED", "ACCEPTED"]},
+        "priority": {"enum": ["P0", "P1", "P2"]},
+        "state": {"enum": ["NEW", "TRIAGED"]},
+        "durability_state": {"const": "accepted"},
+        "implicit_ticket_count": {"const": 0},
+        "equal": {"const": true}
+      }
+    }
+  }
+}

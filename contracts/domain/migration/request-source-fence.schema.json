@@ -1,0 +1,78 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/request-source-fence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Signed Mission Control Request writer-fence observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "phase",
+    "ledger_sha256",
+    "source_identity",
+    "writer_refuses",
+    "mutation_entrypoints_removed",
+    "filesystem_read_only",
+    "callers",
+    "observed_at",
+    "fence_digest",
+    "signature"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.request-source-fence/v1"},
+    "phase": {"enum": ["freeze", "batch", "final"]},
+    "ledger_sha256": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "source_identity": {"$ref": "#/$defs/sourceIdentity"},
+    "writer_refuses": {"const": true},
+    "mutation_entrypoints_removed": {"type": "boolean"},
+    "filesystem_read_only": {"const": true},
+    "callers": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "state"],
+        "properties": {
+          "path": {"$ref": "migration-boundary.schema.json#/$defs/safeRelativePath"},
+          "sha256": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+          "state": {"enum": ["refuses", "removed"]}
+        }
+      }
+    },
+    "observed_at": {"type": "string", "format": "date-time"},
+    "fence_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "signature": {"$ref": "migration-boundary.schema.json#/$defs/detachedSignature"}
+  },
+  "$defs": {
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device", "inode", "mode", "mtime_ns", "size"],
+      "properties": {
+        "device": {"type": "integer", "minimum": 0},
+        "inode": {"type": "integer", "minimum": 1},
+        "mode": {"type": "integer", "minimum": 0},
+        "mtime_ns": {"type": "string", "pattern": "^[0-9]{1,20}$"},
+        "size": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"phase": {"const": "final"}}},
+      "then": {
+        "properties": {
+          "mutation_entrypoints_removed": {"const": true},
+          "callers": {"items": {"properties": {"state": {"const": "removed"}}}}
+        }
+      },
+      "else": {
+        "properties": {
+          "mutation_entrypoints_removed": {"const": false},
+          "callers": {"items": {"properties": {"state": {"const": "refuses"}}}}
+        }
+      }
+    }
+  ]
+}

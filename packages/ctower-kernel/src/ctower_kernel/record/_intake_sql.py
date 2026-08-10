@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from datetime import datetime
 from typing import cast
 from uuid import UUID
@@ -10,6 +9,12 @@ from uuid import UUID
 import psycopg
 
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record._intake_apply_sql import (
+    apply_action_state as _apply_action_state,
+)
+from ctower_kernel.record._intake_apply_sql import (
+    insert_inbound_event as _insert_inbound_event,
+)
 from ctower_kernel.record._intake_command_sql import (
     IntakeAction as _Action,
 )
@@ -77,11 +82,7 @@ from ctower_kernel.record.intake import (
     IntakeSubmitCommand,
     IntakeTaint,
 )
-from ctower_kernel.record.ticket_creation import (
-    TicketCreationIds,
-    insert_ticket_state,
-    new_ticket_creation_ids,
-)
+from ctower_kernel.record.ticket_creation import TicketCreationIds, new_ticket_creation_ids
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -209,6 +210,7 @@ def _prepare_submit(
             identifiers.thread,
             identifiers.inbound_event,
             identifiers.ticket_subject,
+            identifiers.request,
         ),
         now=now,
     )
@@ -251,7 +253,19 @@ def _prepare_submit_after_durability(
     state = _lock_thread(connection, actor, command, identifiers.thread)
     if isinstance(state, RecordProblem):
         return _refuse(transaction, actor, command.client_command_id, request_digest, state, now)
-    action = _prepare_action(connection, actor, command, ticket_ids=identifiers.ticket)
+    request_ids = (
+        None
+        if identifiers.request is None or identifiers.request_event is None
+        else (identifiers.request, identifiers.request_event)
+    )
+    action = _prepare_action(
+        connection,
+        actor,
+        command,
+        ticket_ids=identifiers.ticket,
+        request_ids=request_ids,
+        now=now,
+    )
     if not isinstance(action, RecordProblem):
         return identifiers, state, action
     return _refuse(
@@ -287,6 +301,7 @@ def _commit_submit(
         command.client_command_id,
         action,
         result,
+        content=command.content,
         promoted=False,
         now=now,
     )
@@ -310,7 +325,12 @@ def _commit_submit(
         status_code=201,
         telemetry=telemetry,
         now=now,
-        subjects=_subjects(identifiers.thread, identifiers.inbound_event, action.ticket_id),
+        subjects=_subjects(
+            identifiers.thread,
+            identifiers.inbound_event,
+            action.ticket_id,
+            action.request_id,
+        ),
     )
     return result
 
@@ -351,13 +371,19 @@ def _prepare_promotion(
     if isinstance(resolved, RecordProblem):
         return _refuse(transaction, actor, command.client_command_id, request_digest, resolved, now)
     ticket_ids = _new_ticket_ids(command.intent, now)
+    request_ids = _new_request_ids(command.intent, now)
     ticket_subject = ticket_ids.ticket if ticket_ids is not None else command.target_ticket_id
     durable = transaction.require_durable_subjects(
         actor.tenant_id,
         actor.principal_id,
         command.client_command_id,
         request_digest,
-        _subjects(resolved, command.inbound_event_id, ticket_subject),
+        _subjects(
+            resolved,
+            command.inbound_event_id,
+            ticket_subject,
+            None if request_ids is None else request_ids[0],
+        ),
         now=now,
     )
     if durable is not None:
@@ -369,6 +395,7 @@ def _prepare_promotion(
         command,
         resolved,
         ticket_ids,
+        request_ids,
         request_digest=request_digest,
         now=now,
     )
@@ -381,6 +408,7 @@ def _prepare_promotion_after_durability(
     command: IntakePromotionCommand,
     resolved: UUID,
     ticket_ids: TicketCreationIds | None,
+    request_ids: tuple[UUID, UUID] | None,
     *,
     request_digest: bytes,
     now: datetime,
@@ -401,6 +429,8 @@ def _prepare_promotion_after_durability(
         project_key=str(inbound["project_key"]),
         source=InboundSource(str(inbound["source_kind"]), str(inbound["source_ref"])),
         ticket_ids=ticket_ids,
+        request_ids=request_ids,
+        now=now,
     )
     if not isinstance(action, RecordProblem):
         return inbound, thread_id, action
@@ -440,6 +470,8 @@ def _commit_promotion(
         thread_version=command.expected_thread_version + 1,
         ticket_id=action.ticket_id,
         ticket_version=action.ticket_version,
+        request_id=action.request_id,
+        request_number=action.request_number,
     )
     _apply_action_state(
         connection,
@@ -447,6 +479,7 @@ def _commit_promotion(
         command.client_command_id,
         action,
         result,
+        content=str(inbound["content"]),
         promoted=True,
         now=now,
     )
@@ -469,7 +502,12 @@ def _commit_promotion(
         status_code=200,
         telemetry=telemetry,
         now=now,
-        subjects=_subjects(thread_id, command.inbound_event_id, action.ticket_id),
+        subjects=_subjects(
+            thread_id,
+            command.inbound_event_id,
+            action.ticket_id,
+            action.request_id,
+        ),
     )
     return result
 
@@ -491,6 +529,8 @@ def _submit_result(
         thread_version=state.version,
         ticket_id=action.ticket_id,
         ticket_version=action.ticket_version,
+        request_id=action.request_id,
+        request_number=action.request_number,
         quarantine_reason=(
             "structural-taint:quarantine_required"
             if action.outcome is IntakeOutcome.QUARANTINED
@@ -511,6 +551,18 @@ def _submit_ids(command: IntakeSubmitCommand, now: datetime) -> _SubmitIds:
         inbound_event=_uuid7(now),
         ticket=ticket_ids,
         ticket_subject=ticket_subject,
+        request=(
+            _uuid7(now)
+            if command.intent is IntakeIntent.CREATE_REQUEST
+            and command.taint is not IntakeTaint.QUARANTINE_REQUIRED
+            else None
+        ),
+        request_event=(
+            _uuid7(now)
+            if command.intent is IntakeIntent.CREATE_REQUEST
+            and command.taint is not IntakeTaint.QUARANTINE_REQUIRED
+            else None
+        ),
     )
 
 
@@ -518,133 +570,5 @@ def _new_ticket_ids(intent: IntakeIntent, now: datetime) -> TicketCreationIds | 
     return new_ticket_creation_ids(now) if intent is IntakeIntent.CREATE_TICKET else None
 
 
-def _insert_inbound_event(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: IntakeSubmitCommand,
-    state: _ThreadState,
-    result: IntakeCommandResult,
-    *,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO inbound_events (
-            inbound_event_id, tenant_id, thread_id, position, source_kind, source_ref,
-            content, content_digest, taint, initial_intent, initial_outcome,
-            recorded_by, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-        (
-            result.inbound_event_id,
-            actor.tenant_id,
-            state.thread_id,
-            state.next_position,
-            command.source.kind,
-            command.source.ref,
-            command.content,
-            hashlib.sha256(command.content.encode()).digest(),
-            command.taint.value,
-            command.intent.value,
-            result.outcome.value,
-            actor.principal_id,
-            now,
-        ),
-    )
-    connection.execute(
-        """
-        INSERT INTO inbound_source_aliases (
-            tenant_id, source_kind, source_ref, inbound_event_id, thread_id,
-            project_key, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """,
-        (
-            actor.tenant_id,
-            command.source.kind,
-            command.source.ref,
-            result.inbound_event_id,
-            state.thread_id,
-            command.project_key,
-            now,
-        ),
-    )
-    if result.outcome is IntakeOutcome.QUARANTINED:
-        connection.execute(
-            """
-            INSERT INTO inbound_quarantines (
-                inbound_event_id, tenant_id, reason, recorded_by, recorded_at
-            ) VALUES (%s, %s, %s, %s, %s)
-            """,
-            (
-                result.inbound_event_id,
-                actor.tenant_id,
-                result.quarantine_reason,
-                actor.principal_id,
-                now,
-            ),
-        )
-
-
-def _apply_action_state(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command_id: UUID,
-    action: _Action,
-    result: IntakeCommandResult,
-    *,
-    promoted: bool,
-    now: datetime,
-) -> None:
-    if action.ticket_command is not None and action.ticket_ids is not None:
-        insert_ticket_state(
-            connection,
-            actor,
-            action.ticket_command,
-            project_key=result.project_key,
-            identifiers=action.ticket_ids,
-            now=now,
-        )
-        connection.execute(
-            """
-            INSERT INTO ticket_project_bindings (
-                ticket_id, tenant_id, project_key, run_id, source_namespace,
-                immutable_source_id, bound_at, inbound_event_id
-            ) VALUES (%s, %s, %s, NULL, NULL, NULL, %s, %s)
-            """,
-            (
-                action.ticket_ids.ticket,
-                actor.tenant_id,
-                result.project_key,
-                now,
-                result.inbound_event_id,
-            ),
-        )
-    if action.ticket_id is None:
-        return
-    link_kind = (
-        "promotion_create"
-        if promoted and action.outcome is IntakeOutcome.TICKET_CREATED
-        else "promotion_link"
-        if promoted
-        else "initial_create"
-        if action.outcome is IntakeOutcome.TICKET_CREATED
-        else "initial_link"
-    )
-    connection.execute(
-        """
-        INSERT INTO inbound_ticket_links (
-            inbound_event_id, tenant_id, thread_id, ticket_id, link_kind,
-            command_id, linked_by, linked_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-        (
-            result.inbound_event_id,
-            actor.tenant_id,
-            result.thread_id,
-            action.ticket_id,
-            link_kind,
-            command_id,
-            actor.principal_id,
-            now,
-        ),
-    )
+def _new_request_ids(intent: IntakeIntent, now: datetime) -> tuple[UUID, UUID] | None:
+    return (_uuid7(now), _uuid7(now)) if intent is IntakeIntent.CREATE_REQUEST else None

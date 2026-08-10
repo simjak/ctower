@@ -111,31 +111,35 @@ class _RequestRoutes:
         boundary = RequestList.model_validate_json(encoded(outcome.response_payload()))
         return JSONResponse(content=boundary.model_dump(mode="json", by_alias=True))
 
-    async def prioritize(self, request: Request, request_id: UUID) -> JSONResponse:
+    async def prioritize(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestPriorityRequest)
 
-    async def triage(self, request: Request, request_id: UUID) -> JSONResponse:
+    async def triage(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestTriageRequest)
 
-    async def assign_owner(self, request: Request, request_id: UUID) -> JSONResponse:
+    async def assign_owner(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestOwnerRequest)
 
-    async def relate_ticket(self, request: Request, request_id: UUID) -> JSONResponse:
+    async def relate_ticket(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestTicketRelationRequest)
 
-    async def set_blocker(self, request: Request, request_id: UUID) -> JSONResponse:
+    async def set_blocker(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestBlockerRequest)
 
-    async def evaluate_closure(self, request: Request, request_id: UUID) -> JSONResponse:
+    async def evaluate_closure(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestClosureEvaluationRequest)
 
     async def _change(
-        self, request: Request, request_id: UUID, boundary_model: type[BaseModel]
+        self, request: Request, request_id: str, boundary_model: type[BaseModel]
     ) -> JSONResponse:
         parsed = await self._mutation(request, CredentialScope.TRANSITION, boundary_model)
         if isinstance(parsed, JSONResponse):
             return parsed
-        outcome = _apply_change(self._requests, parsed, request_id)
+        try:
+            parsed_request_id = uuid_value(request_id)
+        except ValueError:
+            return problem_response(validation_problem())
+        outcome = _apply_change(self._requests, parsed, parsed_request_id)
         return self._response(parsed, outcome, RequestChangeResult, accepted_status=200)
 
     async def _mutation(
@@ -229,6 +233,7 @@ def _apply_change(
                 command_id,
                 request_id,
                 payload.expected_version,
+                payload.expected_ticket_version,
                 payload.ticket_id,
                 payload.purpose,
                 payload.active,

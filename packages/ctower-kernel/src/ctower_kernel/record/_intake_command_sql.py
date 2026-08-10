@@ -43,6 +43,10 @@ class IntakeAction:
     ticket_version: int | None
     ticket_command: TicketCommand | None
     ticket_ids: TicketCreationIds | None
+    request_id: UUID | None = None
+    request_number: int | None = None
+    request_owner_id: UUID | None = None
+    request_event_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +55,8 @@ class _SubmitIds:
     inbound_event: UUID
     ticket: TicketCreationIds | None
     ticket_subject: UUID | None
+    request: UUID | None
+    request_event: UUID | None
 
 
 def resolve_inbound_for_promotion(
@@ -79,7 +85,7 @@ def lock_inbound_for_promotion(
 ) -> dict[str, object] | RecordProblem:
     row = connection.execute(
         """
-        SELECT inbound.thread_id, inbound.source_kind, inbound.source_ref,
+        SELECT inbound.thread_id, inbound.source_kind, inbound.source_ref, inbound.content,
             inbound.initial_outcome, inbound.taint,
             thread.project_key, thread.version,
             (
@@ -89,6 +95,7 @@ def lock_inbound_for_promotion(
                 ORDER BY sequence DESC LIMIT 1
             ) AS event_hash,
             link.ticket_id AS linked_ticket_id,
+            request.request_id AS linked_request_id,
             EXISTS (
                 SELECT 1 FROM inbound_quarantines AS quarantine
                 WHERE quarantine.tenant_id = inbound.tenant_id
@@ -100,6 +107,9 @@ def lock_inbound_for_promotion(
         LEFT JOIN inbound_ticket_links AS link
           ON link.inbound_event_id = inbound.inbound_event_id
          AND link.tenant_id = inbound.tenant_id
+        LEFT JOIN requests AS request
+          ON request.inbound_event_id = inbound.inbound_event_id
+         AND request.tenant_id = inbound.tenant_id
         WHERE inbound.tenant_id = %s AND inbound.inbound_event_id = %s
         FOR UPDATE OF thread
         """,
@@ -119,14 +129,15 @@ def lock_inbound_for_promotion(
             title="Inbound event is not promotable",
             command_id=command.client_command_id,
         )
-    if row["linked_ticket_id"] is not None:
+    if row["linked_ticket_id"] is not None or row["linked_request_id"] is not None:
+        target = row["linked_ticket_id"] or row["linked_request_id"]
         return RecordProblem(
             code="intake-already-promoted",
-            detail="The inbound event already has its one durable ticket provenance edge.",
+            detail="The inbound event already has its one durable authority edge.",
             status=409,
             title="Inbound event already promoted",
             command_id=command.client_command_id,
-            unmet_facts=(f"ticket:{row['linked_ticket_id']}",),
+            unmet_facts=(f"authority:{target}",),
         )
     current = int(cast(int, row["version"]))
     if current != command.expected_thread_version:
@@ -153,15 +164,22 @@ def advance_thread(
 
 
 def subjects(
-    thread_id: UUID, inbound_event_id: UUID, ticket_id: UUID | None
+    thread_id: UUID,
+    inbound_event_id: UUID,
+    ticket_id: UUID | None,
+    request_id: UUID | None = None,
 ) -> tuple[tuple[str, UUID], ...]:
     values = [("inbound_thread", thread_id), ("inbound_event", inbound_event_id)]
     if ticket_id is not None:
         values.append(("ticket", ticket_id))
+    if request_id is not None:
+        values.append(("request", request_id))
     return tuple(values)
 
 
 def event_ids(event_id: UUID, action: IntakeAction) -> tuple[UUID, ...]:
+    if action.request_event_id is not None:
+        return (event_id, action.request_event_id)
     if action.ticket_ids is None:
         return (event_id,)
     return (event_id, action.ticket_ids.event)
@@ -191,6 +209,8 @@ def result_from_payload(payload: dict[str, object]) -> IntakeCommandResult:
     ticket_id = payload.get("ticket_id")
     ticket_version = payload.get("ticket_version")
     reason = payload.get("quarantine_reason")
+    request_id = payload.get("request_id")
+    request_number = payload.get("request_number")
     return IntakeCommandResult(
         command_id=UUID(str(payload["command_id"])),
         event_ids=tuple(UUID(str(item)) for item in cast(list[object], payload["event_ids"])),
@@ -203,6 +223,8 @@ def result_from_payload(payload: dict[str, object]) -> IntakeCommandResult:
         ticket_id=UUID(str(ticket_id)) if ticket_id is not None else None,
         ticket_version=int(cast(int, ticket_version)) if ticket_version is not None else None,
         quarantine_reason=str(reason) if reason is not None else None,
+        request_id=UUID(str(request_id)) if request_id is not None else None,
+        request_number=int(cast(int, request_number)) if request_number is not None else None,
     )
 
 

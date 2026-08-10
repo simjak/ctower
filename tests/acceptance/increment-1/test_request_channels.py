@@ -24,6 +24,7 @@ __all__: tuple[str, ...] = ()
 EXIT_SUCCESS = 0
 EXIT_TEMPORARY = 75
 HTTP_UNPROCESSABLE = 422
+HTTP_UNAUTHORIZED = 401
 TRIAGED_VERSION = 3
 
 
@@ -130,6 +131,43 @@ def test_capture_schema_rejects_identity_and_authority_claims_before_mutation(
         assert (
             cast(tuple[int], connection.execute("SELECT count(*) FROM requests").fetchone())[0] == 0
         )
+
+
+def test_request_validation_is_typed_and_path_identity_is_auth_first(
+    tenant: TenantFixture,
+) -> None:
+    """OR-05: semantic whitespace and malformed paths never escape as FastAPI/500 bodies."""
+
+    command_id = uuid4()
+    headers = {
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(command_id),
+    }
+    with TestClient(application(tenant.database.runtime_dsn)) as client:
+        whitespace = client.post(
+            f"/v1/requests/{uuid4()}/priority",
+            headers=headers,
+            json={"expected_version": 1, "priority": "P1", "reason": " "},
+        )
+        unauthenticated_path = client.post(
+            "/v1/requests/not-a-uuid/priority",
+            json={"expected_version": 1, "priority": "P1", "reason": "valid"},
+        )
+        invalid_path = client.post(
+            "/v1/requests/not-a-uuid/priority",
+            headers={**headers, "Idempotency-Key": str(uuid4())},
+            json={"expected_version": 1, "priority": "P1", "reason": "valid"},
+        )
+
+    assert whitespace.status_code == HTTP_UNPROCESSABLE
+    assert whitespace.headers["content-type"].startswith("application/problem+json")
+    assert whitespace.json()["code"] == "invalid-request"
+    assert unauthenticated_path.status_code == HTTP_UNAUTHORIZED
+    assert unauthenticated_path.headers["content-type"].startswith("application/problem+json")
+    assert invalid_path.status_code == HTTP_UNPROCESSABLE
+    assert invalid_path.headers["content-type"].startswith("application/problem+json")
+    assert invalid_path.json()["code"] == "validation-error"
 
 
 def test_seat_cli_priority_and_triage_use_generated_request_paths(

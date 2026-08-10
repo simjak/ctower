@@ -60,6 +60,7 @@ from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._project_event_routes import install_project_event_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
+from ctower_api._request_cutover_routes import install_request_cutover_routes
 from ctower_api._request_routes import install_request_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
@@ -98,6 +99,7 @@ from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.runtime import RoutineRevision
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
+from ctower_kernel.work.request_cutover import RequestCutover
 from ctower_kernel.work.requests import Requests
 from ctower_kernel.workflow import Workflow
 
@@ -167,6 +169,7 @@ def create_app(
     workflow: Workflow | None = None,
     work: Work | None = None,
     requests: Requests | None = None,
+    request_cutover: RequestCutover | None = None,
     projections: Projections | None = None,
     attention: Attention | None = None,
     board_context: BoardContextFacts | None = None,
@@ -195,10 +198,64 @@ def create_app(
         migration_importer_credential_resolver=migration_importer_credential_resolver,
         fence_observer_resolver=fence_observer_resolver,
     )
+    _install_application_routes(
+        app,
+        access,
+        record,
+        recorder,
+        oidc,
+        proof=proof,
+        workflow=workflow,
+        work=work,
+        requests=requests,
+        request_cutover=request_cutover,
+        projections=projections,
+        attention=attention,
+        board_context=board_context,
+        inbox=inbox,
+        knowledge=knowledge,
+        catalog=catalog,
+    )
+    _install_cutover_boundary(app, access, record, projections, migration, recorder)
+    _install_synthetic_boundary(
+        app, access, record, synthetic_runtime, synthetic_revision, recorder
+    )
+    if dream_dispatch_runtime is not None:
+        install_dream_dispatch_routes(app, access, record, dream_dispatch_runtime, recorder)
+    return app
+
+
+def _install_application_routes(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    recorder: TelemetryRecorder,
+    oidc: OidcRuntimeConfig,
+    *,
+    proof: Proof | None,
+    workflow: Workflow | None,
+    work: Work | None,
+    requests: Requests | None,
+    request_cutover: RequestCutover | None,
+    projections: Projections | None,
+    attention: Attention | None,
+    board_context: BoardContextFacts | None,
+    inbox: Inbox | None,
+    knowledge: Knowledge | None,
+    catalog: BundleCatalog | None,
+) -> None:
     work_module = work or Work(record, telemetry=recorder)
     _install_telemetry_health(app, recorder)
     _install_core_routes(
-        app, access, record, work_module, workflow, recorder, oidc, requests=requests
+        app,
+        access,
+        record,
+        work_module,
+        workflow,
+        recorder,
+        oidc,
+        requests=requests,
+        request_cutover=request_cutover,
     )
     _install_optional_routes(
         app,
@@ -214,13 +271,6 @@ def create_app(
         catalog=catalog,
         recorder=recorder,
     )
-    _install_cutover_boundary(app, access, record, projections, migration, recorder)
-    _install_synthetic_boundary(
-        app, access, record, synthetic_runtime, synthetic_revision, recorder
-    )
-    if dream_dispatch_runtime is not None:
-        install_dream_dispatch_routes(app, access, record, dream_dispatch_runtime, recorder)
-    return app
 
 
 def _install_core_routes(
@@ -233,6 +283,7 @@ def _install_core_routes(
     oidc: OidcRuntimeConfig,
     *,
     requests: Requests | None,
+    request_cutover: RequestCutover | None,
 ) -> None:
     install_auth_routes(app, access, recorder)
     install_login_gate(app, enforcing=oidc.gate_enforcing)
@@ -243,6 +294,8 @@ def _install_core_routes(
     install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     if requests is not None:
         install_request_routes(app, access, record, requests, recorder)
+    if request_cutover is not None:
+        install_request_cutover_routes(app, access, record, request_cutover, recorder)
     install_comment_routes(app, access, record, recorder)
     install_session_routes(app, access, record, recorder)
     install_project_event_routes(app, access, record, recorder)

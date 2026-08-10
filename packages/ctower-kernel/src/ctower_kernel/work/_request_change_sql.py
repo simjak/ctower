@@ -18,6 +18,7 @@ from ctower_kernel.record.transaction import (
     project_scope_refusal,
 )
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.work._request_cutover_guard import request_mutation_epoch_refusal
 from ctower_kernel.work._request_facts_sql import append_fact, current_owner, request_problem
 from ctower_kernel.work._request_state_sql import (
     active_blocker_keys,
@@ -50,6 +51,7 @@ def change_request(
     """Reserve, authorize, append, and event one exact Request command."""
 
     with authority_connection(dsn) as connection:
+        connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         replay = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
@@ -102,7 +104,7 @@ def _change_reserved(
         status_code=200,
         telemetry=telemetry,
         now=now,
-        subjects=(("request", command.request_id),),
+        subjects=_subjects(command),
     )
     return receipt
 
@@ -116,10 +118,17 @@ def _authorized_request(
     request_digest: bytes,
     now: datetime,
 ) -> tuple[dict[str, object], int] | RecordProblem:
-    request = _lock_request(connection, actor.tenant_id, command.request_id)
-    if request is None:
-        problem = request_problem(command, "tenant-scope-denied", 404, "Request not found")
-        return _refuse(transaction, actor, command, request_digest, problem, now)
+    locked = _lock_in_mutation_epoch(
+        connection,
+        transaction,
+        actor,
+        command,
+        request_digest=request_digest,
+        now=now,
+    )
+    if isinstance(locked, RecordProblem):
+        return locked
+    request = locked
     project_key = str(request["project_key"])
     scope = project_scope_refusal(
         connection,
@@ -154,6 +163,29 @@ def _authorized_request(
     if authority is not None:
         return _refuse(transaction, actor, command, request_digest, authority, now)
     return request, current_version
+
+
+def _lock_in_mutation_epoch(
+    connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: RequestChange,
+    *,
+    request_digest: bytes,
+    now: datetime,
+) -> dict[str, object] | RecordProblem:
+    epoch = request_mutation_epoch_refusal(
+        connection,
+        actor.tenant_id,
+        command.client_command_id,
+    )
+    if epoch is not None:
+        return _refuse(transaction, actor, command, request_digest, epoch, now)
+    request = _lock_request(connection, actor.tenant_id, command.request_id)
+    if request is not None:
+        return request
+    problem = request_problem(command, "tenant-scope-denied", 404, "Request not found")
+    return _refuse(transaction, actor, command, request_digest, problem, now)
 
 
 def _committed_change(

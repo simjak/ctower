@@ -3,40 +3,77 @@
 from __future__ import annotations
 
 import hashlib
-import json
-import os
 import re
 import stat
-from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping
+from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
+from uuid import UUID, uuid5
+
+from ctower_contracts import validator_for
 
 from ctower_kernel.record.prohibited_data import prohibited_data_refusal
-from tools.migration.ctower_project.ctower_project_source.canonical import (
-    artifact_digest,
-    canonical_digest,
-)
+from tools.migration.ctower_project.ctower_project_source.canonical import canonical_digest
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
+from tools.migration.operator_requests._dry_run_evidence import (
+    fence_proof as _fence_proof,
+)
+from tools.migration.operator_requests._dry_run_evidence import (
+    owner_map as _owner_map,
+)
+from tools.migration.operator_requests._dry_run_lineage import (
+    latest_and_lineage as _latest_and_lineage,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    SourceLine as _Line,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    classification_blockers as _classification_blockers,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    historical_values as _historical_values,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    is_request as _is_request,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    optional_text as _optional_text,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    parse_jsonl as _parse_jsonl,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    read_stable_regular as _read_stable_regular,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    recheck_source as _recheck_source,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    request_id as _id,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    request_number as _number,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    sha256 as _sha256,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    source_timestamp as _source_timestamp,
+)
+from tools.migration.operator_requests._dry_run_source import (
+    status as _status,
+)
 
 __all__ = ["analyze_cutover"]
 
-_REQUEST_ID = re.compile(r"^R([1-9][0-9]*)$")
 _SOURCE_REQUEST_ID = re.compile(r"^R(0*[1-9][0-9]*)$")
 _PROJECT = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 _OPEN = frozenset({"NEW", "TRIAGED", "WIP", "BLOCKED"})
 _TERMINAL = frozenset({"DONE", "SUPERSEDED", "MERGED", "WONT-DO"})
-_ALIASES = {
-    "ACK": "TRIAGED",
-    "ACKNOWLEDGED": "TRIAGED",
-    "ACTIVE": "WIP",
-    "IN-PROGRESS": "WIP",
-    "IN_PROGRESS": "WIP",
-    "WORKING": "WIP",
-}
 _KNOWN_RELATIONSHIPS = frozenset({"refines", "part-of-thread", "merged-into", "superseded-by"})
-_MAX_SOURCE_BYTES = 64 * 1024 * 1024
 _BATCH_SIZE = 25
+_CUTOVER_NAMESPACE = UUID("4a4fa05a-15ee-55d5-942b-6427217ab3bf")
 
 
 def analyze_cutover(
@@ -52,19 +89,32 @@ def analyze_cutover(
     source_bytes, source_identity = _read_stable_regular(ledger_path)
     ledger_digest = _sha256(source_bytes)
     physical = _parse_jsonl(source_bytes)
+    classification_blockers = _classification_blockers(physical)
     rows = [item for item in physical if _is_request(item.value)]
     latest, lineage_blockers = _latest_and_lineage(rows)
-    mappings, reviews, map_digest, mapping_blockers = _owner_map(owner_map_path)
-    blockers = list(lineage_blockers)
+    (
+        mappings,
+        reviews,
+        map_digest,
+        target_tenant_id,
+        target_authority_digest,
+        mapping_blockers,
+    ) = _owner_map(owner_map_path)
+    blockers = [*classification_blockers, *lineage_blockers]
     blocker_counts, open_rows, maximum, projections, manifest_rows = _analyze_rows(
-        rows, latest, mappings, reviews
+        physical, latest, mappings, reviews, ledger_digest=ledger_digest
     )
-    if stat.S_IMODE(source_identity["mode"]) & 0o222:
+    if stat.S_IMODE(cast(int, source_identity["mode"])) & 0o222:
         blockers.append("source-ledger-writable")
-    blockers.extend(_fence_blockers(fence_proof_path, ledger_digest))
+    fence, fence_blockers = _fence_proof(
+        fence_proof_path,
+        ledger_digest,
+        source_identity=source_identity,
+        signer=signer,
+    )
+    blockers.extend(fence_blockers)
     blockers.extend(mapping_blockers)
-    for key, count in sorted(blocker_counts.items()):
-        blockers.append(f"{key}:{count}")
+    blockers.extend(f"{key}:{count}" for key, count in sorted(blocker_counts.items()))
     counts = _counts(physical, latest, open_rows)
     manifest = _manifest(
         manifest_rows,
@@ -73,9 +123,39 @@ def analyze_cutover(
         map_digest=map_digest,
         maximum=maximum,
         source_identity=source_identity,
+        fence_digest=None if fence is None else cast(str, fence["fence_digest"]),
+        target_authority_digest=target_authority_digest,
+        target_tenant_id=target_tenant_id,
     )
-    manifest, manifest_digest = _seal_manifest(manifest, signer, blockers)
+    manifest_artifact, manifest_digest = _seal_manifest(manifest, signer, blockers)
     _recheck_source(ledger_path, source_identity, ledger_digest)
+    return _analysis_result(
+        blockers=blockers,
+        blocker_counts=blocker_counts,
+        counts=counts,
+        ledger_digest=ledger_digest,
+        manifest=manifest,
+        manifest_artifact=manifest_artifact,
+        manifest_digest=manifest_digest,
+        maximum=maximum,
+        projections=projections,
+        shadow_observation=shadow_observation,
+    )
+
+
+def _analysis_result(
+    *,
+    blockers: list[str],
+    blocker_counts: Counter[str],
+    counts: dict[str, object],
+    ledger_digest: str,
+    manifest: dict[str, Any],
+    manifest_artifact: dict[str, Any] | None,
+    manifest_digest: str | None,
+    maximum: int,
+    projections: dict[str, object],
+    shadow_observation: Mapping[str, object] | None,
+) -> dict[str, Any]:
     unique_blockers = sorted(set(blockers))
     return {
         "schema": "ctower.request-cutover-dry-run/v1",
@@ -83,10 +163,11 @@ def analyze_cutover(
         "eligible": not unique_blockers,
         "blockers": unique_blockers,
         "blocker_counts": dict(sorted(blocker_counts.items())),
-        "batches": _batches(manifest_rows, ledger_digest),
+        "batches": manifest["batches"],
         "counts": counts,
         "ledger_sha256": ledger_digest,
-        "manifest": manifest,
+        "diagnostic_manifest": manifest,
+        "manifest": manifest_artifact,
         "manifest_digest": manifest_digest,
         "maximum_request_number": maximum,
         "projections": projections,
@@ -107,8 +188,15 @@ def _counts(
         "physical_rows": len(physical),
         "logical_requests": len(latest),
         "open_requests": len(open_rows),
-        "open_by_project": dict(sorted(by_project.items())),
+        "open_by_project": _project_count_items(by_project),
     }
+
+
+def _project_count_items(counts: Mapping[str, int]) -> list[dict[str, object]]:
+    return [
+        {"project_key": project_key, "count": count}
+        for project_key, count in sorted(counts.items())
+    ]
 
 
 def _manifest(
@@ -118,62 +206,72 @@ def _manifest(
     ledger_digest: str,
     map_digest: str | None,
     maximum: int,
-    source_identity: Mapping[str, int],
+    source_identity: Mapping[str, object],
+    fence_digest: str | None,
+    target_authority_digest: str | None,
+    target_tenant_id: str | None,
 ) -> dict[str, Any]:
+    rows_digest = canonical_digest(cast(list[Any], rows))
+    batches = _batches(rows, rows_digest)
     return {
         "schema": "ctower.request-import-manifest/v1",
         "archive_ref": f"restricted-archive:{ledger_digest.removeprefix('sha256:')}",
         "batch_size": _BATCH_SIZE,
         "counts": dict(counts),
+        "fence_digest": fence_digest,
         "ledger_sha256": ledger_digest,
         "maximum_request_number": maximum,
         "open_request_ids": [str(item["id"]) for item in rows],
         "owner_mapping_sha256": map_digest,
+        "rows_digest": rows_digest,
         "rows": rows,
+        "sampling_seed": rows_digest,
+        "batches": batches,
         "source_identity": {
             "device": source_identity["device"],
             "inode": source_identity["inode"],
             "size": source_identity["size"],
+            "mode": source_identity["mode"],
+            "mtime_ns": source_identity["mtime_ns"],
         },
+        "target_authority_digest": target_authority_digest,
+        "target_tenant_id": target_tenant_id,
     }
 
 
 def _seal_manifest(
     manifest: dict[str, Any], signer: ArtifactSigner | None, blockers: list[str]
-) -> tuple[dict[str, Any], str]:
-    if signer is not None:
+) -> tuple[dict[str, Any] | None, str | None]:
+    if signer is not None and not blockers:
         sealed = signer.seal(manifest, "manifest_digest")
+        validator_for("ctower.request-import-manifest/v1").validate(sealed)
         return sealed, cast(str, sealed["manifest_digest"])
-    digest = artifact_digest(manifest, "manifest_digest", "signature")
-    manifest["manifest_digest"] = digest
-    manifest["signature"] = None
-    blockers.append("manifest-unsigned")
-    return manifest, digest
-
-
-class _Line:
-    __slots__ = ("digest", "line_number", "value")
-
-    def __init__(self, line_number: int, value: dict[str, object], digest: str) -> None:
-        self.line_number = line_number
-        self.value = value
-        self.digest = digest
+    if signer is None:
+        blockers.append("manifest-unsigned")
+    return None, None
 
 
 def _analyze_rows(
-    rows: list[_Line],
+    physical: list[_Line],
     latest: Mapping[str, _Line],
     mappings: Mapping[tuple[str | None, str | None], Mapping[str, str]],
     reviews: Mapping[str, str],
+    *,
+    ledger_digest: str,
 ) -> tuple[Counter[str], list[_Line], int, dict[str, object], list[dict[str, object]]]:
     blocker_counts: Counter[str] = Counter()
-    maximum = _source_high_water(rows, blocker_counts)
+    maximum = _source_high_water(physical, blocker_counts)
     open_rows: list[_Line] = []
     projections: dict[str, object] = {}
     manifest_rows: list[dict[str, object]] = []
     for request_id, item in sorted(latest.items(), key=lambda pair: _number(pair[0])):
         manifest_row = _analyze_latest(
-            request_id, item, mappings, reviews, blocker_counts=blocker_counts
+            request_id,
+            item,
+            mappings,
+            reviews,
+            ledger_digest=ledger_digest,
+            blocker_counts=blocker_counts,
         )
         if manifest_row is None:
             continue
@@ -186,7 +284,7 @@ def _analyze_rows(
 def _source_high_water(rows: list[_Line], blocker_counts: Counter[str]) -> int:
     maximum = 0
     for item in rows:
-        match = _SOURCE_REQUEST_ID.fullmatch(_id(item.value))
+        match = _SOURCE_REQUEST_ID.fullmatch(_id(item.value)) if _is_request(item.value) else None
         if match is not None:
             maximum = max(maximum, int(match.group(1)))
         prohibited = prohibited_data_refusal(_historical_values(item.value))
@@ -202,6 +300,7 @@ def _analyze_latest(
     mappings: Mapping[tuple[str | None, str | None], Mapping[str, str]],
     reviews: Mapping[str, str],
     *,
+    ledger_digest: str,
     blocker_counts: Counter[str],
 ) -> dict[str, object] | None:
     row = item.value
@@ -226,6 +325,7 @@ def _analyze_latest(
         mapping=mapping,
         priority=priority,
         projection=_projection(status, priority),
+        ledger_digest=ledger_digest,
     )
 
 
@@ -237,6 +337,23 @@ def _open_row_problems(
     mapping: Mapping[str, str] | None,
     priority: str | None,
 ) -> list[str]:
+    problems = _binding_problems(project, owner, mapping)
+    problems.extend(_review_problems(status, priority))
+    relation_problem = _relationship_problem(row)
+    if relation_problem is not None:
+        problems.append(relation_problem)
+    if status == "BLOCKED" and not _optional_text(row.get("note")):
+        problems.append("blocked-reason-missing")
+    if not _valid_row_timestamps(row):
+        problems.append("source-timestamp-invalid")
+    return problems
+
+
+def _binding_problems(
+    project: str | None,
+    owner: str | None,
+    mapping: Mapping[str, str] | None,
+) -> list[str]:
     problems: list[str] = []
     if project is None or _PROJECT.fullmatch(project) is None:
         problems.append("open-project-unbound")
@@ -244,213 +361,20 @@ def _open_row_problems(
         problems.append("open-owner-unbound")
     if mapping is None:
         problems.append("owner-map-missing")
+    return problems
+
+
+def _review_problems(status: str, priority: str | None) -> list[str]:
     if status != "NEW" and priority is None:
-        problems.append("priority-review-missing")
-    relation_problem = _relationship_problem(row)
-    if relation_problem is not None:
-        problems.append(relation_problem)
-    if status == "BLOCKED" and not _optional_text(row.get("note")):
-        problems.append("blocked-reason-missing")
-    return problems
+        return ["priority-review-missing"]
+    return []
 
 
-def _read_stable_regular(path: Path) -> tuple[bytes, dict[str, int]]:
-    metadata = os.lstat(path)
-    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
-        raise ValueError("source-ledger-not-regular")
-    if metadata.st_size > _MAX_SOURCE_BYTES:
-        raise ValueError("source-ledger-too-large")
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    try:
-        opened = os.fstat(fd)
-        if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
-            raise ValueError("source-ledger-identity-drift")
-        chunks: list[bytes] = []
-        total = 0
-        while True:
-            chunk = os.read(fd, 1024 * 1024)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > _MAX_SOURCE_BYTES:
-                raise ValueError("source-ledger-too-large")
-            chunks.append(chunk)
-    finally:
-        os.close(fd)
-    return b"".join(chunks), {
-        "device": metadata.st_dev,
-        "inode": metadata.st_ino,
-        "mode": metadata.st_mode,
-        "mtime_ns": metadata.st_mtime_ns,
-        "size": metadata.st_size,
-    }
-
-
-def _recheck_source(path: Path, identity: Mapping[str, int], digest: str) -> None:
-    data, observed = _read_stable_regular(path)
-    for key in ("device", "inode", "mode", "mtime_ns", "size"):
-        if observed[key] != identity[key]:
-            raise ValueError("source-ledger-drift")
-    if _sha256(data) != digest:
-        raise ValueError("source-ledger-digest-drift")
-
-
-def _parse_jsonl(data: bytes) -> list[_Line]:
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as error:
-        raise ValueError("source-ledger-not-utf8") from error
-    result: list[_Line] = []
-    for line_number, raw in enumerate(text.splitlines(), start=1):
-        if not raw.strip():
-            continue
-        try:
-            value = json.loads(raw, object_pairs_hook=_unique_object)
-        except (json.JSONDecodeError, ValueError) as error:
-            raise ValueError(f"source-ledger-malformed-line:{line_number}") from error
-        if not isinstance(value, dict):
-            raise TypeError(f"source-ledger-nonobject-line:{line_number}")
-        result.append(_Line(line_number, cast(dict[str, object], value), _sha256(raw.encode())))
-    return result
-
-
-def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    value: dict[str, object] = {}
-    for key, item in pairs:
-        if key in value:
-            raise ValueError("duplicate-json-key")
-        value[key] = item
-    return value
-
-
-def _latest_and_lineage(rows: list[_Line]) -> tuple[dict[str, _Line], list[str]]:
-    grouped: dict[str, list[_Line]] = defaultdict(list)
-    blockers: list[str] = []
-    for item in rows:
-        request_id = _id(item.value)
-        if _SOURCE_REQUEST_ID.fullmatch(request_id) is None:
-            blockers.append(f"request-id-invalid:{item.line_number}")
-            continue
-        if _REQUEST_ID.fullmatch(request_id) is None:
-            blockers.append(f"request-id-noncanonical:{request_id}")
-        grouped[request_id].append(item)
-    for request_id, lineage in grouped.items():
-        blockers.extend(_lineage_blockers(request_id, lineage))
-    return {request_id: lineage[-1] for request_id, lineage in grouped.items()}, blockers
-
-
-def _lineage_blockers(request_id: str, lineage: list[_Line]) -> list[str]:
-    problems: list[str] = []
-    text_values = {_optional_text(item.value.get("text")) for item in lineage}
-    created_values = {_optional_text(item.value.get("created")) for item in lineage}
-    projects = {
-        project
-        for item in lineage
-        if (project := _optional_text(item.value.get("project"))) is not None
-    }
-    if len(text_values) != 1 or None in text_values:
-        problems.append(f"lineage-text-diverged:{request_id}")
-    if len(created_values) != 1 or None in created_values:
-        problems.append(f"lineage-created-diverged:{request_id}")
-    if len(projects) > 1:
-        problems.append(f"lineage-project-diverged:{request_id}")
-    problems.extend(_history_blockers(request_id, lineage))
-    return problems
-
-
-def _history_blockers(request_id: str, lineage: list[_Line]) -> list[str]:
-    histories = [item.value.get("history") for item in lineage]
-    if any(not isinstance(history, list) or not history for history in histories):
-        return [f"lineage-history-missing:{request_id}"]
-    forked = any(
-        cast(list[object], histories[index])
-        != cast(list[object], histories[index + 1])[: len(cast(list[object], histories[index]))]
-        for index in range(len(histories) - 1)
+def _valid_row_timestamps(row: Mapping[str, object]) -> bool:
+    return not (
+        _source_timestamp(row.get("created")) is None
+        or _source_timestamp(row.get("updated")) is None
     )
-    return [f"lineage-history-fork:{request_id}"] if forked else []
-
-
-def _owner_map(
-    path: Path | None,
-) -> tuple[
-    dict[tuple[str | None, str | None], dict[str, str]],
-    dict[str, str],
-    str | None,
-    list[str],
-]:
-    if path is None:
-        return {}, {}, None, ["owner-map-missing"]
-    data, _identity = _read_stable_regular(path)
-    try:
-        value = json.loads(data)
-    except json.JSONDecodeError as error:
-        raise ValueError("owner-map-malformed") from error
-    if not isinstance(value, dict) or value.get("schema") != "ctower.request-owner-map/v1":
-        raise ValueError("owner-map-schema-invalid")
-    if not isinstance(value.get("reviewed_by"), str) or not isinstance(
-        value.get("reviewed_at"), str
-    ):
-        raise TypeError("owner-map-review-missing")
-    mappings = _owner_mappings(value.get("mappings", []))
-    reviews = _request_reviews(value.get("request_reviews", []))
-    return mappings, reviews, canonical_digest(cast(dict[str, Any], value)), []
-
-
-def _owner_mappings(
-    entries: object,
-) -> dict[tuple[str | None, str | None], dict[str, str]]:
-    mappings: dict[tuple[str | None, str | None], dict[str, str]] = {}
-    for item in cast(list[object], entries):
-        if not isinstance(item, dict):
-            raise TypeError("owner-map-entry-invalid")
-        project = item.get("project_key")
-        owner = item.get("source_owner")
-        principal = item.get("principal_id")
-        if not all(isinstance(member, str) and member for member in (project, owner, principal)):
-            raise ValueError("owner-map-entry-invalid")
-        key = (cast(str, project), cast(str, owner))
-        if key in mappings:
-            raise ValueError("owner-map-entry-duplicate")
-        mappings[key] = {
-            "principal_id": cast(str, principal),
-            "project_key": cast(str, project),
-            "source_owner": cast(str, owner),
-        }
-    return mappings
-
-
-def _request_reviews(entries: object) -> dict[str, str]:
-    reviews: dict[str, str] = {}
-    for item in cast(list[object], entries):
-        if not isinstance(item, dict):
-            raise TypeError("request-review-invalid")
-        request_id, priority = item.get("id"), item.get("priority")
-        if not isinstance(request_id, str) or priority not in {"P0", "P1", "P2"}:
-            raise ValueError("request-review-invalid")
-        if request_id in reviews:
-            raise ValueError("request-review-duplicate")
-        reviews[request_id] = cast(str, priority)
-    return reviews
-
-
-def _fence_blockers(path: Path | None, ledger_digest: str) -> list[str]:
-    if path is None:
-        return ["source-fence-proof-missing"]
-    data, _identity = _read_stable_regular(path)
-    try:
-        value = json.loads(data)
-    except json.JSONDecodeError as error:
-        raise ValueError("source-fence-proof-malformed") from error
-    if not isinstance(value, dict) or value.get("schema") != "ctower.request-source-fence/v1":
-        return ["source-fence-proof-invalid"]
-    blockers: list[str] = []
-    if value.get("ledger_sha256") != ledger_digest:
-        blockers.append("fence-ledger-digest-unbound")
-    if value.get("writer_refuses") is not True:
-        blockers.append("source-writer-not-refusing")
-    if value.get("mutation_entrypoints_removed") is not True:
-        blockers.append("source-mutation-entrypoints-present")
-    return blockers
 
 
 def _projection(status: str, priority: str | None) -> dict[str, object]:
@@ -474,31 +398,47 @@ def _manifest_row(
     mapping: Mapping[str, str] | None,
     priority: str | None,
     projection: Mapping[str, object],
+    ledger_digest: str,
 ) -> dict[str, object]:
+    del priority
     row = item.value
     text = _optional_text(row.get("text")) or ""
     owner_digest = _sha256((owner or "").encode())
     refines = row.get("refines") or []
     if not isinstance(refines, list):
         raise TypeError("request-refines-invalid")
+    source_number = _number(request_id)
     return {
+        "command_id": str(
+            uuid5(
+                _CUTOVER_NAMESPACE,
+                f"{ledger_digest}:{request_id}:import:1",
+            )
+        ),
         "content_sha256": _sha256(text.encode()),
-        "created": _optional_text(row.get("created")),
+        "created_at": _source_timestamp(row.get("created")),
         "id": request_id,
         "latest_line": item.line_number,
         "latest_row_sha256": item.digest,
         "mapped_principal_id": None if mapping is None else mapping["principal_id"],
         "original_owner_sha256": owner_digest,
-        "priority": priority,
+        "priority": projection["priority"],
         "project_key": project,
         "projection": dict(projection),
         "refines": list(refines),
         "relationships_sha256": canonical_digest(
             cast(dict[str, Any], {"relationships": row.get("relationships") or []})
         ),
+        "request_id": str(
+            uuid5(
+                _CUTOVER_NAMESPACE,
+                f"{ledger_digest}:{request_id}:request",
+            )
+        ),
+        "request_number": source_number,
         "source_owner": owner,
         "source_status": status,
-        "updated": _optional_text(row.get("updated")),
+        "updated_at": _source_timestamp(row.get("updated")),
     }
 
 
@@ -518,19 +458,10 @@ def _batches(rows: list[dict[str, object]], seed_digest: str) -> list[dict[str, 
                 "batch_index": batch_index,
                 "batch_digest": canonical_digest(cast(list[Any], batch)),
                 "cumulative_count": start + len(batch),
-                "sample": [
-                    {
-                        "content_sha256": item["content_sha256"],
-                        "id": item["id"],
-                        "latest_row_sha256": item["latest_row_sha256"],
-                        "project_key": item["project_key"],
-                    }
-                    for item in sample
-                ],
-                "sample_count": len(sample),
+                "sample_ids": [str(item["id"]) for item in sample],
                 "source_count": len(batch),
-                "source_count_by_project": dict(
-                    sorted(Counter(str(item["project_key"]) for item in batch).items())
+                "source_count_by_project": _project_count_items(
+                    Counter(str(item["project_key"]) for item in batch)
                 ),
             }
         )
@@ -567,45 +498,5 @@ def _refines_problem(refines: object) -> str | None:
     return None
 
 
-def _historical_values(value: object) -> Iterable[str | None]:
-    if isinstance(value, str):
-        yield value
-    elif isinstance(value, dict):
-        for key, item in value.items():
-            if key not in {"id", "owner", "project", "created", "updated"}:
-                yield from _historical_values(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _historical_values(item)
-
-
-def _is_request(value: Mapping[str, object]) -> bool:
-    return str(value.get("record_type") or "request").strip().lower() == "request" and _id(
-        value
-    ).startswith("R")
-
-
-def _id(value: Mapping[str, object]) -> str:
-    return str(value.get("id") or "").strip().upper()
-
-
-def _status(value: object) -> str:
-    status = str(value or "NEW").strip().upper()
-    return _ALIASES.get(status, status)
-
-
-def _optional_text(value: object) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
-
-
-def _number(request_id: str) -> int:
-    match = _SOURCE_REQUEST_ID.fullmatch(request_id)
-    return int(match.group(1)) if match is not None else 2**63 - 1
-
-
 def _count(counter: Counter[str], key: str) -> None:
     counter[key] += 1
-
-
-def _sha256(data: bytes) -> str:
-    return f"sha256:{hashlib.sha256(data).hexdigest()}"

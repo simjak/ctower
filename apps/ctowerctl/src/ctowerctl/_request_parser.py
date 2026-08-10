@@ -70,6 +70,7 @@ def _ticket_parser(actions: argparse._SubParsersAction[_Parser]) -> None:
     relation.add_argument("request_id", type=UUID)
     _command_id(relation)
     _version(relation)
+    relation.add_argument("--expected-ticket-version", required=True, type=int)
     relation.add_argument("--ticket-id", required=True, type=UUID)
     relation.add_argument("--purpose", required=True, choices=("required", "optional"))
     relation.add_argument("--inactive", action="store_true")

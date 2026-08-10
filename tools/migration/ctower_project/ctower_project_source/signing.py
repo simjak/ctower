@@ -74,6 +74,11 @@ class ArtifactSigner:
         sealed["signature"] = self.detached(digest)
         return sealed
 
+    def verifier(self) -> ArtifactVerifier:
+        """Return the exact public verifier paired with this protected signer."""
+
+        return ArtifactVerifier(self._private_key.public_key())
+
 
 class ArtifactVerifier:
     def __init__(self, public_key: Ed25519PublicKey) -> None:

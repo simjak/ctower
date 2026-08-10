@@ -36,19 +36,34 @@ def closure_outcome(
 
 
 def _duplicate_outcome(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> str:
     row = connection.execute(
         """
-        SELECT canonical_request_id FROM request_triage_facts
-        WHERE tenant_id = %s AND request_id = %s ORDER BY sequence DESC LIMIT 1
+        SELECT fact.canonical_request_id FROM request_triage_facts AS fact
+        WHERE fact.tenant_id = %s AND fact.request_id = %s
+          AND (NOT %s OR EXISTS (
+              SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+              WHERE confirmation.tenant_id = fact.tenant_id
+                AND confirmation.principal_id = fact.recorded_by
+                AND confirmation.client_command_id = fact.command_id
+          ))
+        ORDER BY fact.sequence DESC LIMIT 1
         """,
-        (tenant_id, request_id),
+        (tenant_id, request_id, accepted_only),
     ).fetchone()
     if row is None:
         raise RuntimeError("Duplicate Request has no canonical Request fact")
     canonical = cast(UUID, row["canonical_request_id"])
-    return "done" if derived_state(connection, tenant_id, canonical) == "DONE" else "open"
+    return (
+        "done"
+        if derived_state(connection, tenant_id, canonical, accepted_only=accepted_only) == "DONE"
+        else "open"
+    )
 
 
 def _required_tickets_outcome(
@@ -104,22 +119,34 @@ def _ticket_closure_invalid(
 
 
 def derived_state(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> str:
-    request = connection.execute(
-        "SELECT version FROM requests WHERE tenant_id = %s AND request_id = %s",
-        (tenant_id, request_id),
-    ).fetchone()
+    request = (
+        _accepted_request_version(connection, tenant_id, request_id)
+        if accepted_only
+        else connection.execute(
+            "SELECT version FROM requests WHERE tenant_id = %s AND request_id = %s",
+            (tenant_id, request_id),
+        ).fetchone()
+    )
     if request is None:
         return "NEW"
-    if _has_valid_done_evaluation(connection, tenant_id, request_id, request):
-        return "DONE"
-    if _has_request_blocker(connection, tenant_id, request_id) or _has_ticket_blocker(
-        connection, tenant_id, request_id
+    if _has_valid_done_evaluation(
+        connection, tenant_id, request_id, request, accepted_only=accepted_only
     ):
+        return "DONE"
+    if _has_request_blocker(
+        connection, tenant_id, request_id, accepted_only=accepted_only
+    ) or _has_ticket_blocker(connection, tenant_id, request_id, accepted_only=accepted_only):
         return "BLOCKED"
-    triage = latest_triage(connection, tenant_id, request_id)
-    if triage == "ACCEPTED" and _has_active_required_ticket(connection, tenant_id, request_id):
+    triage = latest_triage(connection, tenant_id, request_id, accepted_only=accepted_only)
+    if triage == "ACCEPTED" and _has_active_required_ticket(
+        connection, tenant_id, request_id, accepted_only=accepted_only
+    ):
         return "WIP"
     return "TRIAGED" if triage != "UNTRIAGED" else "NEW"
 
@@ -129,42 +156,66 @@ def _has_valid_done_evaluation(
     tenant_id: UUID,
     request_id: UUID,
     request: dict[str, object],
+    *,
+    accepted_only: bool = False,
 ) -> bool:
     closure = connection.execute(
         """
-        SELECT outcome, request_version, dependency_digest
-        FROM request_closure_evaluations
-        WHERE tenant_id = %s AND request_id = %s
-        ORDER BY recorded_at DESC, evaluation_id DESC LIMIT 1
+        SELECT evaluation.outcome, evaluation.request_version, evaluation.dependency_digest
+        FROM request_closure_evaluations AS evaluation
+        WHERE evaluation.tenant_id = %s AND evaluation.request_id = %s
+          AND (NOT %s OR EXISTS (
+              SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+              WHERE confirmation.tenant_id = evaluation.tenant_id
+                AND confirmation.principal_id = evaluation.recorded_by
+                AND confirmation.client_command_id = evaluation.command_id
+          ))
+        ORDER BY evaluation.request_version DESC LIMIT 1
         """,
-        (tenant_id, request_id),
+        (tenant_id, request_id, accepted_only),
     ).fetchone()
     if closure is None or str(closure["outcome"]) != "done":
         return False
     if int(cast(int, closure["request_version"])) != int(cast(int, request["version"])):
         return False
     return bytes(cast(bytes, closure["dependency_digest"])) == dependency_digest(
-        connection, tenant_id, request_id
+        connection, tenant_id, request_id, accepted_only=accepted_only
     )
 
 
 def dependency_digest(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> bytes:
     relations = connection.execute(
-        _DEPENDENCY_RELATIONS_SQL, _dependency_args(tenant_id, request_id)
+        _DEPENDENCY_RELATIONS_SQL,
+        _dependency_args(tenant_id, request_id, accepted_only=accepted_only),
     )
-    blockers = connection.execute(_DEPENDENCY_BLOCKERS_SQL, (tenant_id, request_id)).fetchall()
+    blockers = connection.execute(
+        _DEPENDENCY_BLOCKERS_SQL, (tenant_id, request_id, accepted_only)
+    ).fetchall()
     triage = connection.execute(
         """
-        SELECT disposition, canonical_request_id FROM request_triage_facts
-        WHERE tenant_id = %s AND request_id = %s ORDER BY sequence DESC LIMIT 1
+        SELECT fact.disposition, fact.canonical_request_id FROM request_triage_facts AS fact
+        WHERE fact.tenant_id = %s AND fact.request_id = %s
+          AND (NOT %s OR EXISTS (
+              SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+              WHERE confirmation.tenant_id = fact.tenant_id
+                AND confirmation.principal_id = fact.recorded_by
+                AND confirmation.client_command_id = fact.command_id
+          ))
+        ORDER BY fact.sequence DESC LIMIT 1
         """,
-        (tenant_id, request_id),
+        (tenant_id, request_id, accepted_only),
     ).fetchone()
     payload = {
         "blockers": [str(row["blocker_key"]) for row in blockers],
-        "canonical": _canonical_dependency(connection, tenant_id, triage),
+        "canonical": _canonical_dependency(
+            connection, tenant_id, triage, accepted_only=accepted_only
+        ),
         "relations": [_relation_dependency(row) for row in relations],
         "triage": None if triage is None else str(triage["disposition"]),
     }
@@ -173,21 +224,25 @@ def dependency_digest(
     ).digest()
 
 
-def _dependency_args(tenant_id: UUID, request_id: UUID) -> tuple[UUID, UUID, UUID, UUID, UUID]:
-    return tenant_id, request_id, tenant_id, tenant_id, tenant_id
+def _dependency_args(
+    tenant_id: UUID, request_id: UUID, *, accepted_only: bool
+) -> tuple[UUID, UUID, bool, UUID, UUID, UUID]:
+    return tenant_id, request_id, accepted_only, tenant_id, tenant_id, tenant_id
 
 
 def _canonical_dependency(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     triage: dict[str, object] | None,
+    *,
+    accepted_only: bool = False,
 ) -> dict[str, object] | None:
     if triage is None or triage["canonical_request_id"] is None:
         return None
     canonical_id = cast(UUID, triage["canonical_request_id"])
     return {
         "request_id": str(canonical_id),
-        "state": derived_state(connection, tenant_id, canonical_id),
+        "state": derived_state(connection, tenant_id, canonical_id, accepted_only=accepted_only),
     }
 
 
@@ -204,10 +259,16 @@ def _relation_dependency(row: dict[str, object]) -> dict[str, object]:
 
 _DEPENDENCY_RELATIONS_SQL = """
 WITH latest AS (
-    SELECT DISTINCT ON (ticket_id) ticket_id, purpose, active
-    FROM request_ticket_relation_facts
-    WHERE tenant_id = %s AND request_id = %s
-    ORDER BY ticket_id, recorded_at DESC, relation_fact_id DESC
+    SELECT DISTINCT ON (fact.ticket_id) fact.ticket_id, fact.purpose, fact.active
+    FROM request_ticket_relation_facts AS fact
+    WHERE fact.tenant_id = %s AND fact.request_id = %s
+      AND (NOT %s OR EXISTS (
+          SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+          WHERE confirmation.tenant_id = fact.tenant_id
+            AND confirmation.principal_id = fact.recorded_by
+            AND confirmation.client_command_id = fact.command_id
+      ))
+    ORDER BY fact.ticket_id, fact.request_version DESC
 )
 SELECT latest.ticket_id, latest.purpose, episode.state,
        COALESCE((SELECT count(*) FROM blocker_heads AS blocker
@@ -229,11 +290,19 @@ LEFT JOIN proof_bundles AS bundle
 WHERE latest.active ORDER BY latest.ticket_id
 """
 
+
 _DEPENDENCY_BLOCKERS_SQL = """
 SELECT blocker_key, active FROM (
-    SELECT DISTINCT ON (blocker_key) blocker_key, active
-    FROM request_blocker_facts WHERE tenant_id = %s AND request_id = %s
-    ORDER BY blocker_key, recorded_at DESC, blocker_fact_id DESC
+    SELECT DISTINCT ON (fact.blocker_key) fact.blocker_key, fact.active
+    FROM request_blocker_facts AS fact
+    WHERE fact.tenant_id = %s AND fact.request_id = %s
+      AND (NOT %s OR EXISTS (
+          SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+          WHERE confirmation.tenant_id = fact.tenant_id
+            AND confirmation.principal_id = fact.recorded_by
+            AND confirmation.client_command_id = fact.command_id
+      ))
+    ORDER BY fact.blocker_key, fact.request_version DESC
 ) AS latest WHERE active ORDER BY blocker_key
 """
 
@@ -244,47 +313,75 @@ def active_relations(
     request_id: UUID,
     *,
     purpose: str,
+    accepted_only: bool = False,
 ) -> tuple[UUID, ...]:
     rows = connection.execute(
         """
         SELECT ticket_id FROM (
-            SELECT DISTINCT ON (ticket_id) ticket_id, purpose, active
-            FROM request_ticket_relation_facts
-            WHERE tenant_id = %s AND request_id = %s
-            ORDER BY ticket_id, recorded_at DESC, relation_fact_id DESC
+            SELECT DISTINCT ON (fact.ticket_id) fact.ticket_id, fact.purpose, fact.active
+            FROM request_ticket_relation_facts AS fact
+            WHERE fact.tenant_id = %s AND fact.request_id = %s
+              AND (NOT %s OR EXISTS (
+                  SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+                  WHERE confirmation.tenant_id = fact.tenant_id
+                    AND confirmation.principal_id = fact.recorded_by
+                    AND confirmation.client_command_id = fact.command_id
+              ))
+            ORDER BY fact.ticket_id, fact.request_version DESC
         ) AS latest WHERE active AND purpose = %s ORDER BY ticket_id
         """,
-        (tenant_id, request_id, purpose),
+        (tenant_id, request_id, accepted_only, purpose),
     ).fetchall()
     return tuple(cast(UUID, row["ticket_id"]) for row in rows)
 
 
 def active_blocker_keys(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> tuple[str, ...]:
     rows = connection.execute(
         """
         SELECT blocker_key FROM (
-            SELECT DISTINCT ON (blocker_key) blocker_key, active
-            FROM request_blocker_facts WHERE tenant_id = %s AND request_id = %s
-            ORDER BY blocker_key, recorded_at DESC, blocker_fact_id DESC
+            SELECT DISTINCT ON (fact.blocker_key) fact.blocker_key, fact.active
+            FROM request_blocker_facts AS fact
+            WHERE fact.tenant_id = %s AND fact.request_id = %s
+              AND (NOT %s OR EXISTS (
+                  SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+                  WHERE confirmation.tenant_id = fact.tenant_id
+                    AND confirmation.principal_id = fact.recorded_by
+                    AND confirmation.client_command_id = fact.command_id
+              ))
+            ORDER BY fact.blocker_key, fact.request_version DESC
         ) AS latest WHERE active ORDER BY blocker_key
         """,
-        (tenant_id, request_id),
+        (tenant_id, request_id, accepted_only),
     ).fetchall()
     return tuple(str(row["blocker_key"]) for row in rows)
 
 
 def _has_request_blocker(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> bool:
-    return bool(active_blocker_keys(connection, tenant_id, request_id))
+    return bool(active_blocker_keys(connection, tenant_id, request_id, accepted_only=accepted_only))
 
 
 def _has_ticket_blocker(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> bool:
-    tickets = active_relations(connection, tenant_id, request_id, purpose="required")
+    tickets = active_relations(
+        connection, tenant_id, request_id, purpose="required", accepted_only=accepted_only
+    )
     if not tickets:
         return False
     return (
@@ -301,9 +398,15 @@ def _has_ticket_blocker(
 
 
 def _has_active_required_ticket(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> bool:
-    tickets = active_relations(connection, tenant_id, request_id, purpose="required")
+    tickets = active_relations(
+        connection, tenant_id, request_id, purpose="required", accepted_only=accepted_only
+    )
     if not tickets:
         return False
     return (
@@ -323,15 +426,45 @@ def _has_active_required_ticket(
 
 
 def latest_triage(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    request_id: UUID,
+    *,
+    accepted_only: bool = False,
 ) -> str:
     row = connection.execute(
         """
-        SELECT disposition FROM request_triage_facts
-        WHERE tenant_id = %s AND request_id = %s ORDER BY sequence DESC LIMIT 1
+        SELECT fact.disposition FROM request_triage_facts AS fact
+        WHERE fact.tenant_id = %s AND fact.request_id = %s
+          AND (NOT %s OR EXISTS (
+              SELECT 1 FROM durability_acceptance_confirmations AS confirmation
+              WHERE confirmation.tenant_id = fact.tenant_id
+                AND confirmation.principal_id = fact.recorded_by
+                AND confirmation.client_command_id = fact.command_id
+          ))
+        ORDER BY fact.sequence DESC LIMIT 1
         """,
-        (tenant_id, request_id),
+        (tenant_id, request_id, accepted_only),
     ).fetchone()
     if row is None:
         raise RuntimeError("Request has no triage fact")
     return str(row["disposition"])
+
+
+def _accepted_request_version(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT max(event.sequence) AS version
+        FROM events AS event
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = event.tenant_id
+         AND confirmation.principal_id = event.actor_principal_id
+         AND confirmation.client_command_id = event.client_command_id
+        WHERE event.tenant_id = %s AND event.stream_id = %s
+          AND event.kind = 'request.changed'
+        HAVING max(event.sequence) IS NOT NULL
+        """,
+        (tenant_id, f"request:{request_id}"),
+    ).fetchone()

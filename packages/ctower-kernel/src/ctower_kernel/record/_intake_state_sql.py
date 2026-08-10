@@ -190,6 +190,8 @@ def prepare_action(
     project_key: str | None = None,
     source: InboundSource | None = None,
     ticket_ids: TicketCreationIds | None = None,
+    request_ids: tuple[UUID, UUID] | None = None,
+    now: datetime | None = None,
 ) -> IntakeAction | RecordProblem:
     if (
         isinstance(command, IntakeSubmitCommand)
@@ -200,6 +202,15 @@ def prepare_action(
         return IntakeAction(IntakeOutcome.DISCUSSION, None, None, None, None)
     if command.intent is IntakeIntent.LINK_TICKET:
         return _prepare_link_action(connection, actor, command, project_key=project_key)
+    if command.intent is IntakeIntent.CREATE_REQUEST:
+        return _prepare_request_action(
+            connection,
+            actor,
+            command,
+            project_key=project_key,
+            request_ids=request_ids,
+            now=now,
+        )
     return _prepare_create_action(
         connection,
         actor,
@@ -246,6 +257,128 @@ def _prepare_create_action(
         1,
         ticket_command,
         ticket_ids,
+    )
+
+
+def _prepare_request_action(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: IntakeSubmitCommand | IntakePromotionCommand,
+    *,
+    project_key: str | None,
+    request_ids: tuple[UUID, UUID] | None,
+    now: datetime | None,
+) -> IntakeAction | RecordProblem:
+    resolved_project = (
+        command.project_key if isinstance(command, IntakeSubmitCommand) else project_key
+    )
+    if resolved_project is None or request_ids is None or now is None:
+        raise RuntimeError("create-request intake identifiers are unavailable")
+    epoch = _request_epoch_refusal(connection, actor, command.client_command_id)
+    if epoch is not None:
+        return epoch
+    number = _allocate_request_number(connection, actor.tenant_id, now)
+    owner = _request_owner(connection, actor, resolved_project)
+    return IntakeAction(
+        IntakeOutcome.REQUEST_CREATED,
+        None,
+        None,
+        None,
+        None,
+        request_ids[0],
+        number,
+        owner,
+        request_ids[1],
+    )
+
+
+def _allocate_request_number(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, now: datetime
+) -> int:
+    row = connection.execute(
+        """
+        INSERT INTO request_number_allocators (tenant_id, last_number, advanced_at)
+        VALUES (%s, 1, %s)
+        ON CONFLICT (tenant_id) DO UPDATE
+        SET last_number = request_number_allocators.last_number + 1,
+            advanced_at = EXCLUDED.advanced_at
+        RETURNING last_number
+        """,
+        (tenant_id, now),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Request allocator returned no number")
+    return int(cast(int, row["last_number"]))
+
+
+def _request_owner(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, project_key: str
+) -> UUID:
+    row = connection.execute(
+        """
+        SELECT principal_id FROM project_seats
+        WHERE tenant_id = %s AND project_key = %s AND principal_id = %s
+        UNION ALL
+        SELECT binding.principal_id FROM human_role_bindings AS binding
+        LEFT JOIN human_role_binding_revocations AS revocation
+          ON revocation.tenant_id = binding.tenant_id
+         AND revocation.binding_id = binding.binding_id
+        WHERE binding.tenant_id = %s AND binding.principal_id = %s
+          AND %s = ANY(binding.project_keys) AND revocation.binding_id IS NULL
+        LIMIT 1
+        """,
+        (
+            actor.tenant_id,
+            project_key,
+            actor.principal_id,
+            actor.tenant_id,
+            actor.principal_id,
+            project_key,
+        ),
+    ).fetchone()
+    if row is not None:
+        return cast(UUID, row["principal_id"])
+    commander = connection.execute(
+        """
+        SELECT principal.principal_id
+        FROM project_seats AS seat
+        JOIN principals AS principal
+          ON principal.tenant_id = seat.tenant_id
+         AND principal.principal_id = seat.principal_id
+        WHERE seat.tenant_id = %s AND seat.project_key = %s
+          AND principal.kind = 'commander' AND NOT principal.disabled
+        ORDER BY principal.created_at, principal.principal_id LIMIT 1
+        """,
+        (actor.tenant_id, project_key),
+    ).fetchone()
+    if commander is None:
+        raise RuntimeError("Request project has no active Commander")
+    return cast(UUID, commander["principal_id"])
+
+
+def _request_epoch_refusal(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, command_id: UUID
+) -> RecordProblem | None:
+    row = connection.execute(
+        """
+        SELECT fact.state, confirmation.acceptance_position
+        FROM request_cutover_epoch_facts AS fact
+        LEFT JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = fact.tenant_id
+         AND confirmation.principal_id = fact.recorded_by
+         AND confirmation.client_command_id = fact.command_id
+        WHERE fact.tenant_id = %s ORDER BY fact.sequence DESC LIMIT 1
+        """,
+        (actor.tenant_id,),
+    ).fetchone()
+    if row is None or (row["state"] == "completed" and row["acceptance_position"] is not None):
+        return None
+    return RecordProblem(
+        code="migration-import-finalization-refused",
+        detail="Request intake is fenced until the authority epoch is completed and accepted.",
+        status=409,
+        title="Request authority epoch unavailable",
+        command_id=command_id,
     )
 
 

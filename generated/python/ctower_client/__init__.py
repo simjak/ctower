@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f28f39eb51046eaf5f3018e8c47f3e9f6f14298647a3a67328c6b6fbfec058a5
+Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError

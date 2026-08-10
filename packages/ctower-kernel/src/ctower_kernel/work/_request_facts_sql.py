@@ -362,7 +362,10 @@ def _relation_refusal(
         (f"request-ticket:{actor.tenant_id}:{command.ticket_id}",),
     )
     ticket = connection.execute(
-        "SELECT project_key FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
+        """
+        SELECT project_key, version FROM tickets
+        WHERE tenant_id = %s AND ticket_id = %s FOR UPDATE
+        """,
         (actor.tenant_id, command.ticket_id),
     ).fetchone()
     if ticket is None or str(ticket["project_key"]) != str(request["project_key"]):
@@ -371,6 +374,14 @@ def _relation_refusal(
             "request-transition-forbidden",
             409,
             "Fulfillment Ticket must exist in the same Project",
+        )
+    if int(cast(int, ticket["version"])) != command.expected_ticket_version:
+        return request_problem(
+            command,
+            "version-conflict",
+            409,
+            "Fulfillment Ticket version is stale",
+            current_version=int(cast(int, ticket["version"])),
         )
     return _relation_state_refusal(connection, actor, command)
 
@@ -408,14 +419,15 @@ def _insert_relation(
     connection.execute(
         """
         INSERT INTO request_ticket_relation_facts (
-            relation_fact_id, request_id, tenant_id, ticket_id, purpose, active,
+            relation_fact_id, request_id, tenant_id, request_version, ticket_id, purpose, active,
             reason, recorded_by, command_id, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             uuid7(now),
             command.request_id,
             actor.tenant_id,
+            command.expected_version + 1,
             command.ticket_id,
             command.purpose,
             command.active,
@@ -454,7 +466,7 @@ def _current_relation(
         """
         SELECT request_id, active FROM request_ticket_relation_facts
         WHERE tenant_id = %s AND ticket_id = %s
-        ORDER BY recorded_at DESC, relation_fact_id DESC LIMIT 1
+        ORDER BY request_version DESC LIMIT 1
         """,
         (tenant_id, ticket_id),
     ).fetchone()
@@ -472,7 +484,7 @@ def _append_blocker(
         """
         SELECT active FROM request_blocker_facts
         WHERE tenant_id = %s AND request_id = %s AND blocker_key = %s
-        ORDER BY recorded_at DESC, blocker_fact_id DESC LIMIT 1
+        ORDER BY request_version DESC LIMIT 1
         """,
         (actor.tenant_id, command.request_id, command.blocker_key),
     ).fetchone()
@@ -486,14 +498,15 @@ def _append_blocker(
     connection.execute(
         """
         INSERT INTO request_blocker_facts (
-            blocker_fact_id, request_id, tenant_id, blocker_key, active, reason,
+            blocker_fact_id, request_id, tenant_id, request_version, blocker_key, active, reason,
             recorded_by, command_id, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             uuid7(now),
             command.request_id,
             actor.tenant_id,
+            command.expected_version + 1,
             command.blocker_key,
             command.active,
             command.reason,

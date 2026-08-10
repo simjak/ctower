@@ -18,7 +18,6 @@ from ctower_client.models import (
     CtowerProjectImportRunCreateRequest,
     MigrationPinnedDigests,
 )
-from ctower_kernel.migration._artifact import ArtifactError, TrustedReviewerKeys, reviewer_key
 from ctower_kernel.migration._artifact_sql import (
     persist_export_graph,
     persist_plan_graph,
@@ -38,6 +37,7 @@ from ctower_kernel.migration._run_read_sql import (
 )
 from ctower_kernel.migration._run_read_sql import get_run as _get_run
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.artifacts import ArtifactError, TrustedReviewerKeys, reviewer_key
 from ctower_kernel.record.events import EventKind
 from ctower_kernel.record.transaction import authority_connection, recover_ambiguous_commit
 from ctower_kernel.telemetry import TelemetryContext

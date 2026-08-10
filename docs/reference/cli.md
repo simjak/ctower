@@ -104,7 +104,7 @@ accepted; the issue command takes a reference and a lowercase SHA-256 digest.
 | `request prioritize` | `<request_id>` | required: `--expected-version`, `--priority {P0,P1,P2}`, `--reason`; optional: `--command-id` |
 | `request triage` | `<request_id>` | required: `--expected-version`, `--disposition {ACCEPTED,DUPLICATE,REJECTED}`; optional: `--command-id`, `--reason`, `--canonical-request-id` |
 | `request owner assign` | `<request_id>` | required: `--expected-version`, `--owner-id`, `--reason`; optional: `--command-id` |
-| `request ticket relate` | `<request_id>` | required: `--expected-version`, `--ticket-id`, `--purpose {required,optional}`, `--reason`; optional: `--command-id`, `--inactive` |
+| `request ticket relate` | `<request_id>` | required: `--expected-version`, `--expected-ticket-version`, `--ticket-id`, `--purpose {required,optional}`, `--reason`; optional: `--command-id`, `--inactive` |
 | `request blocker set` | `<request_id>` | required: `--expected-version`, `--blocker-key`, `--reason`; optional: `--command-id`, `--inactive` |
 | `request closure evaluate` | `<request_id>` | required: `--expected-version`, `--reason`; optional: `--command-id` |
 

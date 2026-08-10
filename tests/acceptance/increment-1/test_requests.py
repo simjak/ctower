@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -14,6 +16,7 @@ from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceReference, TicketCommand
+from ctower_kernel.record.human_identity import HumanRole, HumanRoleBindingIssue
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
@@ -85,10 +88,12 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
     second = cast(dict[str, object], replay.json())
     assert pending.status_code == HTTP_PENDING
     assert first["durability_state"] == "durability_pending"
+    assert first["accepted_position"] is None
     assert hidden.status_code == HTTP_OK
     assert hidden.json()["rows"] == []
     assert replay.status_code == HTTP_CREATED
     assert second["durability_state"] == "accepted"
+    assert isinstance(second["accepted_position"], int)
     assert second["request_id"] == first["request_id"]
     assert second["request_number"] == first["request_number"]
     assert second["reference"] == f"R{first['request_number']}"
@@ -101,6 +106,7 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
     assert rows[0]["priority"] == "P2"
     assert rows[0]["priority_default"] is True
     assert rows[0]["project_key"] == "ctower"
+    assert rows[0]["freshness"] == second["accepted_position"]
     _assert_capture_storage(tenant)
     print(
         "REAL_REQUEST_ACK"
@@ -108,6 +114,62 @@ def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture
         f" replay={replay.status_code}:{second['durability_state']}"
         f" reference={second['reference']} rows={len(rows)}"
     )
+
+
+def test_request_list_hides_pending_change_facts_until_offhost_acceptance(
+    tenant: TenantFixture,
+) -> None:
+    """OR-01/07: a pending mutation cannot rewrite an accepted list row or freshness."""
+
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    captured = _accepted_capture(tenant, authority, actor, "Accepted projection boundary")
+    before = authority.list(actor, project_key="ctower", telemetry=_telemetry(actor, uuid4()))
+    assert not isinstance(before, RecordProblem)
+    pending = authority.prioritize(
+        actor,
+        RequestPriority(uuid4(), captured.request_id, 1, "P0", "pending operator impact"),
+        telemetry=_telemetry(actor, uuid4()),
+    )
+    assert isinstance(pending, RequestChangeResult)
+    hidden = authority.list(actor, project_key="ctower", telemetry=_telemetry(actor, uuid4()))
+    assert not isinstance(hidden, RecordProblem)
+
+    assert before.rows[0].priority == hidden.rows[0].priority == "P2"
+    assert before.rows[0].freshness == hidden.rows[0].freshness
+
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    visible = authority.list(actor, project_key="ctower", telemetry=_telemetry(actor, uuid4()))
+    assert not isinstance(visible, RecordProblem)
+    assert visible.rows[0].priority == "P0"
+    assert visible.rows[0].freshness > hidden.rows[0].freshness
+
+
+def test_bound_humans_use_exact_project_grants_and_are_addressable_owners(
+    tenant: TenantFixture,
+) -> None:
+    """OR-01/05/07: human roles use binding grants, never principal-kind fleet shortcuts."""
+
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    machine_operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    human_operator = _bound_human(record, tenant, machine_operator, "operator")
+    accepted = _accepted_capture(tenant, authority, human_operator, "Human operator capture")
+
+    assert accepted.submitted_by == human_operator.principal_id
+    assert accepted.owner_id == human_operator.principal_id
+    denied = authority.capture(
+        human_operator,
+        RequestCapture(uuid4(), "manibo", "Foreign project capture"),
+        telemetry=_telemetry(human_operator, uuid4()),
+    )
+    assert isinstance(denied, RecordProblem)
+    assert denied.code == "project-scope-denied"
+
+    viewer = _bound_human(record, tenant, machine_operator, "viewer")
+    visible = authority.list(viewer, project_key="ctower", telemetry=_telemetry(viewer, uuid4()))
+    assert not isinstance(visible, RecordProblem)
+    assert visible.rows[0].request_id == accepted.request_id
 
 
 def _assert_capture_storage(tenant: TenantFixture) -> None:
@@ -256,6 +318,7 @@ def test_request_commands_append_versioned_facts_and_derive_closure(
                 uuid4(),
                 captured.request_id,
                 done.version,
+                1,
                 optional_ticket,
                 "optional",
                 active=True,
@@ -301,6 +364,7 @@ def _prepare_blocked_lifecycle(
                 uuid4(),
                 captured.request_id,
                 triaged.version,
+                1,
                 ticket_id,
                 "required",
                 active=True,
@@ -405,6 +469,7 @@ def _canonical_request(
                 uuid4(),
                 first.request_id,
                 accepted.version,
+                1,
                 ticket_id,
                 "required",
                 active=True,
@@ -445,6 +510,7 @@ def _assert_ticket_reuse_refused(
             uuid4(),
             competing.request_id,
             accepted.version,
+            1,
             ticket_id,
             "required",
             active=True,
@@ -466,6 +532,36 @@ def _accepted_capture(
     replay = _capture(authority, actor, command)
     assert isinstance(replay, RequestCaptureResult)
     return replay
+
+
+def _bound_human(
+    record: PostgresRecord,
+    tenant: TenantFixture,
+    operator: Actor,
+    role: str,
+) -> Actor:
+    subject = f"request-{role}-{uuid4().hex}"
+    receipt = record.human_identity.bind_role(
+        operator,
+        HumanRoleBindingIssue(
+            client_command_id=uuid4(),
+            display_name=f"Request {role} {uuid4().hex[:8]}",
+            oidc_issuer="https://request-acceptance.example.test",
+            oidc_subject=subject,
+            project_keys=("ctower",),
+            role=cast(HumanRole, role),
+        ),
+        request_digest=hashlib.sha256(subject.encode()).digest(),
+        now=datetime.now(UTC),
+        telemetry=_telemetry(operator, uuid4()),
+    )
+    assert not isinstance(receipt, RecordProblem)
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    resolved = record.human_identity.resolve_role_binding(
+        "https://request-acceptance.example.test", subject
+    )
+    assert resolved is not None
+    return resolved[1]
 
 
 def _accepted_change(tenant: TenantFixture, result: object) -> RequestChangeResult:

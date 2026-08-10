@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f28f39eb51046eaf5f3018e8c47f3e9f6f14298647a3a67328c6b6fbfec058a5
+Authored contract digest: sha256:28a28df4d6ebd5d86f6486df4b69bab7d8cf69235160bba9175cdeb7ad0700c8
 """
 
 from __future__ import annotations
@@ -981,18 +981,21 @@ class InboxThreadSummary(_BoundaryModel):
 
 class IntakeIntent(StrEnum):
     DISCUSSION = "discussion"
+    CREATE_REQUEST = "create_request"
     CREATE_TICKET = "create_ticket"
     LINK_TICKET = "link_ticket"
 
 
 class IntakeOutcome(StrEnum):
     DISCUSSION = "discussion"
+    REQUEST_CREATED = "request_created"
     TICKET_CREATED = "ticket_created"
     TICKET_LINKED = "ticket_linked"
     QUARANTINED = "quarantined"
 
 
 class IntakePromotionIntent(StrEnum):
+    CREATE_REQUEST = "create_request"
     CREATE_TICKET = "create_ticket"
     LINK_TICKET = "link_ticket"
 
@@ -1328,6 +1331,7 @@ class RequestOwnerRequest(_BoundaryModel):
 
 class RequestTicketRelationRequest(_BoundaryModel):
     active: bool
+    expected_ticket_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     purpose: Literal["required", "optional"]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
@@ -1946,6 +1950,8 @@ class IntakeCommandResult(_BoundaryModel):
     outcome: IntakeOutcome
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     quarantine_reason: Annotated[str, Field(max_length=500)] | None
+    request_id: UUID | None
+    request_number: Annotated[int, Field(ge=1, le=9007199254740991)] | None
     source: SourceReference
     thread_id: UUID
     thread_version: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -2128,6 +2134,7 @@ class Problem(_BoundaryModel):
         "project-grant-required",
         "project-scope-denied",
         "request-capture-forbidden",
+        "invalid-request",
         "request-import-forbidden",
         "request-owner-forbidden",
         "request-project-unavailable",
@@ -2253,6 +2260,7 @@ class ReopenedAuditData(_BoundaryModel):
 
 
 class RequestCaptureResult(_BoundaryModel):
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
     command_id: UUID
     durability_state: DurabilityState
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=2, max_length=2)]
@@ -2267,6 +2275,7 @@ class RequestCaptureResult(_BoundaryModel):
 
 
 class RequestChangeResult(_BoundaryModel):
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
     command_id: UUID
     durability_state: DurabilityState
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
@@ -2295,6 +2304,8 @@ class RequestRow(_BoundaryModel):
     age_seconds: Annotated[int, Field(ge=0, le=9007199254740991)]
     blocker: str | None
     content: Annotated[str, Field(min_length=1, max_length=65536)]
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    created_at: _Rfc3339DateTime
     durability_state: Literal["accepted"]
     freshness: Annotated[int, Field(ge=1, le=9007199254740991)]
     optional_ticket_ids: tuple[UUID, ...]
@@ -2309,7 +2320,10 @@ class RequestRow(_BoundaryModel):
     request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
     required_ticket_ids: tuple[UUID, ...]
     source_kind: Annotated[str, Field(min_length=1, max_length=64)]
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    original_owner_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
     state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    ticket_count: Annotated[int, Field(ge=0, le=9007199254740991)]
     triage: Literal["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"]
     unknown_reason: str | None
 

@@ -506,6 +506,10 @@
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
     "AC-REQ-06": [
+      "contracts/domain/migration/request-batch-proof.schema.json",
+      "contracts/domain/migration/request-import-manifest.schema.json",
+      "contracts/domain/migration/request-owner-map.schema.json",
+      "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
     "AC-SEC-01": [
@@ -1115,9 +1119,17 @@
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
     "INV-86": [
+      "contracts/domain/migration/request-batch-proof.schema.json",
+      "contracts/domain/migration/request-import-manifest.schema.json",
+      "contracts/domain/migration/request-owner-map.schema.json",
+      "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
     "SPEC#accepted-first-class-operator-request-contract": [
+      "contracts/domain/migration/request-batch-proof.schema.json",
+      "contracts/domain/migration/request-import-manifest.schema.json",
+      "contracts/domain/migration/request-owner-map.schema.json",
+      "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [

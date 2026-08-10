@@ -31,6 +31,7 @@ class InboundEventRecordedPayload:
     outcome: str
     content_digest: str
     ticket_id: UUID | None
+    request_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.inbound_event_id, UUID):
@@ -43,6 +44,7 @@ class InboundEventRecordedPayload:
         if self.outcome not in _OUTCOMES or _DIGEST.fullmatch(self.content_digest) is None:
             raise ValueError("inbound event outcome or content digest is outside the contract")
         _validate_ticket_outcome(self.outcome, self.ticket_id)
+        _validate_request_outcome(self.outcome, self.request_id)
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -56,6 +58,7 @@ class InboundEventRecordedPayload:
             "source_ref": self.source_ref,
             "taint": self.taint,
             "ticket_id": str(self.ticket_id) if self.ticket_id else None,
+            "request_id": str(self.request_id) if self.request_id else None,
         }
 
 
@@ -67,16 +70,19 @@ class InboundEventPromotedPayload:
     project_key: str
     intent: str
     outcome: str
-    ticket_id: UUID
+    ticket_id: UUID | None
+    request_id: UUID | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.inbound_event_id, UUID) or not isinstance(self.ticket_id, UUID):
+        if not isinstance(self.inbound_event_id, UUID):
             raise TypeError("promotion identities must be UUIDs")
         _validate_common(self.project_key, self.source_kind, self.source_ref)
-        if self.intent not in {"create_ticket", "link_ticket"}:
+        if self.intent not in {"create_request", "create_ticket", "link_ticket"}:
             raise ValueError("promotion intent must be actionable")
-        if self.outcome not in {"ticket_created", "ticket_linked"}:
-            raise ValueError("promotion outcome must contain one ticket edge")
+        if self.outcome not in {"request_created", "ticket_created", "ticket_linked"}:
+            raise ValueError("promotion outcome must contain one authority edge")
+        _validate_ticket_outcome(self.outcome, self.ticket_id)
+        _validate_request_outcome(self.outcome, self.request_id)
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -86,7 +92,8 @@ class InboundEventPromotedPayload:
             "project_key": self.project_key,
             "source_kind": self.source_kind,
             "source_ref": self.source_ref,
-            "ticket_id": str(self.ticket_id),
+            "ticket_id": str(self.ticket_id) if self.ticket_id else None,
+            "request_id": str(self.request_id) if self.request_id else None,
         }
 
 
@@ -112,5 +119,11 @@ def _validate_common(project_key: str, source_kind: str, source_ref: str) -> Non
 
 def _validate_ticket_outcome(outcome: str, ticket_id: UUID | None) -> None:
     actionable = outcome in {"ticket_created", "ticket_linked"}
-    if actionable != (ticket_id is not None):
+    if actionable != isinstance(ticket_id, UUID):
         raise ValueError("inbound ticket outcome and ticket identity must agree")
+
+
+def _validate_request_outcome(outcome: str, request_id: UUID | None) -> None:
+    actionable = outcome == "request_created"
+    if actionable != isinstance(request_id, UUID):
+        raise ValueError("inbound Request outcome and Request identity must agree")
