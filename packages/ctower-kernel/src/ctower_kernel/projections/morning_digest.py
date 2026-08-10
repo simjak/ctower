@@ -182,6 +182,10 @@ class DigestRulingFact:
     recorded_at: datetime
     linked_request_ids: tuple[UUID, ...] | None
 
+    def __post_init__(self) -> None:
+        if self.recorded_at.tzinfo is None:
+            raise ValueError("Ruling recording time must be timezone-aware")
+
 
 @dataclass(frozen=True, slots=True)
 class DigestDecision:
@@ -337,7 +341,7 @@ def project_morning_digest(
     related_request_ids.update(
         execution.request_id for ruling in yesterday.items for execution in ruling.executions
     )
-    proof = _proof_section(requests, related_request_ids)
+    proof = _proof_section(requests, yesterday, related_request_ids)
     state = _combined_state(decisions.state, yesterday.state, proof.state)
     artifact_key = f"morning-digest:{digest_date.isoformat()}:Europe/Vilnius"
     digest = MorningDigest(
@@ -518,6 +522,7 @@ def _unknown_ruling(item: DigestRulingFact, reason: str) -> DigestRuling:
 
 def _proof_section(
     reading: SourceReading[DigestRequestFact],
+    yesterday: DigestSection[DigestRuling],
     related_request_ids: set[UUID],
 ) -> DigestSection[DigestProof]:
     rows = tuple(
@@ -555,16 +560,24 @@ def _proof_section(
     incomplete = tuple(item for item in proof if item.current_proof_count is None)
     state = _combined_state(
         reading.state,
+        yesterday.state,
         *(ReadingState.PARTIAL for _item in incomplete),
     )
-    unreached = reading.unreached + tuple(
-        UnreachedScope(f"{item.request_reference}:proof-count", "proof-count-not-recorded")
-        for item in incomplete
+    unreached = (
+        reading.unreached
+        + yesterday.unreached
+        + tuple(
+            UnreachedScope(f"{item.request_reference}:proof-count", "proof-count-not-recorded")
+            for item in incomplete
+        )
+    )
+    sources_complete = (
+        reading.state is ReadingState.COMPLETE and yesterday.state is ReadingState.COMPLETE
     )
     return DigestSection(
         state,
         len(proof),
-        len(proof) if reading.state is ReadingState.COMPLETE else None,
+        len(proof) if sources_complete else None,
         proof,
         unreached,
     )

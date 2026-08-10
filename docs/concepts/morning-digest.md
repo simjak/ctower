@@ -28,7 +28,9 @@ the Ruling stays visible and execution is `UNKNOWN`; text similarity never creat
 
 Each open decision or recorded prior-day execution with a Ticket relation closes the digest with direct
 links to that Ticket's timeline. Unrelated historical Requests stay out. The current proof count is copied
-from the Request read. An unavailable count remains `UNKNOWN`, not zero.
+from the Request read. An unavailable count remains `UNKNOWN`, not zero. Because recorded executions also
+define which Requests belong here, an incomplete Request or prior-day Ruling/execution reading makes the
+proof total `UNKNOWN` while preserving every visible proof row.
 
 ## Partial and unknown sources
 

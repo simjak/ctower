@@ -40,6 +40,7 @@ from ctowerctl import main
 __all__: tuple[str, ...] = ()
 
 HTTP_OK = 200
+HTTP_FORBIDDEN = 403
 EXIT_SUCCESS = 0
 _VILNIUS = ZoneInfo("Europe/Vilnius")
 
@@ -52,16 +53,25 @@ def test_real_morning_digest_composes_live_records_and_renders_unknowns(
     operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
     commander = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
     request_id, ticket_id = _blocked_request_with_proof(tenant, operator, commander)
-    ruling_id = _accepted_ruling(tenant, commander)
-    digest_date = (datetime.now(_VILNIUS).date() + timedelta(days=1)).isoformat()
+    ruling_id, ruling_recorded_at = _accepted_ruling(tenant, commander)
+    digest_date = (ruling_recorded_at.astimezone(_VILNIUS).date() + timedelta(days=1)).isoformat()
     headers = {
         "Authorization": f"Bearer {tenant.operator_credential}",
         **telemetry_headers(),
     }
     with TestClient(application(tenant.database.runtime_dsn)) as client:
         response = client.get("/v1/digests/morning", params={"date": digest_date}, headers=headers)
+        denied = client.get(
+            "/v1/digests/morning",
+            params={"date": digest_date},
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                **telemetry_headers(),
+            },
+        )
 
     assert response.status_code == HTTP_OK
+    assert denied.status_code == HTTP_FORBIDDEN
     payload = cast(dict[str, object], response.json())
     decisions = cast(dict[str, object], payload["open_decisions"])
     yesterday = cast(dict[str, object], payload["yesterday_rulings"])
@@ -82,6 +92,7 @@ def test_real_morning_digest_composes_live_records_and_renders_unknowns(
     assert errors.getvalue() == ""
     assert "Open decisions — 1; PARTIAL" in transcript
     assert "Executions: UNKNOWN (execution-link-not-recorded)" in transcript
+    assert "Proof — UNKNOWN total; 1 visible; PARTIAL" in transcript
     assert f"required: {ticket_id} /v1/tickets/{ticket_id}/timeline" in transcript
     print(
         "REAL_MORNING_DIGEST"
@@ -110,7 +121,9 @@ def _assert_digest_payload(
     assert yesterday["total_count"] == yesterday["visible_count"] == 1
     assert ruling_rows[0]["ruling_id"] == str(ruling_id)
     assert ruling_rows[0]["unknown_reason"] == "execution-link-not-recorded"
-    assert proof["total_count"] == proof["visible_count"] == 1
+    assert proof["state"] == "partial"
+    assert proof["total_count"] is None
+    assert proof["visible_count"] == 1
     links = cast(list[dict[str, object]], proof_rows[0]["tickets"])
     assert links == [
         {
@@ -194,7 +207,7 @@ def _accepted_ticket(tenant: TenantFixture, actor: Actor) -> UUID:
     return outcome.ticket.ticket_id
 
 
-def _accepted_ruling(tenant: TenantFixture, actor: Actor) -> UUID:
+def _accepted_ruling(tenant: TenantFixture, actor: Actor) -> tuple[UUID, datetime]:
     authority = Rulings(PostgresRulings(tenant.database.runtime_dsn))
     command = RulingAppend(uuid4(), "Use the 09:00 Vilnius rollout window.")
     outcome = authority.append(
@@ -202,7 +215,7 @@ def _accepted_ruling(tenant: TenantFixture, actor: Actor) -> UUID:
     )
     assert not isinstance(outcome, RecordProblem)
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-    return outcome.ruling_id
+    return outcome.ruling_id, outcome.recorded_at
 
 
 def _telemetry(actor: Actor, command_id: UUID) -> TelemetryContext:

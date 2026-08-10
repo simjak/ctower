@@ -1,4 +1,4 @@
-# Minimum public HTTP and RFC 9457 contract.
+"""Minimum public HTTP and RFC 9457 contract."""
 
 from __future__ import annotations
 
@@ -9,8 +9,7 @@ from typing import cast
 
 from ._ruling_inventory import RULING_OPERATION_METADATA, RULING_PROBLEM_CODES
 
-ROOT = Path(__file__).parents[3]
-MAX_IMPORT_ITEMS = 64
+ROOT, MAX_IMPORT_ITEMS = Path(__file__).parents[3], 64
 
 _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] = {
     "addKnowledgeDocument": ("knowledge add", True, "allowed", None, False),

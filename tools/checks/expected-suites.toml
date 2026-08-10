@@ -767,12 +767,13 @@ owner = "CT-I1-017"
 phase = "CT-I1-017"
 status = "required"
 path = "tests/modules/projections"
-patterns = ["test_morning_digest.py"]
+patterns = ["test_morning_digest*.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/modules/projections/test_morning_digest.py",
+  "tests/modules/projections/test_morning_digest_routes.py",
   "tests/modules/ctowerctl/test_morning_digest.py",
   "-q",
 ]

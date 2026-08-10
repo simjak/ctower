@@ -78,6 +78,17 @@ def test_decision_choice_uses_the_canonical_zero_through_ten_scale() -> None:
         DecisionChoiceFact("A", "Continue.", 11)
 
 
+def test_ruling_fact_refuses_a_naive_recording_time() -> None:
+    with pytest.raises(ValueError, match="timezone-aware"):
+        DigestRulingFact(
+            ruling_id=_RULING_ID,
+            project_key="ctower",
+            verbatim="Proceed.",
+            recorded_at=_OBSERVED_AT.replace(tzinfo=None),
+            linked_request_ids=(),
+        )
+
+
 def test_unreached_request_source_is_unknown_never_a_zero() -> None:
     requests: SourceReading[DigestRequestFact] = SourceReading.unknown(
         UnreachedScope("requests", "503 Request source did not answer"),
@@ -108,12 +119,35 @@ def test_unreached_request_source_is_unknown_never_a_zero() -> None:
     assert digest.open_decisions.state is ReadingState.UNKNOWN
     assert digest.open_decisions.total_count is None
     assert digest.open_decisions.visible_count == 0
-    assert digest.proof.state is ReadingState.UNKNOWN
+    assert digest.proof.state is ReadingState.PARTIAL
     assert digest.proof.total_count is None
     assert digest.yesterday_rulings.visible_count == 1
     assert digest.yesterday_rulings.state is ReadingState.PARTIAL
     assert digest.yesterday_rulings.items[0].executions == ()
     assert digest.yesterday_rulings.items[0].unknown_reason == "request-source-unreached"
+
+
+def test_unreached_ruling_source_makes_the_proof_total_unknown_never_zero() -> None:
+    requests: SourceReading[DigestRequestFact] = SourceReading.complete(
+        (), watermark=41, observed_at=_OBSERVED_AT
+    )
+    rulings: SourceReading[DigestRulingFact] = SourceReading.unknown(
+        UnreachedScope("rulings", "ruling-source-unavailable"),
+        observed_at=_OBSERVED_AT,
+    )
+
+    digest = project_morning_digest(
+        requests,
+        rulings,
+        digest_date=_DIGEST_DATE,
+        observed_at=_OBSERVED_AT,
+    )
+
+    assert digest.yesterday_rulings.state is ReadingState.UNKNOWN
+    assert digest.proof.state is ReadingState.PARTIAL
+    assert digest.proof.visible_count == 0
+    assert digest.proof.total_count is None
+    assert digest.proof.unreached == (UnreachedScope("rulings", "ruling-source-unavailable"),)
 
 
 def test_partial_source_preserves_visible_rows_and_withholds_the_total() -> None:
@@ -221,6 +255,51 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
     assert first.proof.total_count == 0
     assert first.artifact_sha256 == second.artifact_sha256
     assert first.artifact_sha256.startswith("sha256:")
+
+
+def test_prior_civil_day_uses_the_vilnius_fall_back_boundary() -> None:
+    first_id = UUID("00000000-0000-7000-8000-000000000211")
+    final_id = UUID("00000000-0000-7000-8000-000000000212")
+    excluded_id = UUID("00000000-0000-7000-8000-000000000213")
+    rulings = SourceReading.complete(
+        (
+            DigestRulingFact(
+                first_id,
+                "ctower",
+                "First hour.",
+                datetime(2026, 10, 24, 21, 30, tzinfo=UTC),
+                (),
+            ),
+            DigestRulingFact(
+                final_id,
+                "ctower",
+                "Final hour.",
+                datetime(2026, 10, 25, 21, 30, tzinfo=UTC),
+                (),
+            ),
+            DigestRulingFact(
+                excluded_id,
+                "ctower",
+                "Next civil day.",
+                datetime(2026, 10, 25, 22, 30, tzinfo=UTC),
+                (),
+            ),
+        ),
+        watermark=45,
+        observed_at=_OBSERVED_AT,
+    )
+
+    digest = project_morning_digest(
+        SourceReading.complete((), watermark=41, observed_at=_OBSERVED_AT),
+        rulings,
+        digest_date=date(2026, 10, 26),
+        observed_at=_OBSERVED_AT,
+    )
+
+    assert tuple(item.ruling_id for item in digest.yesterday_rulings.items) == (
+        first_id,
+        final_id,
+    )
 
 
 def _assert_complete_digest(digest: MorningDigest) -> None:

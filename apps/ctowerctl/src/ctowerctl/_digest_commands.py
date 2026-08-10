@@ -66,6 +66,8 @@ def _decision_lines(digest: MorningDigest) -> list[str]:
                 f"- {choice.label} ({choice.completeness}/10): {choice.outcome}"
                 for choice in decision.brief.choices
             )
+        elif decision.state.value == "complete":
+            lines.append("Choices: 0")
         else:
             lines.append(f"Choices: UNKNOWN ({decision.unknown_reason or 'not-recorded'})")
         lines.append(
