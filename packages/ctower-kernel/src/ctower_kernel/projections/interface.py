@@ -437,6 +437,35 @@ class InboxThreadList:
 
 
 @dataclass(frozen=True, slots=True)
+class InboxCorrespondent:
+    project_key: str
+    seat_key: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {"project_key": self.project_key, "seat_key": self.seat_key}
+
+
+@dataclass(frozen=True, slots=True)
+class InboxCorrespondentList:
+    """Every registered seat the authenticated principal can address, and its own.
+
+    This is the same closed world the send command validates against, read
+    rather than asserted: a seat absent here is a seat the command refuses by
+    its own stable name, so a picker built on it can offer nothing the record
+    would not accept as an address.
+    """
+
+    correspondents: tuple[InboxCorrespondent, ...]
+    sender: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "correspondents": [item.response_payload() for item in self.correspondents],
+            "sender": self.sender,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class InboxMessage:
     from_seat: str
     message_id: UUID
@@ -483,6 +512,8 @@ class _ProjectionStore(Protocol):
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList: ...
+
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None: ...
 
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None: ...
@@ -516,6 +547,11 @@ class Projections:
 
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)
+
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
+        """Read the registered seats this principal may address, never invent one."""
+
+        return self._store.list_inbox_correspondents(actor)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return self._store.read_inbox(actor, thread_id)

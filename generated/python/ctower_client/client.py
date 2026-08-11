@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
+Authored contract digest: sha256:016d3a2e2c93a38fbe00f43adcbc5645a48e65c7d2e0d3aeb7d52a6b98b9810f
 """
 
 from __future__ import annotations
@@ -62,6 +62,7 @@ from ctower_client.models import (
     FreezeCriteriaRequest,
     InboxAcknowledgeRequest,
     InboxAcknowledgeResult,
+    InboxCorrespondentList,
     InboxNotificationRequest,
     InboxPromotionRequest,
     InboxPromotionResult,
@@ -1059,6 +1060,21 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: DreamDispatchEffectList}, {401: Problem, 403: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_inbox_correspondents(
+        self,
+    ) -> InboxCorrespondentList:
+        response = self._http.get(
+            "/v1/inbox/correspondents",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: InboxCorrespondentList}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_inbox_threads(

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
+Authored contract digest: sha256:016d3a2e2c93a38fbe00f43adcbc5645a48e65c7d2e0d3aeb7d52a6b98b9810f
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -114,6 +114,8 @@ from ctower_client.models import (
     HumanWaitingWaiting,
     InboxAcknowledgeRequest,
     InboxAcknowledgeResult,
+    InboxCorrespondent,
+    InboxCorrespondentList,
     InboxMessage,
     InboxMessageReadState,
     InboxNotificationRequest,
@@ -399,6 +401,8 @@ __all__ = [
     "HumanWaitingWaiting",
     "InboxAcknowledgeRequest",
     "InboxAcknowledgeResult",
+    "InboxCorrespondent",
+    "InboxCorrespondentList",
     "InboxMessage",
     "InboxMessageReadState",
     "InboxNotificationRequest",

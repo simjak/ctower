@@ -25,7 +25,7 @@ from tools.codegen.generator import CodegenError, check, write
 
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
-_EXPECTED_OPERATION_COUNT = 81
+_EXPECTED_OPERATION_COUNT = 82
 
 
 class _MutatedClient(Protocol):

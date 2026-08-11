@@ -287,6 +287,28 @@ export interface InboxCorrespondent {
   readonly recipient: string;
 }
 
+/** One registered seat a new thread can be addressed to. */
+export interface InboxCorrespondentChoice {
+  readonly seatKey: string;
+  readonly projectKey: string;
+}
+
+/**
+ * Who this principal may open a new thread to, as the record itself lists them.
+ *
+ * A compose control has nobody to read a recipient back from — the thread it
+ * addresses does not exist yet — so the address has to be chosen. What keeps it
+ * from being a claimed identity is that the choices are the record's own
+ * registered seats: the same closed world the send command resolves against, so
+ * this picker can offer no address the record would not accept, and a seat it
+ * does not list is refused server-side rather than created.
+ */
+export interface InboxCorrespondents {
+  /** The seat this surface's authenticated principal holds. */
+  readonly sender: string;
+  readonly choices: readonly InboxCorrespondentChoice[];
+}
+
 /** Ticket choices the current principal's Board read made available for Inbox linking. */
 export interface InboxPromotionPicker {
   readonly choices: readonly InboxPromotionTicketChoice[];
@@ -927,6 +949,8 @@ export interface RecordAdapter {
   inboxThread: (threadId: string) => Promise<Reading<InboxThread>>;
   /** The two seats one thread is between, for addressing a message on it. */
   inboxCorrespondent: (threadId: string) => Promise<Reading<InboxCorrespondent>>;
+  /** The registered seats a new thread may be opened to. */
+  inboxCorrespondents: () => Promise<Reading<InboxCorrespondents>>;
   /** Existing tickets available to link when promoting a thread. */
   inboxPromotionPicker: () => Promise<InboxPromotionPicker>;
   /** What a session was handed at start. */
@@ -960,5 +984,6 @@ export type RecordApiReads = Pick<
   | "inbox"
   | "inboxThread"
   | "inboxCorrespondent"
+  | "inboxCorrespondents"
   | "inboxPromotionPicker"
 >;

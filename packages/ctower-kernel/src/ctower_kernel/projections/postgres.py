@@ -11,6 +11,7 @@ from ctower_kernel.projections import (
     ControlHealth,
 )
 from ctower_kernel.projections._health_sql import health as _health
+from ctower_kernel.projections._inbox_sql import list_correspondents as _list_correspondents
 from ctower_kernel.projections._inbox_sql import list_threads as _list_threads
 from ctower_kernel.projections._inbox_sql import read_state as _read_state
 from ctower_kernel.projections._inbox_sql import read_thread as _read_thread
@@ -28,7 +29,11 @@ from ctower_kernel.projections._project_delivery_sql import (
     project_delivery as _project_delivery,
 )
 from ctower_kernel.projections.inbox import InboxReadState
-from ctower_kernel.projections.interface import InboxThread, InboxThreadList
+from ctower_kernel.projections.interface import (
+    InboxCorrespondentList,
+    InboxThread,
+    InboxThreadList,
+)
 from ctower_kernel.projections.project_delivery import (
     CtowerProjectCutoverHealth,
     ProjectDeliveryView,
@@ -52,6 +57,9 @@ class PostgresProjections:
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         return _list_threads(self._dsn, actor, unread=unread)
+
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
+        return _list_correspondents(self._dsn, actor)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return _read_thread(self._dsn, actor, thread_id)

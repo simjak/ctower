@@ -59,7 +59,8 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   portfolio: "ctower read API · /v1/board per project + /v1/inbox/threads",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
   inbox:
-    "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/messages + /promotion",
+    "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/correspondents" +
+    " + /v1/inbox/messages + /v1/inbox/notifications + /promotion",
   heartbeats:
     cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
   files: "git tree",
@@ -88,6 +89,7 @@ export const recordAdapter: RecordAdapter = {
   inbox: httpRecordAdapter.inbox,
   inboxThread: httpRecordAdapter.inboxThread,
   inboxCorrespondent: httpRecordAdapter.inboxCorrespondent,
+  inboxCorrespondents: httpRecordAdapter.inboxCorrespondents,
   inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,
 
   cadenceRegistry: async (): Promise<Reading<CadenceRegistry>> => await reading(cadenceSource()),

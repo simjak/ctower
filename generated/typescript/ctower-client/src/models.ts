@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
+// Authored contract digest: sha256:016d3a2e2c93a38fbe00f43adcbc5645a48e65c7d2e0d3aeb7d52a6b98b9810f
 
 export type ActivityClass = "work" | "verification";
 
@@ -865,6 +865,16 @@ export type InboxAcknowledgeResult = Readonly<{
   readonly "state": "delivered" | "read";
   readonly "thread_id": string;
   readonly "thread_version": number;
+}>;
+
+export type InboxCorrespondent = Readonly<{
+  readonly "project_key": string;
+  readonly "seat_key": string;
+}>;
+
+export type InboxCorrespondentList = Readonly<{
+  readonly "correspondents": ReadonlyArray<InboxCorrespondent>;
+  readonly "sender": string;
 }>;
 
 export type InboxMessage = Readonly<{

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import secrets
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -20,7 +19,7 @@ from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
 from support.server import running_api
 from support.telemetry import telemetry_headers
-from support.tenant_fixture import TenantFixture, provision_credential
+from support.tenant_fixture import TenantFixture, provision_seat
 
 from ctower_client import BoardView, CtowerClient
 from ctower_kernel.inbox import (
@@ -47,6 +46,7 @@ __all__: tuple[str, ...] = ()
 REPLY_POSITION = 2
 _ACCEPTED_STATUS = 201
 _DURABILITY_PENDING_STATUS = 202
+_NOT_FOUND_STATUS = 404
 _ACCEPTED_SEND_STATUS = (_ACCEPTED_STATUS, _DURABILITY_PENDING_STATUS)
 _AUTHORED_SEND_FIELDS = (
     "command_id",
@@ -189,7 +189,7 @@ def _assert_send_refusals(
     )
     for actor, command, code in cases:
         _assert_problem(_invoke_send(inbox, actor, command), code)
-    _provision_seat(tenant, "qa-agent", project_key="other")
+    provision_seat(tenant, "qa-agent", project_key="other")
     ambiguous = _invoke_send(
         inbox, commander, InboxSendCommand(uuid4(), "qa-agent", "Ambiguous recipient.")
     )
@@ -367,7 +367,7 @@ def test_the_send_response_puts_the_authored_field_names_on_the_wire(
     dogfood surface — is what found it. The assertion is therefore on the raw
     bytes, not on a parsed model.
     """
-    _recipient_id, _recipient_credential = _provision_seat(tenant, "wire-shape-agent")
+    _recipient_id, _recipient_credential = provision_seat(tenant, "wire-shape-agent")
     command_id = uuid4()
 
     with running_api(
@@ -410,7 +410,7 @@ def test_a_send_is_not_accepted_until_its_durable_receipt_commits(
     message — which is exactly what a browser send box has to do with an
     unconfirmed message it is still holding.
     """
-    _recipient_id, _recipient_credential = _provision_seat(tenant, "durability-state-agent")
+    _recipient_id, _recipient_credential = provision_seat(tenant, "durability-state-agent")
     command_id = uuid4()
     headers = {
         "Accept": "application/json, application/problem+json",
@@ -628,43 +628,7 @@ def _assert_problem(outcome: object, code: str) -> None:
 
 
 def _provision_qa_seat(tenant: TenantFixture) -> tuple[UUID, str]:
-    return _provision_seat(tenant, "qa-agent")
-
-
-def _provision_seat(
-    tenant: TenantFixture,
-    seat_key: str,
-    *,
-    project_key: str = "ctower",
-) -> tuple[UUID, str]:
-    principal_id, credential = uuid4(), secrets.token_urlsafe(32)
-    now = datetime.now(UTC)
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        connection.execute(
-            """
-            INSERT INTO principals (
-                principal_id, tenant_id, kind, display_name, disabled, created_at
-            ) VALUES (%s, %s, 'commander', %s, false, %s)
-            """,
-            (principal_id, tenant.tenant_id, f"Inbox {project_key} {seat_key}", now),
-        )
-        connection.execute(
-            """
-            INSERT INTO project_seats (
-                principal_id, tenant_id, project_key, seat_key, granted_by, granted_at
-            ) VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (
-                principal_id,
-                tenant.tenant_id,
-                project_key,
-                seat_key,
-                tenant.operator_id,
-                now,
-            ),
-        )
-    provision_credential(tenant.database.admin_dsn, tenant.tenant_id, principal_id, credential)
-    return principal_id, credential
+    return provision_seat(tenant, "qa-agent")
 
 
 def _ticket(tenant: TenantFixture) -> UUID:

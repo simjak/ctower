@@ -15,6 +15,8 @@ from ctower_kernel.projections.inbox import (
     InboxReadState,
 )
 from ctower_kernel.projections.interface import (
+    InboxCorrespondent,
+    InboxCorrespondentList,
     InboxMessage,
     InboxThread,
     InboxThreadList,
@@ -93,6 +95,35 @@ def list_threads(dsn: str, actor: Actor, *, unread: bool) -> InboxThreadList:
         threads=summaries,
         total_unread=sum(item.unread_count for item in summaries),
         unread_only=unread,
+    )
+
+
+def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
+    """Read the registered seats of this tenant, less the reader's own.
+
+    The seats are the persisted ones, not a catalog of names a fleet might use:
+    this is the same ``project_seats`` closed world the send command resolves a
+    recipient against, so an address offered here is an address the record can
+    actually accept, and one it cannot is simply absent.
+    """
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        seat_key = _seat_key(connection, actor)
+        rows = connection.execute(
+            """
+            SELECT project_key, seat_key FROM project_seats
+            WHERE tenant_id = %s AND principal_id <> %s
+            ORDER BY seat_key, project_key
+            """,
+            (actor.tenant_id, actor.principal_id),
+        ).fetchall()
+    return InboxCorrespondentList(
+        correspondents=tuple(
+            InboxCorrespondent(project_key=str(row["project_key"]), seat_key=str(row["seat_key"]))
+            for row in rows
+        ),
+        sender=seat_key,
     )
 
 

@@ -52,6 +52,8 @@ const SETTLE_TIMEOUT_MS = 30_000;
 const STAMP = "kept";
 /** The send box, told from the promote form it shares a page and a class with. */
 const SEND_BOX = "form.steer-box:has(textarea[name='text'])";
+/** The compose panel: its own section, so its rows are never the list's rows. */
+const COMPOSE = "section[aria-labelledby='compose-heading']";
 
 interface NewTicketAffordance {
   readonly label: string;
@@ -102,6 +104,43 @@ interface Drive extends BoxState {
   /** The thread re-read in a fresh document, with none of this page's state. */
   readonly messagesReloaded: readonly string[];
   readonly unfoldedReloaded: readonly string[];
+  readonly screenshot: string;
+}
+
+/** The compose panel and the thread list, as one document reports them. */
+interface ComposeState {
+  /** True when the document that submitted is the document that answered. */
+  readonly sameDocument: boolean;
+  /** The message field after the round trip. */
+  readonly fieldAfter: string;
+  /** The seat the picker is still holding. */
+  readonly seatAfter: string;
+  /** Every seat the picker offers, excluding its own empty placeholder. */
+  readonly seats: readonly string[];
+  /** What the box's own button offers next: `Send`, `Retry`, or `Sending…`. */
+  readonly button: string;
+  /** Rows drawn inside the compose panel: only ever the one just accepted. */
+  readonly composed: readonly string[];
+  /** The thread the accepted answer named, from the link the panel offers. */
+  readonly opened: string;
+  /** The thread list's own rows, which the compose panel is not part of. */
+  readonly listed: readonly string[];
+  /** The unconfirmed-compose sentence on screen, or the empty string. */
+  readonly notice: string;
+  /** The refusal sentence on screen, or the empty string. */
+  readonly refusal: string;
+}
+
+/** What one width's compose box did when it was actually used. */
+interface Composed extends ComposeState {
+  readonly width: number;
+  readonly outcome: string;
+  readonly seat: string;
+  readonly typed: string;
+  /** The thread the panel linked to, re-read in a fresh document. */
+  readonly threadMessages: readonly string[];
+  /** The Inbox list re-read in a fresh document, after the projection folded. */
+  readonly listedReloaded: readonly string[];
   readonly screenshot: string;
 }
 
@@ -168,6 +207,100 @@ async function boxState(page: Page): Promise<BoxState> {
   }, STAMP);
 }
 
+async function composeState(page: Page): Promise<ComposeState> {
+  return await page.evaluate(
+    ([mark, panel]: readonly [string, string]) => {
+      const box = document.querySelector(`${panel} form`);
+      const field = document.querySelector(`${panel} textarea[name='text']`);
+      const picker = document.querySelector(`${panel} select[name='to']`);
+      const said = (rows: string): string[] =>
+        [...document.querySelectorAll(rows)].map((node) => node.textContent ?? "");
+      const text = (node: Element | null | undefined): string => node?.textContent?.trim() ?? "";
+      const link = document.querySelector(`${panel} a[href*='thread=']`);
+      const composed = said(`${panel} .msg .subj`);
+      return {
+        sameDocument: document.documentElement.dataset.visit === mark,
+        fieldAfter: field instanceof HTMLTextAreaElement ? field.value : "",
+        seatAfter: picker instanceof HTMLSelectElement ? picker.value : "",
+        seats:
+          picker instanceof HTMLSelectElement
+            ? [...picker.options].map((option) => option.value).filter((value) => value !== "")
+            : [],
+        button: text(box?.querySelector("button[type='submit']")),
+        composed,
+        opened: link instanceof HTMLAnchorElement ? link.search : "",
+        // the list is every message row that is not the compose panel's own
+        listed: said(".panel .msg .subj").filter((row) => !composed.includes(row)),
+        notice: text(box?.querySelector("p[role='status']")),
+        refusal: text(box?.querySelector("p[role='alert']")),
+      };
+    },
+    [STAMP, COMPOSE] as const
+  );
+}
+
+/**
+ * Type into the compose box, submit it, and report what the same document did.
+ *
+ * The claim under test is the one only a browser can make: an operator who
+ * picks a seat and presses Send is looking at the conversation they started,
+ * in the document they started it from. So the document is stamped first, and
+ * the stamp surviving is what says no page load happened.
+ *
+ * Afterwards the panel's own link is followed in a fresh document, and the
+ * Inbox list is read in another, because the row the panel drew comes from the
+ * command's answer while the list and the thread come from the projection —
+ * and the point of the whole idiom is that those are two different truths that
+ * have to agree in the end.
+ */
+async function composeDrive(
+  page: Page,
+  width: number,
+  outcome: string,
+  seat: string,
+  typed: string,
+  screenshot: string,
+  baseUrl: string
+): Promise<Composed> {
+  const inbox = `${baseUrl}/inbox`;
+  await page.goto(inbox, { waitUntil: "networkidle" });
+  await stamp(page);
+  await page.locator(`${COMPOSE} select[name='to']`).selectOption(seat);
+  await page.locator(`${COMPOSE} textarea[name='text']`).fill(typed);
+  await page.locator(COMPOSE).getByRole("button", { name: "Send" }).click();
+  if (outcome === "started") {
+    await page.locator(`${COMPOSE} .msg .subj`, { hasText: typed }).first().waitFor({
+      timeout: SETTLE_TIMEOUT_MS,
+    });
+  } else {
+    const role = outcome === "refused" ? "alert" : "status";
+    await page.locator(`${COMPOSE} p[role='${role}']`).waitFor({ timeout: SETTLE_TIMEOUT_MS });
+  }
+  const state = await composeState(page);
+  await page.screenshot({ path: screenshot, fullPage: true });
+
+  // the thread the panel named, in a fresh document with none of this page's
+  // state; the first read is what folds it, the way a projection folds
+  let threadMessages: readonly string[] = [];
+  if (state.opened !== "") {
+    await page.goto(`${inbox}${state.opened}`, { waitUntil: "networkidle" });
+    await page.goto(`${inbox}${state.opened}`, { waitUntil: "networkidle" });
+    threadMessages = (await boxState(page)).messages;
+  }
+  await page.goto(inbox, { waitUntil: "networkidle" });
+  const reloaded = await composeState(page);
+  return {
+    width,
+    outcome,
+    seat,
+    typed,
+    screenshot,
+    ...state,
+    threadMessages,
+    listedReloaded: reloaded.listed,
+  };
+}
+
 /** Wait for the one thing this outcome puts on the screen. */
 async function settle(page: Page, outcome: string, typed: string): Promise<void> {
   if (outcome === "sent") {
@@ -231,26 +364,28 @@ async function drive(
   };
 }
 
-async function main(): Promise<void> {
-  const [baseUrl, threadId, refusedThreadId, unconfirmedThreadId, screenshotDirectory] =
-    process.argv.slice(2);
-  if (
-    baseUrl === undefined ||
-    threadId === undefined ||
-    refusedThreadId === undefined ||
-    unconfirmedThreadId === undefined ||
-    screenshotDirectory === undefined ||
-    baseUrl === "" ||
-    threadId === "" ||
-    refusedThreadId === "" ||
-    unconfirmedThreadId === "" ||
-    screenshotDirectory === ""
-  ) {
-    throw new TypeError(
-      "usage: inbox_render_driver.ts <base-url> <thread-id> <refused-thread-id>" +
-        " <unconfirmed-thread-id> <screenshot-dir>"
-    );
+const USAGE =
+  "usage: inbox_render_driver.ts <base-url> <thread-id> <refused-thread-id>" +
+  " <unconfirmed-thread-id> <compose-seat> <refused-seat> <unconfirmed-seat> <screenshot-dir>";
+
+/** One argument this driver cannot run without, or a named failure. */
+function required(value: string | undefined): string {
+  if (value === undefined || value === "") {
+    throw new TypeError(USAGE);
   }
+  return value;
+}
+
+async function main(): Promise<void> {
+  const given = process.argv.slice(2);
+  const baseUrl = required(given[0]);
+  const threadId = required(given[1]);
+  const refusedThreadId = required(given[2]);
+  const unconfirmedThreadId = required(given[3]);
+  const composeSeat = required(given[4]);
+  const refusedSeat = required(given[5]);
+  const unconfirmedSeat = required(given[6]);
+  const screenshotDirectory = required(given[7]);
   const threadRoute = `/inbox?thread=${encodeURIComponent(threadId)}`;
   const routes: ReadonlyArray<readonly [string, string]> = [
     ["list", "/inbox"],
@@ -260,6 +395,7 @@ async function main(): Promise<void> {
   const browser = await chromium.launch();
   const captures: Capture[] = [];
   const drives: Drive[] = [];
+  const composes: Composed[] = [];
   try {
     for (const width of WIDTHS) {
       const context = await browser.newContext({ viewport: { width, height: HEIGHT } });
@@ -315,13 +451,33 @@ async function main(): Promise<void> {
           unconfirmedRoute
         )
       );
+      // the compose box, actually used: a seat picked from the server's own
+      // list, a thread that did not exist before, and the two answers that are
+      // not a started conversation
+      for (const [outcome, seat] of [
+        ["started", composeSeat],
+        ["refused", refusedSeat],
+        ["unconfirmed", unconfirmedSeat],
+      ] as const) {
+        composes.push(
+          await composeDrive(
+            page,
+            width,
+            outcome,
+            seat,
+            `Composed ${outcome} at ${width.toString()}px.`,
+            `${screenshotDirectory}/inbox-compose-${outcome}-${width.toString()}.png`,
+            baseUrl
+          )
+        );
+      }
       await context.close();
     }
   } finally {
     await browser.close();
   }
 
-  process.stdout.write(JSON.stringify({ captures, drives }));
+  process.stdout.write(JSON.stringify({ captures, drives, composes }));
 }
 
 void main();

@@ -49,16 +49,18 @@ class InboxProjectionWiringTests(unittest.TestCase):
         page = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
 
         self.assertIn(
-            '"ctower API · /v1/inbox/threads + /v1/inbox/threads/{id}'
-            ' + /v1/inbox/messages + /promotion"',
+            '"ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/correspondents"',
             adapter,
         )
+        self.assertIn('" + /v1/inbox/messages + /v1/inbox/notifications + /promotion"', adapter)
         self.assertIn("inbox: httpRecordAdapter.inbox", adapter)
         self.assertIn("inboxThread: httpRecordAdapter.inboxThread", adapter)
         self.assertIn("inboxCorrespondent: httpRecordAdapter.inboxCorrespondent", adapter)
+        self.assertIn("inboxCorrespondents: httpRecordAdapter.inboxCorrespondents", adapter)
         self.assertNotIn("inboxFile", adapter)
         self.assertIn("recordAdapter.inboxThread(threadId)", page)
         self.assertIn("recordAdapter.inbox()", page)
+        self.assertIn("recordAdapter.inboxCorrespondents()", page)
 
     def test_a_promoted_thread_and_its_ticket_are_linked_both_ways(self) -> None:
         inbox = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")

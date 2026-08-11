@@ -28,7 +28,7 @@ export function RecordFoot({
       </span>
       <span>{recordAdapter.instance.posture}</span>
       <span>
-        server-authorized Inbox send and promotion paths · browser holds no write authority
+        server-authorized Inbox compose, send and promotion paths · browser holds no write authority
       </span>
       {readPath === null ? null : <span>read {readPath}</span>}
       {watermark === null ? null : <span>{watermark}</span>}

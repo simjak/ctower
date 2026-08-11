@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
+// Authored contract digest: sha256:016d3a2e2c93a38fbe00f43adcbc5645a48e65c7d2e0d3aeb7d52a6b98b9810f
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -240,6 +240,10 @@ export type ListBeatRoutinesInput = Readonly<{
 }>;
 
 export type ListDreamDispatchEffectsInput = Readonly<{
+
+}>;
+
+export type ListInboxCorrespondentsInput = Readonly<{
 
 }>;
 
@@ -488,6 +492,7 @@ export type OperationInputs = Readonly<{
   readonly "listBeatDispatchEffects": ListBeatDispatchEffectsInput;
   readonly "listBeatRoutines": ListBeatRoutinesInput;
   readonly "listDreamDispatchEffects": ListDreamDispatchEffectsInput;
+  readonly "listInboxCorrespondents": ListInboxCorrespondentsInput;
   readonly "listInboxThreads": ListInboxThreadsInput;
   readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
@@ -572,6 +577,7 @@ export type OperationResults = Readonly<{
   readonly "listBeatDispatchEffects": Models.BeatDispatchEffectList;
   readonly "listBeatRoutines": Models.BeatRoutineList;
   readonly "listDreamDispatchEffects": Models.DreamDispatchEffectList;
+  readonly "listInboxCorrespondents": Models.InboxCorrespondentList;
   readonly "listInboxThreads": Models.InboxThreadList;
   readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
   readonly "listProjectEvents": Models.ProjectEventPage;
@@ -892,6 +898,12 @@ export class CtowerClient {
     input: ListDreamDispatchEffectsInput,
   ): Promise<Models.DreamDispatchEffectList> {
     return this.execute("listDreamDispatchEffects", input);
+  }
+
+  public async listInboxCorrespondents(
+    input: ListInboxCorrespondentsInput,
+  ): Promise<Models.InboxCorrespondentList> {
+    return this.execute("listInboxCorrespondents", input);
   }
 
   public async listInboxThreads(

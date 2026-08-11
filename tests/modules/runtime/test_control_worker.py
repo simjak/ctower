@@ -28,7 +28,11 @@ from ctower_kernel.projections import (
     Projections,
 )
 from ctower_kernel.projections.inbox import InboxReadState
-from ctower_kernel.projections.interface import InboxThread, InboxThreadList
+from ctower_kernel.projections.interface import (
+    InboxCorrespondentList,
+    InboxThread,
+    InboxThreadList,
+)
 from ctower_kernel.record import Actor, DurabilityFinalizationBatch, DurabilityHealth
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
@@ -87,6 +91,9 @@ class _ProjectionStore:
         raise NotImplementedError
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
+        raise NotImplementedError
+
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
         raise NotImplementedError
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:

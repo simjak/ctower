@@ -1,0 +1,148 @@
+"""Real PostgreSQL acceptance for opening a new inbox thread from a chosen seat.
+
+The compose control on `/inbox` asks two things of the record that the reply
+path never has to: who may be written to at all, and where a message to somebody
+you have no thread with lands. Both are the record's answers, so both are proved
+here against a real database and the real composed API rather than against the
+surface that renders them.
+"""
+
+from __future__ import annotations
+
+import json
+from typing import cast
+from uuid import UUID, uuid4
+
+import httpx
+from support.acceptance import accept_pending_commands
+from support.server import running_api
+from support.telemetry import telemetry_headers
+from support.tenant_fixture import TenantFixture, provision_seat
+
+from ctower_client import CtowerClient
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
+
+__all__: tuple[str, ...] = ()
+
+_ACCEPTED_STATUS = 201
+_DURABILITY_PENDING_STATUS = 202
+_NOT_FOUND_STATUS = 404
+_ACCEPTED_SEND_STATUS = (_ACCEPTED_STATUS, _DURABILITY_PENDING_STATUS)
+
+
+def test_the_addressable_seats_are_the_ones_a_new_thread_can_be_opened_to(
+    tenant: TenantFixture,
+) -> None:
+    """The picker's closed world, and the command's, are the same world.
+
+    A compose control has to offer somebody before a thread exists, so unlike
+    the send box it cannot read its recipient back from a thread. What it reads
+    instead is this list — the registered project seats — and the value of that
+    is only real if the list and the command agree: every seat listed here can
+    be opened a thread to, and a seat that is not listed is refused by the
+    record's own stable name rather than quietly creating an identity.
+    """
+    _director_id, _director_credential = provision_seat(tenant, "director")
+    command_id = uuid4()
+    headers = {
+        "Accept": "application/json, application/problem+json",
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        "Content-Type": "application/json",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(command_id),
+    }
+
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=tenant.commander_credential) as client,
+    ):
+        listed = client.list_inbox_correspondents()
+        opened = httpx.post(
+            f"{base_url}/v1/inbox/notifications",
+            headers=headers,
+            json={"to": "director", "text": "Opened from the compose control."},
+            timeout=30,
+        )
+        stranger = httpx.post(
+            f"{base_url}/v1/inbox/notifications",
+            headers={**headers, "Idempotency-Key": str(uuid4())},
+            json={"to": "unregistered-seat", "text": "Nobody holds this address."},
+            timeout=30,
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+        thread_id = UUID(str(cast(dict[str, object], json.loads(opened.text))["thread_id"]))
+        read_back = client.read_inbox_thread(thread_id)
+
+    addressable = [item.seat_key for item in listed.correspondents]
+    assert listed.sender == "ctower-commander"
+    assert "director" in addressable
+    assert "ctower-commander" not in addressable
+    assert opened.status_code in _ACCEPTED_SEND_STATUS
+    # the same closed world, from the other side: an address nobody holds is
+    # refused by name, and no seat identity is invented to receive it
+    assert stranger.status_code == _NOT_FOUND_STATUS
+    assert cast(dict[str, object], json.loads(stranger.text))["code"] == "inbox-recipient-not-found"
+    assert sorted(read_back.participants) == ["ctower-commander", "director"]
+    assert [message.text for message in read_back.messages] == ["Opened from the compose control."]
+    print(
+        "REAL_COMPOSE_CLOSED_WORLD listed=" + json.dumps(addressable) + f" thread={thread_id}"
+        f" unknown={stranger.status_code}"
+    )
+
+
+def test_composing_twice_to_one_seat_stays_one_pair_grouped_thread(
+    tenant: TenantFixture,
+) -> None:
+    """Two composes to the same seat are one conversation, not two.
+
+    The thread a compose opens is derived from the unordered seat pair, so the
+    second message joins the thread the first one opened — including the thread
+    the notification mirror already opened for that pair. A control that minted
+    a fresh thread per send would scatter one correspondent's conversation
+    across as many threads as the operator pressed the button.
+    """
+    _director_id, _director_credential = provision_seat(tenant, "director")
+
+    def compose(base_url: str, text: str) -> dict[str, object]:
+        command_id = uuid4()
+        response = httpx.post(
+            f"{base_url}/v1/inbox/notifications",
+            headers={
+                "Accept": "application/json, application/problem+json",
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Content-Type": "application/json",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id),
+            },
+            json={"to": "director", "text": text},
+            timeout=30,
+        )
+        assert response.status_code in _ACCEPTED_SEND_STATUS
+        return cast(dict[str, object], json.loads(response.text))
+
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=tenant.commander_credential) as client,
+    ):
+        first = compose(base_url, "The first thing I had to say.")
+        second = compose(base_url, "The second thing, in the same conversation.")
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+        thread_id = UUID(str(first["thread_id"]))
+        read_back = client.read_inbox_thread(thread_id)
+
+    assert second["thread_id"] == first["thread_id"]
+    assert second["message_id"] != first["message_id"]
+    assert [message.text for message in read_back.messages] == [
+        "The first thing I had to say.",
+        "The second thing, in the same conversation.",
+    ]
+    print(f"REAL_COMPOSE_PAIR_GROUPED thread={thread_id} messages={len(read_back.messages)}")

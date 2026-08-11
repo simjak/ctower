@@ -45,6 +45,42 @@ export type InboxSendState =
       readonly text: string;
     };
 
+/**
+ * Client-safe shape of the one Inbox compose result this UI can render.
+ *
+ * It is the send states plus the one fact a compose has that a reply does not:
+ * which thread the message landed in. The operator chose a correspondent, not a
+ * thread — the server derived that from the seat pair — so `threadId` is the
+ * answer to where the conversation now is, and the only honest way to offer to
+ * open it.
+ *
+ * `to` rides along on every state that hands the words back, because a refused
+ * or unconfirmed compose must return the operator to exactly what they had:
+ * their message *and* the seat they picked for it.
+ */
+export type InboxComposeState =
+  | { readonly kind: "idle" }
+  | {
+      readonly kind: "started";
+      readonly threadId: string;
+      readonly message: InboxAcceptedMessage;
+    }
+  | {
+      readonly kind: "pending";
+      /** Why nothing was drawn: the server has not confirmed this message. */
+      readonly message: string;
+      readonly text: string;
+      readonly to: string;
+      /** The identity every retry of this same message sends again. */
+      readonly commandId: string;
+    }
+  | {
+      readonly kind: "refused";
+      readonly message: string;
+      readonly text: string;
+      readonly to: string;
+    };
+
 /** One message exactly as the send command answered with it. */
 export interface InboxAcceptedMessage {
   readonly messageId: string;
