@@ -45,6 +45,171 @@
     "raw-whitespace-controls": "rejected"
   },
   "paths": {
+    "/v1/admin/console/sessions": {
+      "post": {
+        "operationId": "allowConsoleSession",
+        "x-ctower-cli": null,
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionAllowRequest"}}}
+        },
+        "responses": {
+          "202": {
+            "description": "Console allowance committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionAllowance"}}}
+          },
+          "201": {"description": "Exact console session allowlisted", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionAllowance"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/admin/console/sessions/{console_session_id}/revocation": {
+      "post": {
+        "operationId": "revokeConsoleSession",
+        "x-ctower-generated-client": false,
+        "x-ctower-cli": null,
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/ConsoleSessionId"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionRevocationRequest"}}}},
+        "responses": {
+          "202": {
+            "description": "Console revocation committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
+          },
+          "204": {"description": "Exact console session revoked"},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/admin/console/kill-switch": {
+      "post": {
+        "operationId": "setConsoleKillSwitch",
+        "x-ctower-generated-client": false,
+        "x-ctower-cli": null,
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleKillSwitchRequest"}}}},
+        "responses": {
+          "202": {
+            "description": "Console kill-switch fact committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
+          },
+          "204": {"description": "Global console kill-switch fact appended"},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/console/sessions": {
+      "get": {
+        "operationId": "listVisibleConsoleSessions",
+        "x-ctower-generated-client": false,
+        "x-ctower-cli": null,
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"browserSession": []}],
+        "parameters": [{"$ref": "#/components/parameters/ConsoleCsrf"}],
+        "responses": {
+          "200": {"description": "Currently viewable exact console sessions", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionList"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/console/sessions/{console_session_id}/grants": {
+      "post": {
+        "operationId": "mintConsoleViewGrant",
+        "x-ctower-generated-client": false,
+        "x-ctower-cli": null,
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"browserSession": []}],
+        "parameters": [{"$ref": "#/components/parameters/ConsoleSessionId"}, {"$ref": "#/components/parameters/ConsoleCsrf"}],
+        "responses": {
+          "202": {
+            "description": "Console view grant committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}
+          },
+          "201": {"description": "One-use ConsoleViewGrant minted", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/console/sessions/{console_session_id}/renewals": {
+      "post": {
+        "operationId": "renewConsoleViewGrant",
+        "x-ctower-generated-client": false,
+        "x-ctower-cli": null,
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"browserSession": []}],
+        "parameters": [{"$ref": "#/components/parameters/ConsoleSessionId"}, {"$ref": "#/components/parameters/ConsoleCsrf"}],
+        "responses": {
+          "202": {
+            "description": "Console view-grant renewal committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}
+          },
+          "201": {"description": "Replacement ConsoleViewGrant minted after full re-decision", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/console/sessions/{console_session_id}/events": {
+      "get": {
+        "operationId": "streamConsoleEvents",
+        "x-ctower-generated-client": false,
+        "x-ctower-cli": null,
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"browserSession": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/ConsoleSessionId"},
+          {"$ref": "#/components/parameters/ConsoleCsrf"},
+          {"name": "Last-Event-ID", "in": "header", "required": false, "schema": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807}}
+        ],
+        "responses": {
+          "202": {
+            "description": "Console stream claim committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
+          },
+          "200": {
+            "description": "Bounded no-store server-sent Console events",
+            "headers": {
+              "Cache-Control": {"schema": {"type": "string", "const": "no-store"}},
+              "X-Accel-Buffering": {"schema": {"type": "string", "const": "no"}}
+            },
+            "content": {"text/event-stream": {"schema": {"type": "string"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/bootstrap/first-tenant": {
       "post": {
         "operationId": "bootstrapFirstTenant",
@@ -2106,9 +2271,22 @@
       }
     },
     "securitySchemes": {
-      "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque"}
+      "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque"},
+      "browserSession": {"type": "apiKey", "in": "cookie", "name": "__Host-ctower_session"}
     },
     "parameters": {
+      "ConsoleSessionId": {
+        "name": "console_session_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "ConsoleCsrf": {
+        "name": "X-Ctower-CSRF",
+        "in": "header",
+        "required": true,
+        "schema": {"type": "string", "minLength": 32, "maxLength": 256}
+      },
       "BootstrapCapability": {
         "name": "X-Ctower-Bootstrap-Capability",
         "in": "header",
@@ -2233,6 +2411,67 @@
       }
     },
     "schemas": {
+      "ConsoleSessionAllowRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["adapter_key", "assignment_interval_sequence", "assignment_kind", "assignment_ticket_id", "backend_incarnation", "crew_name", "loop_kind", "opaque_backend_ref", "project_key", "recorded_work_session_id", "runner_epoch", "runner_id", "runtime_attempt_id", "seat_principal_id", "sensitivity_class"],
+        "properties": {
+          "adapter_key": {"type": "string", "const": "tmux-v1"},
+          "assignment_interval_sequence": {"type": "integer", "minimum": 1},
+          "assignment_kind": {"type": "string", "minLength": 1, "maxLength": 128},
+          "assignment_ticket_id": {"type": "string", "format": "uuid"},
+          "backend_incarnation": {"type": "string", "minLength": 1, "maxLength": 128},
+          "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "loop_kind": {"type": "string", "const": "standard"},
+          "opaque_backend_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "recorded_work_session_id": {"type": "string", "format": "uuid"},
+          "runner_epoch": {"type": "integer", "minimum": 1},
+          "runner_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "runtime_attempt_id": {"type": "string", "format": "uuid"},
+          "seat_principal_id": {"type": "string", "format": "uuid"},
+          "sensitivity_class": {"type": "string", "const": "restricted"}
+        }
+      },
+      "ConsoleSessionRevocationRequest": {
+        "type": "object", "additionalProperties": false, "required": ["reason"],
+        "properties": {"reason": {"type": "string", "minLength": 1, "maxLength": 500}}
+      },
+      "ConsoleKillSwitchRequest": {
+        "type": "object", "additionalProperties": false, "required": ["enabled", "reason"],
+        "properties": {
+          "enabled": {"type": "boolean"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "ConsoleSessionAllowance": {
+        "type": "object", "additionalProperties": false,
+        "required": ["allowed_at", "console_session_id", "crew_name", "project_key", "recorded_work_session_id"],
+        "properties": {
+          "allowed_at": {"type": "string", "format": "date-time"},
+          "console_session_id": {"type": "string", "format": "uuid"},
+          "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "recorded_work_session_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "ConsoleSessionList": {
+        "type": "object", "additionalProperties": false, "required": ["sessions"],
+        "properties": {"sessions": {"type": "array", "items": {"$ref": "#/components/schemas/ConsoleSessionAllowance"}}}
+      },
+      "ConsoleViewGrant": {
+        "type": "object", "additionalProperties": false,
+        "required": ["console_session_id", "expires_at", "grant_id", "maximum_uses", "not_before", "policy_revision", "project_key", "renewed_from_grant_id"],
+        "properties": {
+          "console_session_id": {"type": "string", "format": "uuid"},
+          "expires_at": {"type": "string", "format": "date-time"},
+          "grant_id": {"type": "string", "format": "uuid"},
+          "maximum_uses": {"type": "integer", "const": 1},
+          "not_before": {"type": "string", "format": "date-time"},
+          "policy_revision": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "renewed_from_grant_id": {"type": ["string", "null"], "format": "uuid"}
+        }
+      },
       "MigrationPinnedDigests": {
         "type": "object",
         "additionalProperties": false,
@@ -3572,6 +3811,7 @@
               "attention-finding-already-disposed",
               "attention-finding-not-found",
               "attention-kind-unrecognized",
+              "auth-csrf-invalid",
               "auth-exchange-invalid",
               "auth-identity-unresolved",
               "auth-provider-unavailable",
@@ -3602,6 +3842,43 @@
               "credential-revocation-refused",
               "credential-revoked",
               "credential-scope-denied",
+              "console-actor-suspended",
+              "console-adapter-malformed",
+              "console-adapter-unregistered",
+              "console-allowlist-refused",
+              "console-assignment-stale",
+              "console-backend-fenced",
+              "console-backend-unavailable",
+              "console-browser-session-required",
+              "console-continuous-view-limit",
+              "console-csrf-invalid",
+              "console-cursor-invalid",
+              "console-globally-disabled",
+              "console-grant-expired",
+              "console-grant-unavailable",
+              "console-incarnation-fenced",
+              "console-kill-switch-refused",
+              "console-loop-kind-refused",
+              "console-origin-refused",
+              "console-output-unavailable",
+              "console-project-fence-mismatch",
+              "console-project-refused",
+              "console-renewal-binding-mismatch",
+              "console-renewal-unavailable",
+              "console-revocation-refused",
+              "console-role-refused",
+              "console-runner-epoch-fenced",
+              "console-runner-fenced",
+              "console-runtime-attempt-fenced",
+              "console-sensitivity-refused",
+              "console-session-already-allowed",
+              "console-session-already-revoked",
+              "console-session-join-stale",
+              "console-session-not-allowed",
+              "console-session-revoked",
+              "console-session-unavailable",
+              "console-stream-already-open",
+              "console-stream-query-refused",
               "dream-dispatch-already-consumed",
               "dream-dispatch-family-excluded",
               "dream-dispatch-lane-unbound",

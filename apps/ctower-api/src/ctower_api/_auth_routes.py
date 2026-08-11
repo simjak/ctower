@@ -29,6 +29,7 @@ __all__: tuple[str, ...] = ()
 
 LOGIN_ATTEMPT_COOKIE = "ctower_login_attempt"
 SESSION_COOKIE = "__Host-ctower_session"
+CSRF_COOKIE = "__Host-ctower_csrf"
 _LOGIN_ATTEMPT_MAX_AGE_SECONDS = 600
 
 
@@ -81,6 +82,7 @@ def _install_logout(app: FastAPI, access: Access, recorder: TelemetryRecorder) -
         )
         response = JSONResponse(status_code=204, content=None)
         response.delete_cookie(SESSION_COOKIE, path="/")
+        response.delete_cookie(CSRF_COOKIE, path="/")
         response.delete_cookie(LOGIN_ATTEMPT_COOKIE, path="/auth")
         return response
 
@@ -194,6 +196,15 @@ def _authenticated_response(outcome: HumanLoginResult) -> JSONResponse:
         max_age=max(max_age, 0),
         secure=True,
         httponly=True,
+        samesite="strict",
+        path="/",
+    )
+    response.set_cookie(
+        CSRF_COOKIE,
+        outcome.csrf_token,
+        max_age=max(max_age, 0),
+        secure=True,
+        httponly=False,
         samesite="strict",
         path="/",
     )

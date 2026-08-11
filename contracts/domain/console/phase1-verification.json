@@ -1,0 +1,28 @@
+{
+  "schema": "ctower.console-phase1-verification/v1",
+  "elements": [
+    "grant-five-minute-renewable",
+    "authenticated-browser-session-csrf-origin",
+    "non-commander-project-allowlist",
+    "current-assignment-session-join",
+    "exact-tmux-project-runtime-runner-epoch-incarnation",
+    "one-sse-per-grant-and-actor-session",
+    "sse-no-credential-url-and-security-headers",
+    "chunk-16k-delivery-1m-replay-1m-pending-256k",
+    "durable-cursor-gap-before-broadcast",
+    "envelope-per-object-dedicated-reader-access-facts",
+    "expiry-revocation-fence-close-five-seconds",
+    "per-session-and-global-kill-switch",
+    "denial-suspension",
+    "restricted-standard-loop-only",
+    "tailnet-loopback-bind-and-ss-sweep",
+    "real-private-shadow-view-proof"
+  ],
+  "gates": [
+    "console-phase1-contracts",
+    "console-phase1-module",
+    "console-phase1-acceptance",
+    "just check",
+    "just verify"
+  ]
+}

@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **79 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **86 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -21,8 +21,11 @@ from the repository release version.
 
 ### Authentication
 
-Bearer authentication with an opaque token (`securitySchemes.bearerAuth`). The first-tenant bootstrap
-additionally requires the `X-Ctower-Bootstrap-Capability` header, a string of 32–256 characters.
+Most operations use bearer authentication with an opaque token (`securitySchemes.bearerAuth`). The
+first-tenant bootstrap additionally requires the `X-Ctower-Bootstrap-Capability` header, a string of 32–256
+characters. The Console browser operations instead use the secure `__Host-ctower_session` cookie, require an
+exact configured HTTPS `Origin`, and require `X-Ctower-CSRF` to equal both its secure cookie and persisted
+digest. Bearer credentials do not authorize those browser routes.
 
 ### Idempotency
 
@@ -39,14 +42,14 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 154 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 196 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
 
 | Parameter | In | Constraint |
 |---|---|---|
-| `ticket_id`, `request_id`, `ruling_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
+| `ticket_id`, `request_id`, `ruling_id`, `console_session_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
 | `project_key` | path | `^[a-z][a-z0-9-]{2,63}$` |
 | `cursor` | query | integer ≥ 0, default 0 |
 | `limit` | query | integer 1–100, default 50 |
@@ -160,6 +163,53 @@ operator-only result has one artifact key and content digest, Request and Ruling
 open-decision, prior-day-Ruling, and Ticket-proof sections. Each section distinguishes a measured zero from
 an unknown total and names every unreached scope. The read stores nothing and does not deliver or schedule a
 notification. See the [morning digest concept](../concepts/morning-digest.md).
+
+### Console viewer
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/admin/console/sessions` | `allowConsoleSession` | — | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/admin/console/sessions/{console_session_id}/revocation` | `revokeConsoleSession` | — | mutation | forbidden | `202`, `204`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/admin/console/kill-switch` | `setConsoleKillSwitch` | — | mutation | forbidden | `202`, `204`, `401`, `403`, `422` |
+| `GET` | `/v1/console/sessions` | `listVisibleConsoleSessions` | — | query | forbidden | `200`, `401`, `403` |
+| `POST` | `/v1/console/sessions/{console_session_id}/grants` | `mintConsoleViewGrant` | — | mutation | forbidden | `201`, `202`, `401`, `403`, `404`, `409` |
+| `POST` | `/v1/console/sessions/{console_session_id}/renewals` | `renewConsoleViewGrant` | — | mutation | forbidden | `201`, `202`, `401`, `403`, `404` |
+| `GET` | `/v1/console/sessions/{console_session_id}/events` | `streamConsoleEvents` | — | stream claim | forbidden | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+
+The Console event route refuses every query string before it evaluates stream authority or reads output.
+Reconnect supplies the durable cursor only through `Last-Event-ID`, bounded from zero through the maximum
+signed 64-bit value; malformed, negative, and larger values refuse before a stream claim.
+
+The three `/v1/admin/console` routes use operator bearer authentication. An allowance request carries the
+complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` Phase-1 values.
+Revocation carries a 1–500-character reason. The global switch carries `enabled` and a 1–500-character
+reason. Allow is the only Console operation emitted into the ordinary protected generated client; the
+browser/SSE and empty-204 admin operations remain server-only boundaries and do not create handwritten
+browser bearer clients.
+
+The four `/v1/console` routes use `browserSession`, require `X-Ctower-CSRF` (32–256 characters), and require
+the presented `Origin` to equal the configured private HTTPS origin. The same CSRF value must appear in the
+secure CSRF cookie and match the persisted session digest. Discovery returns only exact current allowed
+sessions. Mint and renewal return a grant receipt without its nonce; `maximum_uses` is always `1`, expiry is
+at most five minutes, and renewal retains the original continuous-view start for the thirty-minute ceiling.
+
+The event URL carries no credential. `Last-Event-ID` is an optional signed-64-bit durable cursor header.
+Success is `text/event-stream` with `Cache-Control: no-store` and `X-Accel-Buffering: no`; compression and
+CORS authority are absent. Event shapes are:
+
+- `chunk`: integer `cursor`, base64 `data` representing no more than 16 KiB decoded, and
+  `object_digest` as `sha256:<hex>`; the SSE `id` equals the durable cursor.
+- `gap`: `reason` is `cursor_unavailable`, `source_truncated`, `unprovable_range`, `slow_consumer`, or
+  `rate_limited`; `next_cursor` is an integer or `null`.
+- `closed`: `code` is `expired`, `revoked`, `fenced`, `rate_limited`, `slow_consumer`,
+  `reauthentication_required`, `globally_disabled`, or `output_unavailable`.
+
+`client_disconnected` is durable internal stream-close evidence after the HTTP transport is gone; it is not
+an SSE event because no connected client remains to receive it.
+
+Delivery and replay are each capped at 1 MiB per minute, queued pending bytes at 256 KiB, and grant/revocation
+state is polled at least every four seconds. See [Console view grants](../concepts/console-viewer.md) and the
+[operator procedure](../operations/console-viewer.md).
 
 ### Intake
 

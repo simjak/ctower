@@ -25,7 +25,7 @@ from tools.codegen.generator import CodegenError, check, write
 
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
-_EXPECTED_OPERATION_COUNT = 82
+_EXPECTED_OPERATION_COUNT = 89
 
 
 class _MutatedClient(Protocol):
@@ -162,7 +162,9 @@ def test_generated_operation_registry_is_the_exact_authored_replay_allowlist() -
                 continue
             operation = cast(dict[str, object], value)
             cli = operation["x-ctower-cli"]
-            cli_names = tuple(cli) if isinstance(cli, list) else (cast(str, cli),)
+            cli_names = (
+                tuple(cli) if isinstance(cli, list) else (() if cli is None else (cast(str, cli),))
+            )
             request = _boundary_name(operation.get("requestBody"))
             response = _success_boundary(operation)
             expected[cast(str, operation["operationId"])] = (
@@ -271,6 +273,8 @@ def _boundary_name(value: object) -> str | None:
 
 
 def _success_boundary(operation: dict[str, object]) -> str | None:
+    if operation.get("x-ctower-generated-client", True) is False:
+        return None
     responses = cast(dict[str, dict[str, object]], operation["responses"])
     response = next(
         (value for status, value in sorted(responses.items()) if status.startswith("2")),
@@ -279,8 +283,11 @@ def _success_boundary(operation: dict[str, object]) -> str | None:
     if response is None:
         assert operation.get("x-ctower-refusal-only") is True
         return None
-    content = cast(dict[str, object], response["content"])
-    media = cast(dict[str, object], content["application/json"])
+    content = cast(dict[str, object], response.get("content", {}))
+    media_value = content.get("application/json")
+    if media_value is None:
+        return None
+    media = cast(dict[str, object], media_value)
     schema = cast(dict[str, str], media["schema"])
     return schema["$ref"].removeprefix("#/components/schemas/")
 

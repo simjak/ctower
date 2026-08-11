@@ -86,6 +86,24 @@ It owns no persistence, source client, clock authority, renderer, scheduler, or 
 Unavailable sources and unresolved relations remain explicit partial or unknown results; an authoritative
 absent relation is empty.
 
+Console Phase 1 is isolated in `console/`. `ConsoleViewer` is the small public Interface over a pure exact
+grant decision, append-only PostgreSQL authority, encrypted output custody, and an injected read-only runtime
+Adapter. Commander Actors and disabled or Commander-owned target sessions are absent. The authority rejoins the current
+assignment and recorded work session, rechecks the complete current human/session/policy authority before a
+first stream claim consumes the newest grant, and persists allowances, denials, explicit bounded suspension
+facts, human-bound one-use grants, stream claims/closes, revocations, global switch facts, encrypted cursors,
+reader accesses and one-use recovery facts, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and enforces the
+five-minute grant, thirty-minute continuous-view, four-second authority poll, 16 KiB chunk, 1 MiB/min
+delivery/replay, and 256 KiB pending ceilings. The API owns the bounded pending queue so blocked ASGI sends
+cannot stop authority polling. Per-allowance output and gap collection is single-writer across processes;
+output and gap facts share durable source order, and truncation advances a source generation before a
+numeric source cursor may recur. Each output object has a fresh AES-GCM data key wrapped under a referenced
+key-encryption key; the service commits an access-attempt fact before invoking the dedicated
+`console_output_reader`-owned recovery function, which consumes the access ID into an immutable recovery
+fact and returns only the joined object once. Replay recovers one object per cycle and rechecks authority
+before the next. It then decrypts only data returned through that custody path. The kernel imports no app, web,
+CLI, tmux, or process implementation and contains no input authority.
+
 Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.
 Org writes require operator authority; project writes and reads reuse Record's persisted project-seat checks.
 The static-file Adapter resolves only bounded UTF-8 Markdown below its injected scope root and returns typed

@@ -7,6 +7,7 @@ from uuid import UUID
 
 from ctower_kernel.record._human_identity_sql import actor_for_session as _actor_for_session
 from ctower_kernel.record._human_identity_sql import bind_human_role as _bind_human_role
+from ctower_kernel.record._human_identity_sql import browser_human_session as _browser_human_session
 from ctower_kernel.record._human_identity_sql import issue_human_session as _issue_human_session
 from ctower_kernel.record._human_identity_sql import (
     resolve_human_role_binding as _resolve_human_role_binding,
@@ -14,6 +15,7 @@ from ctower_kernel.record._human_identity_sql import (
 from ctower_kernel.record._human_identity_sql import revoke_human_role as _revoke_human_role
 from ctower_kernel.record._human_identity_sql import revoke_human_session as _revoke_human_session
 from ctower_kernel.record.human_identity import (
+    HumanBrowserSessionRecord,
     HumanRole,
     HumanRoleBindingIssue,
     HumanRoleBindingReceipt,
@@ -81,6 +83,7 @@ class PostgresHumanIdentity:
         role: HumanRole,
         *,
         session_digest: bytes,
+        csrf_digest: bytes,
         now: datetime,
         ttl_seconds: int,
     ) -> HumanSessionReceipt:
@@ -91,6 +94,7 @@ class PostgresHumanIdentity:
             binding_id,
             role,
             session_digest=session_digest,
+            csrf_digest=csrf_digest,
             now=now,
             ttl_seconds=ttl_seconds,
         )
@@ -99,6 +103,15 @@ class PostgresHumanIdentity:
         self, session_digest: bytes, *, now: datetime
     ) -> Actor | RecordProblem | None:
         return _actor_for_session(self._dsn, session_digest, now=now)
+
+    def browser_session(
+        self,
+        session_digest: bytes,
+        csrf_digest: bytes,
+        *,
+        now: datetime,
+    ) -> HumanBrowserSessionRecord | RecordProblem | None:
+        return _browser_human_session(self._dsn, session_digest, csrf_digest, now=now)
 
     def revoke_session(self, session_digest: bytes, *, reason: str, now: datetime) -> None:
         _revoke_human_session(self._dsn, session_digest, reason=reason, now=now)

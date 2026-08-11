@@ -147,6 +147,7 @@ project's own checks. Everything in the right column is specified and designed, 
 | Configured GitLab feedback registrations: a provider-neutral internal seam runs each isolated bounded issue loop, creates source-linked P2 tickets, records later changes as comments, and only a proof-gated ctower close comments on and closes GitLab | Additional provider/product connectors, public connector APIs, webhooks, dynamic plugins, bulk source import, or treating provider state as ctower proof/lifecycle authority |
 | A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Proof required at *every* step, with each step naming the kinds of proof it accepts — see [typed evidence slots](https://simjak.github.io/ctower/concepts/proof/#typed-evidence-slots) — plus richer process authoring than the flow above |
 | An operator-installed private-VPS E2 shadow runtime with supervised loopback services, an ordinary durability finalizer, and the explicit `SHADOW_ONLY_CP3_D_NOT_PROVEN` label | A production runtime, CP3-D activation, authoritative or irreplaceable work, and release lifecycle |
+| A private contextual Console viewer **server foundation**: exact current-session allowances, five-minute one-use human grants, bounded durable SSE, encrypted restricted output behind an audited reader, typed revocation/fences, and literal loopback/tailnet bind checks | The contextual browser panel, hostile-output safe renderer, terminal typing, public access, or authority for the older direct terminal reader |
 | — | `[planned]` Refusing a pass from whoever authored or fixed the candidate, or recorded its evidence. Today the verdict writer is compared only with the principal who froze the candidate criteria — see [verdicts and independence](https://simjak.github.io/ctower/concepts/proof/#verdicts-and-independence) |
 | — | Cancelling a ticket, moving a running ticket to a new version of its process, or a run/step state machine with typed repair attempts |
 
@@ -213,7 +214,10 @@ them:
 In plain terms: the HTTP API and the command line are built first, and ctower does not become the system of
 record for its own work until they hold up. Product browser work — the interface, its tests, and its proof —
 starts later, at a planned point the roadmap calls I2.4. The separate server-mediated `ctower-ui` Inbox
-dogfood controls are the narrow D41/D44 exception, not a supported product UI. `I1`, `I2.4` and `CT-I2-005` are
+dogfood controls are the narrow D41/D44 exception, not a supported product UI. CT-I1-021 adds a second
+narrow pre-UI exception: browser-authenticated Console server routes and their private shadow proof, but no
+product panel or renderer. The two paths are not compatible and the older terminal reader is not Console
+evidence. `I1`, `I2.4` and `CT-I2-005` are
 stage names from [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md), not version numbers.
 
 ## Go deeper

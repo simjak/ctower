@@ -42,7 +42,7 @@ _TERMINAL_REFERENCES = (
         "tools.process_execution",
     }
 )
-_EXPECTED_ADAPTER_CALLS = {"pipeline": 2, "run": 15}
+_EXPECTED_ADAPTER_CALLS = {"pipeline": 2, "run": 16}
 # Every authored async subprocess creation site production-wide, keyed by (path, operation).
 # A new call site must be added here deliberately, alongside proof it is bounded — the
 # assertion below fails loudly on an unreviewed addition instead of silently inventorying it.

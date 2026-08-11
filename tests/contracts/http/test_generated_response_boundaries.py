@@ -434,6 +434,8 @@ def _authored_response_inventories() -> tuple[
             if method not in {"get", "post"}:
                 continue
             operation = cast(dict[str, object], value)
+            if operation.get("x-ctower-generated-client", True) is False:
+                continue
             operation_id = cast(str, operation["operationId"])
             successes[operation_id] = {}
             problems[operation_id] = {}

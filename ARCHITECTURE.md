@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.23 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.24 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-10 |
+| Last reviewed | 2026-08-11 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -43,6 +43,13 @@ Rulings into one Europe/Vilnius artifact with record-derived open decision brief
 their typed Request executions, then Ticket proof links. Generated API/client and CLI surfaces preserve
 partial and unknown sources explicitly. Delivery reuses Mission Control's existing notification rail; this
 candidate adds no store, scheduler, identity, adapter, Slack/Hermes path, or director-cron change.
+
+The contextual Console viewer server foundation is a tested CT-I1-021 candidate. It joins one operator
+allowance to current Record facts and live registered tmux identity, issues one short-lived exact human
+`ConsoleViewGrant`, and streams cursor-addressed encrypted output through a bounded SSE reader. The browser
+boundary reuses the existing human session and adds exact Origin and CSRF enforcement; the runtime boundary
+is one read-only registered tmux/log Adapter on a literal loopback or tailnet listener. It adds no browser UI,
+typing, pane write, generic process route, public listener, or authority for the existing terminal reader.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery
@@ -234,7 +241,7 @@ degradation for unreadable live evidence. Its no-login evidence role is quaranti
 retains neither schema-CREATE nor role-assumption paths after its two fixed probes exist. The review intent
 is an append-only control-plane fact: ctower records emission, consumption, and verdict linkage but never
 launches the reviewer. There is no configured production off-host target, real fixed-job execution,
-backup/restore proof, web surface, or production deployment.
+backup/restore proof, product browser UI, or production deployment.
 
 ### I1: co-located trust spine
 
@@ -624,6 +631,50 @@ caller may pass the rendered text to Mission Control's existing `tools/notify`, 
 precedes the existing rail-2 mirror. Ctower owns neither that schedule nor the director's interim-cron
 switch.
 
+## Console Phase 1 joins authority, runtime identity, and restricted output
+
+```text
+operator allowance + current Record join             exact human session
+                    |                                       |
+                    +----> ConsoleViewGrant decision <------+
+                                      |
+                              one claimed SSE stream
+                                      |
+registered tmux/log Adapter -> encrypt + durable cursor -> audited output reader -> SSE
+       live project/incarnation       |                         |
+                                      +---- gap/close facts <---+
+```
+
+The allowance fixes the Project, enabled non-Commander seat/crew engagement, assignment interval, recorded work
+session, runtime attempt, runner/epoch, backend reference, and tmux incarnation. It is not a bearer grant.
+At discovery, mint, renewal, stream open, and each stream poll, the control plane rejoins durable facts and
+asks the registered Adapter for the live `@project` and incarnation. The trusted registration pins the
+output log's device/inode identity; each read checks that identity on its opened no-follow descriptor and
+validates the current registration and live tmux identity before and after the read. Rename, hard-link,
+registry, or runtime replacement bytes therefore cannot reach custody. Any replacement fences the old
+reference rather than rebinding a familiar tmux name or path.
+Grant, stream-open, output, and custody-access persistence serialize Console-owned append-only authority
+changes and canonical human binding/session revocations on one tenant-scoped advisory lock, then lock the
+exact assignment, work session, Actor/target, human binding/session, and allowance rows in the database
+order shared with canonical Work changes. Those locks remain through commit, so an overlapping authority
+change completes before the final recheck or after the persisted decision, never between them and without
+an inverse binding/principal or tenant/assignment lock cycle.
+
+The browser never receives a database credential, Adapter credential, or grant token in a URL. Its existing
+secure human-session cookie and the exact CSRF proof identify the Actor; one configured private HTTPS Origin
+is admitted. Grant state remains server-side and one stream claim consumes it. A bounded ASGI producer keeps
+authority polling independent from a blocked network send, discards only still-unsent chunks when its 256 KiB
+decoded cap is crossed, and commits a typed gap and close. Output and gap facts commit before their event is
+returned, while a quiet poll releases its connection and collection lock before waiting. Every chunk is committed as
+encrypted RESTRICTED content before broadcast, and only the dedicated output-reader connection can select
+and decrypt it after appending the access fact. The service role can write ciphertext and read metadata, but
+cannot retrieve content or wrapped keys through its ordinary connection.
+
+The Adapter is deliberately narrower than the future Runtime Supervisor boundary. It reads one registered
+existing pipe-pane log by cursor and inspects tmux using bounded argument arrays. It cannot create or write a
+pane, execute a shell, reach Record, discover arbitrary logs, or fall back to the earlier terminal reader.
+That keeps Phase 1 one-way. Q3's separately approved typing controls remain inactive.
+
 ## One ticket, orthogonal state and changing owners
 
 ```text
@@ -961,6 +1012,7 @@ I1: L0 contracts/repository gates
      -> CT-I1-016 immutable Agreements ledger
      -> CT-I1-017 Request-derived decision briefs closed by linked Rulings
      -> CT-I1-018 native morning digest + existing-rail delivery
+     -> CT-I1-021 contextual Console viewer server foundation
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof
@@ -1019,6 +1071,11 @@ Before either increment is complete, applicable tests must show that:
 20. CLI/UI Request channels resolve one existing Actor and return exact server outcomes; Request totals stay
     honest under unanswered/stale/unavailable/unknown projects. Slack/Hermes route, credential, and egress are
     absent until their separately decided and exact-digest CSO-approved boundary activates.
+21. Console visibility requires the complete allowance/current-assignment/current-session/live-runtime join;
+    the exact human-bound grant is one-use and time-bounded; output custody, cursor, gap, expiry, revocation,
+    replacement fence, kill switch, exact Origin/CSRF, tailnet bind, and dedicated-reader privilege proofs all
+    fail closed independently. One real private shadow trace views granted crew output without treating the
+    pre-existing terminal reader, terminal text, or a screenshot as authority.
 
 Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
 committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,

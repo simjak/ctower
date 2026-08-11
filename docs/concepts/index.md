@@ -20,6 +20,7 @@ ideas explain how ctower keeps work and proof together.
 | Durable roles and the short-lived teams that fill them | [Seats and crews](seats-and-crews.md) |
 | Two-person messages and turning a thread into work | [Chat](chat.md) |
 | The read-only view of a live work terminal | [Terminal read](terminal-read.md) |
+| Exact grants, encrypted output, and bounded private Console streams | [Console view grants](console-viewer.md) |
 | Work that becomes due on a schedule | [Routines](routines.md) |
 | The nightly review that produces a durable output | [Dream cycle](dream-cycle.md) |
 | One project's work and the cross-project summary | [Boards and portfolio](board.md) |

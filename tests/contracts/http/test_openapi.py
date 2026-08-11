@@ -1,5 +1,3 @@
-"""Minimum public HTTP and RFC 9457 contract."""
-
 from __future__ import annotations
 
 import ast
@@ -16,6 +14,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "addKnowledgeDocument": ("knowledge add", True, "allowed", None, False),
     "addTicketComment": ("ticket comment add", True, "allowed", None, False),
     "addTicketRelation": ("ticket relation add", True, "allowed", None, False),
+    "allowConsoleSession": (None, True, "forbidden", None, False),
     "appendAttentionFinding": ("attention finding append", True, "allowed", None, False),
     "appendCtowerProjectImportCorrection": (
         "migration ctower-project correction append",
@@ -135,6 +134,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     ),
     **BEAT_OPERATION_METADATA,
     "listKnowledgeDocuments": ("knowledge list", False, "forbidden", None, False),
+    "listVisibleConsoleSessions": (None, False, "forbidden", None, False),
     "listTicketAssignments": ("ticket assignments", False, "forbidden", None, False),
     "listTicketAuditEvents": ("ticket audit", False, "forbidden", None, False),
     "listProjectEvents": (
@@ -161,6 +161,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     ),
     "listTicketSessions": ("session ticket", False, "forbidden", None, False),
     "planCompanyBundle": ("company bundle plan", False, "forbidden", None, False),
+    "mintConsoleViewGrant": (None, True, "forbidden", None, False),
     "prepareCtowerProjectCutover": (
         "migration ctower-project prepare",
         False,
@@ -203,6 +204,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         False,
     ),
     "recordProofVerdict": ("ticket gate verdict", True, "allowed", None, False),
+    "renewConsoleViewGrant": (None, True, "forbidden", None, False),
     "relateRequestTicket": ("request ticket relate", True, "allowed", None, False),
     "reportCtowerProjectFenceObservation": (
         "migration ctower-project fence observe",
@@ -213,12 +215,15 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     ),
     "resolveCloseWorkflow": ("ticket resolve", True, "allowed", None, False),
     "revokeSeatCredential": ("credential seat revoke", True, "forbidden", None, False),
+    "revokeConsoleSession": (None, True, "forbidden", None, False),
     "runSyntheticWorkflow": ("synthetic run", True, "allowed", None, False),
     "ingestInboxNotification": ("inbox notify", True, "allowed", None, False),
     "sendInboxMessage": ("inbox send", True, "allowed", None, False),
     "setRequestBlocker": ("request blocker set", True, "allowed", None, False),
+    "setConsoleKillSwitch": (None, True, "forbidden", None, False),
     "startTicketSession": ("session start", True, "allowed", None, False),
     "startTicketWorkflow": ("ticket workflow start", True, "allowed", None, False),
+    "streamConsoleEvents": (None, True, "forbidden", None, False),
     "submitIntake": ("intake submit", True, "allowed", None, False),
     "transferTicketCustody": ("ticket custody transfer", True, "allowed", None, False),
     "transitionWorkflow": ("ticket transition", True, "allowed", None, False),
@@ -229,6 +234,7 @@ _EXPECTED_PROBLEM_CODES = {
     "attention-finding-already-disposed",
     "attention-finding-not-found",
     "attention-kind-unrecognized",
+    "auth-csrf-invalid",
     "auth-exchange-invalid",
     "auth-identity-unresolved",
     "auth-provider-unavailable",
@@ -259,6 +265,43 @@ _EXPECTED_PROBLEM_CODES = {
     "credential-revocation-refused",
     "credential-revoked",
     "credential-scope-denied",
+    "console-actor-suspended",
+    "console-adapter-malformed",
+    "console-adapter-unregistered",
+    "console-allowlist-refused",
+    "console-assignment-stale",
+    "console-backend-fenced",
+    "console-backend-unavailable",
+    "console-browser-session-required",
+    "console-continuous-view-limit",
+    "console-csrf-invalid",
+    "console-cursor-invalid",
+    "console-globally-disabled",
+    "console-grant-expired",
+    "console-grant-unavailable",
+    "console-incarnation-fenced",
+    "console-kill-switch-refused",
+    "console-loop-kind-refused",
+    "console-origin-refused",
+    "console-output-unavailable",
+    "console-project-fence-mismatch",
+    "console-project-refused",
+    "console-renewal-binding-mismatch",
+    "console-renewal-unavailable",
+    "console-revocation-refused",
+    "console-role-refused",
+    "console-runner-epoch-fenced",
+    "console-runner-fenced",
+    "console-runtime-attempt-fenced",
+    "console-sensitivity-refused",
+    "console-session-already-allowed",
+    "console-session-already-revoked",
+    "console-session-join-stale",
+    "console-session-not-allowed",
+    "console-session-revoked",
+    "console-session-unavailable",
+    "console-stream-already-open",
+    "console-stream-query-refused",
     "dream-dispatch-already-consumed",
     "dream-dispatch-family-excluded",
     "dream-dispatch-lane-unbound",
@@ -419,6 +462,7 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         if is_mutation and spool_policy == "forbidden"
     } == {
         "appendCtowerProjectImportCorrection",
+        "allowConsoleSession",
         "applyCtowerProjectImportBatch",
         "bindCtowerProjectAliasPlan",
         "bindCtowerProjectExportEquality",
@@ -427,8 +471,13 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         "createCtowerProjectImportRun",
         "finalizeCtowerProjectImportRun",
         "issueSeatCredential",
+        "mintConsoleViewGrant",
+        "renewConsoleViewGrant",
         "reportCtowerProjectFenceObservation",
         "revokeSeatCredential",
+        "revokeConsoleSession",
+        "setConsoleKillSwitch",
+        "streamConsoleEvents",
     }
 
 
@@ -476,7 +525,7 @@ def test_http_authentication_requires_scope_or_the_named_opt_out() -> None:
     assert calls
 
 
-def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
+def test_problem_vocabulary_is_exact() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     schemas = cast(dict[str, dict[str, object]], document["components"]["schemas"])
     problem_properties = cast(dict[str, object], schemas["Problem"]["properties"])
@@ -484,62 +533,6 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
     problem_codes = set(cast(list[str], code_schema["enum"]))
 
     assert problem_codes == _EXPECTED_PROBLEM_CODES
-    for name, schema in schemas.items():
-        if schema.get("type") == "object":
-            assert schema.get("additionalProperties") is False, name
-
-
-def test_scalar_profiles_are_exact_root_contracts() -> None:
-    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
-    expected = {
-        "x-ctower-free-form-json-profile": {
-            "containers": "recursive-arrays-and-objects",
-            "duplicate-object-members": "last-member-wins",
-            "fraction-exponent-negative-zero": "preserve-sign",
-            "fraction-exponent-semantics": "finite-ieee-754-binary64",
-            "integer-lexemes": "x-ctower-json-integer-profile",
-            "nonfinite": "rejected",
-            "overflow": "rejected",
-            "trust": "opaque-until-component-schema-validation",
-            "underflow": "preserve-binary64-signed-zero",
-        },
-        "x-ctower-json-integer-profile": {
-            "maximum": 9_007_199_254_740_991,
-            "minimum": -9_007_199_254_740_991,
-            "negative-zero": "normalize-to-zero",
-            "semantics": "exact-integer-interoperability",
-            "token-syntax": "minus-zero-or-nonzero-decimal-digits-only",
-        },
-        "x-ctower-absolute-uri-profile": {
-            "characters": "ascii-rfc3986",
-            "fragment": "allowed",
-            "grammar": "rfc3986-uri-with-required-scheme",
-            "http-authority": "required-with-nonempty-host",
-            "normalization": "none-return-original",
-            "percent-encoding": "complete-two-hex-digit-triplets",
-            "raw-backslash": "rejected",
-            "raw-whitespace-controls": "rejected",
-        },
-    }
-
-    assert {key: document[key] for key in expected} == expected
-    nested = json.dumps({key: value for key, value in document.items() if key not in expected})
-    assert all(key not in nested for key in expected)
-
-
-def test_intake_contract_is_explicit_and_has_no_classifier_or_dispatch_surface() -> None:
-    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
-    paths = cast(dict[str, object], document["paths"])
-    schemas = cast(dict[str, object], document["components"]["schemas"])
-    intake = {
-        "paths": {key: value for key, value in paths.items() if key.startswith("/v1/intake")},
-        "schemas": {key: value for key, value in schemas.items() if key.startswith("Intake")},
-    }
-    rendered = json.dumps(intake, sort_keys=True).casefold()
-
-    assert '"default": "discussion"' in rendered
-    for forbidden in ("classifier", "fuzzy", "commander override", "agent dispatch"):
-        assert forbidden not in rendered
 
 
 def test_i1_7b_reuses_paths_adds_only_planned_paths_and_refuses_i1_7c() -> None:

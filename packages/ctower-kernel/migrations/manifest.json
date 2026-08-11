@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0063_routine_revision_activation.sql",
-    "schema_sha256": "sha256:cc7fffb7ce2f4fd55d3f5ed8746e42e8b6679847fc47de40d51262a9dad5423c",
+    "through": "0065_console_view_grants.sql",
+    "schema_sha256": "sha256:0ceed55272ecbb2f5a624a28e66816c50d1ff5a224025bc785468bb00a52b05a",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644"
+    "schema_object_sum256": "sum256:546ac002f20bd7858804707aa943232826080d9b497b88fcf9c31d405d666edf"
   },
   "migrations": [
     {
@@ -593,6 +593,25 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_corrected_beat_revision_replaces_only_the_active_trigger",
       "rollback_or_forward_compensation": "Preserve every immutable Routine revision, occurrence, effect, command result, event, and outbox row; append a reviewed forward compensation for active-trigger selection and never edit or delete an accepted revision or effect.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, trigger, occurrence, effect, command-result, event, and outbox counts grouped by tenant and routine reference plus a verified database backup; prove only superseded active triggers are retired when a corrected revision registers."
+    },
+    {
+      "path": "0064_console_output_reader_role.sql",
+      "sha256": "sha256:2475da971e7d4771ad7763970faa6a4fa318eee93a12461df94b7eaca296d93f",
+      "scope": "cluster",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_console_reader_role_adoption.py::test_console_output_reader_role_has_only_the_authored_custody_surface",
+      "rollback_or_forward_compensation": "Preserve the dedicated non-login output-reader identity, its administrator-only ownership path, and the audited recovery function until every encrypted Console output object is beyond retention; change membership only through reviewed forward compensation after disabling admission.",
+      "backup_checkpoint": "Before role reconciliation on a nonempty cluster, capture the console_output_reader attributes, memberships, sessions, owned objects, and grants plus a verified cluster-role backup; the new role starts NOLOGIN and NOINHERIT."
+    },
+    {
+      "path": "0065_console_view_grants.sql",
+      "sha256": "sha256:dc2bada90c6dd390b3626cf39ba7ed233098df94deb76b0f6329d683990fcaff",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",
+      "rollback_or_forward_compensation": "Preserve every allow, grant, denial, revocation, stream, encrypted output, access, gap, Adapter observation, and kill-switch fact; append reviewed forward compensation and never edit, delete, reactivate, or decrypt an accepted authority fact outside the dedicated reader path.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture human-session, recorded-session, assignment, allow, grant, stream, output, access, gap, observation, and revocation counts grouped by tenant plus a verified database backup; existing human sessions intentionally have no CSRF proof and cannot enter the Console boundary."
     }
   ]
 }

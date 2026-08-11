@@ -1,0 +1,84 @@
+"""RED-first tests for fail-closed console bind validation and archived ss sweeps."""
+
+from __future__ import annotations
+
+import ipaddress
+from pathlib import Path
+from typing import cast
+
+import pytest
+from fastapi import FastAPI
+
+from ctower_api.console_network import ConsoleListenerError, inspect_ss_sweep, validate_bind_host
+from ctower_api.console_routes import ConsoleRuntime
+from ctower_api.console_server import serve_console
+from ctower_kernel.console import ConsoleViewer
+
+_CONSOLE_PORT = 8443
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "::1", "100.84.252.114", "fd7a:115c:a1e0::1"])
+def test_loopback_and_tailnet_bind_hosts_are_admitted(host: str) -> None:
+    assert validate_bind_host(host) == host
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        str(ipaddress.IPv4Address(0)),
+        str(ipaddress.IPv6Address(0)),
+        "192.0.2.10",
+        "example.com",
+    ],
+)
+def test_wildcard_public_and_hostname_binds_fail_closed(host: str) -> None:
+    with pytest.raises(ConsoleListenerError):
+        validate_bind_host(host)
+
+
+def test_ss_sweep_detects_direct_and_docker_proxy_wildcard_console_ports() -> None:
+    direct = 'LISTEN 0 2048 0.0.0.0:8443 0.0.0.0:* users:(("uvicorn",pid=4,fd=3))'
+    proxy = 'LISTEN 0 4096 [::]:8443 [::]:* users:(("docker-proxy",pid=5,fd=4))'
+    assert inspect_ss_sweep(direct, console_ports=frozenset({8443})).wildcard_listeners
+    assert inspect_ss_sweep(proxy, console_ports=frozenset({8443})).wildcard_listeners
+
+
+def test_ss_sweep_retains_positive_tailnet_inventory_without_false_wildcard() -> None:
+    output = (
+        'LISTEN 0 2048 100.84.252.114:8443 0.0.0.0:* users:(("uvicorn",pid=4,fd=3))\n'
+        'LISTEN 0 2048 127.0.0.1:8091 0.0.0.0:* users:(("uvicorn",pid=6,fd=3))\n'
+    )
+    result = inspect_ss_sweep(output, console_ports=frozenset({8443}))
+    assert not result.wildcard_listeners
+    assert result.private_listeners == ("100.84.252.114:8443",)
+
+
+def test_supported_console_server_uses_only_the_runtime_private_https_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def run(app: FastAPI, **options: object) -> None:
+        captured.update({"app": app, **options})
+
+    monkeypatch.setattr("ctower_api.console_server.uvicorn.run", run)
+    app = FastAPI()
+    runtime = ConsoleRuntime(
+        cast(ConsoleViewer, object()),
+        "https://100.84.252.114:8443",
+    )
+
+    serve_console(
+        app,
+        runtime,
+        certificate_file=Path("/run/ctower/console-cert.pem"),
+        private_key_file=Path("/run/ctower/console-key.pem"),
+    )
+
+    assert captured["app"] is app
+    assert captured["host"] == "100.84.252.114"
+    assert captured["port"] == _CONSOLE_PORT
+    assert captured["ssl_certfile"] == "/run/ctower/console-cert.pem"
+    assert captured["ssl_keyfile"] == "/run/ctower/console-key.pem"
+    assert captured["proxy_headers"] is False
+    assert captured["forwarded_allow_ips"] == ""

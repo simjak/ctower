@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/console/console-session-allow.schema.json",
+  "title": "ConsoleSessionAllow",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "adapter_key",
+    "assignment_interval_sequence",
+    "assignment_kind",
+    "assignment_ticket_id",
+    "backend_incarnation",
+    "crew_name",
+    "loop_kind",
+    "opaque_backend_ref",
+    "project_key",
+    "recorded_work_session_id",
+    "runner_epoch",
+    "runner_id",
+    "runtime_attempt_id",
+    "seat_principal_id",
+    "sensitivity_class"
+  ],
+  "properties": {
+    "adapter_key": {"type": "string", "const": "tmux-v1"},
+    "assignment_interval_sequence": {"type": "integer", "minimum": 1},
+    "assignment_kind": {"type": "string", "minLength": 1, "maxLength": 128},
+    "assignment_ticket_id": {"type": "string", "format": "uuid"},
+    "backend_incarnation": {"type": "string", "minLength": 1, "maxLength": 128},
+    "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+    "loop_kind": {"type": "string", "const": "standard"},
+    "opaque_backend_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+    "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+    "recorded_work_session_id": {"type": "string", "format": "uuid"},
+    "runner_epoch": {"type": "integer", "minimum": 1},
+    "runner_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "runtime_attempt_id": {"type": "string", "format": "uuid"},
+    "seat_principal_id": {"type": "string", "format": "uuid"},
+    "sensitivity_class": {"type": "string", "const": "restricted"}
+  }
+}

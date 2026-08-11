@@ -16,6 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
+from uuid import UUID
 
 import httpx
 
@@ -31,7 +32,7 @@ from ctower_kernel.record.human_identity import (
 )
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
-__all__ = ["HumanAuthentication", "HumanLoginResult", "LoginStart"]
+__all__ = ["HumanAuthentication", "HumanBrowserSession", "HumanLoginResult", "LoginStart"]
 
 _LOGIN_ATTEMPT_TTL_SECONDS = 600
 _DEFAULT_SESSION_TTL_SECONDS = 43_200
@@ -50,8 +51,18 @@ class HumanLoginResult:
     """What the callback route needs to set the session cookie and redirect."""
 
     actor: Actor
+    csrf_token: str
     expires_at: datetime
     session_token: str
+
+
+@dataclass(frozen=True, slots=True)
+class HumanBrowserSession:
+    """Exact browser authority proven by session cookie plus CSRF token."""
+
+    actor: Actor
+    human_binding_id: UUID
+    human_session_id: UUID
 
 
 class HumanAuthentication:
@@ -136,6 +147,36 @@ class HumanAuthentication:
         if outcome is None:
             return _session_invalid("The presented session is unknown.")
         return outcome
+
+    def authenticate_browser_session(
+        self, session_cookie: str | None, *, csrf_token: str | None
+    ) -> HumanBrowserSession | RecordProblem:
+        """Resolve a console browser only when cookie and CSRF proof match exactly."""
+
+        if not session_cookie:
+            return _session_invalid("No session was presented.")
+        if not csrf_token or csrf_token.strip() != csrf_token:
+            return _csrf_invalid()
+        record = self._record.human_identity.browser_session(
+            hashlib.sha256(session_cookie.encode()).digest(),
+            hashlib.sha256(csrf_token.encode()).digest(),
+            now=self._clock(),
+        )
+        if record is None:
+            return _session_invalid("The presented session is unknown.")
+        if isinstance(record, RecordProblem):
+            return record
+        actor = record.actor
+        if (
+            actor.human_binding_id != record.binding_id
+            or actor.human_session_id != record.session_id
+        ):
+            raise RuntimeError("human browser session identity was not carried into Actor")
+        return HumanBrowserSession(
+            actor=actor,
+            human_binding_id=record.binding_id,
+            human_session_id=record.session_id,
+        )
 
     def logout_session(self, session_cookie: str | None) -> None:
         """Revoke one human session; a missing or unknown cookie is a silent no-op."""
@@ -232,17 +273,22 @@ class HumanAuthentication:
         binding_id, actor = resolved
         now = self._clock()
         session_token = secrets.token_urlsafe(32)
+        csrf_token = secrets.token_urlsafe(32)
         receipt = self._record.human_identity.issue_session(
             actor.principal_id,
             actor.tenant_id,
             binding_id,
             cast(HumanRole, actor.kind.value),
             session_digest=hashlib.sha256(session_token.encode()).digest(),
+            csrf_digest=hashlib.sha256(csrf_token.encode()).digest(),
             now=now,
             ttl_seconds=self._session_ttl_seconds,
         )
         return HumanLoginResult(
-            actor=actor, expires_at=receipt.expires_at, session_token=session_token
+            actor=actor,
+            csrf_token=csrf_token,
+            expires_at=receipt.expires_at,
+            session_token=session_token,
         )
 
     def _verify_login_attempt(self, attempt_cookie: str | None) -> dict[str, str] | RecordProblem:
@@ -346,4 +392,13 @@ def _exchange_invalid(detail: str) -> RecordProblem:
 def _session_invalid(detail: str) -> RecordProblem:
     return RecordProblem(
         code="auth-session-invalid", detail=detail, status=401, title="Session invalid"
+    )
+
+
+def _csrf_invalid() -> RecordProblem:
+    return RecordProblem(
+        code="auth-csrf-invalid",
+        detail="The browser CSRF proof is absent or does not match the session.",
+        status=403,
+        title="CSRF proof invalid",
     )

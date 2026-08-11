@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
 """
 
 from __future__ import annotations
@@ -36,6 +36,8 @@ from ctower_client.models import (
     CompanyBundlePlan,
     CompanyBundleRequest,
     CompanyBundleValidationResult,
+    ConsoleSessionAllowRequest,
+    ConsoleSessionAllowance,
     ControlHealth,
     CtowerProjectAliasPlanBindRequest,
     CtowerProjectCutoverHealth,
@@ -268,6 +270,24 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def allow_console_session(
+        self,
+        request: ConsoleSessionAllowRequest,
+    ) -> ConsoleSessionAllowance:
+        response = self._http.post(
+            "/v1/admin/console/sessions",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                },
+            ),
+        )
+        return _response(response, {201: ConsoleSessionAllowance, 202: ConsoleSessionAllowance}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def append_attention_finding(

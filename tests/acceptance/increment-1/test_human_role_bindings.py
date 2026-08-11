@@ -70,6 +70,7 @@ def test_bound_identity_resolves_a_session_that_a_revocation_ends(
         binding_id,
         "viewer",
         session_digest=digest,
+        csrf_digest=hashlib.sha256(b"acceptance-csrf").digest(),
         now=now,
         ttl_seconds=3600,
     )

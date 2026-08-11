@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
 """
 
 from __future__ import annotations
@@ -65,6 +65,12 @@ __all__ = [
     "ComponentProvenance",
     "ComponentReference",
     "ComponentScope",
+    "ConsoleKillSwitchRequest",
+    "ConsoleSessionAllowRequest",
+    "ConsoleSessionAllowance",
+    "ConsoleSessionList",
+    "ConsoleSessionRevocationRequest",
+    "ConsoleViewGrant",
     "ControlHealth",
     "CredentialScope",
     "CtowerProjectAliasPlanBindRequest",
@@ -785,6 +791,52 @@ class ComponentProvenance(_BoundaryModel):
 class ComponentScope(_BoundaryModel):
     project: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")] | None
     tenant: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+
+
+class ConsoleKillSwitchRequest(_BoundaryModel):
+    enabled: bool
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class ConsoleSessionAllowRequest(_BoundaryModel):
+    adapter_key: Literal["tmux-v1"]
+    assignment_interval_sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    assignment_kind: Annotated[str, Field(min_length=1, max_length=128)]
+    assignment_ticket_id: UUID
+    backend_incarnation: Annotated[str, Field(min_length=1, max_length=128)]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    loop_kind: Literal["standard"]
+    opaque_backend_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    recorded_work_session_id: UUID
+    runner_epoch: Annotated[int, Field(ge=1, le=9007199254740991)]
+    runner_id: Annotated[str, Field(min_length=1, max_length=128)]
+    runtime_attempt_id: UUID
+    seat_principal_id: UUID
+    sensitivity_class: Literal["restricted"]
+
+
+class ConsoleSessionAllowance(_BoundaryModel):
+    allowed_at: _Rfc3339DateTime
+    console_session_id: UUID
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    recorded_work_session_id: UUID
+
+
+class ConsoleSessionRevocationRequest(_BoundaryModel):
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class ConsoleViewGrant(_BoundaryModel):
+    console_session_id: UUID
+    expires_at: _Rfc3339DateTime
+    grant_id: UUID
+    maximum_uses: Literal[1]
+    not_before: _Rfc3339DateTime
+    policy_revision: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,127}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    renewed_from_grant_id: UUID | None
 
 
 class CredentialScope(StrEnum):
@@ -1743,6 +1795,10 @@ class ComponentReference(_BoundaryModel):
     revision: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
+class ConsoleSessionList(_BoundaryModel):
+    sessions: tuple[ConsoleSessionAllowance, ...]
+
+
 class CtowerProjectCutoverHealth(_BoundaryModel):
     schema_id: Literal["ctower.ctower-project-cutover-health/v1"] = Field(
         alias="schema", serialization_alias="schema"
@@ -2228,6 +2284,7 @@ class Problem(_BoundaryModel):
         "attention-finding-already-disposed",
         "attention-finding-not-found",
         "attention-kind-unrecognized",
+        "auth-csrf-invalid",
         "auth-exchange-invalid",
         "auth-identity-unresolved",
         "auth-provider-unavailable",
@@ -2258,6 +2315,43 @@ class Problem(_BoundaryModel):
         "credential-revocation-refused",
         "credential-revoked",
         "credential-scope-denied",
+        "console-actor-suspended",
+        "console-adapter-malformed",
+        "console-adapter-unregistered",
+        "console-allowlist-refused",
+        "console-assignment-stale",
+        "console-backend-fenced",
+        "console-backend-unavailable",
+        "console-browser-session-required",
+        "console-continuous-view-limit",
+        "console-csrf-invalid",
+        "console-cursor-invalid",
+        "console-globally-disabled",
+        "console-grant-expired",
+        "console-grant-unavailable",
+        "console-incarnation-fenced",
+        "console-kill-switch-refused",
+        "console-loop-kind-refused",
+        "console-origin-refused",
+        "console-output-unavailable",
+        "console-project-fence-mismatch",
+        "console-project-refused",
+        "console-renewal-binding-mismatch",
+        "console-renewal-unavailable",
+        "console-revocation-refused",
+        "console-role-refused",
+        "console-runner-epoch-fenced",
+        "console-runner-fenced",
+        "console-runtime-attempt-fenced",
+        "console-sensitivity-refused",
+        "console-session-already-allowed",
+        "console-session-already-revoked",
+        "console-session-join-stale",
+        "console-session-not-allowed",
+        "console-session-revoked",
+        "console-session-unavailable",
+        "console-stream-already-open",
+        "console-stream-query-refused",
         "dream-dispatch-already-consumed",
         "dream-dispatch-family-excluded",
         "dream-dispatch-lane-unbound",

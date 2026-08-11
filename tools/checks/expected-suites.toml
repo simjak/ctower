@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-020"
+active_phase = "CT-I1-021"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -27,6 +27,7 @@ phase_order = [
   "CT-I1-018",
   "CT-I1-019",
   "CT-I1-020",
+  "CT-I1-021",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -93,6 +94,16 @@ command = ["{python}", "-m", "pytest", "tests/contracts/http", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "console-phase1-contracts"
+owner = "CT-I1-021"
+phase = "CT-I1-021"
+status = "required"
+path = "tests/contracts/console"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/console", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "workflow-contracts"
 owner = "CT-L0-004"
 phase = "CT-L0-004"
@@ -141,6 +152,46 @@ path = "tests/modules/access"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/access", "-q"]
 timeout_seconds = 300
+
+[[suite]]
+id = "console-phase1-module"
+owner = "CT-I1-021"
+phase = "CT-I1-021"
+status = "required"
+path = "tests/modules/console"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/console", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "console-phase1-acceptance"
+owner = "CT-I1-021"
+phase = "CT-I1-021"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = [
+  "test_console_authority_atomicity.py",
+  "test_console_authority_preflight.py",
+  "test_console_collection_lock.py",
+  "test_console_reader_role_adoption.py",
+  "test_console_transport_disconnect.py",
+  "test_console_view_grants.py",
+  "test_console_view_grant_races.py",
+]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_console_authority_atomicity.py",
+  "tests/acceptance/increment-1/test_console_authority_preflight.py",
+  "tests/acceptance/increment-1/test_console_collection_lock.py",
+  "tests/acceptance/increment-1/test_console_reader_role_adoption.py",
+  "tests/acceptance/increment-1/test_console_transport_disconnect.py",
+  "tests/acceptance/increment-1/test_console_view_grants.py",
+  "tests/acceptance/increment-1/test_console_view_grant_races.py",
+  "-q",
+]
+timeout_seconds = 900
 
 [[suite]]
 id = "record-module"

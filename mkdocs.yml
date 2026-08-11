@@ -46,6 +46,7 @@ nav:
       - Seats and crews: concepts/seats-and-crews.md
       - Chat: concepts/chat.md
       - Terminal read: concepts/terminal-read.md
+      - Console view grants: concepts/console-viewer.md
       - Routines: concepts/routines.md
       - Dream cycle: concepts/dream-cycle.md
       - Workflow details: concepts/workflows.md
@@ -75,6 +76,7 @@ nav:
       - Epic specifications:
           - Issue connector framework: specs/connectors.md
           - First-class operator Requests: specs/operator-requests.md
+          - Crew console: specs/crew-console.md
       - What is deliberately unavailable: start-here/availability.md
       - Repository setup: start-here/repository-setup.md
       - Exercise the development walking slice: getting-started.md
@@ -89,8 +91,11 @@ nav:
           - Rollback: operations/rollback.md
           - ctower-project cutover: operations/ctower-project-cutover.md
           - Recovery evidence: operations/recovery-evidence.md
+          - Phase-1 Console viewer: operations/console-viewer.md
       - Security:
           - Secret handling: security/secret-handling.md
+          - Console Phase-1 verification: security/console-phase1-verification.md
+          - Console Q3 typed-input verdict: security/console-q3-typing-cso.md
       - Contributing:
           - Development guide: contributing/development.md
           - Coding standards: contributing/CODING_STANDARDS.md

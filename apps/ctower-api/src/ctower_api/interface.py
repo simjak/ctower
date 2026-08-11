@@ -69,6 +69,7 @@ from ctower_api._ruling_routes import install_ruling_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
+from ctower_api.console_routes import ConsoleRuntime, install_console_routes
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
@@ -190,6 +191,7 @@ def create_app(
     fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
     telemetry: TelemetryRecorder | None = None,
+    console: ConsoleRuntime | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
@@ -226,8 +228,8 @@ def create_app(
     _install_synthetic_boundary(
         app, access, record, synthetic_runtime, synthetic_revision, recorder
     )
-    _install_dispatch_routes(
-        app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, recorder
+    _install_runtime_boundaries(
+        app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
     )
     return app
 
@@ -369,18 +371,21 @@ def _install_synthetic_boundary(
         )
 
 
-def _install_dispatch_routes(
+def _install_runtime_boundaries(
     app: FastAPI,
     access: Access,
     record: Record,
     dream_runtime: DreamDispatchRuntime | None,
     beat_runtime: BeatDispatchRuntime | None,
+    console_runtime: ConsoleRuntime | None,
     recorder: TelemetryRecorder,
 ) -> None:
     if dream_runtime is not None:
         install_dream_dispatch_routes(app, access, record, dream_runtime, recorder)
     if beat_runtime is not None:
         install_beat_dispatch_routes(app, access, beat_runtime, recorder)
+    if console_runtime is not None:
+        install_console_routes(app, access, console_runtime)
 
 
 def _install_access_routes(
