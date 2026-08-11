@@ -97,13 +97,14 @@ class Adapter:
 def policy(
     *,
     grant_ttl_seconds: int = 300,
+    revocation_poll_seconds: int = 4,
     pending_bytes: int = 256 * 1024,
     policy_revision: str = "console-phase1-r1",
 ) -> ConsolePolicy:
     return ConsolePolicy(
         grant_ttl_seconds=grant_ttl_seconds,
         maximum_continuous_view_seconds=1_800,
-        revocation_poll_seconds=5,
+        revocation_poll_seconds=revocation_poll_seconds,
         decoded_chunk_bytes=16 * 1024,
         delivery_window_bytes=1024 * 1024,
         delivery_window_seconds=60,

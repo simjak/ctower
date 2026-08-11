@@ -69,7 +69,7 @@ Construct `ConsolePolicy` with every value present. There are no defaults. The m
 |---|---:|
 | Grant TTL | 300 seconds |
 | Continuous view | 1,800 seconds |
-| Revocation poll | 5 seconds |
+| Revocation poll | 4 seconds |
 | Decoded chunk | 16,384 bytes |
 | Delivery window | 1,048,576 bytes / 60 seconds |
 | Replay window | 1,048,576 bytes / 60 seconds |
@@ -155,7 +155,7 @@ complete event set. A `gap` reason may be
 
 The HTTP transport prefetches only within the configured decoded pending-byte cap. If a client blocks ASGI
 delivery past that queue, the server discards only the still-unsent queue, commits a `slow_consumer` gap and
-typed close, and bounds each send by the authority poll interval (never more than five seconds). An immediate
+typed close, and bounds each send by the authority poll interval (never more than four seconds). An immediate
 transport error or cancellation instead drains the serialized producer to exactly one `client_disconnected`
 close without a slow-consumer gap.
 

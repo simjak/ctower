@@ -93,7 +93,7 @@ assignment and recorded work session, rechecks the complete current human/sessio
 first stream claim consumes the newest grant, and persists allowances, denials, explicit bounded suspension
 facts, human-bound one-use grants, stream claims/closes, revocations, global switch facts, encrypted cursors,
 reader accesses and one-use recovery facts, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and enforces the
-five-minute grant, thirty-minute continuous-view, five-second close poll, 16 KiB chunk, 1 MiB/min
+five-minute grant, thirty-minute continuous-view, four-second authority poll, 16 KiB chunk, 1 MiB/min
 delivery/replay, and 256 KiB pending ceilings. The API owns the bounded pending queue so blocked ASGI sends
 cannot stop authority polling. Per-allowance output and gap collection is single-writer across processes;
 output and gap facts share durable source order, and truncation advances a source generation before a

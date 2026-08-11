@@ -8,7 +8,7 @@ import json
 import time
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal, Protocol, cast
 from uuid import UUID
 
@@ -265,14 +265,17 @@ class ConsoleViewer:
         )
         if state.durable_cursor != state.after_cursor:
             access_kind = "replay"
+        replay_now = self._clock()
         replay = self._output_store.outputs_after(
             lease,
             state.durable_cursor,
             access_kind,
             authorize=lambda connection: self._authority.lock_stream_write_authority(
-                connection, lease, now=self._clock()
+                connection, lease, now=replay_now
             ),
-            now=self._clock(),
+            now=replay_now,
+            recorded_at_or_after=replay_now
+            - timedelta(seconds=self._authority.policy.replay_window_seconds),
         )
         if isinstance(replay, str):
             state.close_code = replay

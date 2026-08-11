@@ -42,7 +42,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 195 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 196 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
@@ -168,13 +168,13 @@ notification. See the [morning digest concept](../concepts/morning-digest.md).
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
 |---|---|---|---|---|---|---|
-| `POST` | `/v1/admin/console/sessions` | `allowConsoleSession` | `console session allow` | mutation | forbidden | `201`, `401`, `403`, `409`, `422` |
-| `POST` | `/v1/admin/console/sessions/{console_session_id}/revocation` | `revokeConsoleSession` | — | mutation | forbidden | `204`, `401`, `403`, `404`, `409`, `422` |
-| `POST` | `/v1/admin/console/kill-switch` | `setConsoleKillSwitch` | — | mutation | forbidden | `204`, `401`, `403`, `422` |
+| `POST` | `/v1/admin/console/sessions` | `allowConsoleSession` | — | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/admin/console/sessions/{console_session_id}/revocation` | `revokeConsoleSession` | — | mutation | forbidden | `202`, `204`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/admin/console/kill-switch` | `setConsoleKillSwitch` | — | mutation | forbidden | `202`, `204`, `401`, `403`, `422` |
 | `GET` | `/v1/console/sessions` | `listVisibleConsoleSessions` | — | query | forbidden | `200`, `401`, `403` |
-| `POST` | `/v1/console/sessions/{console_session_id}/grants` | `mintConsoleViewGrant` | — | mutation | forbidden | `201`, `401`, `403`, `404`, `409` |
-| `POST` | `/v1/console/sessions/{console_session_id}/renewals` | `renewConsoleViewGrant` | — | mutation | forbidden | `201`, `401`, `403`, `404` |
-| `GET` | `/v1/console/sessions/{console_session_id}/events` | `streamConsoleEvents` | — | stream claim | forbidden | `200`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/console/sessions/{console_session_id}/grants` | `mintConsoleViewGrant` | — | mutation | forbidden | `201`, `202`, `401`, `403`, `404`, `409` |
+| `POST` | `/v1/console/sessions/{console_session_id}/renewals` | `renewConsoleViewGrant` | — | mutation | forbidden | `201`, `202`, `401`, `403`, `404` |
+| `GET` | `/v1/console/sessions/{console_session_id}/events` | `streamConsoleEvents` | — | stream claim | forbidden | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 
 The Console event route refuses every query string before it evaluates stream authority or reads output.
 Reconnect supplies the durable cursor only through `Last-Event-ID`, bounded from zero through the maximum
@@ -208,7 +208,7 @@ CORS authority are absent. Event shapes are:
 an SSE event because no connected client remains to receive it.
 
 Delivery and replay are each capped at 1 MiB per minute, queued pending bytes at 256 KiB, and grant/revocation
-state is polled at least every five seconds. See [Console view grants](../concepts/console-viewer.md) and the
+state is polled at least every four seconds. See [Console view grants](../concepts/console-viewer.md) and the
 [operator procedure](../operations/console-viewer.md).
 
 ### Intake

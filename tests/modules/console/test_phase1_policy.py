@@ -41,7 +41,7 @@ def _policy(**changes: int | str) -> ConsolePolicy:
     values: dict[str, Any] = {
         "grant_ttl_seconds": 300,
         "maximum_continuous_view_seconds": 1_800,
-        "revocation_poll_seconds": 5,
+        "revocation_poll_seconds": 4,
         "decoded_chunk_bytes": 16 * 1024,
         "delivery_window_bytes": 1024 * 1024,
         "delivery_window_seconds": 60,
@@ -141,7 +141,7 @@ def test_policy_has_no_implicit_defaults_and_enforces_every_phase1_ceiling() -> 
     for field, value in (
         ("grant_ttl_seconds", 301),
         ("maximum_continuous_view_seconds", 1_801),
-        ("revocation_poll_seconds", 6),
+        ("revocation_poll_seconds", 5),
         ("decoded_chunk_bytes", 16 * 1024 + 1),
         ("delivery_window_bytes", 1024 * 1024 + 1),
         ("delivery_window_seconds", 61),

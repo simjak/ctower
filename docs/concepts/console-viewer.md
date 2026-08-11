@@ -106,7 +106,7 @@ One grant can claim at most one SSE stream. The policy caps decoded chunks at 16
 minute, replay at 1 MiB per minute, and pending bytes at 256 KiB. A bounded ASGI producer continues the
 one-object-per-authority-check loop while a network send is blocked, but never queues more than that decoded
 cap. Crossing it replaces only still-unsent chunks with a durable `slow_consumer` gap and typed close; each
-send is also bounded by the at-most-five-second authority poll interval. A durable cursor exists before its
+send is also bounded by the at-most-four-second authority poll interval. A durable cursor exists before its
 chunk is broadcast. A per-allowance database lock serializes both Adapter output and gap commits across
 processes. When the source truncates, the gap advances a source generation so the same numeric source cursor
 can be recorded again without collision while SSE cursors remain monotonic.

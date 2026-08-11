@@ -74,7 +74,7 @@ class ConsolePolicy:
         ceilings = {
             "grant_ttl_seconds": (self.grant_ttl_seconds, 300),
             "maximum_continuous_view_seconds": (self.maximum_continuous_view_seconds, 1_800),
-            "revocation_poll_seconds": (self.revocation_poll_seconds, 5),
+            "revocation_poll_seconds": (self.revocation_poll_seconds, 4),
             "decoded_chunk_bytes": (self.decoded_chunk_bytes, 16 * 1024),
             "delivery_window_bytes": (self.delivery_window_bytes, 1024 * 1024),
             "delivery_window_seconds": (self.delivery_window_seconds, 60),

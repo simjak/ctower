@@ -159,6 +159,7 @@ class PostgresConsoleOutputStore:
         *,
         authorize: Callable[[psycopg.Connection[dict[str, object]]], StreamCloseCode | None],
         now: datetime,
+        recorded_at_or_after: datetime,
         limit: int = 1,
     ) -> tuple[StoredConsoleOutput | StoredConsoleGap, ...] | RecordProblem | StreamCloseCode:
         """Lock authority and record recovery access before the custody-role SELECT."""
@@ -175,20 +176,24 @@ class PostgresConsoleOutputStore:
                            NULL::bigint AS source_generation, NULL::text AS reason
                     FROM console_output_objects
                     WHERE allowance_id = %s AND tenant_id = %s AND cursor > %s
+                      AND recorded_at >= %s
                     UNION ALL
                     SELECT cursor, NULL::uuid AS object_id, source_cursor,
                            source_generation, reason
                     FROM console_output_gap_facts
                     WHERE allowance_id = %s AND tenant_id = %s AND cursor > %s
+                      AND recorded_at >= %s
                     ORDER BY cursor LIMIT %s
                     """,
                     (
                         lease.grant.allowance_id,
                         lease.grant.tenant_id,
                         cursor,
+                        recorded_at_or_after,
                         lease.grant.allowance_id,
                         lease.grant.tenant_id,
                         cursor,
+                        recorded_at_or_after,
                         limit,
                     ),
                 ).fetchall()

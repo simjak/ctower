@@ -177,3 +177,36 @@ def test_phase1_verification_manifest_names_every_required_element_and_gate() ->
         "just check",
         "just verify",
     ]
+
+
+def test_console_http_reference_matches_the_authored_openapi_contract() -> None:
+    document = _openapi()
+    paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
+    schemas = cast(dict[str, dict[str, object]], document["components"])["schemas"]
+    problem = cast(dict[str, object], schemas["Problem"])
+    properties = cast(dict[str, dict[str, object]], problem["properties"])
+    problem_codes = cast(list[str], properties["code"]["enum"])
+    reference = (ROOT / "docs/reference/http-api.md").read_text(encoding="utf-8")
+
+    assert f"closed enumeration of {len(problem_codes)} values" in reference
+    console_operations = (
+        ("POST", "/v1/admin/console/sessions", "mutation"),
+        ("POST", "/v1/admin/console/sessions/{console_session_id}/revocation", "mutation"),
+        ("POST", "/v1/admin/console/kill-switch", "mutation"),
+        ("GET", "/v1/console/sessions", "query"),
+        ("POST", "/v1/console/sessions/{console_session_id}/grants", "mutation"),
+        ("POST", "/v1/console/sessions/{console_session_id}/renewals", "mutation"),
+        ("GET", "/v1/console/sessions/{console_session_id}/events", "stream claim"),
+    )
+    for method, path, kind in console_operations:
+        operation = paths[path][method.casefold()]
+        operation_id = cast(str, operation["operationId"])
+        cli = operation["x-ctower-cli"]
+        cli_cell = "—" if cli is None else f"`{cli}`"
+        responses = cast(dict[str, object], operation["responses"])
+        response_cell = ", ".join(f"`{status}`" for status in sorted(responses, key=int))
+        expected_row = (
+            f"| `{method}` | `{path}` | `{operation_id}` | {cli_cell} | {kind} | "
+            f"forbidden | {response_cell} |"
+        )
+        assert expected_row in reference

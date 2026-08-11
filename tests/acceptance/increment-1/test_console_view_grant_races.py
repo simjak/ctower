@@ -9,7 +9,7 @@ import time
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from subprocess import CompletedProcess
 from threading import Barrier
@@ -508,7 +508,6 @@ def test_active_stream_rechecks_every_mutable_authority_within_the_poll_bound(
             (stream.lease.stream_id,),
         ).fetchone()
     assert row == {"code": expected_code, "closed_at": now}
-    assert cast(datetime, row["closed_at"]) <= now + timedelta(seconds=5)
 
 
 def test_envelope_authentication_failure_emits_a_durable_gap_and_typed_close(
