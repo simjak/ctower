@@ -20,6 +20,7 @@ _OPERATIONS = frozenset(
         "triage",
         "priority",
         "owner",
+        "same",
         "ticket_relation",
         "blocker",
         "closure_evaluation",

@@ -101,6 +101,7 @@ accepted; the issue command takes a reference and a lowercase SHA-256 digest.
 |---|---|---|
 | `request capture` | `<text>` | required: `--project-key`; optional: `--command-id` |
 | `request list` | — | optional: `--project-key` |
+| `request same` | `<request_id>` | required: `--expected-version`; optional: `--command-id` |
 | `request prioritize` | `<request_id>` | required: `--expected-version`, `--priority {P0,P1,P2}`, `--reason`; optional: `--command-id` |
 | `request triage` | `<request_id>` | required: `--expected-version`, `--disposition {ACCEPTED,DUPLICATE,REJECTED}`; optional: `--command-id`, `--reason`, `--canonical-request-id` |
 | `request owner assign` | `<request_id>` | required: `--expected-version`, `--owner-id`, `--reason`; optional: `--command-id` |
@@ -113,8 +114,12 @@ Capture and every Request mutation use the protected encrypted spool. Exit `75` 
 replay the same command ID. Do not invent a fresh command ID for the same intent. `request list` is an
 online-only read and never enters the spool.
 
-The server derives Actor, project authority, submitter, initial owner, source, number, and state. A Request
-may remain without a Ticket; relations are explicit and never change Ticket custody or lifecycle. See
+The server derives Actor, project authority, submitter, initial owner, source, number, and state. A
+qualifying local same-Project comparison makes capture say
+`captured as R-new, resembles R-old (status), linked — say same to merge`; it still always records the new
+Request. `request same` is operator-only and preserves both original texts and capture timestamps in
+immutable merge provenance. Commander duplicate triage is the only other merge path. A Request may remain
+without a Ticket; relations are explicit and never change Ticket custody or lifecycle. See
 [Requests](../concepts/requests.md).
 
 ## Rulings
@@ -142,7 +147,8 @@ accepted-only online reads. See
 
 This operator-only online read defaults to today's Europe/Vilnius artifact and deterministic STE text.
 JSON returns the exact generated boundary. The command is never spooled and sends no notification. Unknown
-totals, unreached scopes, and unresolved execution relations remain explicit. See the
+totals, unreached scopes, unresolved execution relations, and accepted open near-duplicate Request pairs
+remain explicit. See the
 [morning digest concept](../concepts/morning-digest.md).
 
 ## Ticket: capture and reads

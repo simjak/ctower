@@ -17,6 +17,13 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
                 "artifact_key": "morning-digest:2026-08-10:Europe/Vilnius",
                 "artifact_sha256": f"sha256:{'a' * 64}",
                 "digest_date": "2026-08-10",
+                "near_duplicates": {
+                    "items": [],
+                    "state": "unknown",
+                    "total_count": None,
+                    "unreached": [{"key": "requests", "reason": "request-source-unavailable"}],
+                    "visible_count": 0,
+                },
                 "observed_at": "2026-08-10T05:00:00+00:00",
                 "open_decisions": {
                     "items": [],
@@ -53,6 +60,7 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
     assert "Unreached: requests (request-source-unavailable)" in rendered
     assert "Yesterday's rulings — 0; COMPLETE" in rendered
     assert "Proof — UNKNOWN total; 0 visible; UNKNOWN" in rendered
+    assert "Near-duplicate requests — UNKNOWN total; 0 visible; UNKNOWN" in rendered
     assert "Open decisions — 0" not in rendered
     assert rendered.endswith(f"SHA-256: sha256:{'a' * 64}")
 
@@ -62,6 +70,13 @@ def test_record_text_cannot_forge_a_digest_section() -> None:
         "artifact_key": "morning-digest:2026-08-10:Europe/Vilnius",
         "artifact_sha256": f"sha256:{'b' * 64}",
         "digest_date": "2026-08-10",
+        "near_duplicates": {
+            "items": [],
+            "state": "complete",
+            "total_count": 0,
+            "unreached": [],
+            "visible_count": 0,
+        },
         "observed_at": "2026-08-10T05:00:00+00:00",
         "open_decisions": {
             "items": [

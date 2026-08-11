@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+// Authored contract digest: sha256:29e807f035048455e882253a8393b81055a77184dd2a3e6de7463d0ceb97b03c
 
 export type ActivityClass = "work" | "verification";
 
@@ -1264,6 +1264,7 @@ export type MorningDigest = Readonly<{
   readonly "artifact_key": string;
   readonly "artifact_sha256": string;
   readonly "digest_date": string;
+  readonly "near_duplicates": MorningDigestDuplicateSection;
   readonly "observed_at": string;
   readonly "open_decisions": MorningDigestDecisionSection;
   readonly "proof": MorningDigestProofSection;
@@ -1285,6 +1286,24 @@ export type MorningDigestDecision = Readonly<{
 
 export type MorningDigestDecisionSection = Readonly<{
   readonly "items": ReadonlyArray<MorningDigestDecision>;
+  readonly "state": DigestReadingState;
+  readonly "total_count": number | null;
+  readonly "unreached": ReadonlyArray<DigestUnreachedScope>;
+  readonly "visible_count": number;
+}>;
+
+export type MorningDigestDuplicate = Readonly<{
+  readonly "candidate_reference": string;
+  readonly "candidate_request_id": string;
+  readonly "candidate_state": "NEW" | "TRIAGED" | "WIP" | "BLOCKED" | "DONE";
+  readonly "note": string;
+  readonly "source_reference": string;
+  readonly "source_request_id": string;
+  readonly "source_state": "NEW" | "TRIAGED" | "WIP" | "BLOCKED" | "DONE";
+}>;
+
+export type MorningDigestDuplicateSection = Readonly<{
+  readonly "items": ReadonlyArray<MorningDigestDuplicate>;
   readonly "state": DigestReadingState;
   readonly "total_count": number | null;
   readonly "unreached": ReadonlyArray<DigestUnreachedScope>;
@@ -1377,7 +1396,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "dream-lane-already-bound" | "dream-lane-binding-operator-required" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "invalid-ruling" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-capture-forbidden" | "invalid-request" | "request-import-forbidden" | "request-owner-forbidden" | "request-project-unavailable" | "request-source-forbidden" | "request-transition-forbidden" | "request-triage-forbidden" | "ruling-already-superseded" | "ruling-not-found" | "ruling-project-unavailable" | "ruling-request-already-answered" | "ruling-request-not-decision" | "ruling-request-not-found" | "ruling-seat-not-found" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "dream-lane-already-bound" | "dream-lane-binding-operator-required" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "invalid-ruling" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-capture-forbidden" | "invalid-request" | "request-import-forbidden" | "request-owner-forbidden" | "request-project-unavailable" | "request-same-forbidden" | "request-source-forbidden" | "request-transition-forbidden" | "request-triage-forbidden" | "ruling-already-superseded" | "ruling-not-found" | "ruling-project-unavailable" | "ruling-request-already-answered" | "ruling-request-not-decision" | "ruling-request-not-found" | "ruling-seat-not-found" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -1568,6 +1587,7 @@ export type RequestCaptureRequest = Readonly<{
 
 export type RequestCaptureResult = Readonly<{
   readonly "accepted_position": number | null;
+  readonly "acknowledgement": string;
   readonly "command_id": string;
   readonly "durability_state": DurabilityState;
   readonly "event_ids": ReadonlyArray<string>;
@@ -1577,6 +1597,7 @@ export type RequestCaptureResult = Readonly<{
   readonly "reference": string;
   readonly "request_id": string;
   readonly "request_number": number;
+  readonly "resemblance": RequestResemblance | null;
   readonly "submitted_by": string;
   readonly "version": number;
 }>;
@@ -1586,7 +1607,7 @@ export type RequestChangeResult = Readonly<{
   readonly "command_id": string;
   readonly "durability_state": DurabilityState;
   readonly "event_ids": ReadonlyArray<string>;
-  readonly "operation": "priority" | "triage" | "owner" | "ticket_relation" | "blocker" | "closure_evaluation";
+  readonly "operation": "priority" | "triage" | "same" | "owner" | "ticket_relation" | "blocker" | "closure_evaluation";
   readonly "reference": string;
   readonly "request_id": string;
   readonly "request_number": number;
@@ -1610,6 +1631,23 @@ export type RequestList = Readonly<{
   readonly "watermark": number;
 }>;
 
+export type RequestMergeProvenance = Readonly<{
+  readonly "canonical_content": string;
+  readonly "canonical_created_at": string;
+  readonly "canonical_reference": string;
+  readonly "canonical_request_id": string;
+  readonly "canonical_request_number": number;
+  readonly "duplicate_content": string;
+  readonly "duplicate_created_at": string;
+  readonly "duplicate_reference": string;
+  readonly "duplicate_request_id": string;
+  readonly "duplicate_request_number": number;
+  readonly "merge_wording": string;
+  readonly "merged_at": string;
+  readonly "merged_by": string;
+  readonly "trigger": "operator_same" | "commander_triage";
+}>;
+
 export type RequestOwnerRequest = Readonly<{
   readonly "expected_version": number;
   readonly "owner_id": string;
@@ -1622,6 +1660,16 @@ export type RequestPriorityRequest = Readonly<{
   readonly "reason": string;
 }>;
 
+export type RequestResemblance = Readonly<{
+  readonly "algorithm_ref": "ctower.local-hashed-subword/v1";
+  readonly "linked_at": string;
+  readonly "other_reference": string;
+  readonly "other_request_id": string;
+  readonly "other_request_number": number;
+  readonly "other_state": "NEW" | "TRIAGED" | "WIP" | "BLOCKED" | "DONE";
+  readonly "similarity_micros": number;
+}>;
+
 export type RequestRow = Readonly<{
   readonly "age_seconds": number;
   readonly "blocker": string | null;
@@ -1631,6 +1679,7 @@ export type RequestRow = Readonly<{
   readonly "decision_brief": DecisionBrief | null;
   readonly "durability_state": "accepted";
   readonly "freshness": number;
+  readonly "merge_provenance": RequestMergeProvenance | null;
   readonly "optional_ticket_ids": ReadonlyArray<string>;
   readonly "original_owner_sha256": string | null;
   readonly "owner": string;
@@ -1643,12 +1692,17 @@ export type RequestRow = Readonly<{
   readonly "request_id": string;
   readonly "request_number": number;
   readonly "required_ticket_ids": ReadonlyArray<string>;
+  readonly "resemblances": ReadonlyArray<RequestResemblance>;
   readonly "source_kind": string;
   readonly "source_ref": string;
   readonly "state": "NEW" | "TRIAGED" | "WIP" | "BLOCKED" | "DONE";
   readonly "ticket_count": number;
   readonly "triage": "UNTRIAGED" | "ACCEPTED" | "DUPLICATE" | "REJECTED";
   readonly "unknown_reason": string | null;
+}>;
+
+export type RequestSameRequest = Readonly<{
+  readonly "expected_version": number;
 }>;
 
 export type RequestTicketRelationRequest = Readonly<{

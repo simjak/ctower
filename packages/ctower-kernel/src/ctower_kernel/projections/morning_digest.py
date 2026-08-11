@@ -15,6 +15,7 @@ __all__ = [
     "DecisionBriefFact",
     "DecisionChoiceFact",
     "DigestRequestFact",
+    "DigestResemblanceFact",
     "DigestRulingFact",
     "MorningDigest",
     "ReadingState",
@@ -169,10 +170,40 @@ class DigestRequestFact:
     optional_ticket_ids: tuple[UUID, ...]
     current_proof_count: int | None
     decision_brief: DecisionBriefFact | None
+    triage: str = "UNTRIAGED"
+    resemblances: tuple[DigestResemblanceFact, ...] = ()
 
     @property
     def reference(self) -> str:
         return f"R{self.request_number}"
+
+
+@dataclass(frozen=True, slots=True)
+class DigestResemblanceFact:
+    other_request_id: UUID
+    other_request_number: int
+
+
+@dataclass(frozen=True, slots=True)
+class DigestDuplicatePair:
+    source_request_id: UUID
+    source_reference: str
+    source_state: str
+    candidate_request_id: UUID
+    candidate_reference: str
+    candidate_state: str
+    note: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "candidate_reference": self.candidate_reference,
+            "candidate_request_id": str(self.candidate_request_id),
+            "candidate_state": self.candidate_state,
+            "note": self.note,
+            "source_reference": self.source_reference,
+            "source_request_id": str(self.source_request_id),
+            "source_state": self.source_state,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +335,7 @@ class MorningDigest:
     state: ReadingState
     request_watermark: int | None
     ruling_watermark: int | None
+    near_duplicates: DigestSection[DigestDuplicatePair]
     open_decisions: DigestSection[DigestDecision]
     yesterday_rulings: DigestSection[DigestRuling]
     proof: DigestSection[DigestProof]
@@ -318,6 +350,7 @@ class MorningDigest:
             "artifact_key": self.artifact_key,
             "digest_date": self.digest_date.isoformat(),
             "observed_at": self.observed_at.isoformat(),
+            "near_duplicates": self.near_duplicates.response_payload(),
             "open_decisions": self.open_decisions.response_payload(),
             "proof": self.proof.response_payload(),
             "request_watermark": self.request_watermark,
@@ -345,6 +378,7 @@ def project_morning_digest(
     """Fold two independent source readings without turning absence into knowledge."""
 
     decisions = _decision_section(requests)
+    duplicates = _duplicate_section(requests)
     request_index = {item.request_id: item for item in requests.rows}
     yesterday = _ruling_section(rulings, requests, request_index, digest_date)
     related_request_ids = {item.request_id for item in decisions.items}
@@ -352,7 +386,7 @@ def project_morning_digest(
         execution.request_id for ruling in yesterday.items for execution in ruling.executions
     )
     proof = _proof_section(requests, yesterday, related_request_ids)
-    state = _combined_state(decisions.state, yesterday.state, proof.state)
+    state = _combined_state(duplicates.state, decisions.state, yesterday.state, proof.state)
     artifact_key = f"morning-digest:{digest_date.isoformat()}:Europe/Vilnius"
     digest = MorningDigest(
         artifact_key=artifact_key,
@@ -363,6 +397,7 @@ def project_morning_digest(
         state=state,
         request_watermark=requests.watermark,
         ruling_watermark=rulings.watermark,
+        near_duplicates=duplicates,
         open_decisions=decisions,
         yesterday_rulings=yesterday,
         proof=proof,
@@ -382,9 +417,50 @@ def project_morning_digest(
         state=digest.state,
         request_watermark=digest.request_watermark,
         ruling_watermark=digest.ruling_watermark,
+        near_duplicates=digest.near_duplicates,
         open_decisions=digest.open_decisions,
         yesterday_rulings=digest.yesterday_rulings,
         proof=digest.proof,
+    )
+
+
+def _duplicate_section(
+    reading: SourceReading[DigestRequestFact],
+) -> DigestSection[DigestDuplicatePair]:
+    by_id = {item.request_id: item for item in reading.rows}
+    pairs: dict[tuple[UUID, UUID], DigestDuplicatePair] = {}
+    for request in reading.rows:
+        if request.state == "DONE" or request.triage in {"DUPLICATE", "REJECTED"}:
+            continue
+        for link in request.resemblances:
+            other = by_id.get(link.other_request_id)
+            if other is None or other.state == "DONE" or other.triage in {"DUPLICATE", "REJECTED"}:
+                continue
+            source, candidate = (
+                (request, other)
+                if request.request_number > other.request_number
+                else (other, request)
+            )
+            key = (source.request_id, candidate.request_id)
+            pairs[key] = DigestDuplicatePair(
+                source.request_id,
+                source.reference,
+                source.state,
+                candidate.request_id,
+                candidate.reference,
+                candidate.state,
+                (
+                    f"{source.reference} resembles {candidate.reference} "
+                    f"({candidate.state}) — say same on {source.reference} to merge."
+                ),
+            )
+    items = tuple(sorted(pairs.values(), key=lambda item: item.source_reference))
+    return DigestSection(
+        reading.state,
+        len(items),
+        len(items) if reading.state is ReadingState.COMPLETE else None,
+        items,
+        reading.unreached,
     )
 
 

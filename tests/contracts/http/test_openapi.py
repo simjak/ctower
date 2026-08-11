@@ -152,6 +152,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         False,
     ),
     "listRequests": ("request list", False, "forbidden", None, False),
+    "mergeResemblingRequest": ("request same", True, "allowed", None, False),
     "listReviewDispatchEffects": (
         "ticket review-dispatch list",
         False,
@@ -312,6 +313,7 @@ _EXPECTED_PROBLEM_CODES = {
     "request-import-forbidden",
     "request-owner-forbidden",
     "request-project-unavailable",
+    "request-same-forbidden",
     "request-source-forbidden",
     "request-transition-forbidden",
     "request-triage-forbidden",

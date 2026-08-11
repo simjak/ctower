@@ -32,6 +32,7 @@ from ctower_kernel.work._request_types import (
     RequestChangeResult,
     RequestOwner,
     RequestPriority,
+    RequestSame,
     RequestTicketRelation,
     RequestTriage,
 )
@@ -294,6 +295,8 @@ def _authority_decision(
     commander = exact_commander or human_commander
     if isinstance(command, RequestTriage):
         return commander, "request-triage-forbidden"
+    if isinstance(command, RequestSame):
+        return operator, "request-same-forbidden"
     if isinstance(command, RequestPriority):
         return operator or commander, "request-transition-forbidden"
     if isinstance(command, RequestOwner):
@@ -446,6 +449,8 @@ def _operation(command: RequestChange) -> str:
         return "priority"
     if isinstance(command, RequestTriage):
         return "triage"
+    if isinstance(command, RequestSame):
+        return "same"
     if isinstance(command, RequestOwner):
         return "owner"
     if isinstance(command, RequestTicketRelation):

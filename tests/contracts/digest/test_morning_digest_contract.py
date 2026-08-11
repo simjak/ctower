@@ -29,6 +29,7 @@ def test_morning_digest_is_one_strict_read_only_generated_surface() -> None:
         "artifact_key",
         "artifact_sha256",
         "digest_date",
+        "near_duplicates",
         "observed_at",
         "open_decisions",
         "proof",
@@ -52,6 +53,7 @@ def test_every_digest_section_distinguishes_unknown_total_from_measured_zero() -
         "MorningDigestDecisionSection",
         "MorningDigestRulingSection",
         "MorningDigestProofSection",
+        "MorningDigestDuplicateSection",
     ):
         properties = cast(dict[str, dict[str, object]], schemas[name]["properties"])
         assert properties["total_count"]["type"] == ["integer", "null"]

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.23 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.25 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
 | Last reviewed | 2026-08-10 |
 
@@ -22,9 +22,10 @@ Implementation labels are strict:
   exist in I1/I2.
 
 The first-class Request aggregate now exists as a tested Phase-1 development candidate: durable capture,
-append-only semantic facts, generated API/CLI operations, accepted-only read, restore evidence, and a
-read-only cutover analyzer. It has no portfolio authority. The Mission Control ledger remains authoritative
-until CT-I1-015's complete signed, fenced, reconciled one-way epoch succeeds.
+bounded local duplicate-aware speaking, explicit operator/commander merge provenance, append-only semantic
+facts, generated API/CLI operations, accepted-only read, restore evidence, and a read-only cutover analyzer.
+It has no portfolio authority. The Mission Control ledger remains authoritative until CT-I1-015's complete
+signed, fenced, reconciled one-way epoch succeeds.
 
 The Agreements ledger is a tested CT-I1-016 candidate. It stores each accepted Ruling as a server-dated,
 UUIDv7-addressed, byte-exact immutable Work fact attributed to an existing project seat. Corrections append
@@ -40,9 +41,10 @@ through separate work.
 
 The morning digest is a tested CT-I1-018 read-model candidate. Its pure fold composes accepted Requests and
 Rulings into one Europe/Vilnius artifact with record-derived open decision briefs, prior-day Rulings and
-their typed Request executions, then Ticket proof links. Generated API/client and CLI surfaces preserve
-partial and unknown sources explicitly. Delivery reuses Mission Control's existing notification rail; this
-candidate adds no store, scheduler, identity, adapter, Slack/Hermes path, or director-cron change.
+their typed Request executions, Ticket proof links, then accepted open near-duplicate Request pairs.
+Generated API/client and CLI surfaces preserve partial and unknown sources explicitly. Delivery reuses
+Mission Control's existing notification rail; this candidate adds no store, scheduler, identity, adapter,
+Slack/Hermes path, or director-cron change.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery
@@ -586,10 +588,15 @@ durable inbound event + exactly one Request (UUIDv7, tenant-wide R<number>)
 derived Request state at one Record watermark: NEW | TRIAGED | WIP | BLOCKED | DONE
 ```
 
-Capture is one bounded Record transaction plus required off-host acknowledgement; analysis and projection
-catch-up are downstream. A Request closes from its current disposition, relation set, blockers, and evidence
-digest. Changing any dependency invalidates the prior evaluation, so a rebuilt row may honestly leave
-`DONE`. No mutable status exists.
+Capture is one bounded Record transaction plus required off-host acknowledgement. In that transaction Work
+compares the new text with accepted open same-Project Requests using the deterministic local D57 hashed-
+subword vector, always records the new Request, and records at most one above-threshold resemblance. The
+acknowledgement speaks the pair and says how to merge; no model service, secret, network call, or external
+egress exists. Only explicit operator `request same` or commander duplicate triage appends the duplicate fact
+and immutable provenance that preserves both verbatim texts and capture timestamps. Analysis beyond that
+fixed comparison and projection catch-up are downstream. A Request closes from its current disposition,
+relation set, blockers, and evidence digest. Changing any dependency invalidates the prior evaluation, so a
+rebuilt row may honestly leave `DONE`. No mutable status exists.
 
 CT-I1-015 is a one-way authority replacement. Migration `0059` installs the existing-tenant native-capture
 fence before the candidate service is exposed, and the old Mission Control writer is fenced before the complete
@@ -604,19 +611,21 @@ operator acknowledgement, and independent exact-digest CSO verdict for its adapt
 ## Morning digest reads facts; it stores and infers nothing
 
 ```text
-accepted Request read ----> open decision briefs ----+
-                                                     |
-accepted Ruling read -----> yesterday + executions --+--> one dated digest
-                                                     |
-Request Ticket relations -> timeline proof links ----+
+accepted Request read ----> open decision briefs ------+
+                          -> open resemblance pairs ----+
+                                                       |
+accepted Ruling read -----> yesterday + executions ----+--> one dated digest
+                                                       |
+Request Ticket relations -> timeline proof links ------+
 ```
 
 The fold uses the Europe/Vilnius civil-day boundary. A Request enters open decisions only through the
 recorded `operator-decision-required` marker and renders the complete record-derived brief from its accepted
-read. A Ruling's typed Request relation is the only execution link; an authoritative absent link is an empty
-execution set, while an unavailable source or unresolved relation remains explicitly partial. Every section
-carries its state, visible count, nullable total, and unreached scopes, with both source watermarks on the
-artifact, so an unavailable source cannot become a calm zero.
+read. Each accepted open resemblance appears once with the explicit `same` instruction and disappears after
+accepted merge. A Ruling's typed Request relation is the only execution link; an authoritative absent link
+is an empty execution set, while an unavailable source or unresolved relation remains explicitly partial.
+Every section carries its state, visible count, nullable total, and unreached scopes, with both source
+watermarks on the artifact, so an unavailable source cannot become a calm zero.
 
 `GET /v1/digests/morning` is an operator-only generated-client read. `digest morning` renders the same strict
 artifact as STE text by default or JSON on request, and it never enters the mutation spool. A scheduled
@@ -925,9 +934,10 @@ create fresh Company / ctower + manibo + bh-loop Projects and disjoint projectio
   -> CT-I1-015 fence/import/reconcile Request ledger + remove old writer/import + first capture
 ```
 
-There is no unbounded tailer, general Ticket/corpus importer, fuzzy dedupe, or automatic backfill.
-OR-06's Request-only signed import is the exact exception approved by D46 and is unavailable outside
-CT-I1-015's fenced authority epoch. CT-I1-014's one
+There is no unbounded tailer, general Ticket/corpus importer, general fuzzy-dedupe service, or automatic
+backfill. D57's deterministic local same-Project comparison at Request capture is the one bounded resemblance
+exception; it always captures and never merges automatically. OR-06's Request-only signed import is the exact
+exception approved by D46 and is unavailable outside CT-I1-015's fenced authority epoch. CT-I1-014's one
 configured GitLab issue cursor is the sole standing source-host exception. The ordinary command path cannot
 forge proof, gates, effects, delivery, resolution, closure, or arbitrary status. Throughout shadow
 operation the incomplete fresh database may be discarded while Mission Control and applicable
@@ -957,10 +967,10 @@ I1: L0 contracts/repository gates
      -> CT-I1-013 config-driven human OIDC + unchanged machine credentials + one Actor/audit model
      -> CT-I1-014 one bounded GitLab Issue co-source + immutable custody/delivery receipts
      -> CP3-D external-failure-domain/key/destructive-restore/RPO-RTO proof
-     -> CT-I1-015 Request authority + exact one-way Mission Control ledger cutover
+     -> CT-I1-015 Request authority + duplicate-aware speaking + exact one-way Mission Control ledger cutover
      -> CT-I1-016 immutable Agreements ledger
      -> CT-I1-017 Request-derived decision briefs closed by linked Rulings
-     -> CT-I1-018 native morning digest + existing-rail delivery
+     -> CT-I1-018 native morning digest + open resemblance pairs + existing-rail delivery
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof
@@ -1019,6 +1029,11 @@ Before either increment is complete, applicable tests must show that:
 20. CLI/UI Request channels resolve one existing Actor and return exact server outcomes; Request totals stay
     honest under unanswered/stale/unavailable/unknown projects. Slack/Hermes route, credential, and egress are
     absent until their separately decided and exact-digest CSO-approved boundary activates.
+21. Every capture persists the new Request, a qualifying open same-Project resemblance speaks in the exact
+    acknowledgement and survives two-sided accepted reads, unrelated text stays unlinked, and only explicit
+    operator `same` or commander duplicate triage records merge provenance while retaining both originals.
+22. The digest shows each accepted open resemblance pair once and removes it after accepted merge; local
+    comparison inventory proves zero model-service, secret, network, or external-egress boundary.
 
 Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
 committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,

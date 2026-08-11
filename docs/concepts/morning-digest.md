@@ -1,11 +1,12 @@
 # Morning digest
 
-The morning digest is one read-only operator artifact for a Europe/Vilnius civil date. It answers three
+The morning digest is one read-only operator artifact for a Europe/Vilnius civil date. It answers four
 questions in a fixed order:
 
 1. Which recorded Requests still need an operator decision?
 2. Which Rulings were recorded during the prior civil day, and what Request execution followed?
 3. Which related Tickets expose the current proof timeline?
+4. Which accepted open Requests resemble each other and still need an explicit merge decision?
 
 The digest does not persist an answer. It folds accepted Request and Ruling reads at their named
 watermarks, derives a stable artifact key, and hashes the canonical content. Repeating the read therefore
@@ -32,6 +33,14 @@ links to that Ticket's timeline. Unrelated historical Requests stay out. The cur
 from the Request read. An unavailable count remains `UNKNOWN`, not zero. Because recorded executions also
 define which Requests belong here, an incomplete Request or prior-day Ruling/execution reading makes the
 proof total `UNKNOWN` while preserving every visible proof row.
+
+## Near-duplicate Requests
+
+Each accepted open resemblance pair appears once, even though accepted Request reads expose the link from
+both sides. The deterministic line names both permanent numbers and the current candidate state, then says
+which Request should receive `request same`. An accepted operator `same` or commander duplicate triage removes
+the pair; pending merge facts and unrelated text do not affect the section. The digest only projects the
+persisted D57 link. It performs no text comparison, inference, model call, or external egress.
 
 ## Partial and unknown sources
 

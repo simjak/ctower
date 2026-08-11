@@ -71,13 +71,15 @@ Bearer authority and the one-use bootstrap capability are read as one bounded li
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server
 authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.
 
-Request capture and the explicit priority, triage, owner, Ticket-relation, blocker, and closure-evaluation
-commands use the same protected generated-client/spool path. Request list is online-only. The CLI supplies
-neither Actor nor owner/source/state authority and creates no Ticket implicitly.
+Request capture and the explicit `same`, priority, triage, owner, Ticket-relation, blocker, and closure-
+evaluation commands use the same protected generated-client/spool path. A qualifying capture prints the
+server's exact resemblance acknowledgement; `same` requests an operator-only immutable merge that preserves
+both originals. Request list is online-only. The CLI supplies neither Actor nor owner/source/state,
+similarity, or provenance authority and creates no Ticket implicitly.
 
 `digest morning [--date YYYY-MM-DD] [--output text|json]` is an online-only operator read. Text is the
 default deterministic STE projection; JSON is the exact generated boundary. Both keep unknown totals,
-unreached scopes, and unresolved relation targets explicit. The command sends no notification and enters no
+unreached scopes, unresolved relation targets, and accepted open resemblance pairs explicit. The command sends no notification and enters no
 spool; the existing Mission Control caller owns notify-rail delivery and scheduling.
 
 A mutation is encrypted and durably appended before its first network send only when the generated operation

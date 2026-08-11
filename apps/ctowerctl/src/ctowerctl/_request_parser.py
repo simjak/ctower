@@ -38,6 +38,11 @@ def request_parser(parser: argparse.ArgumentParser) -> None:
     )
     triage.add_argument("--reason")
     triage.add_argument("--canonical-request-id", type=UUID)
+    same = actions.add_parser("same")
+    same.set_defaults(cli_name="request same")
+    same.add_argument("request_id", type=UUID)
+    _command_id(same)
+    _version(same)
     _fact_parsers(actions)
 
 

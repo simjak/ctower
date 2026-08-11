@@ -2251,3 +2251,38 @@ Rejected alternatives:
   picker built on them would offer addresses the record has never held.
 - Filtering the listed seats down to the ones this principal already has threads with. That is the set the
   compose control exists to escape.
+
+## D57 — Request resemblance speaks locally and never owns merge authority (operator + engineering, 2026-08-11, gh#431)
+
+The operator named the failure mode verbatim: “operator requests might duplicate since I forget quite
+quickly what I asked”. This entry extends D46's Request authority and D51's digest read-model. It supersedes
+D51's rejection of semantic similarity only for persisted Request-to-Request resemblance; typed Request
+relations remain the sole authority for Ruling executions, and no Ticket fuzzy matching is authorized.
+
+1. Every capture compares against every accepted open, non-rejected, non-duplicate Request in the same
+   Project. It always stores the new Request. A qualifying best candidate appends one immutable link that
+   reads from both endpoints and returns the exact acknowledgement naming both references and `say same to
+   merge`; it never silently drops, aliases, or merges the new wording.
+2. Compute is the deterministic in-process `ctower.local-hashed-subword/v1` embedding: NFKC/casefolded
+   Unicode word and adjacent-word features plus character 3/4/5-grams, SHA-256 hashed into 2,048 dimensions,
+   cosine threshold `0.72`, highest score then oldest Request. It adds no dependency, model download,
+   provider, process, secret, socket, DNS, or egress path. The link retains both reproducibility digests.
+3. Only an authenticated operator may say `request same`, and only on the new Request's accepted persisted
+   link. Commander-authorized `DUPLICATE` triage remains the one other merge path. Both append one immutable
+   provenance fact containing both Request identities, `R` numbers, exact original text/digests and capture
+   timestamps, trigger wording, actor, command, and merge time. No automatic or alternate merge path exists.
+4. The morning digest pure fold emits one terse note for each pair while both endpoints remain accepted and
+   open. It deduplicates the two-sided read, names the new Request on which to say same, and stops rendering
+   merged, rejected, done, pending, missing, or unknown pairs without deleting their underlying link.
+
+Rejected alternatives:
+
+- A remote embedding API or local model server. Both add a provider/process and a model lifecycle to a
+  small same-Project corpus, create a new CSO/egress surface, and make capture depend on mutable availability.
+- Automatic merge at capture. Similarity is evidence for an operator-visible link, not authority to erase
+  distinct wording or outcome accountability.
+- Exact token equality only. It misses the operator's ordinary punctuation, hyphenation, inflection, and
+  small wording drift; the fixed hashed-subword vector catches those variations without claiming a general
+  language model.
+- Recomputing links in the digest. The digest is a pure read projection and may surface only the immutable
+  capture-time fact; it cannot quietly change historical resemblance under a later algorithm.

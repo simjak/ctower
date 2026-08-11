@@ -561,6 +561,22 @@
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
+    "AC-REQ-09": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
+    ],
+    "AC-REQ-10": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
+    ],
+    "AC-REQ-11": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
+    ],
+    "AC-REQ-12": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
+    ],
     "AC-RUL-01": [
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
@@ -1183,7 +1199,8 @@
       "contracts/http/openapi.yaml"
     ],
     "INV-81": [
-      "packages/ctower-kernel/migrations/0059_request_authority.sql"
+      "packages/ctower-kernel/migrations/0059_request_authority.sql",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
     ],
     "INV-82": [
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
@@ -1215,14 +1232,21 @@
       "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
     ],
     "INV-90": [
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
+    ],
+    "INV-91": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
     ],
     "SPEC#accepted-first-class-operator-request-contract": [
+      "contracts/domain/events/event-envelope.schema.json",
       "contracts/domain/migration/request-batch-proof.schema.json",
       "contracts/domain/migration/request-import-manifest.schema.json",
       "contracts/domain/migration/request-owner-map.schema.json",
       "contracts/domain/migration/request-source-fence.schema.json",
-      "packages/ctower-kernel/migrations/0059_request_authority.sql"
+      "packages/ctower-kernel/migrations/0059_request_authority.sql",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -1367,7 +1391,8 @@
       "contracts/http/openapi.yaml"
     ],
     "SPEC#morning-digest-read-model": [
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0064_request_resemblance.sql"
     ],
     "SPEC#native-inbox-delivery-and-read-facts": [
       "contracts/domain/inbox/inbox-v2.schema.json",

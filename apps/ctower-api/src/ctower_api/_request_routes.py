@@ -29,6 +29,7 @@ from ctower_client.models import (
     RequestList,
     RequestOwnerRequest,
     RequestPriorityRequest,
+    RequestSameRequest,
     RequestTicketRelationRequest,
     RequestTriageRequest,
 )
@@ -43,6 +44,7 @@ from ctower_kernel.work.requests import (
     RequestOwner,
     RequestPriority,
     Requests,
+    RequestSame,
     RequestTicketRelation,
     RequestTriage,
 )
@@ -116,6 +118,9 @@ class _RequestRoutes:
 
     async def triage(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestTriageRequest)
+
+    async def same(self, request: Request, request_id: str) -> JSONResponse:
+        return await self._change(request, request_id, RequestSameRequest)
 
     async def assign_owner(self, request: Request, request_id: str) -> JSONResponse:
         return await self._change(request, request_id, RequestOwnerRequest)
@@ -218,6 +223,12 @@ def _apply_change(
             payload.canonical_request_id,
         )
         return authority.triage(actor, command, telemetry=telemetry)
+    if isinstance(payload, RequestSameRequest):
+        return authority.same(
+            actor,
+            RequestSame(command_id, request_id, payload.expected_version),
+            telemetry=telemetry,
+        )
     if isinstance(payload, RequestOwnerRequest):
         return authority.assign_owner(
             actor,
@@ -279,6 +290,7 @@ def install_request_routes(
     app.add_api_route("/v1/requests", routes.list_requests, methods=["GET"])
     app.add_api_route("/v1/requests/{request_id}/priority", routes.prioritize, methods=["POST"])
     app.add_api_route("/v1/requests/{request_id}/triage", routes.triage, methods=["POST"])
+    app.add_api_route("/v1/requests/{request_id}/same", routes.same, methods=["POST"])
     app.add_api_route("/v1/requests/{request_id}/owner", routes.assign_owner, methods=["POST"])
     app.add_api_route(
         "/v1/requests/{request_id}/ticket-relations", routes.relate_ticket, methods=["POST"]

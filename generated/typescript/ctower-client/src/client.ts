@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+// Authored contract digest: sha256:29e807f035048455e882253a8393b81055a77184dd2a3e6de7463d0ceb97b03c
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -297,6 +297,12 @@ export type ListTicketSessionsInput = Readonly<{
   readonly "projectKey": string;
 }>;
 
+export type MergeResemblingRequestInput = Readonly<{
+  readonly "requestId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestSameRequest;
+}>;
+
 export type PlanCompanyBundleInput = Readonly<{
   readonly body: Models.CompanyBundleRequest;
 }>;
@@ -503,6 +509,7 @@ export type OperationInputs = Readonly<{
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
+  readonly "mergeResemblingRequest": MergeResemblingRequestInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
   readonly "prioritizeRequest": PrioritizeRequestInput;
@@ -588,6 +595,7 @@ export type OperationResults = Readonly<{
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "listTicketSessions": Models.TicketSessionList;
+  readonly "mergeResemblingRequest": Models.RequestChangeResult;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
   readonly "prioritizeRequest": Models.RequestChangeResult;
@@ -964,6 +972,12 @@ export class CtowerClient {
     input: ListTicketSessionsInput,
   ): Promise<Models.TicketSessionList> {
     return this.execute("listTicketSessions", input);
+  }
+
+  public async mergeResemblingRequest(
+    input: MergeResemblingRequestInput,
+  ): Promise<Models.RequestChangeResult> {
+    return this.execute("mergeResemblingRequest", input);
   }
 
   public async planCompanyBundle(

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.23 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.25 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
@@ -288,7 +288,9 @@ fresh Company / Project / checkpoints + Project Delivery projection
   -> writer epoch; reject every later legacy mutation
 ```
 
-There is no tailer, dual-write interval, fuzzy dedupe, automatic backfill, or active bulk importer. Ordinary
+There is no tailer, dual-write interval, general fuzzy-dedupe service, automatic backfill, or active bulk
+importer. D57's deterministic local same-Project Request comparison is the sole bounded resemblance path;
+it always captures and never merges automatically. Ordinary
 commands cannot forge proof, gates, effects, delivery, resolution, closure, or arbitrary state. Before the
 epoch, rollback may discard the incomplete fresh database while Mission Control remains authoritative.
 After the epoch, rollback is a compatible ctower restore/build or explicit read-only/spool mode; legacy
@@ -372,10 +374,13 @@ that permits this checkpoint. Before then, all Request implementation proof runs
 tenant: no portfolio Request endpoint, grant, spool drain, UI control, adapter, import operation, or second
 allocator is active.
 
-Deliver OR-01..OR-06 as one landable authority replacement. Work owns the Request aggregate and its triage,
-priority, owner, blocker, Ticket-relation, and closure rules; Record owns atomic facts, UUIDv7 identity, the
-tenant-wide `R` sequence, command results, audit, outbox, and recovery inventory. The protected CLI and
-generated clients expose capture and read/transition commands without creating Tickets implicitly.
+Deliver OR-01..OR-06 and D57 as one landable authority replacement. Work owns the Request aggregate and its
+triage, priority, owner, blocker, Ticket-relation, closure, bounded local resemblance, and explicit merge
+rules; Record owns atomic facts, UUIDv7 identity, the tenant-wide `R` sequence, command results, audit,
+outbox, and recovery inventory. The protected CLI and generated clients expose capture and read/transition
+commands without creating Tickets implicitly. Capture always records the new Request, speaks and persists at
+most one qualifying open same-Project resemblance, and never merges. Only operator `request same` or
+commander duplicate triage appends immutable provenance preserving both originals.
 
 The same candidate fences every Mission Control Request writer, seals and signs the complete ledger and
 full-ledger high-water, imports the exact frozen open set in serial batches of at most 25 through the one
@@ -385,9 +390,11 @@ the first portfolio capture above the high-water. Failure records its exact type
 epoch durably fenced in `prepared`; rollback never re-enables the old writer. General Ticket/corpus bulk
 import remains absent.
 
-**Exit:** AC-REQ-01..06 pass through the named CT-I1-015 suites; the exact v1 architecture records
+**Exit:** AC-REQ-01..10 and AC-REQ-12 pass through the named CT-I1-015 suites; the exact v1 architecture records
 `no-new-boundary`; restore reconstructs Request authority and allocator state; the old writer and import
-operation are absent; and the first authoritative capture allocates strictly above the sealed high-water.
+operation are absent; the first authoritative capture allocates strictly above the sealed high-water; real
+PostgreSQL evidence records the exact spoken acknowledgement and merged provenance; and source/egress
+inventory proves the comparison is local with no new secret, network, or model-service boundary.
 This checkpoint joins CT-I1-009..014 and CP3-D; CT-I1-016..018 then complete the full normative
 I1 exit.
 
@@ -432,9 +439,9 @@ the full release gate, and one independent maximum-effort judgment verdict are r
 
 After CT-I1-017, add one operator-only disposable projection over accepted Request and Ruling reads. One
 strict artifact key identifies each Europe/Vilnius civil date. Its ordered output contains record-derived
-open decision briefs, the prior civil day's Rulings with their typed Request executions, and related Ticket
-timeline links plus current proof counts. The generated API/client and protected CLI render the same
-artifact as strict JSON or deterministic STE text.
+open decision briefs, the prior civil day's Rulings with their typed Request executions, related Ticket
+timeline links plus current proof counts, and each accepted open Request resemblance pair once. The
+generated API/client and protected CLI render the same artifact as strict JSON or deterministic STE text.
 
 Each source and section carries `complete|partial|unknown`, visible count, nullable total, exact unreached
 scopes, and watermarks. A missing source, unresolved relation, or proof count remains `UNKNOWN`; an
@@ -443,10 +450,11 @@ candidate adds no store, scheduler, identity, adapter, or Slack/Hermes path. One
 through the existing Mission Control notification rail; only the director may switch or retire the interim
 schedule after verification.
 
-**Exit:** AC-DIG-01..03 pass through the named CT-I1-018 suites; the exact API, CLI, and real PostgreSQL
+**Exit:** AC-DIG-01..03 and AC-REQ-11 pass through the named CT-I1-018 suites; the exact API, CLI, and real PostgreSQL
 transcripts agree; one real notification delivery ID records rail-1 success and the honest rail-2 outcome;
 same-candidate docs and independent review pass; and source/identity/egress/scheduler inventories show no
-new boundary or director-cron mutation.
+new boundary or director-cron mutation. An open pair renders once with the `same` instruction and accepted
+merge removes it.
 
 ### I1.13 — Fleet beats as fixed Routines
 

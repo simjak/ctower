@@ -41,3 +41,15 @@ CT-I1-008 may record development `GO_WITH_LIMITS` while CP3-D is red and complet
 Project Delivery pilot/I1.7 checkpoint. Full normative I1 exit remains `NO-GO` until CP3-D proves
 external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO.
 The CT-I2-001 dependency means this full exit, so development success does not authorize I2.
+
+## Request resemblance rollback
+
+Migration `0064_request_resemblance.sql` is expand-only. Before applying it to a nonempty installation,
+capture the Request, triage, command-result, event, outbox, and accepted-confirmation counts by tenant plus a
+verified database backup. Both new immutable fact tables begin empty and the migration rewrites no Request.
+
+Do not roll back an applied database to code that cannot read accepted resemblance or merge facts. Return to
+a compatible build or explicit read-only/spool mode. Preserve every accepted Request, two-sided link,
+embedding digest, exact original wording and timestamp, merge provenance, command result, event, and outbox
+row. A defect is repaired by reviewed forward compensation; never delete a link, recompute accepted history,
+edit provenance, or re-enable automatic/alternate merge authority.

@@ -77,11 +77,16 @@ permanent `R<number>`, records inbound provenance plus initial facts, and return
 durability result without creating a Ticket. Priority, triage, owner, Ticket relation, blocker, and closure
 evaluation are independent expected-version facts; operator state is derived. Accepted reads name their
 Record watermark and distinguish unanswered projects from empty projects. The one-time ledger helper is
-outside the kernel and has no Record connection.
+outside the kernel and has no Record connection. Capture also performs one deterministic local hashed-
+subword comparison against accepted open same-Project Requests and persists at most the strongest qualifying
+two-sided resemblance. It always captures and never auto-merges. Explicit operator `same` or commander
+duplicate triage appends immutable provenance preserving both original texts and timestamps. The comparison
+has no model service, secret, process, network, or external-egress dependency.
 
 The native morning digest remains in `projections/`. Its pure fold accepts typed Request and Ruling readings
 plus their watermarks and unreached scopes. It emits one Europe/Vilnius artifact with record-derived open
-decision briefs, prior-day Rulings and typed Request executions, then related Ticket timeline proof links.
+decision briefs, prior-day Rulings and typed Request executions, related Ticket timeline proof links, then
+accepted open Request resemblance pairs exactly once.
 It owns no persistence, source client, clock authority, renderer, scheduler, or notification transport.
 Unavailable sources and unresolved relations remain explicit partial or unknown results; an authoritative
 absent relation is empty.

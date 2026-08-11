@@ -20,6 +20,7 @@ from ctower_kernel.record.human_identity import HumanRole, HumanRoleBindingIssue
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
+from ctower_kernel.work._request_similarity import embed
 from ctower_kernel.work.requests import (
     PostgresRequests,
     RequestBlocker,
@@ -30,6 +31,7 @@ from ctower_kernel.work.requests import (
     RequestOwner,
     RequestPriority,
     Requests,
+    RequestSame,
     RequestTicketRelation,
     RequestTriage,
 )
@@ -44,6 +46,145 @@ PRIORITIZED_VERSION = 2
 TRIAGED_VERSION = 3
 RELATED_VERSION = 4
 BLOCKED_VERSION = 5
+
+
+def test_resembling_capture_speaks_links_and_operator_same_preserves_provenance(
+    tenant: TenantFixture,
+) -> None:
+    """AC-REQ-09/10: capture speaks; only literal operator same merges Requests."""
+
+    first_text = "Please add duplicate-aware Request capture to the operator workflow."
+    second_text = "Please add duplicate aware Request capture in the operator workflow."
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    original = _accepted_capture(tenant, authority, operator, first_text)
+
+    duplicate_command = RequestCapture(uuid4(), "ctower", second_text)
+    duplicate = _capture(authority, operator, duplicate_command)
+    assert isinstance(duplicate, RequestCaptureResult)
+    assert duplicate.acknowledgement == (
+        f"captured as {duplicate.reference}, resembles {original.reference} (NEW), linked — "
+        "say same to merge."
+    )
+    assert duplicate.resemblance is not None
+    assert duplicate.resemblance.other_request_id == original.request_id
+    assert duplicate.resemblance.other_reference == original.reference
+    assert duplicate.resemblance.other_state == "NEW"
+    assert duplicate.resemblance.algorithm_ref == "ctower.local-hashed-subword/v1"
+
+    _accept_and_assert_resemblance_persistence(
+        tenant, authority, operator, duplicate_command, duplicate, original, second_text, first_text
+    )
+    before_merge = authority.list(
+        operator, project_key="ctower", telemetry=_telemetry(operator, uuid4())
+    )
+    assert not isinstance(before_merge, RecordProblem)
+    rows = {row.request_id: row for row in before_merge.rows}
+    assert rows[original.request_id].triage == "UNTRIAGED"
+    assert rows[duplicate.request_id].triage == "UNTRIAGED"
+    assert rows[original.request_id].resemblances[0].other_request_id == duplicate.request_id
+    assert rows[duplicate.request_id].resemblances[0].other_request_id == original.request_id
+    assert rows[original.request_id].merge_provenance is None
+    assert rows[duplicate.request_id].merge_provenance is None
+    _assert_request_version(tenant, original.request_id, 1)
+
+    same_command_id = uuid4()
+    same_headers = {
+        "Authorization": f"Bearer {tenant.operator_credential}",
+        "Idempotency-Key": str(same_command_id),
+        **telemetry_headers(same_command_id),
+    }
+    with TestClient(application(tenant.database.runtime_dsn)) as client:
+        pending_same = client.post(
+            f"/v1/requests/{duplicate.request_id}/same",
+            headers=same_headers,
+            json={"expected_version": 1},
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        accepted_same = client.post(
+            f"/v1/requests/{duplicate.request_id}/same",
+            headers=same_headers,
+            json={"expected_version": 1},
+        )
+    assert pending_same.status_code == HTTP_PENDING
+    assert accepted_same.status_code == HTTP_OK
+    assert pending_same.json()["operation"] == accepted_same.json()["operation"] == "same"
+    after_merge = authority.list(
+        operator, project_key="ctower", telemetry=_telemetry(operator, uuid4())
+    )
+    assert not isinstance(after_merge, RecordProblem)
+    merged_row = next(row for row in after_merge.rows if row.request_id == duplicate.request_id)
+    provenance = merged_row.merge_provenance
+    assert merged_row.triage == "DUPLICATE"
+    assert provenance is not None
+    assert provenance.trigger == "operator_same"
+    assert provenance.merge_wording == "same"
+    assert provenance.duplicate_content == second_text
+    assert provenance.canonical_content == first_text
+    assert provenance.duplicate_created_at == merged_row.created_at
+    assert provenance.canonical_created_at == rows[original.request_id].created_at
+    assert merged_row.resemblances[0].other_request_id == original.request_id
+    print(
+        "REAL_REQUEST_DUPLICATE_ACK"
+        f" acknowledgement={duplicate.acknowledgement!r}"
+        f" merge={accepted_same.json()['operation']}:{merged_row.triage}"
+        f" provenance={provenance.duplicate_reference}->{provenance.canonical_reference}"
+    )
+
+
+def test_unrelated_capture_stays_unlinked_and_same_refuses_without_a_link(
+    tenant: TenantFixture,
+) -> None:
+    """AC-REQ-09/10: low resemblance is silent and cannot be merged by `same`."""
+
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    _accepted_capture(tenant, authority, operator, "Improve Request capture acknowledgements.")
+    unrelated = _accepted_capture(
+        tenant, authority, operator, "Replace the office coffee grinder next Thursday."
+    )
+
+    assert unrelated.resemblance is None
+    assert unrelated.acknowledgement == f"captured as {unrelated.reference}."
+    refused = authority.same(
+        operator,
+        RequestSame(uuid4(), unrelated.request_id, 1),
+        telemetry=_telemetry(operator, uuid4()),
+    )
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "request-same-forbidden"
+
+
+def _assert_request_version(tenant: TenantFixture, request_id: UUID, expected: int) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        version = connection.execute(
+            "SELECT version FROM requests WHERE request_id = %s", (request_id,)
+        ).fetchone()
+    assert version == (expected,)
+
+
+def _accept_and_assert_resemblance_persistence(
+    tenant: TenantFixture,
+    authority: Requests,
+    actor: Actor,
+    command: RequestCapture,
+    source: RequestCaptureResult,
+    candidate: RequestCaptureResult,
+    source_text: str,
+    candidate_text: str,
+) -> None:
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    assert _capture(authority, actor, command) == source
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        persisted_link = connection.execute(
+            """
+            SELECT source_embedding_digest, candidate_embedding_digest
+            FROM request_resemblance_links
+            WHERE tenant_id = %s AND source_request_id = %s AND candidate_request_id = %s
+            """,
+            (tenant.tenant_id, source.request_id, candidate.request_id),
+        ).fetchone()
+    assert persisted_link == (embed(source_text).digest, embed(candidate_text).digest)
 
 
 def test_request_capture_ack_replay_and_authoritative_list(tenant: TenantFixture) -> None:
@@ -418,6 +559,16 @@ def test_request_triage_owner_relation_and_version_refusals_are_fail_closed(
         ),
     )
     assert duplicate_result.state == "TRIAGED"
+    projection = authority.list(
+        commander, project_key="ctower", telemetry=_telemetry(commander, uuid4())
+    )
+    assert not isinstance(projection, RecordProblem)
+    duplicate_row = next(row for row in projection.rows if row.request_id == duplicate.request_id)
+    assert duplicate_row.merge_provenance is not None
+    assert duplicate_row.merge_provenance.trigger == "commander_triage"
+    assert duplicate_row.merge_provenance.merge_wording == "triage DUPLICATE: same outcome"
+    assert duplicate_row.merge_provenance.duplicate_content == "Repeated intent"
+    assert duplicate_row.merge_provenance.canonical_content == "Canonical intent"
     canonical_rewrite = authority.triage(
         commander,
         RequestTriage(

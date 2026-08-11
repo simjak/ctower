@@ -9,6 +9,12 @@ from uuid import UUID, uuid4
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.work._request_similarity import (
+    ALGORITHM_REF,
+    MINIMUM_SIMILARITY,
+    embed,
+    similarity,
+)
 from ctower_kernel.work.requests import (
     RequestCapture,
     RequestClosureEvaluation,
@@ -17,6 +23,10 @@ from ctower_kernel.work.requests import (
 )
 
 __all__: tuple[str, ...] = ()
+
+EXPECTED_MINIMUM_SIMILARITY = 0.72
+EXPECTED_NEAR_SIMILARITY = 0.921748
+EXPECTED_UNRELATED_SIMILARITY = 0.232564
 
 
 class _UnreachableStore:
@@ -28,6 +38,26 @@ class _UnreachableStore:
 
     def change(self, *_args: object, **_kwargs: object) -> NoReturn:
         raise AssertionError("refused change reached persistence")
+
+
+def test_local_request_embedding_is_fixed_reproducible_and_discriminating() -> None:
+    """AC-REQ-12: the authored local vector and threshold are stable evidence."""
+
+    original = embed("Please add duplicate-aware Request capture to the operator workflow.")
+    resemblance = embed("Please add duplicate aware Request capture in the operator workflow.")
+    unrelated = embed("Rotate the backup encryption key after the restore drill.")
+    normalized = embed("\uff23apture REQUESTS—duplicate aware")
+
+    assert ALGORITHM_REF == "ctower.local-hashed-subword/v1"
+    assert MINIMUM_SIMILARITY == EXPECTED_MINIMUM_SIMILARITY
+    assert original.digest.hex() == (
+        "dbc8739f4e3caa5e3a02ce240555ddb93dee497741cc658d4f76aa55487c7971"
+    )
+    assert similarity(original, resemblance) == EXPECTED_NEAR_SIMILARITY
+    assert similarity(original, unrelated) == EXPECTED_UNRELATED_SIMILARITY
+    assert similarity(original, resemblance) >= MINIMUM_SIMILARITY
+    assert similarity(original, unrelated) < MINIMUM_SIMILARITY
+    assert normalized == embed("capture requests-duplicate AWARE")
 
 
 def test_viewer_missing_scope_and_prohibited_content_refuse_before_store() -> None:

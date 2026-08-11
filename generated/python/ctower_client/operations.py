@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+Authored contract digest: sha256:29e807f035048455e882253a8393b81055a77184dd2a3e6de7463d0ceb97b03c
 """
 
 from __future__ import annotations
@@ -760,6 +760,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "mergeResemblingRequest": OperationSpec(
+            operation_id="mergeResemblingRequest",
+            client_method="merge_resembling_request",
+            method="POST",
+            path="/v1/requests/{request_id}/same",
+            request_model=_models.RequestSameRequest,
+            response_model=_models.RequestChangeResult,
+            cli_names=('request same',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "planCompanyBundle": OperationSpec(
             operation_id="planCompanyBundle",
             client_method="plan_company_bundle",
@@ -1177,6 +1190,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
         "session ticket": OPERATIONS["listTicketSessions"],
+        "request same": OPERATIONS["mergeResemblingRequest"],
         "company bundle plan": OPERATIONS["planCompanyBundle"],
         "migration ctower-project prepare": OPERATIONS["prepareCtowerProjectCutover"],
         "request prioritize": OPERATIONS["prioritizeRequest"],

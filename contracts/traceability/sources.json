@@ -114,6 +114,7 @@
         "SPEC#canonical-event-and-command-contract",
         "SPEC#recorded-work-sessions",
         "SPEC#request-derived-operator-decision-briefs",
+        "SPEC#accepted-first-class-operator-request-contract",
         "INV-03",
         "INV-04",
         "INV-05",
@@ -621,9 +622,14 @@
         "INV-88",
         "INV-89",
         "INV-90",
+        "INV-91",
         "AC-DIG-01",
         "AC-DIG-02",
         "AC-DIG-03",
+        "AC-REQ-09",
+        "AC-REQ-10",
+        "AC-REQ-11",
+        "AC-REQ-12",
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
@@ -2233,6 +2239,20 @@
         "AC-BRIEF-02",
         "AC-BRIEF-03",
         "AC-BRIEF-04"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0064_request_resemblance.sql",
+      "references": [
+        "SPEC#accepted-first-class-operator-request-contract",
+        "SPEC#morning-digest-read-model",
+        "INV-81",
+        "INV-90",
+        "INV-91",
+        "AC-REQ-09",
+        "AC-REQ-10",
+        "AC-REQ-11",
+        "AC-REQ-12"
       ]
     },
     {

@@ -16,6 +16,7 @@ from ctower_client.models import (
     RequestClosureEvaluationRequest,
     RequestOwnerRequest,
     RequestPriorityRequest,
+    RequestSameRequest,
     RequestTicketRelationRequest,
     RequestTriageRequest,
 )
@@ -54,6 +55,8 @@ def _change_payload(name: str, arguments: argparse.Namespace) -> BaseModel:
             expected_version=expected_version,
             reason=cast(str | None, arguments.reason),
         )
+    if name == "request same":
+        return RequestSameRequest(expected_version=expected_version)
     if name == "request owner assign":
         return RequestOwnerRequest(
             expected_version=expected_version,
@@ -98,6 +101,7 @@ def mutation_command_names() -> frozenset[str]:
             "request closure evaluate",
             "request owner assign",
             "request prioritize",
+            "request same",
             "request ticket relate",
             "request triage",
         }

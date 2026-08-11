@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+Authored contract digest: sha256:29e807f035048455e882253a8393b81055a77184dd2a3e6de7463d0ceb97b03c
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -165,6 +165,8 @@ from ctower_client.models import (
     MorningDigest,
     MorningDigestDecision,
     MorningDigestDecisionSection,
+    MorningDigestDuplicate,
+    MorningDigestDuplicateSection,
     MorningDigestExecution,
     MorningDigestProof,
     MorningDigestProofSection,
@@ -208,9 +210,12 @@ from ctower_client.models import (
     RequestChangeResult,
     RequestClosureEvaluationRequest,
     RequestList,
+    RequestMergeProvenance,
     RequestOwnerRequest,
     RequestPriorityRequest,
+    RequestResemblance,
     RequestRow,
+    RequestSameRequest,
     RequestTicketRelationRequest,
     RequestTriageRequest,
     ResolveCloseRequest,
@@ -452,6 +457,8 @@ __all__ = [
     "MorningDigest",
     "MorningDigestDecision",
     "MorningDigestDecisionSection",
+    "MorningDigestDuplicate",
+    "MorningDigestDuplicateSection",
     "MorningDigestExecution",
     "MorningDigestProof",
     "MorningDigestProofSection",
@@ -495,9 +502,12 @@ __all__ = [
     "RequestChangeResult",
     "RequestClosureEvaluationRequest",
     "RequestList",
+    "RequestMergeProvenance",
     "RequestOwnerRequest",
     "RequestPriorityRequest",
+    "RequestResemblance",
     "RequestRow",
+    "RequestSameRequest",
     "RequestTicketRelationRequest",
     "RequestTriageRequest",
     "ResolveCloseRequest",

@@ -69,6 +69,7 @@ def test_real_morning_digest_composes_record_derived_briefs_and_links(
         commander,
         "Choose whether the reviewed rollout should proceed.",
     )
+    duplicate_note = _open_duplicate_pair(tenant, operator)
     ruling_id, ruling_recorded_at = _accepted_ruling(tenant, commander, executed_request_id)
     digest_date = (ruling_recorded_at.astimezone(_VILNIUS).date() + timedelta(days=1)).isoformat()
     position_before = _record_position(tenant)
@@ -80,6 +81,9 @@ def test_real_morning_digest_composes_record_derived_briefs_and_links(
     decisions = cast(dict[str, object], payload["open_decisions"])
     yesterday = cast(dict[str, object], payload["yesterday_rulings"])
     proof = cast(dict[str, object], payload["proof"])
+    near_duplicates = cast(dict[str, object], payload["near_duplicates"])
+    assert near_duplicates["total_count"] == near_duplicates["visible_count"] == 1
+    assert cast(list[dict[str, object]], near_duplicates["items"])[0]["note"] == duplicate_note
     _assert_digest_payload(
         payload,
         decisions,
@@ -90,7 +94,9 @@ def test_real_morning_digest_composes_record_derived_briefs_and_links(
         ruling_id,
         (open_ticket_id, executed_ticket_id),
     )
-    _assert_cli_transcript(tenant, digest_date, (open_ticket_id, executed_ticket_id))
+    _assert_cli_transcript(
+        tenant, digest_date, (open_ticket_id, executed_ticket_id), duplicate_note
+    )
     assert _record_position(tenant) == position_before
     print(
         "REAL_MORNING_DIGEST"
@@ -131,7 +137,10 @@ def _digest_responses(tenant: TenantFixture, digest_date: str) -> tuple[Response
 
 
 def _assert_cli_transcript(
-    tenant: TenantFixture, digest_date: str, ticket_ids: tuple[UUID, UUID]
+    tenant: TenantFixture,
+    digest_date: str,
+    ticket_ids: tuple[UUID, UUID],
+    duplicate_note: str,
 ) -> None:
     output = io.StringIO()
     errors = io.StringIO()
@@ -146,11 +155,53 @@ def _assert_cli_transcript(
     assert status == EXIT_SUCCESS
     assert errors.getvalue() == ""
     assert "Open decisions — 1; COMPLETE" in transcript
+    assert "Near-duplicate requests — 1; COMPLETE" in transcript
+    assert duplicate_note in transcript
     assert "Executions:" in transcript
     assert "Executions: UNKNOWN" not in transcript
     assert "Proof — 2; COMPLETE" in transcript
     for ticket_id in ticket_ids:
         assert f"required: {ticket_id} /v1/tickets/{ticket_id}/timeline" in transcript
+
+
+def _open_duplicate_pair(tenant: TenantFixture, operator: Actor) -> str:
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    first = _accepted_request_capture(
+        tenant,
+        authority,
+        operator,
+        "Please show near-duplicate Requests in the morning digest.",
+    )
+    second = _accepted_request_capture(
+        tenant,
+        authority,
+        operator,
+        "Please show near duplicate Requests within the morning digest.",
+    )
+    assert second.resemblance is not None
+    return (
+        f"{second.reference} resembles {first.reference} (NEW) — "
+        f"say same on {second.reference} to merge."
+    )
+
+
+def _accepted_request_capture(
+    tenant: TenantFixture,
+    authority: Requests,
+    actor: Actor,
+    text: str,
+) -> RequestCaptureResult:
+    command = RequestCapture(uuid4(), "ctower", text)
+    result = authority.capture(
+        actor, command, telemetry=_telemetry(actor, command.client_command_id)
+    )
+    assert isinstance(result, RequestCaptureResult)
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    replay = authority.capture(
+        actor, command, telemetry=_telemetry(actor, command.client_command_id)
+    )
+    assert isinstance(replay, RequestCaptureResult)
+    return replay
 
 
 def _assert_digest_payload(

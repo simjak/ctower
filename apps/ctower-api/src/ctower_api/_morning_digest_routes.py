@@ -25,6 +25,7 @@ from ctower_kernel.projections.morning_digest import (
     DecisionBriefFact,
     DecisionChoiceFact,
     DigestRequestFact,
+    DigestResemblanceFact,
     DigestRulingFact,
     SourceReading,
     UnreachedScope,
@@ -138,6 +139,11 @@ def _request_reading(
             optional_ticket_ids=row.optional_ticket_ids,
             current_proof_count=row.proof_coverage,
             decision_brief=_decision_brief(row),
+            triage=row.triage,
+            resemblances=tuple(
+                DigestResemblanceFact(item.other_request_id, item.other_request_number)
+                for item in row.resemblances
+            ),
         )
         for row in outcome.rows
     )

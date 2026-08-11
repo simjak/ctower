@@ -22,6 +22,7 @@ from ctower_kernel.work._request_types import (
     RequestClosureEvaluation,
     RequestOwner,
     RequestPriority,
+    RequestSame,
     RequestTicketRelation,
     RequestTriage,
 )
@@ -57,6 +58,8 @@ def append_fact(
         return None
     if isinstance(command, RequestTriage):
         return _append_triage(connection, actor, command, request, now=now)
+    if isinstance(command, RequestSame):
+        return _append_same(connection, actor, command, request, now=now)
     if isinstance(command, RequestOwner):
         return _append_owner(connection, actor, command, request, now=now)
     if isinstance(command, RequestTicketRelation):
@@ -101,12 +104,23 @@ def _append_triage(
     command: RequestTriage,
     request: dict[str, object],
     *,
+    merge_trigger: str = "commander_triage",
+    merge_wording: str | None = None,
     now: datetime,
 ) -> RecordProblem | None:
     refusal = _triage_refusal(connection, actor, command, request)
     if refusal is not None:
         return refusal
     _insert_triage(connection, actor, command, now=now)
+    if command.disposition == "DUPLICATE":
+        _insert_merge_provenance(
+            connection,
+            actor,
+            command,
+            trigger=merge_trigger,
+            wording=merge_wording or f"triage DUPLICATE: {command.reason}",
+            now=now,
+        )
     owner_id = current_owner(connection, actor.tenant_id, command.request_id)
     _attention(
         connection,
@@ -130,6 +144,106 @@ def _append_triage(
             now=now,
         )
     return None
+
+
+def _append_same(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: RequestSame,
+    request: dict[str, object],
+    *,
+    now: datetime,
+) -> RecordProblem | None:
+    link = connection.execute(
+        """
+        SELECT link.candidate_request_id
+        FROM request_resemblance_links AS link
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = link.tenant_id
+         AND confirmation.principal_id = link.linked_by
+         AND confirmation.client_command_id = link.command_id
+        WHERE link.tenant_id = %s AND link.source_request_id = %s
+        """,
+        (actor.tenant_id, command.request_id),
+    ).fetchone()
+    if link is None:
+        return request_problem(
+            command,
+            "request-same-forbidden",
+            409,
+            "Request has no accepted resemblance link to merge",
+        )
+    triage = RequestTriage(
+        command.client_command_id,
+        command.request_id,
+        command.expected_version,
+        "DUPLICATE",
+        "operator said same",
+        cast(UUID, link["candidate_request_id"]),
+    )
+    return _append_triage(
+        connection,
+        actor,
+        triage,
+        request,
+        merge_trigger="operator_same",
+        merge_wording="same",
+        now=now,
+    )
+
+
+def _insert_merge_provenance(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: RequestTriage,
+    *,
+    trigger: str,
+    wording: str,
+    now: datetime,
+) -> None:
+    rows = connection.execute(
+        """
+        SELECT request_id, request_number, content, content_digest, created_at
+        FROM requests
+        WHERE tenant_id = %s AND request_id = ANY(%s)
+        """,
+        (actor.tenant_id, [command.request_id, command.canonical_request_id]),
+    ).fetchall()
+    by_id = {cast(UUID, row["request_id"]): row for row in rows}
+    duplicate = by_id[command.request_id]
+    canonical_id = cast(UUID, command.canonical_request_id)
+    canonical = by_id[canonical_id]
+    connection.execute(
+        """
+        INSERT INTO request_merge_facts (
+            merge_fact_id, tenant_id,
+            duplicate_request_id, duplicate_request_number, duplicate_content,
+            duplicate_content_digest, duplicate_created_at,
+            canonical_request_id, canonical_request_number, canonical_content,
+            canonical_content_digest, canonical_created_at,
+            trigger_kind, merge_wording, merged_by, command_id, merged_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            uuid7(now),
+            actor.tenant_id,
+            duplicate["request_id"],
+            duplicate["request_number"],
+            duplicate["content"],
+            duplicate["content_digest"],
+            duplicate["created_at"],
+            canonical["request_id"],
+            canonical["request_number"],
+            canonical["content"],
+            canonical["content_digest"],
+            canonical["created_at"],
+            trigger,
+            wording,
+            actor.principal_id,
+            command.client_command_id,
+            now,
+        ),
+    )
 
 
 def _triage_refusal(

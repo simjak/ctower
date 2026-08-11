@@ -413,6 +413,25 @@
         }
       }
     },
+    "/v1/requests/{request_id}/same": {
+      "post": {
+        "operationId": "mergeResemblingRequest",
+        "x-ctower-cli": "request same",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "request_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestSameRequest"}}}},
+        "responses": {
+          "200": {"description": "Operator same merge fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "202": {"description": "Operator same merge committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestChangeResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/requests/{request_id}/owner": {
       "post": {
         "operationId": "assignRequestOwner",
@@ -3656,6 +3675,7 @@
               "request-import-forbidden",
               "request-owner-forbidden",
               "request-project-unavailable",
+              "request-same-forbidden",
               "request-source-forbidden",
               "request-transition-forbidden",
               "request-triage-forbidden",
@@ -3956,6 +3976,23 @@
           "tickets": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/MorningDigestTicketLink"}}
         }
       },
+      "MorningDigestDuplicate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidate_reference", "candidate_request_id", "candidate_state", "note",
+          "source_reference", "source_request_id", "source_state"
+        ],
+        "properties": {
+          "candidate_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "candidate_request_id": {"type": "string", "format": "uuid"},
+          "candidate_state": {"type": "string", "enum": ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]},
+          "note": {"type": "string", "minLength": 1, "maxLength": 256},
+          "source_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "source_request_id": {"type": "string", "format": "uuid"},
+          "source_state": {"type": "string", "enum": ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]}
+        }
+      },
       "MorningDigestDecisionSection": {
         "type": "object",
         "additionalProperties": false,
@@ -3992,17 +4029,30 @@
           "visible_count": {"type": "integer", "minimum": 0}
         }
       },
+      "MorningDigestDuplicateSection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "state", "total_count", "unreached", "visible_count"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/MorningDigestDuplicate"}},
+          "state": {"$ref": "#/components/schemas/DigestReadingState"},
+          "total_count": {"type": ["integer", "null"], "minimum": 0},
+          "unreached": {"type": "array", "items": {"$ref": "#/components/schemas/DigestUnreachedScope"}},
+          "visible_count": {"type": "integer", "minimum": 0}
+        }
+      },
       "MorningDigest": {
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "artifact_key", "artifact_sha256", "digest_date", "observed_at", "open_decisions",
+          "artifact_key", "artifact_sha256", "digest_date", "near_duplicates", "observed_at", "open_decisions",
           "proof", "request_watermark", "ruling_watermark", "state", "timezone", "yesterday_rulings"
         ],
         "properties": {
           "artifact_key": {"type": "string", "pattern": "^morning-digest:[0-9]{4}-[0-9]{2}-[0-9]{2}:Europe/Vilnius$"},
           "artifact_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "digest_date": {"type": "string", "format": "date"},
+          "near_duplicates": {"$ref": "#/components/schemas/MorningDigestDuplicateSection"},
           "observed_at": {"type": "string", "format": "date-time"},
           "open_decisions": {"$ref": "#/components/schemas/MorningDigestDecisionSection"},
           "proof": {"$ref": "#/components/schemas/MorningDigestProofSection"},
@@ -4100,11 +4150,12 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "accepted_position", "command_id", "durability_state", "event_ids", "inbound_event_id", "owner_id",
-          "project_key", "reference", "request_id", "request_number", "submitted_by", "version"
+          "accepted_position", "acknowledgement", "command_id", "durability_state", "event_ids", "inbound_event_id", "owner_id",
+          "project_key", "reference", "request_id", "request_number", "resemblance", "submitted_by", "version"
         ],
         "properties": {
           "accepted_position": {"type": ["integer", "null"], "minimum": 1},
+          "acknowledgement": {"type": "string", "minLength": 1, "maxLength": 256},
           "command_id": {"type": "string", "format": "uuid"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "event_ids": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string", "format": "uuid"}},
@@ -4114,6 +4165,12 @@
           "reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
           "request_id": {"type": "string", "format": "uuid"},
           "request_number": {"type": "integer", "minimum": 1},
+          "resemblance": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/RequestResemblance"},
+              {"type": "null"}
+            ]
+          },
           "submitted_by": {"type": "string", "format": "uuid"},
           "version": {"type": "integer", "minimum": 1}
         }
@@ -4137,6 +4194,14 @@
           "disposition": {"type": "string", "enum": ["ACCEPTED", "DUPLICATE", "REJECTED"]},
           "expected_version": {"type": "integer", "minimum": 1},
           "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestSameRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_version"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1}
         }
       },
       "RequestOwnerRequest": {
@@ -4194,7 +4259,7 @@
           "command_id": {"type": "string", "format": "uuid"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "event_ids": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "string", "format": "uuid"}},
-          "operation": {"type": "string", "enum": ["priority", "triage", "owner", "ticket_relation", "blocker", "closure_evaluation"]},
+          "operation": {"type": "string", "enum": ["priority", "triage", "same", "owner", "ticket_relation", "blocker", "closure_evaluation"]},
           "reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
           "request_id": {"type": "string", "format": "uuid"},
           "request_number": {"type": "integer", "minimum": 1},
@@ -4242,15 +4307,58 @@
           "status": {"type": "string", "enum": ["open", "answered"]}
         }
       },
+      "RequestResemblance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm_ref", "linked_at", "other_reference", "other_request_id",
+          "other_request_number", "other_state", "similarity_micros"
+        ],
+        "properties": {
+          "algorithm_ref": {"type": "string", "const": "ctower.local-hashed-subword/v1"},
+          "linked_at": {"type": "string", "format": "date-time"},
+          "other_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "other_request_id": {"type": "string", "format": "uuid"},
+          "other_request_number": {"type": "integer", "minimum": 1},
+          "other_state": {"type": "string", "enum": ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]},
+          "similarity_micros": {"type": "integer", "minimum": 720000, "maximum": 1000000}
+        }
+      },
+      "RequestMergeProvenance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canonical_content", "canonical_created_at", "canonical_reference",
+          "canonical_request_id", "canonical_request_number", "duplicate_content",
+          "duplicate_created_at", "duplicate_reference", "duplicate_request_id",
+          "duplicate_request_number", "merge_wording", "merged_at", "merged_by", "trigger"
+        ],
+        "properties": {
+          "canonical_content": {"type": "string", "minLength": 1, "maxLength": 65536},
+          "canonical_created_at": {"type": "string", "format": "date-time"},
+          "canonical_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "canonical_request_id": {"type": "string", "format": "uuid"},
+          "canonical_request_number": {"type": "integer", "minimum": 1},
+          "duplicate_content": {"type": "string", "minLength": 1, "maxLength": 65536},
+          "duplicate_created_at": {"type": "string", "format": "date-time"},
+          "duplicate_reference": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
+          "duplicate_request_id": {"type": "string", "format": "uuid"},
+          "duplicate_request_number": {"type": "integer", "minimum": 1},
+          "merge_wording": {"type": "string", "minLength": 1, "maxLength": 500},
+          "merged_at": {"type": "string", "format": "date-time"},
+          "merged_by": {"type": "string", "format": "uuid"},
+          "trigger": {"type": "string", "enum": ["operator_same", "commander_triage"]}
+        }
+      },
       "RequestRow": {
         "type": "object",
         "additionalProperties": false,
         "required": [
           "age_seconds", "blocker", "content", "content_sha256", "created_at", "decision_brief",
-          "durability_state", "freshness",
+          "durability_state", "freshness", "merge_provenance",
           "optional_ticket_ids", "owner", "owner_id", "priority", "priority_default",
           "project_key", "proof_coverage", "reference", "request_id", "request_number",
-          "required_ticket_ids", "source_kind", "source_ref", "original_owner_sha256",
+          "required_ticket_ids", "resemblances", "source_kind", "source_ref", "original_owner_sha256",
           "state", "ticket_count", "triage", "unknown_reason"
         ],
         "properties": {
@@ -4267,6 +4375,12 @@
           },
           "durability_state": {"type": "string", "const": "accepted"},
           "freshness": {"type": "integer", "minimum": 1},
+          "merge_provenance": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/RequestMergeProvenance"},
+              {"type": "null"}
+            ]
+          },
           "optional_ticket_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
           "owner": {"type": "string", "minLength": 1, "maxLength": 120},
           "owner_id": {"type": "string", "format": "uuid"},
@@ -4278,6 +4392,7 @@
           "request_id": {"type": "string", "format": "uuid"},
           "request_number": {"type": "integer", "minimum": 1},
           "required_ticket_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "resemblances": {"type": "array", "items": {"$ref": "#/components/schemas/RequestResemblance"}},
           "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
           "source_ref": {"type": "string", "minLength": 1, "maxLength": 512},
           "original_owner_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},

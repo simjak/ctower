@@ -356,6 +356,97 @@ def test_seat_cli_priority_and_triage_use_generated_request_paths(
     assert cast(dict[str, object], triaged["result"])["version"] == TRIAGED_VERSION
 
 
+def test_operator_cli_duplicate_capture_speaks_and_same_merges_end_to_end(
+    tenant: TenantFixture,
+    protected_state: None,
+) -> None:
+    """AC-REQ-09/10: separate-process API + protected CLI speaks, links, and merges."""
+
+    del protected_state
+    first_text = "Please keep duplicate-aware Request capture visible to the operator."
+    second_text = "Please keep duplicate aware Request capture visible for the operator."
+    with running_api(tenant.database.runtime_dsn) as base_url:
+        first = _accepted_cli_mutation(
+            tenant,
+            base_url,
+            tenant.operator_credential,
+            [
+                "request",
+                "capture",
+                "--command-id",
+                str(uuid4()),
+                "--project-key",
+                "ctower",
+                first_text,
+            ],
+        )
+        second = _accepted_cli_mutation(
+            tenant,
+            base_url,
+            tenant.operator_credential,
+            [
+                "request",
+                "capture",
+                "--command-id",
+                str(uuid4()),
+                "--project-key",
+                "ctower",
+                second_text,
+            ],
+        )
+        first_result = cast(dict[str, object], first["result"])
+        second_result = cast(dict[str, object], second["result"])
+        second_request_id = str(second_result["request_id"])
+        expected_acknowledgement = (
+            f"captured as {second_result['reference']}, resembles {first_result['reference']} "
+            "(NEW), linked — say same to merge."
+        )
+        listed_status, listed = _run(
+            ["--base-url", base_url, "request", "list", "--project-key", "ctower"],
+            tenant.operator_credential,
+        )
+        merged = _accepted_cli_mutation(
+            tenant,
+            base_url,
+            tenant.operator_credential,
+            [
+                "request",
+                "same",
+                second_request_id,
+                "--command-id",
+                str(uuid4()),
+                "--expected-version",
+                "1",
+            ],
+        )
+        merged_status, merged_list = _run(
+            ["--base-url", base_url, "request", "list", "--project-key", "ctower"],
+            tenant.operator_credential,
+        )
+
+    assert second_result["acknowledgement"] == expected_acknowledgement
+    assert cast(dict[str, object], second_result["resemblance"])["other_request_id"] == str(
+        first_result["request_id"]
+    )
+    assert listed_status == merged_status == EXIT_SUCCESS
+    rows = {row["request_id"]: row for row in cast(list[dict[str, object]], listed["rows"])}
+    assert cast(list[object], rows[second_request_id]["resemblances"])
+    merged_rows = {
+        row["request_id"]: row for row in cast(list[dict[str, object]], merged_list["rows"])
+    }
+    provenance = cast(dict[str, object], merged_rows[second_request_id]["merge_provenance"])
+    assert cast(dict[str, object], merged["result"])["operation"] == "same"
+    assert merged_rows[second_request_id]["triage"] == "DUPLICATE"
+    assert provenance["duplicate_content"] == second_text
+    assert provenance["canonical_content"] == first_text
+    print(
+        "DEPLOYED_REQUEST_DUPLICATE_E2E"
+        f" acknowledgement={second_result['acknowledgement']!r}"
+        f" merge={cast(dict[str, object], merged['result'])['operation']}:DUPLICATE"
+        f" provenance={provenance['duplicate_reference']}->{provenance['canonical_reference']}"
+    )
+
+
 def _accepted_cli_mutation(
     tenant: TenantFixture,
     base_url: str,

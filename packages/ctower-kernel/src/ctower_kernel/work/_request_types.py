@@ -17,9 +17,12 @@ __all__ = [
     "RequestChangeResult",
     "RequestClosureEvaluation",
     "RequestList",
+    "RequestMergeProvenance",
     "RequestOwner",
     "RequestPriority",
+    "RequestResemblance",
     "RequestRow",
+    "RequestSame",
     "RequestTicketRelation",
     "RequestTriage",
 ]
@@ -91,6 +94,33 @@ class RequestCapture:
 
 
 @dataclass(frozen=True, slots=True)
+class RequestResemblance:
+    """One immutable local-compute link, projected from either Request endpoint."""
+
+    other_request_id: UUID
+    other_request_number: int
+    other_state: str
+    similarity_micros: int
+    algorithm_ref: str
+    linked_at: datetime
+
+    @property
+    def other_reference(self) -> str:
+        return f"R{self.other_request_number}"
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "algorithm_ref": self.algorithm_ref,
+            "linked_at": self.linked_at.isoformat(),
+            "other_reference": self.other_reference,
+            "other_request_id": str(self.other_request_id),
+            "other_request_number": self.other_request_number,
+            "other_state": self.other_state,
+            "similarity_micros": self.similarity_micros,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RequestCaptureResult:
     """Exact semantic capture result retained for replay and durability overlay."""
 
@@ -102,15 +132,26 @@ class RequestCaptureResult:
     project_key: str
     submitted_by: UUID
     owner_id: UUID
+    resemblance: RequestResemblance | None = None
     version: int = 1
 
     @property
     def reference(self) -> str:
         return f"R{self.request_number}"
 
+    @property
+    def acknowledgement(self) -> str:
+        if self.resemblance is None:
+            return f"captured as {self.reference}."
+        return (
+            f"captured as {self.reference}, resembles {self.resemblance.other_reference} "
+            f"({self.resemblance.other_state}), linked — say same to merge."
+        )
+
     def response_payload(self) -> dict[str, object]:
         return {
             "accepted_position": None,
+            "acknowledgement": self.acknowledgement,
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
             "event_ids": [str(item) for item in self.event_ids],
@@ -120,6 +161,9 @@ class RequestCaptureResult:
             "reference": self.reference,
             "request_id": str(self.request_id),
             "request_number": self.request_number,
+            "resemblance": (
+                None if self.resemblance is None else self.resemblance.response_payload()
+            ),
             "submitted_by": str(self.submitted_by),
             "version": self.version,
         }
@@ -159,6 +203,21 @@ class RequestTriage:
             "disposition": self.disposition,
             "expected_version": self.expected_version,
             "reason": self.reason,
+            "request_id": str(self.request_id),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RequestSame:
+    """The operator's literal confirmation to merge one persisted resemblance."""
+
+    client_command_id: UUID
+    request_id: UUID
+    expected_version: int
+
+    def request_payload(self) -> dict[str, object]:
+        return {
+            "expected_version": self.expected_version,
             "request_id": str(self.request_id),
         }
 
@@ -240,11 +299,56 @@ class RequestClosureEvaluation:
 type RequestChange = (
     RequestPriority
     | RequestTriage
+    | RequestSame
     | RequestOwner
     | RequestTicketRelation
     | RequestBlocker
     | RequestClosureEvaluation
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RequestMergeProvenance:
+    """Byte- and time-exact provenance retained on a merged Request."""
+
+    duplicate_request_id: UUID
+    duplicate_request_number: int
+    duplicate_content: str
+    duplicate_created_at: datetime
+    canonical_request_id: UUID
+    canonical_request_number: int
+    canonical_content: str
+    canonical_created_at: datetime
+    trigger: str
+    merge_wording: str
+    merged_by: UUID
+    merged_at: datetime
+
+    @property
+    def duplicate_reference(self) -> str:
+        return f"R{self.duplicate_request_number}"
+
+    @property
+    def canonical_reference(self) -> str:
+        return f"R{self.canonical_request_number}"
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "canonical_content": self.canonical_content,
+            "canonical_created_at": self.canonical_created_at.isoformat(),
+            "canonical_reference": self.canonical_reference,
+            "canonical_request_id": str(self.canonical_request_id),
+            "canonical_request_number": self.canonical_request_number,
+            "duplicate_content": self.duplicate_content,
+            "duplicate_created_at": self.duplicate_created_at.isoformat(),
+            "duplicate_reference": self.duplicate_reference,
+            "duplicate_request_id": str(self.duplicate_request_id),
+            "duplicate_request_number": self.duplicate_request_number,
+            "merge_wording": self.merge_wording,
+            "merged_at": self.merged_at.isoformat(),
+            "merged_by": str(self.merged_by),
+            "trigger": self.trigger,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -303,6 +407,8 @@ class RequestRow:
     source_kind: str
     source_ref: str
     original_owner_sha256: str | None
+    resemblances: tuple[RequestResemblance, ...] = ()
+    merge_provenance: RequestMergeProvenance | None = None
     decision_brief: DecisionBrief | None = None
     unknown_reason: str | None = None
 
@@ -318,6 +424,9 @@ class RequestRow:
             ),
             "durability_state": self.durability_state,
             "freshness": self.freshness,
+            "merge_provenance": (
+                None if self.merge_provenance is None else self.merge_provenance.response_payload()
+            ),
             "optional_ticket_ids": [str(item) for item in self.optional_ticket_ids],
             "owner": self.owner,
             "owner_id": str(self.owner_id),
@@ -328,6 +437,7 @@ class RequestRow:
             "reference": f"R{self.request_number}",
             "request_id": str(self.request_id),
             "request_number": self.request_number,
+            "resemblances": [item.response_payload() for item in self.resemblances],
             "required_ticket_ids": [str(item) for item in self.required_ticket_ids],
             "source_kind": self.source_kind,
             "source_ref": self.source_ref,

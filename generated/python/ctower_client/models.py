@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+Authored contract digest: sha256:29e807f035048455e882253a8393b81055a77184dd2a3e6de7463d0ceb97b03c
 """
 
 from __future__ import annotations
@@ -175,6 +175,8 @@ __all__ = [
     "MorningDigest",
     "MorningDigestDecision",
     "MorningDigestDecisionSection",
+    "MorningDigestDuplicate",
+    "MorningDigestDuplicateSection",
     "MorningDigestExecution",
     "MorningDigestProof",
     "MorningDigestProofSection",
@@ -218,9 +220,12 @@ __all__ = [
     "RequestChangeResult",
     "RequestClosureEvaluationRequest",
     "RequestList",
+    "RequestMergeProvenance",
     "RequestOwnerRequest",
     "RequestPriorityRequest",
+    "RequestResemblance",
     "RequestRow",
+    "RequestSameRequest",
     "RequestTicketRelationRequest",
     "RequestTriageRequest",
     "ResolveCloseRequest",
@@ -1310,6 +1315,16 @@ class MigrationWatermarks(_BoundaryModel):
     projection_position: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
+class MorningDigestDuplicate(_BoundaryModel):
+    candidate_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    candidate_request_id: UUID
+    candidate_state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    note: Annotated[str, Field(min_length=1, max_length=256)]
+    source_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    source_request_id: UUID
+    source_state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+
+
 class MorningDigestExecution(_BoundaryModel):
     request_id: UUID
     request_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
@@ -1417,10 +1432,41 @@ class RequestClosureEvaluationRequest(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
+class RequestMergeProvenance(_BoundaryModel):
+    canonical_content: Annotated[str, Field(min_length=1, max_length=65536)]
+    canonical_created_at: _Rfc3339DateTime
+    canonical_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    canonical_request_id: UUID
+    canonical_request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    duplicate_content: Annotated[str, Field(min_length=1, max_length=65536)]
+    duplicate_created_at: _Rfc3339DateTime
+    duplicate_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    duplicate_request_id: UUID
+    duplicate_request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    merge_wording: Annotated[str, Field(min_length=1, max_length=500)]
+    merged_at: _Rfc3339DateTime
+    merged_by: UUID
+    trigger: Literal["operator_same", "commander_triage"]
+
+
 class RequestOwnerRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     owner_id: UUID
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class RequestResemblance(_BoundaryModel):
+    algorithm_ref: Literal["ctower.local-hashed-subword/v1"]
+    linked_at: _Rfc3339DateTime
+    other_reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
+    other_request_id: UUID
+    other_request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    other_state: Literal["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"]
+    similarity_micros: Annotated[int, Field(ge=720000, le=1000000)]
+
+
+class RequestSameRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class RequestTicketRelationRequest(_BoundaryModel):
@@ -2173,6 +2219,14 @@ class KnowledgeDocument(_BoundaryModel):
 type MigrationCorrectionReplacement = MigrationAliasCorrection | MigrationSourceLinkCorrection | MigrationRelationCorrection
 
 
+class MorningDigestDuplicateSection(_BoundaryModel):
+    items: tuple[MorningDigestDuplicate, ...]
+    state: DigestReadingState
+    total_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    unreached: tuple[DigestUnreachedScope, ...]
+    visible_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 class MorningDigestProof(_BoundaryModel):
     current_proof_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
@@ -2312,6 +2366,7 @@ class Problem(_BoundaryModel):
         "request-import-forbidden",
         "request-owner-forbidden",
         "request-project-unavailable",
+        "request-same-forbidden",
         "request-source-forbidden",
         "request-transition-forbidden",
         "request-triage-forbidden",
@@ -2442,6 +2497,7 @@ class ReopenedAuditData(_BoundaryModel):
 
 class RequestCaptureResult(_BoundaryModel):
     accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    acknowledgement: Annotated[str, Field(min_length=1, max_length=256)]
     command_id: UUID
     durability_state: DurabilityState
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=2, max_length=2)]
@@ -2451,6 +2507,7 @@ class RequestCaptureResult(_BoundaryModel):
     reference: Annotated[str, Field(pattern="^R[1-9][0-9]*$")]
     request_id: UUID
     request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+    resemblance: RequestResemblance | None
     submitted_by: UUID
     version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
@@ -2463,6 +2520,7 @@ class RequestChangeResult(_BoundaryModel):
     operation: Literal[
         "priority",
         "triage",
+        "same",
         "owner",
         "ticket_relation",
         "blocker",
@@ -2934,6 +2992,7 @@ class RequestRow(_BoundaryModel):
     decision_brief: DecisionBrief | None
     durability_state: Literal["accepted"]
     freshness: Annotated[int, Field(ge=1, le=9007199254740991)]
+    merge_provenance: RequestMergeProvenance | None
     optional_ticket_ids: tuple[UUID, ...]
     owner: Annotated[str, Field(min_length=1, max_length=120)]
     owner_id: UUID
@@ -2945,6 +3004,7 @@ class RequestRow(_BoundaryModel):
     request_id: UUID
     request_number: Annotated[int, Field(ge=1, le=9007199254740991)]
     required_ticket_ids: tuple[UUID, ...]
+    resemblances: tuple[RequestResemblance, ...]
     source_kind: Annotated[str, Field(min_length=1, max_length=64)]
     source_ref: Annotated[str, Field(min_length=1, max_length=512)]
     original_owner_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
@@ -3157,6 +3217,7 @@ class MorningDigest(_BoundaryModel):
     artifact_key: Annotated[str, Field(pattern="^morning-digest:[0-9]{4}-[0-9]{2}-[0-9]{2}:Europe/Vilnius$")]
     artifact_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     digest_date: str
+    near_duplicates: MorningDigestDuplicateSection
     observed_at: _Rfc3339DateTime
     open_decisions: MorningDigestDecisionSection
     proof: MorningDigestProofSection

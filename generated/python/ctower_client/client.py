@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:97adcb7c3c2e4b3b1bacad15a351d5af2e2ac1eacc54336e30e18d5a5d4c6c9b
+Authored contract digest: sha256:29e807f035048455e882253a8393b81055a77184dd2a3e6de7463d0ceb97b03c
 """
 
 from __future__ import annotations
@@ -96,6 +96,7 @@ from ctower_client.models import (
     RequestList,
     RequestOwnerRequest,
     RequestPriorityRequest,
+    RequestSameRequest,
     RequestTicketRelationRequest,
     RequestTriageRequest,
     ResolveCloseRequest,
@@ -1263,6 +1264,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: TicketSessionList}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def merge_resembling_request(
+        self,
+        request_id: UUID,
+        request: RequestSameRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestChangeResult:
+        response = self._http.post(
+            f"/v1/requests/{quote(str(request_id), safe='')}/same",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestChangeResult, 202: RequestChangeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def plan_company_bundle(

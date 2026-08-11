@@ -24,11 +24,13 @@ bounded direct snapshot or a stable static-source reference, persists the resolv
 fact, and authorizes project scope from the persisted project-seat authority. The development composition
 mounts the kernel's bundled static-file Adapter; handlers never read arbitrary filesystem paths.
 Durable decisions remain in the owning kernel Modules; the API never connects around those Interfaces.
-The Request routes are the same thin composition: capture and six expected-version fact commands delegate
-to Work, while list is accepted-only and read-only. Payloads cannot claim Actor, owner, source, number, or
-state, and no ordinary Request import route exists.
+The Request routes are the same thin composition: capture and seven expected-version fact commands,
+including operator-only `same`, delegate to Work, while list is accepted-only and read-only. Capture returns
+the exact server-derived resemblance acknowledgement when the local Work comparison qualifies; accepted
+rows expose two-sided links and accepted merge provenance. Payloads cannot claim Actor, owner, source,
+number, state, score, or provenance, and no ordinary Request import route exists.
 The operator-only morning-digest route independently reads the injected Request and Ruling authorities and
-passes their typed outcomes to the pure kernel fold. A source refusal becomes a named unknown scope in the
+passes their typed outcomes to the pure kernel fold, including accepted open resemblance pairs. A source refusal becomes a named unknown scope in the
 successful artifact; authentication, role, and malformed-date failures remain transport problems. The route
 stores nothing and owns no scheduler or notification delivery.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof

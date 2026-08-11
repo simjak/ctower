@@ -12,6 +12,7 @@ from ctower_kernel.projections.morning_digest import (
     DecisionBriefFact,
     DecisionChoiceFact,
     DigestRequestFact,
+    DigestResemblanceFact,
     DigestRulingFact,
     MorningDigest,
     ReadingState,
@@ -70,6 +71,43 @@ def test_digest_composes_three_sections_and_prior_day_ruling_execution() -> None
     )
 
     _assert_complete_digest(digest)
+
+
+def test_digest_names_each_open_resemblance_once_and_hides_merged_pairs() -> None:
+    """AC-REQ-11: one terse note exists only while both linked Requests are open."""
+
+    candidate = replace(
+        _open_decision(),
+        decision_brief=None,
+        resemblances=(DigestResemblanceFact(_EXECUTED_REQUEST_ID, 102),),
+    )
+    source = replace(
+        _executed_request(),
+        state="NEW",
+        required_ticket_ids=(),
+        resemblances=(DigestResemblanceFact(_REQUEST_ID, 101),),
+    )
+    complete = SourceReading.complete((candidate, source), watermark=41, observed_at=_OBSERVED_AT)
+    rulings: SourceReading[DigestRulingFact] = SourceReading.complete(
+        (), watermark=44, observed_at=_OBSERVED_AT
+    )
+
+    digest = project_morning_digest(
+        complete, rulings, digest_date=_DIGEST_DATE, observed_at=_OBSERVED_AT
+    )
+    assert digest.near_duplicates.total_count == 1
+    assert digest.near_duplicates.items[0].note == (
+        "R102 resembles R101 (BLOCKED) — say same on R102 to merge."
+    )
+
+    merged_source = replace(source, triage="DUPLICATE")
+    merged = project_morning_digest(
+        SourceReading.complete((candidate, merged_source), watermark=42, observed_at=_OBSERVED_AT),
+        rulings,
+        digest_date=_DIGEST_DATE,
+        observed_at=_OBSERVED_AT,
+    )
+    assert merged.near_duplicates.total_count == 0
 
 
 def test_decision_choice_uses_the_canonical_zero_through_ten_scale() -> None:

@@ -24,6 +24,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "request list",
         "request owner assign",
         "request prioritize",
+        "request same",
         "request ticket relate",
         "request triage",
         "ruling append",

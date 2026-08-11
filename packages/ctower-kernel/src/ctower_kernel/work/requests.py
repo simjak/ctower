@@ -37,6 +37,7 @@ from ctower_kernel.work._request_types import (
     RequestOwner,
     RequestPriority,
     RequestRow,
+    RequestSame,
     RequestTicketRelation,
     RequestTriage,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "RequestOwner",
     "RequestPriority",
     "RequestRow",
+    "RequestSame",
     "RequestTicketRelation",
     "RequestTriage",
     "Requests",
@@ -150,6 +152,11 @@ class Requests:
 
     def triage(
         self, actor: Actor, command: RequestTriage, *, telemetry: TelemetryContext
+    ) -> RequestChangeResult | RecordProblem:
+        return self._change(actor, command, telemetry=telemetry)
+
+    def same(
+        self, actor: Actor, command: RequestSame, *, telemetry: TelemetryContext
     ) -> RequestChangeResult | RecordProblem:
         return self._change(actor, command, telemetry=telemetry)
 
@@ -286,6 +293,14 @@ def _capture_refusal(actor: Actor, command: RequestCapture) -> RecordProblem | N
 
 
 def _change_refusal(actor: Actor, command: RequestChange) -> RecordProblem | None:
+    if isinstance(command, RequestSame) and actor.kind is not PrincipalKind.OPERATOR:
+        return RecordProblem(
+            code="request-same-forbidden",
+            detail="Only the authenticated operator may say same to merge linked Requests.",
+            status=403,
+            title="Request same forbidden",
+            command_id=command.client_command_id,
+        )
     scope = credential_scope_refusal(
         actor, CredentialScope.TRANSITION, command_id=command.client_command_id
     )
@@ -360,6 +375,8 @@ def _change_operation(command: RequestChange) -> str:
         return "priority"
     if isinstance(command, RequestTriage):
         return "triage"
+    if isinstance(command, RequestSame):
+        return "same"
     if isinstance(command, RequestOwner):
         return "owner"
     if isinstance(command, RequestTicketRelation):

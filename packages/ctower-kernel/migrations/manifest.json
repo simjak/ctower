@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0063_routine_revision_activation.sql",
-    "schema_sha256": "sha256:cc7fffb7ce2f4fd55d3f5ed8746e42e8b6679847fc47de40d51262a9dad5423c",
+    "through": "0064_request_resemblance.sql",
+    "schema_sha256": "sha256:9d5161d85505f60f0426e87779e022ccdb4fcfd1298a11d4e9aea7aa129560f8",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644"
+    "schema_object_sum256": "sum256:22c15bc648462c8bfc5fdbc7b62b7dcf79e7a33d7ea2d62a3330e28827b4452f"
   },
   "migrations": [
     {
@@ -593,6 +593,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_corrected_beat_revision_replaces_only_the_active_trigger",
       "rollback_or_forward_compensation": "Preserve every immutable Routine revision, occurrence, effect, command result, event, and outbox row; append a reviewed forward compensation for active-trigger selection and never edit or delete an accepted revision or effect.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, trigger, occurrence, effect, command-result, event, and outbox counts grouped by tenant and routine reference plus a verified database backup; prove only superseded active triggers are retired when a corrected revision registers."
+    },
+    {
+      "path": "0064_request_resemblance.sql",
+      "sha256": "sha256:f38e594fd5a41c7bb79af3b97a3f11610d99fe3acd81d45ebb481e0d48b8e6ec",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_requests.py::test_resembling_capture_speaks_links_and_operator_same_preserves_provenance",
+      "rollback_or_forward_compensation": "Preserve every accepted Request, immutable two-sided resemblance link, local embedding digest, merge provenance fact, byte-exact wording, timestamp, command result, canonical event, and outbox row; append reviewed forward compensation and never edit, delete, silently merge, or recompute an accepted fact in place.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture Request, triage, command-result, event, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; both new append-only fact tables start empty and no existing Request row is rewritten."
     }
   ]
 }

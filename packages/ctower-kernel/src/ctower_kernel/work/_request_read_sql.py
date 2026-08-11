@@ -13,7 +13,12 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.transaction import project_scope_refusal
 from ctower_kernel.work._decision_brief import decision_brief
 from ctower_kernel.work._request_state_sql import derived_state
-from ctower_kernel.work._request_types import RequestList, RequestRow
+from ctower_kernel.work._request_types import (
+    RequestList,
+    RequestMergeProvenance,
+    RequestResemblance,
+    RequestRow,
+)
 
 __all__ = ["list_requests"]
 
@@ -52,6 +57,8 @@ def list_requests(
         rows = connection.execute(_LIST_SQL, (actor.tenant_id, list(requested))).fetchall()
         projected = tuple(
             _request_row(
+                connection,
+                actor.tenant_id,
                 row,
                 state=derived_state(
                     connection,
@@ -219,6 +226,24 @@ WITH accepted AS (
      AND confirmation.principal_id = evaluation.recorded_by
      AND confirmation.client_command_id = evaluation.command_id
     ORDER BY evaluation.request_id, evaluation.request_version DESC
+), resemblance AS (
+    SELECT endpoint.request_id, max(endpoint.acceptance_position) AS acceptance_position
+    FROM (
+        SELECT link.source_request_id AS request_id, confirmation.acceptance_position
+        FROM request_resemblance_links AS link
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = link.tenant_id
+         AND confirmation.principal_id = link.linked_by
+         AND confirmation.client_command_id = link.command_id
+        UNION ALL
+        SELECT link.candidate_request_id AS request_id, confirmation.acceptance_position
+        FROM request_resemblance_links AS link
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = link.tenant_id
+         AND confirmation.principal_id = link.linked_by
+         AND confirmation.client_command_id = link.command_id
+    ) AS endpoint
+    GROUP BY endpoint.request_id
 )
 SELECT accepted.request_id, accepted.request_number, accepted.project_key,
        accepted.content, accepted.content_digest, accepted.source_kind,
@@ -231,7 +256,8 @@ SELECT accepted.request_id, accepted.request_number, accepted.project_key,
            COALESCE(relation.acceptance_position, 0),
            COALESCE(blocker.acceptance_position, 0),
            COALESCE(closure.acceptance_position, 0),
-           COALESCE(current_ruling.acceptance_position, 0)
+           COALESCE(current_ruling.acceptance_position, 0),
+           COALESCE(resemblance.acceptance_position, 0)
        ) AS acceptance_position,
        latest_owner.owner_id, principal.display_name AS owner,
        latest_priority.priority, latest_priority.is_default,
@@ -268,6 +294,7 @@ LEFT JOIN decision ON decision.request_id = accepted.request_id
 LEFT JOIN current_ruling
   ON current_ruling.decision_blocker_fact_id = decision.blocker_fact_id
 LEFT JOIN closure ON closure.request_id = accepted.request_id
+LEFT JOIN resemblance ON resemblance.request_id = accepted.request_id
 LEFT JOIN request_owner_aliases AS owner_alias
   ON owner_alias.tenant_id = accepted.tenant_id
  AND owner_alias.request_id = accepted.request_id
@@ -275,7 +302,13 @@ ORDER BY accepted.request_number
 """
 
 
-def _request_row(row: dict[str, object], *, state: str) -> RequestRow:
+def _request_row(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    row: dict[str, object],
+    *,
+    state: str,
+) -> RequestRow:
     ruling_id = cast(UUID | None, row["ruling_id"])
     triage = str(row["disposition"])
     brief = (
@@ -312,7 +345,86 @@ def _request_row(row: dict[str, object], *, state: str) -> RequestRow:
         original_owner_sha256=(
             None if row["source_owner_digest"] is None else _digest(row["source_owner_digest"])
         ),
+        resemblances=_resemblances(connection, tenant_id, cast(UUID, row["request_id"])),
+        merge_provenance=_merge_provenance(connection, tenant_id, cast(UUID, row["request_id"])),
         decision_brief=brief,
+    )
+
+
+def _resemblances(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+) -> tuple[RequestResemblance, ...]:
+    rows = connection.execute(
+        """
+        SELECT link.source_request_id, link.candidate_request_id, link.similarity,
+               link.algorithm_ref, link.linked_at,
+               other.request_id AS other_request_id,
+               other.request_number AS other_request_number
+        FROM request_resemblance_links AS link
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = link.tenant_id
+         AND confirmation.principal_id = link.linked_by
+         AND confirmation.client_command_id = link.command_id
+        JOIN requests AS other
+          ON other.tenant_id = link.tenant_id
+         AND other.request_id = CASE
+             WHEN link.source_request_id = %s THEN link.candidate_request_id
+             ELSE link.source_request_id
+         END
+        WHERE link.tenant_id = %s
+          AND %s IN (link.source_request_id, link.candidate_request_id)
+        ORDER BY other.request_number
+        """,
+        (request_id, tenant_id, request_id),
+    ).fetchall()
+    return tuple(
+        RequestResemblance(
+            cast(UUID, item["other_request_id"]),
+            int(cast(int, item["other_request_number"])),
+            derived_state(
+                connection,
+                tenant_id,
+                cast(UUID, item["other_request_id"]),
+                accepted_only=True,
+            ),
+            round(float(cast(float, item["similarity"])) * 1_000_000),
+            str(item["algorithm_ref"]),
+            cast(datetime, item["linked_at"]),
+        )
+        for item in rows
+    )
+
+
+def _merge_provenance(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, request_id: UUID
+) -> RequestMergeProvenance | None:
+    row = connection.execute(
+        """
+        SELECT fact.*
+        FROM request_merge_facts AS fact
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = fact.tenant_id
+         AND confirmation.principal_id = fact.merged_by
+         AND confirmation.client_command_id = fact.command_id
+        WHERE fact.tenant_id = %s AND fact.duplicate_request_id = %s
+        """,
+        (tenant_id, request_id),
+    ).fetchone()
+    if row is None:
+        return None
+    return RequestMergeProvenance(
+        cast(UUID, row["duplicate_request_id"]),
+        int(cast(int, row["duplicate_request_number"])),
+        str(row["duplicate_content"]),
+        cast(datetime, row["duplicate_created_at"]),
+        cast(UUID, row["canonical_request_id"]),
+        int(cast(int, row["canonical_request_number"])),
+        str(row["canonical_content"]),
+        cast(datetime, row["canonical_created_at"]),
+        str(row["trigger_kind"]),
+        str(row["merge_wording"]),
+        cast(UUID, row["merged_by"]),
+        cast(datetime, row["merged_at"]),
     )
 
 

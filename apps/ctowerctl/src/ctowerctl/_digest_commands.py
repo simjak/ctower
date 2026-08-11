@@ -11,6 +11,7 @@ from ctower_client.models import (
     DigestUnreachedScope,
     MorningDigest,
     MorningDigestDecisionSection,
+    MorningDigestDuplicateSection,
     MorningDigestProofSection,
     MorningDigestRulingSection,
 )
@@ -35,8 +36,16 @@ def morning_text(digest: MorningDigest) -> str:
         f"State: {digest.state.value.upper()}",
         f"Observed: {digest.observed_at.isoformat()}",
         "",
-        f"Open decisions — {_count(digest.open_decisions)}",
+        f"Near-duplicate requests — {_count(digest.near_duplicates)}",
     ]
+    _unreached(lines, digest.near_duplicates.unreached)
+    lines.extend(item.note for item in digest.near_duplicates.items)
+    lines.extend(
+        [
+            "",
+            f"Open decisions — {_count(digest.open_decisions)}",
+        ]
+    )
     _unreached(lines, digest.open_decisions.unreached)
     lines.extend(_decision_lines(digest))
     lines.extend(("", f"Yesterday's rulings — {_count(digest.yesterday_rulings)}"))
@@ -98,7 +107,12 @@ def _proof_lines(digest: MorningDigest) -> list[str]:
 
 
 def _count(
-    section: MorningDigestDecisionSection | MorningDigestRulingSection | MorningDigestProofSection,
+    section: (
+        MorningDigestDecisionSection
+        | MorningDigestDuplicateSection
+        | MorningDigestRulingSection
+        | MorningDigestProofSection
+    ),
 ) -> str:
     if section.total_count is None:
         return f"UNKNOWN total; {section.visible_count} visible; {section.state.value.upper()}"

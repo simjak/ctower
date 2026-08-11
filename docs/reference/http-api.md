@@ -112,6 +112,7 @@ server authorizes the actor before accepting it.
 |---|---|---|---|---|---|---|
 | `POST` | `/v1/requests` | `captureRequest` | `request capture` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/requests` | `listRequests` | `request list` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `POST` | `/v1/requests/{request_id}/same` | `mergeResemblingRequest` | `request same` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/requests/{request_id}/priority` | `prioritizeRequest` | `request prioritize` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/requests/{request_id}/triage` | `triageRequest` | `request triage` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/requests/{request_id}/owner` | `assignRequestOwner` | `request owner assign` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
@@ -121,12 +122,17 @@ server authorizes the actor before accepting it.
 
 Capture accepts only `project_key` and `text`; the authenticated Actor, submitter, initial owner, native
 source alias, UUIDv7 identity, and tenant-wide permanent `R<number>` are server facts. Capture creates no
-Ticket. Every semantic change appends an independent fact under `expected_version`; there is no writable
-Request status.
+Ticket. A qualifying bounded local same-Project comparison always captures the new Request, records one
+two-sided resemblance, and speaks the exact pair plus the `same` instruction in its acknowledgement. It
+performs no model-service, secret, network, or external-egress call. Every semantic change appends an
+independent fact under `expected_version`; there is no writable Request status. Operator-only `request same`
+and commander duplicate triage are the only merge paths. Both retain both original texts and timestamps in
+immutable provenance; neither edits or deletes an original Request.
 
 The list is an accepted-only read at a named Record watermark. It reports requested, answered, and
 unanswered projects separately, so an unanswered source never contributes a fabricated empty result.
-Mutation `202` responses remain `durability_pending`; accepted list rows and totals exclude them. The
+Mutation `202` responses remain `durability_pending`; accepted list rows and totals exclude them. Accepted
+rows expose resemblance links from both sides and merge provenance only after acceptance. The
 operator migration helper is deliberately absent from this ordinary HTTP surface. A row whose exact
 accepted decision blocker is active includes the complete record-derived `decision_brief`; other rows carry
 `null`. An accepted Ruling answers only the exact active blocker occurrence it was bound to; a later marker
@@ -157,7 +163,7 @@ Projects plus the Record watermark; pending facts are absent.
 
 The optional `date` query is an ISO calendar date. Omission selects the current Europe/Vilnius date. The
 operator-only result has one artifact key and content digest, Request and Ruling watermarks, and the ordered
-open-decision, prior-day-Ruling, and Ticket-proof sections. Each section distinguishes a measured zero from
+open-decision, prior-day-Ruling, Ticket-proof, and open near-duplicate Request sections. Each section distinguishes a measured zero from
 an unknown total and names every unreached scope. The read stores nothing and does not deliver or schedule a
 notification. See the [morning digest concept](../concepts/morning-digest.md).
 
