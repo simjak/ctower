@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/simjak/ctower/compare/v0.28.0...v0.29.0) (2026-08-11)
+
+
+### Features
+
+* **console:** add Phase 1 viewer foundation ([#466](https://github.com/simjak/ctower/issues/466)) ([14a363a](https://github.com/simjak/ctower/commit/14a363a7693a318eb7785e63507677552dd0f9a3))
+
 ## [0.28.0](https://github.com/simjak/ctower/compare/v0.27.0...v0.28.0) (2026-08-11)
 
 
