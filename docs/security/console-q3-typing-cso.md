@@ -2,16 +2,140 @@
 
 | Field | Value |
 |---|---|
-| State | **CLEARED-WITH-CONTROLS** — security shape only |
-| Review date | 2026-08-10 |
-| Model | `gpt-5.6-sol` at maximum reasoning effort |
-| Current-main base | `7d6827ff9887cee4ae8a917b53aabfefe677804a` |
+| State | **DISPUTED** — MAX confirmation reopens CT-C01, CT-C02–CT-C05, CT-C07, and CT-C08 |
+| MAX confirmation date | 2026-08-11 |
+| MAX confirmation model | `gpt-5.6-sol` at maximum reasoning effort |
+| MAX current-main base | `f542b872c7a7c9216ac67fdb41425d7ca4b014a9` |
+| Original ruling | **CLEARED-WITH-CONTROLS**, 2026-08-10; superseded by this addendum |
+| Original current-main base | `7d6827ff9887cee4ae8a917b53aabfefe677804a` |
 | Candidate specification | `docs/specs/crew-console.md` at `ddb760e2751b84b2824eb620c5bdd0356c79b291` |
 | Candidate SHA-256 | `dc1dee344c608f4235d7fc4454eed6f11b60cd03b535ddbcd03f510755ef117c` |
 | Approved ceremony design | `bc822f5f62eedbce6e20304b863a63ae6f120082` |
 | Scope | `ConsoleTypeGrant`, `paste_text`, `submit`, and the last trusted boundary before `bin/mux` |
 
-## Verdict at one glance
+## MAX confirmation addendum — DISPUTED
+
+### Director ruling
+
+**DISPUTED.** The 2026-08-10 clearance is withdrawn. Phase 2 typing must not activate from this verdict,
+from issue #437, or from a server-only Phase 1 proof. The exact #373 candidate and this control list require
+repair, followed by a fresh exact-candidate CSO verdict.
+
+This confirmation re-read the #373 Q3 contract and all three preceding CSO rounds against current main
+`f542b872c7a7c9216ac67fdb41425d7ca4b014a9`. The original verdict file at
+`1dd68fcfaf6e55ae9e2af9c79a614eb9c09cd91c` is byte-identical to the file merged by PR #432. Since the
+original base, current main adds only that verdict, release metadata, and the testing coverage matrix; it
+does not add a canonical console contract or deployed proof and does not cure the gaps below.
+
+### Re-derived abuse classes
+
+| Abuse class | MAX finding | Required correction |
+|---|---|---|
+| Grant theft, replay, and cross-grant composition | Per-grant replay and rebinding controls remain sound, but separately valid `paste_text` and `submit` grants can compose one unconfirmed shell line. Actor A may paste `printf safe`, Actor B may paste `; printf unexpected`, and Actor A may then submit. Every grant, digest, rate check, and per-grant CAS can pass while no confirmation covers the effective line. | Authorize an atomic full-line-plus-Enter action whose admission proves a clean input generation, or bind every action and final admission to one exclusive session-input generation/writer lease and the exact expected pending-line state. A different Actor or tab, a grant outside that lease and generation, a stale pending buffer, or intervening input must invalidate the sequence before mux. |
+| Digest confusion | Requested, planned, and adapter-dispatch digests cover one physical action, not the effective pending line that `submit` executes. Separately, ordinary-surface raw SHA-256 content digests permit offline recovery of low-entropy commands. | Bind authorization to the complete effective input state. Keep raw content digests behind the audited reader; ordinary surfaces use opaque IDs or a keyed, non-enumerable commitment. Public domain separation alone is insufficient. |
+| Fence bypass | Project, assignment, incarnation, target, and runner-epoch fencing are adequate for one action. There is no fence over the mutable session input generation shared by distinct valid grants. | Compare-and-set the session input generation at the last trusted boundary, or remove the split action whose safety depends on that mutable state. |
+| Injection past the allowlist | NFC plus exclusion of CR/LF and C0/C1 still admits bidi controls, default-ignorable/invisible characters, and Unicode line/paragraph separators, including U+202E, U+2066, U+200B, U+2028, and U+2029. The approved ceremony renders text in a normal wrapping `<pre>`, so confirmed appearance can differ from dispatched bytes. | Publish an explicit Unicode security policy. Reject dangerous code points or render an escaped code-point/octet preview inside a bidi-isolated ceremony so the operator can verify every dispatched byte. |
+| Stream tampering and hostile output | The one-way SSE/input separation remains sound. The original CT-C01 predecessor list omitted the safe terminal renderer and deployed product-viewer proof, so a server-only foundation can be mistaken for sufficient Phase 1 proof. | Require the complete Phase 1 product viewer, hostile-output safe-render corpus, and deployed UI QA as typing predecessors. |
+| Revocation after partial input | A successful paste has already placed bytes in the terminal's pending line. Revoking or expiring that paste authority does not remove those bytes, and CT-C08 only refuses a new dispatch. A later valid submit can therefore execute input whose originating authority is no longer live. | Preserve the originating authorization through final line admission, or atomically invalidate the pending input generation on any contributing grant/session/global revocation or expiry and refuse submit until a separately specified secure reset establishes a clean generation. |
+
+### Reopened controls and mandatory repair evidence
+
+#### CT-C01 — complete Phase 1 product proof, not server foundation alone
+
+The #373 candidate requires inert terminal rendering (`docs/specs/crew-console.md:291-298`), the dedicated
+contextual panel (`:391-407`), full Phase 1 production verification before Phase 2 (`:409-412`), the
+hostile-output safe-render corpus (`:453`), deployed UI QA (`:466-477`), and an explicit safe-render policy
+(`:487`, `:500-505`). The original CT-C01 at this file's historical lines 87-94 named grants, allowlisting,
+custody, SSE, network, and direct-path proof, but not the renderer or its deployed browser proof.
+
+Issue #437 is a necessary server predecessor, not the complete one. At the inspected in-flight head
+`9d8e13463c50a7adccfda44fcfb06b07c275f34e`, its D52 explicitly says CT-I1-019 does not realize the
+contextual browser panel or safe terminal renderer. That excluded work is mandatory before #437 evidence may
+participate in a complete Phase 1 production-verification fact. #437 alone must never satisfy CT-C01.
+
+- `test_console_typing_requires_full_phase1_product_viewer_production_proof`
+- `test_console_typing_rejects_server_foundation_without_safe_renderer`
+- `test_console_phase1_hostile_output_renderer_and_deployed_ui_qa_precede_typing`
+
+#### CT-C02, CT-C03, and CT-C04 — bind the effective submitted line
+
+The candidate deliberately grants one exact `paste_text` **or** one payload-free `submit`
+(`docs/specs/crew-console.md:178-183`, `:194-199`, `:208-212`). Its transaction and final CAS bind only that
+individual action and plan (`:221-248`). The original controls repeat that split at historical CT-C02
+through CT-C04 and the ceremony explicitly presents paste and submit as separate grants. Aggregate ordering
+does not cure the exploit: it merely orders the three individually valid actions shown above.
+
+The repair must choose one complete security semantic. The smallest is an atomic bounded line-plus-Enter
+action whose fresh confirmation covers the entire effective line and whose final admission proves or
+establishes a clean input generation rather than appending to stale pending text. If separate paste and
+submit remain, each distinct grant must bind the same exclusive writer/input-generation lease together with
+Actor, browser session, session incarnation, pending input predecessor, resulting pending input, and final
+admission; any grant outside that lease and generation, stale state, or intervening input invalidates the
+confirmation and injects zero additional bytes.
+
+- `test_console_submit_binds_the_exact_pending_input_generation`
+- `test_console_cross_actor_paste_submit_composition_refuses_before_mux`
+- `test_console_distinct_grants_compare_and_set_one_session_input_fence`
+- `test_console_confirmation_covers_the_complete_effective_submitted_line`
+
+#### CT-C05 — Unicode-safe allowlist and confirmation
+
+The original initial vocabulary and CT-C05 exclude C0/C1 controls but do not decide Unicode bidi,
+default-ignorable, zero-width, line-separator, or paragraph-separator handling. NFC preserves the concrete
+vectors above. The approved ceremony says it shows exact bytes but renders the value as ordinary preformatted
+text (`docs/design/crew-console/compare-board.html:155-172`, `:2260`, `:2515-2523` at the approved design
+commit), without a required escaped preview or bidi isolation.
+
+- `test_console_confirmation_escapes_or_refuses_bidi_and_default_ignorables`
+- `test_console_paste_refuses_or_visibly_escapes_unicode_line_and_paragraph_separators`
+- `test_console_confirmation_codepoint_preview_matches_dispatched_bytes`
+
+#### CT-C07 — raw content digests are restricted data
+
+The candidate promises that only `console_input_audit_reader` can recover exact bytes while ordinary
+surfaces expose digests (`docs/specs/crew-console.md:258-271`). Canonical current rules use lowercase
+SHA-256 and content-addressed SHA-256 object keys (`SPEC.md:2915`, `:3244-3252` at the candidate commit).
+Anyone who can see an ordinary-surface digest can hash a dictionary of likely inputs such as `pwd` or
+`git status` and recover the command without reader authorization or an access fact. Envelope encryption and
+distinct data keys do not change that result.
+
+- `test_console_raw_input_content_digests_require_the_audited_reader`
+- `test_console_ordinary_surfaces_use_opaque_or_keyed_non_enumerable_references`
+- `test_console_low_entropy_command_dictionary_recovery_fails`
+
+#### CT-C08 — revocation invalidates contributed pending input
+
+The original CT-C08 below refuses new dispatch at authorization and final admission, but it does not bind the
+validity of an already dispatched paste to the later submit that executes it. Revocation or expiry
+of any grant, session, or global authority that contributed to a pending input generation must invalidate
+that generation before another submit may be admitted. Because securely clearing an arbitrary terminal
+buffer is not specified, the fail-closed result is zero execution and refusal until a separately specified,
+CSO-reviewed reset establishes a clean generation. An atomic line-plus-Enter action avoids this residual.
+
+- `test_console_revocation_between_paste_and_submit_invalidates_pending_input_generation`
+- `test_console_expired_paste_authority_cannot_be_executed_by_a_later_submit_grant`
+- `test_console_revoked_pending_input_refuses_until_secure_clean_generation_reset`
+
+CT-C06's exact target/epoch fence remains confirmed. CT-C08's five-second output-stream closure and
+transport separation also remain necessary and sound; its pending-input revocation semantic is insufficient.
+The per-action parts of CT-C02 through CT-C04 remain necessary as well. Reopening a control means it is
+insufficient, not that replay, canonicalization, final CAS, or transport separation may be removed.
+
+### Prior-round and phase-boundary recheck
+
+All three earlier CSO records remain mandatory specification judgments on current main, but none is deployed
+proof. The initial round's Condition 6 required a Unicode-boundary corpus and Condition 7 required safe
+rendering. The five-condition fold correctly incorporated its assigned grant/CAS/audit/custody subset. The
+Q4-Q8 round correctly made safe output rendering a Phase 1 requirement. Those records therefore support,
+rather than waive, this dispute: the Q3 control list failed to carry two earlier requirements into its own
+typing predecessor and allowlist evidence, and it did not analyze cross-grant terminal-state composition,
+digest enumeration, or revocation and expiry after partial input.
+
+No implementation or compatibility fallback is authorized by this addendum. Repair the subordinate #373
+proposal and the CSO control list through the canonical process, preserve issue #437 as server-foundation
+only, and request a fresh MAX exact-candidate verdict before any typed-input build or deployment proceeds.
+
+## Original 2026-08-10 verdict at one glance (superseded)
 
 The proposed typed-command boundary is **CLEARED-WITH-CONTROLS**. It has the right security shape: the
 browser submits one strict durable command; only the control plane can mint a short-lived grant; the grant
@@ -231,7 +355,7 @@ The operator acknowledgement recorded on 2026-08-10 approves that terminal-conso
 typing phase to enter its governed sequence. It does not waive the CSO controls, canonical source order,
 stable-ticket/dependency gates, independent design review, verification, or deployment evidence.
 
-## Final disposition
+## Original 2026-08-10 disposition (superseded)
 
 **CLEARED-WITH-CONTROLS.** No specification amendment is required to make the narrow `paste_text`/`submit`
 boundary defensible: the exact candidate already contains the necessary grant, audit, custody, fencing,
@@ -251,3 +375,17 @@ SIGNED-OFF
 
 Security review reduces known risk; it is not a guarantee of security. This verdict is valid only for the
 exact reviewed boundary and only while all mandatory controls remain enforced and evidenced.
+
+## MAX confirmation sign-off
+
+SIGNED-OFF
+
+- seat: `cso`
+- crew: `cso-q3-confirm`
+- model: `gpt-5.6-sol` at maximum reasoning effort
+- claim: The Q3 typing clearance is disputed; CT-C01, CT-C02 through CT-C05, CT-C07, and CT-C08 are reopened on the exact evidence and repairs above.
+- stood-under: Current main `f542b872c7a7c9216ac67fdb41425d7ca4b014a9`; original verdict head `1dd68fcfaf6e55ae9e2af9c79a614eb9c09cd91c`; #373 candidate `ddb760e2751b84b2824eb620c5bdd0356c79b291` / SHA-256 `dc1dee344c608f4235d7fc4454eed6f11b60cd03b535ddbcd03f510755ef117c`; approved ceremony `bc822f5f62eedbce6e20304b863a63ae6f120082`; three prior CSO records; issue #437 and its inspected in-flight head.
+- if-this-breaks: Keep typing inactive, revoke any typing grants, preserve audit objects, and re-summon the CSO on the repaired exact candidate before re-enabling the boundary.
+
+Security review reduces known risk; it is not a guarantee of security or a substitute for a professional
+security assessment.
