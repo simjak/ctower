@@ -57,6 +57,11 @@
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionAllowRequest"}}}
         },
         "responses": {
+          "202": {
+            "description": "Console allowance committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionAllowance"}}}
+          },
           "201": {"description": "Exact console session allowlisted", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionAllowance"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
@@ -76,6 +81,10 @@
         "parameters": [{"$ref": "#/components/parameters/ConsoleSessionId"}],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleSessionRevocationRequest"}}}},
         "responses": {
+          "202": {
+            "description": "Console revocation committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
+          },
           "204": {"description": "Exact console session revoked"},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
@@ -95,6 +104,10 @@
         "security": [{"bearerAuth": []}],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleKillSwitchRequest"}}}},
         "responses": {
+          "202": {
+            "description": "Console kill-switch fact committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
+          },
           "204": {"description": "Global console kill-switch fact appended"},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
@@ -128,6 +141,11 @@
         "security": [{"browserSession": []}],
         "parameters": [{"$ref": "#/components/parameters/ConsoleSessionId"}, {"$ref": "#/components/parameters/ConsoleCsrf"}],
         "responses": {
+          "202": {
+            "description": "Console view grant committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}
+          },
           "201": {"description": "One-use ConsoleViewGrant minted", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
@@ -146,6 +164,11 @@
         "security": [{"browserSession": []}],
         "parameters": [{"$ref": "#/components/parameters/ConsoleSessionId"}, {"$ref": "#/components/parameters/ConsoleCsrf"}],
         "responses": {
+          "202": {
+            "description": "Console view-grant renewal committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}
+          },
           "201": {"description": "Replacement ConsoleViewGrant minted after full re-decision", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConsoleViewGrant"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
@@ -167,6 +190,10 @@
           {"name": "Last-Event-ID", "in": "header", "required": false, "schema": {"type": "integer", "minimum": 0}}
         ],
         "responses": {
+          "202": {
+            "description": "Console stream claim committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
+          },
           "200": {
             "description": "Bounded no-store server-sent Console events",
             "headers": {

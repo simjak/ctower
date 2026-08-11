@@ -65,7 +65,11 @@ def test_ruling_cso_trigger_records_no_new_boundary_and_no_new_principal() -> No
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
     decision = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
 
-    assert set(cast(dict[str, object], schemes)) == {"bearerAuth"}
+    assert cast(dict[str, object], schemes)["bearerAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque",
+    }
     assert paths["/v1/rulings"]["post"]["security"] == [{"bearerAuth": []}]
     assert "no-new-boundary" in decision[decision.index("## D49") :]
     assert _principal_values() == _EXPECTED_PRINCIPALS
