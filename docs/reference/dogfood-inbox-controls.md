@@ -11,9 +11,11 @@ permit it to present three existing Inbox commands, and activate one verificatio
 thread with yet. It asks the existing protected `POST /v1/inbox/notifications` operation, and it submits
 the message and which seat it is for, and nothing else:
 
-- the seats on offer are the registered project seats the server itself listed, read from
-  `GET /v1/inbox/correspondents` — you pick one, you cannot type one, and a seat that is not on the list is
-  refused before any command is made;
+- the seats on offer are the ones the server itself listed, read from `GET /v1/inbox/correspondents` — you
+  pick one, you cannot type one, and a seat that is not on the list is refused before any command is made;
+- that list is what the command accepts, not every seat that exists: a seat key two seats share is
+  addressed to nobody and is offered by neither, your own seat is not on it, and a principal holding no
+  seat of its own is offered nothing at all, because it has no address to write from;
 - the sender is never sent — the API derives it from the bearer it validates;
 - the thread is not chosen by anyone. The server derives one per pair of seats, so writing to the same seat
   again continues that one conversation instead of opening another, and a compose to a seat the notify
@@ -23,8 +25,9 @@ An **accepted** compose draws the message it just sent, marked `just sent`, as a
 the conversation — without a reload, and before the thread list has folded it. A **`202` /
 `durability_pending`** answer starts nothing: no row is drawn and no thread is named, your words and your
 picked seat both stay where they are, and the button offers `Retry` under the same command identity. A
-**refusal** renders the API's own human sentence and hands back both. If the record lists no other seat,
-the control is disabled and says so rather than inviting a message it cannot deliver.
+**refusal** renders the API's own human sentence and hands back both. If the list comes back empty the
+control is disabled and says which emptiness it is — nobody addressable to write to, or no seat of this
+server's own to write from — rather than inviting a message it cannot deliver or blaming the wrong side.
 
 **Send.** At the foot of an Inbox thread, the send box asks the existing protected
 `POST /v1/inbox/messages` operation to append one message to that thread. The browser submits the message
@@ -107,7 +110,7 @@ credential.
 - This does not change the `ctower-web` React/Vite product decision or `CT-I2-005` sequencing.
 - This does not grant browser authority or create a new mutation endpoint; all three controls call commands
   the contract already authored. The one operation D55 adds, `GET /v1/inbox/correspondents`, is a read of
-  the registered seats the send path already resolves against.
+  the addresses the send path already resolves — narrower than the seat registry, never wider.
 - This is limited to low-value, reconstructible shadow dogfood. It is not a deployment or support promise.
 
 See the [HTTP API reference](http-api.md#inbox), [CLI reference](cli.md#inbox), and the canonical

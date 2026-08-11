@@ -4,7 +4,7 @@
 # The operator credential is resolved from the Secret Service reference the
 # instance already uses and handed to the Node process as an environment value
 # for the life of that process. It is never written to a file, never passed as
-# an argument, and never reaches the browser: reads and the one Inbox promotion
+# an argument, and never reaches the browser: reads and every Inbox command
 # request are server-side, and the API remains the authorization authority.
 #
 #   apps/ctower-ui/serve-development.sh          # production server on :3117

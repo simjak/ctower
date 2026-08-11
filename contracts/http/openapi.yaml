@@ -705,7 +705,7 @@
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "responses": {
-          "200": {"description": "Registered project seats this principal can address, excluding its own", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxCorrespondentList"}}}},
+          "200": {"description": "Registered project seats this principal can open a thread to: its own seat, any seat key another seat shares, and every seat when this principal holds none are excluded, because the send command refuses each", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxCorrespondentList"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}

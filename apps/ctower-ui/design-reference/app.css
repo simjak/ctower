@@ -987,6 +987,10 @@ body:has(#f-bhloop:checked) .col:not(:has(.p-bhloop)) .col-empty { display: bloc
 }
 .field:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 .field::placeholder { color: var(--ink-4); }
+/* A control the surface has switched off has to look switched off, or the page
+   is inviting a press it will not honor. Every field and button on the surface
+   reads its own disabled state from here rather than styling one locally. */
+.field:disabled { background: var(--surface); color: var(--ink-3); cursor: not-allowed; }
 .btn {
   flex: none;
   height: 36px; padding: 0 14px;
@@ -999,6 +1003,10 @@ body:has(#f-bhloop:checked) .col:not(:has(.p-bhloop)) .col-empty { display: bloc
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn.ghost { background: var(--bg); color: var(--ink); border-color: var(--line-2); }
 .btn.ghost:hover { background: var(--surface); border-color: var(--ink-3); }
+.btn:disabled, .btn:disabled:hover {
+  background: var(--surface); color: var(--ink-3);
+  border-color: var(--line-2); cursor: not-allowed;
+}
 
 /* ── S4/S6 editor + explorer: tree beside a pane ────────────────────────── */
 .ed { display: flex; flex-direction: column; }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -230,6 +231,44 @@ class InboxComposeComponentTests(unittest.TestCase):
         # an empty closed world does not invite a compose it cannot honor
         self.assertIn("seats.length === 0", component)
         self.assertIn("disabled={idle}", component)
+
+    def test_the_offered_list_is_the_records_own_and_an_empty_one_says_which(self) -> None:
+        """The browser never edits the list, and never guesses why it is empty.
+
+        The read already answers with the addresses the command accepts, so
+        folding, filtering or supplementing them here could only make the picker
+        disagree with the command it exists to reach. And an empty list has two
+        different causes — nobody addressable to write to, or no seat of this
+        principal's own to write from — which get two different sentences,
+        because naming the wrong one tells the operator to fix the wrong thing.
+        """
+        component = (_SURFACE / "surfaces/inbox/ComposeThread.tsx").read_text(encoding="utf-8")
+
+        self.assertIn("correspondents.choices.map", component)
+        self.assertNotIn("new Set", component)
+        self.assertNotIn("choices.filter", component)
+        self.assertIn('"unaddressable"', component)
+        self.assertIn("no registered seat", component)
+        self.assertIn("no other seat this server can write to", component)
+
+    def test_a_control_this_surface_switched_off_is_drawn_switched_off(self) -> None:
+        """A dead control that looks live is an invitation the page cannot honor.
+
+        The compose box disables its picker, its field and its button whenever
+        there is no address to send to or a send is in flight, and until now
+        nothing in the design system drew that state differently from a live
+        one. The rule belongs to the shared field and button rather than to this
+        box, so every switched-off control on the surface reads as one.
+        """
+        stylesheet = (_ROOT / "apps/ctower-ui/design-reference/app.css").read_text(encoding="utf-8")
+
+        for rule in (".field:disabled", ".btn:disabled"):
+            with self.subTest(rule=rule):
+                match = re.search(rf"{re.escape(rule)}[^{{]*\{{([^}}]+)\}}", stylesheet)
+                self.assertIsNotNone(match, f"{rule} has no shared style rule")
+                assert match is not None
+                self.assertIn("cursor: not-allowed", match.group(1))
+                self.assertIn("var(--ink-3)", match.group(1))
 
     def test_the_control_is_on_the_list_screen_where_no_thread_exists_yet(self) -> None:
         """A new thread starts where there is no thread: the Inbox list."""

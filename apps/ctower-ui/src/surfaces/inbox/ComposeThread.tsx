@@ -9,10 +9,17 @@ import { ThreadMessage } from "./ThreadMessage";
 const INITIAL_STATE: InboxComposeState = { kind: "idle" };
 const JUST_SENT = "just sent";
 const NOT_CONFIRMED = "not confirmed";
+/** The record's own name for a principal that holds no seat row. */
+const UNADDRESSABLE = "unaddressable";
 const PICKER_HELP =
-  "Only seats registered in the record can be addressed. " +
-  "Sending opens the conversation with that seat, or continues the one you already have.";
-const NO_SEATS = "The record lists no other registered seat, so there is nobody to write to yet.";
+  "A seat is listed only where the record can deliver to it: registered, and not sharing its " +
+  "address with another seat. Sending opens the conversation with that seat, or continues the " +
+  "one you already have.";
+const NO_SEATS = "The record lists no other seat this server can write to, so there is nobody yet.";
+const NO_ADDRESS =
+  "This server's principal holds no registered seat, so it has no address to write from. " +
+  "Register one in the record to start conversations here.";
+const RECORDED = "the server authorizes and records every message";
 
 /** The words the box is still holding for the sender, if it is holding any. */
 function held(state: InboxComposeState): string {
@@ -33,15 +40,26 @@ function submitLabel(state: InboxComposeState, submitting: boolean): string {
 }
 
 /**
- * The addresses on offer: one per distinct seat key, in the record's own order.
+ * The addresses on offer: the record's own list, in the record's own order.
  *
- * A seat key is the whole address — the command resolves a recipient by it —
- * so two registered seats sharing one are one choice here, not two identical
- * ones. Nothing else is filtered: every address the record listed is offered,
- * and no address it did not list can be.
+ * Nothing is folded, dropped or added here, because the list already *is* the
+ * set of addresses the command accepts: the record leaves out a key two seats
+ * share, the reader's own seat, and everybody at all when this principal holds
+ * no seat to write from. A picker that edited that list could only start
+ * disagreeing with the command it exists to reach.
  */
 function addresses(correspondents: InboxCorrespondents): readonly string[] {
-  return [...new Set(correspondents.choices.map((choice) => choice.seatKey))];
+  return correspondents.choices.map((choice) => choice.seatKey);
+}
+
+/** Who the record would file this message under, when it can file one at all. */
+function provenance(sender: string): string {
+  return sender === UNADDRESSABLE ? RECORDED : `as ${sender} · ${RECORDED}`;
+}
+
+/** Why the box is offering nobody: no address to write from, or nobody to write to. */
+function emptyReason(sender: string): string {
+  return sender === UNADDRESSABLE ? NO_ADDRESS : NO_SEATS;
 }
 
 /**
@@ -49,10 +67,12 @@ function addresses(correspondents: InboxCorrespondents): readonly string[] {
  *
  * It carries two fields, and neither is an identity claim. The message is the
  * operator's. The recipient is one of the seats *the server itself listed* —
- * the same registered closed world the command resolves against — so this
- * browser can name an address but never invent one, and the server re-resolves
- * the seat and derives the sender from the credential it holds on every send.
- * There is no sender field, because that was never this browser's to choose.
+ * and that list is the set of addresses the command accepts, not the wider set
+ * of seats that exist — so this browser can name an address but never invent
+ * one, every address it offers is one the record can deliver to, and the server
+ * re-resolves the seat and derives the sender from the credential it holds on
+ * every send. There is no sender field, because that was never this browser's
+ * to choose.
  *
  * The thread is nobody's to choose. The server derives one per unordered seat
  * pair, so pressing Send twice on one seat continues one conversation rather
@@ -101,9 +121,7 @@ export function ComposeThread({
       <form className="steer-box" action={formAction}>
         <div className="hd">
           <span className="k">To</span>
-          <span className="note">
-            as {correspondents.sender} · the server authorizes and records every message
-          </span>
+          <span className="note">{provenance(correspondents.sender)}</span>
         </div>
         <div className="hd" style={{ marginBottom: "9px" }}>
           <label style={{ flex: "1 1 240px", minWidth: 0 }} title={PICKER_HELP}>
@@ -146,7 +164,7 @@ export function ComposeThread({
             {submitLabel(state, submitting)}
           </button>
         </div>
-        {seats.length === 0 ? <p className="note">{NO_SEATS}</p> : null}
+        {seats.length === 0 ? <p className="note">{emptyReason(correspondents.sender)}</p> : null}
         {state.kind === "pending" ? (
           <p className="note" role="status">
             <span className="verdict v-changes">{NOT_CONFIRMED}</span> {state.message}

@@ -447,12 +447,15 @@ class InboxCorrespondent:
 
 @dataclass(frozen=True, slots=True)
 class InboxCorrespondentList:
-    """Every registered seat the authenticated principal can address, and its own.
+    """Every address the authenticated principal can open a thread to, and its own seat.
 
-    This is the same closed world the send command validates against, read
-    rather than asserted: a seat absent here is a seat the command refuses by
-    its own stable name, so a picker built on it can offer nothing the record
-    would not accept as an address.
+    These are fewer than the registered seats, and that is the point: the send
+    command resolves a recipient by ``(tenant_id, seat_key)``, so a key two
+    seats share resolves to nobody, the reader's own seat resolves to itself,
+    and a reader with no seat row cannot send at all. Each of those is left out
+    here for the same reason the command refuses it, so a picker built on this
+    list can offer nothing the record would not accept as an address. ``sender``
+    is ``unaddressable`` exactly when this principal holds no seat row.
     """
 
     correspondents: tuple[InboxCorrespondent, ...]

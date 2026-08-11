@@ -2196,12 +2196,17 @@ reserved for I2.4.
    exactly `{"text","to"}`. There is no sender field and no thread field, because neither was ever this
    browser's to choose.
 2. **One new read operation, and it is a read.** This supersedes D44 clause 6's "no new contract" only.
-   `GET /v1/inbox/correspondents` returns the tenant's registered project seats less the reader's own,
-   through the authored contract and both generated clients, with the CLI name `inbox correspondents`. It
-   reads exactly the `project_seats` closed world the send command already resolves a recipient against, so
-   the picker and the command cannot disagree: an address the picker offers is one the record can accept,
-   and an address it does not list is refused by the record's own stable name rather than creating an
-   identity. It grants no new command, role, capability flag, product route, or deployment promise.
+   `GET /v1/inbox/correspondents` returns the addresses the reader can open a thread to, through the
+   authored contract and both generated clients, with the CLI name `inbox correspondents`. Those are
+   fewer than the `project_seats` rows, and deliberately: the send command resolves a recipient by
+   `(tenant_id, seat_key)` while the registry only makes a seat key unique per project, so a key two
+   seats share is not an address (the command refuses it as ambiguous), the reader's own seat is not an
+   address (refused as self), and a reader holding no seat row has no address to send from at all
+   (refused as unaddressable). The read leaves out each one for the same reason the command refuses it,
+   so the picker and the command cannot disagree in any registry state the schema permits: every address
+   the picker offers is one the record can accept, and an address it does not list is refused by the
+   record's own stable name rather than creating an identity. It grants no new command, role, capability
+   flag, product route, or deployment promise.
 3. **The thread is the record's answer, not the caller's.** The compose rides the pair-grouped rail, so the
    server derives one thread per unordered seat pair. Composing twice to one seat continues one
    conversation, and a compose to a seat the notification mirror has already opened a thread with lands in
@@ -2213,8 +2218,9 @@ reserved for I2.4.
    non-accepted answer draws no row and names no thread: the typed words and the picked seat stay where
    they are, the line under the box says the server has not confirmed the message, and the button offers
    `Retry` under the identity the first attempt minted. A terminal problem document renders its own
-   validated human `detail` and hands the words and the seat back. An empty seat list disables the control
-   and says the record lists nobody, rather than inviting a compose it cannot honor.
+   validated human `detail` and hands the words and the seat back. An empty list disables the control and
+   names which emptiness it is — nobody addressable to write to, or no seat of this principal's own to
+   write from — rather than inviting a compose it cannot honor or blaming the wrong side for it.
 5. **Copy names three paths.** This supersedes D44 clause 3's provenance sentence only: the shared Inbox
    provenance line now names the server-authorized compose, send *and* promotion paths. The `New ticket`
    rail affordance remains visibly disabled and still names only its own unavailable capture path.
@@ -2228,6 +2234,12 @@ Rejected alternatives:
 - Free-typing a seat key. The operator would be composing to an identity the surface cannot vouch for, and
   every mistake would arrive as a server refusal after the message was written. A dropdown over the
   record's own list is the same authority story with none of that cost.
+- Listing every registered seat row and letting the command refuse the ones it cannot resolve. Two seats
+  legally sharing one key would then be offered as a choice that always terminates in
+  `inbox-recipient-ambiguous`, after the operator had written the message — a dead path dressed as a live
+  one. Widening the command's address instead, so it accepted a project-qualified recipient, was also
+  rejected: it changes an authored, shipped command's wire contract and its CLI for a state the read can
+  simply decline to offer.
 - Posting to `POST /v1/inbox/messages` with a null thread. It is the authored path for a threadless send and
   it works, but it mints a fresh thread identity every time, so the operator's second message to the
   director would open a second conversation with them.
