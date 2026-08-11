@@ -417,7 +417,7 @@ class ConsoleViewer:
                 yield _gap(gap_cursor, reason, event_id=gap_cursor)
                 return False
             if not batch.payload:
-                self._sleeper(float(self._authority.policy.revocation_poll_seconds))
+                self._sleep_to_next_authority_check(lease)
                 return False
             if (
                 state.window.admit_delivery(len(batch.payload), at=self._clock())
@@ -436,6 +436,10 @@ class ConsoleViewer:
             self._persist_batch(lease, batch, source_generation=state.source_generation)
             state.source_cursor = batch.source_cursor
         return False
+
+    def _sleep_to_next_authority_check(self, lease: ConsoleStreamLease) -> None:
+        remaining = max(0.0, (lease.grant.expires_at - self._clock()).total_seconds())
+        self._sleeper(min(float(self._authority.policy.revocation_poll_seconds), remaining))
 
     def _persist_batch(
         self,

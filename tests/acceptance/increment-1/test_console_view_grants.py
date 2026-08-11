@@ -214,6 +214,51 @@ def test_active_runtime_replacement_closes_typed_within_the_poll_bound(
     assert cast(datetime, row["closed_at"]) <= replaced_at + timedelta(seconds=5)
 
 
+def test_active_stream_expiry_closes_at_the_exact_absolute_deadline(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    clock = _Clock(now)
+    ref = _recorded_session_ref(tenant)
+    adapter = _Adapter(_observation(ref), b"exact-expiry-output\n")
+    authority = PostgresConsoleAuthority(
+        tenant.database.runtime_dsn,
+        policy=_policy(grant_ttl_seconds=3),
+    )
+    viewer = ConsoleViewer(
+        authority,
+        PostgresConsoleOutputStore(tenant.database.runtime_dsn),
+        adapter,
+        AesGcmConsoleCipher(
+            wrapping_key=hashlib.sha256(b"console-exact-expiry-kek").digest(),
+            wrapping_key_reference="secret-service:ctower-development/console-output-kek",
+        ),
+        clock=clock,
+        sleeper=clock.sleep,
+    )
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    browser = _browser_actor(tenant, now=now)
+    allowance = viewer.allow_session(
+        operator,
+        ConsoleSessionAllowCommand(ref, "restricted", "standard"),
+    )
+    assert not isinstance(allowance, RecordProblem)
+    grant = viewer.mint_grant(browser, allowance.allowance_id)
+    assert isinstance(grant, ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert not isinstance(stream, RecordProblem)
+    assert b"event: chunk" in next(stream.events)
+    assert b'"code":"expired"' in next(stream.events)
+    with pytest.raises(StopIteration):
+        next(stream.events)
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        row = connection.execute(
+            "SELECT closed_at FROM console_stream_closes WHERE stream_id = %s",
+            (stream.lease.stream_id,),
+        ).fetchone()
+    assert row == {"closed_at": grant.expires_at}
+
+
 def test_commander_owned_target_is_absent_before_any_console_fact(
     tenant: TenantFixture,
 ) -> None:
