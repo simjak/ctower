@@ -2358,7 +2358,7 @@ commander seat that stalled could not report its own stall. Two of three pooled 
 held EMPTY access tokens, so the cap watch crash-looped on `ValueError` and the pool had ONE usable
 account with nothing reporting that fact. And a capped seat's only operator-visible artifact was a
 delivery receipt for a message no live model could answer. This decision specs CT-I1-023 with
-acceptance family AC-CAP-01..05; it extends CT-I1-022's fleet feature rather than duplicating it —
+acceptance family AC-CAP-01..06; it extends CT-I1-022's fleet feature rather than duplicating it —
 the same registry, ledger, and operator answer read.
 
 1. **Capacity is per harness × per account × per model.** The unit of exhaustion is a (harness,
@@ -2391,9 +2391,11 @@ the same registry, ledger, and operator answer read.
    partial/unknown epistemics. A delivery receipt for an unanswerable session is not an answer. The
    five-surface lock holds; browser surfacing remains CT-I2-005-gated and this adds no public ingress.
 
-6. **The night's defect classes carry regressions (R2932, fleet layer).** Liveness includes can-it-run-its-assigned-model:
-   a seat whose model is capped is typed unusable, never healthy — the stall that produced this decision would have been
-   caught by that property alone. An empty-but-present credential fails a named completeness assertion, and an injection
+6. **The night's defect classes carry regressions (R2932, fleet layer).** Assigned-model operability is a separate typed
+   fact derived from capacity, NOT a liveness state — D57 clause 3's four-state liveness stands unchanged and is not
+   superseded here. A seat whose assigned model is capped reports liveness `alive` beside operability `unusable`, and the
+   composite operator answer must refuse to call it healthy or moving; the stall that produced this decision would have been
+   caught by that composite alone. An empty-but-present credential fails a named completeness assertion, and an injection
    into a seat that cannot answer fails a delivery assertion rather than returning a delivered receipt. Each ships only
    with its failing-then-passing test.
 
