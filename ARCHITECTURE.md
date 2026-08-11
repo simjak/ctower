@@ -648,9 +648,11 @@ registered tmux/log Adapter -> encrypt + durable cursor -> audited output reader
 The allowance fixes the Project, enabled non-Commander seat/crew engagement, assignment interval, recorded work
 session, runtime attempt, runner/epoch, backend reference, and tmux incarnation. It is not a bearer grant.
 At discovery, mint, renewal, stream open, and each stream poll, the control plane rejoins durable facts and
-asks the registered Adapter for the live `@project` and incarnation. Each read validates the current
-registration and live identity before and after reading from a no-follow descriptor, so replacement bytes
-cannot reach custody. Any replacement fences the old reference rather than rebinding a familiar tmux name.
+asks the registered Adapter for the live `@project` and incarnation. The trusted registration pins the
+output log's device/inode identity; each read checks that identity on its opened no-follow descriptor and
+validates the current registration and live tmux identity before and after the read. Rename, hard-link,
+registry, or runtime replacement bytes therefore cannot reach custody. Any replacement fences the old
+reference rather than rebinding a familiar tmux name or path.
 Grant, stream-open, output, and custody-access persistence serialize Console-owned append-only authority
 changes and canonical human binding/session revocations on one tenant-scoped advisory lock, then lock the
 exact assignment, work session, Actor/target, human binding/session, and allowance rows in the database

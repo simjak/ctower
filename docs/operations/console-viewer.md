@@ -50,13 +50,16 @@ tmux -L mc display-message -p -t mc:engineer-console-p1 '#{session_id}:#{session
 ```
 
 Make the trusted current backend registry return one `ConsoleBackendRegistration` for the opaque reference,
-using that exact target, the existing output-log path, runtime attempt ID, runner ID, and positive runner
-epoch. Inject its lookup as `registration_reader` and set `allowed_log_root` to the narrow directory
-containing the registered logs. The log must be an absolute regular-file path with no symlink component.
+using that exact target, the existing output-log path, its trusted `st_dev`/`st_ino`, runtime attempt ID,
+runner ID, and positive runner epoch. Capture that identity during the trusted runtime registration ceremony,
+not from a browser or grant request. Inject its lookup as `registration_reader` and set `allowed_log_root` to
+the narrow directory containing the registered logs. The log must be an absolute regular-file path with no
+symlink component.
 Every inspect/read resolves the registry again, and each read rechecks the complete registry and live tmux
-identity both before and after reading from its already-open no-follow descriptor. The Adapter refuses a
-withdrawn or malformed backend, a log outside that root, a changed Project, or a changed incarnation; it
-never discovers, follows, persists bytes from, or silently rebinds replacements.
+identity both before and after reading. It compares the opened no-follow descriptor's device/inode with the
+trusted registration before reading any bytes. The Adapter refuses a withdrawn or malformed backend, a log
+outside that root, a rename/hard-link replacement, a changed Project, or a changed incarnation; it never
+discovers, follows, persists bytes from, or silently rebinds replacements.
 
 ## 3. Compose the explicit policy and viewer
 

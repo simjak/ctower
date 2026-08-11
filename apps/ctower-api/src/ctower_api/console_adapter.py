@@ -36,6 +36,8 @@ class ConsoleBackendRegistration:
     runtime_attempt_id: UUID
     runner_id: str
     runner_epoch: int
+    output_device: int
+    output_inode: int
 
     def __post_init__(self) -> None:
         _validate_backend_registration_identity(self)
@@ -54,6 +56,22 @@ def _validate_backend_registration_identity(registration: ConsoleBackendRegistra
         raise TypeError("console output log must be a path")
     if not registration.output_log.is_absolute():
         raise ValueError("console output log must be an absolute path")
+    _validate_registered_log_identity(registration)
+
+
+def _validate_registered_log_identity(registration: ConsoleBackendRegistration) -> None:
+    if (
+        not isinstance(registration.output_device, int)
+        or isinstance(registration.output_device, bool)
+        or registration.output_device < 0
+    ):
+        raise ValueError("console output log device cannot be negative")
+    if (
+        not isinstance(registration.output_inode, int)
+        or isinstance(registration.output_inode, bool)
+        or registration.output_inode < 1
+    ):
+        raise ValueError("console output log inode must be positive")
 
 
 def _validate_backend_registration_runtime(registration: ConsoleBackendRegistration) -> None:
@@ -168,7 +186,16 @@ class TmuxConsoleAdapter:
         except OSError:
             return _problem("console-output-unavailable", "The registered output log is absent.")
         with stream:
-            size = os.fstat(stream.fileno()).st_size
+            identity = os.fstat(stream.fileno())
+            if (identity.st_dev, identity.st_ino) != (
+                registration.output_device,
+                registration.output_inode,
+            ):
+                return _problem(
+                    "console-runtime-attempt-fenced",
+                    "The registered output log was replaced.",
+                )
+            size = identity.st_size
             if after_cursor > size:
                 return ConsoleOutputBatch(
                     payload=b"",

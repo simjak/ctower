@@ -57,6 +57,7 @@ def _adapter(
 ) -> tuple[TmuxConsoleAdapter, Path, dict[str, ConsoleBackendRegistration]]:
     log = tmp_path / "engineer-console-p1.log"
     log.write_bytes(b"first\nsecond\n")
+    identity = log.stat()
     registration = ConsoleBackendRegistration(
         opaque_backend_ref="crew:engineer-console-p1",
         tmux_target="mc:engineer-console-p1",
@@ -64,6 +65,8 @@ def _adapter(
         runtime_attempt_id=UUID("80000000-0000-0000-0000-000000000001"),
         runner_id="mission-control",
         runner_epoch=7,
+        output_device=identity.st_dev,
+        output_inode=identity.st_ino,
     )
     registrations = {registration.opaque_backend_ref: registration}
     return (
@@ -167,13 +170,28 @@ def test_adapter_source_has_no_record_tier_import() -> None:
 def test_registration_and_adapter_configuration_fail_closed(tmp_path: Path) -> None:
     log = tmp_path / "console.log"
     log.write_bytes(b"output")
+    identity = log.stat()
     with pytest.raises(ValueError, match="identity"):
         ConsoleBackendRegistration(
-            "", "target", log, _ref().runtime_attempt_id, "mission-control", 1
+            "",
+            "target",
+            log,
+            _ref().runtime_attempt_id,
+            "mission-control",
+            1,
+            identity.st_dev,
+            identity.st_ino,
         )
     with pytest.raises(ValueError, match="epoch"):
         ConsoleBackendRegistration(
-            "backend", "target", log, _ref().runtime_attempt_id, "mission-control", 0
+            "backend",
+            "target",
+            log,
+            _ref().runtime_attempt_id,
+            "mission-control",
+            0,
+            identity.st_dev,
+            identity.st_ino,
         )
     with pytest.raises(ValueError, match="explicit"):
         TmuxConsoleAdapter(
@@ -186,7 +204,14 @@ def test_registration_and_adapter_configuration_fail_closed(tmp_path: Path) -> N
     allowed = tmp_path / "allowed"
     allowed.mkdir()
     registration = ConsoleBackendRegistration(
-        "backend", "target", log, _ref().runtime_attempt_id, "mission-control", 1
+        "backend",
+        "target",
+        log,
+        _ref().runtime_attempt_id,
+        "mission-control",
+        1,
+        identity.st_dev,
+        identity.st_ino,
     )
     outside = TmuxConsoleAdapter(
         tmux_binary="tmux",
@@ -197,6 +222,38 @@ def test_registration_and_adapter_configuration_fail_closed(tmp_path: Path) -> N
     refused = outside.inspect(_ref(opaque_backend_ref="backend"))
     assert isinstance(refused, RecordProblem)
     assert refused.code == "console-adapter-unregistered"
+
+
+@pytest.mark.parametrize(
+    ("device", "inode"),
+    [
+        (-1, 1),
+        (True, 1),
+        ("device", 1),
+        (0, 0),
+        (0, True),
+        (0, "inode"),
+    ],
+)
+def test_registration_rejects_untyped_or_invalid_output_identity(
+    tmp_path: Path,
+    device: object,
+    inode: object,
+) -> None:
+    log = tmp_path / "console.log"
+    log.write_bytes(b"output")
+
+    with pytest.raises(ValueError, match=r"device|inode"):
+        ConsoleBackendRegistration(
+            "backend",
+            "target",
+            log,
+            _ref().runtime_attempt_id,
+            "mission-control",
+            1,
+            cast(int, device),
+            cast(int, inode),
+        )
 
 
 def test_tmux_process_and_incarnation_failures_are_typed(tmp_path: Path) -> None:
@@ -263,6 +320,41 @@ def test_log_read_refuses_a_symlink_even_when_it_resolves_beneath_the_root(
 
     assert isinstance(refused, RecordProblem)
     assert refused.code == "console-output-unavailable"
+
+
+@pytest.mark.parametrize("replacement_kind", ["rename", "hard-link"])
+def test_log_read_fences_a_replaced_regular_file(tmp_path: Path, replacement_kind: str) -> None:
+    runner = _Runner()
+    _adapter_instance, log, registrations = _adapter(tmp_path, runner)
+    replacement = tmp_path / "replacement.log"
+    replacement.write_bytes(b"untrusted replacement")
+    calls = 0
+
+    def replace_during_fence(command: tuple[str, ...]) -> CompletedProcess[str]:
+        nonlocal calls
+        calls += 1
+        outcome = runner(command)
+        if calls == _READ_INCARNATION_INVOCATION:
+            source = replacement
+            if replacement_kind == "hard-link":
+                source = tmp_path / "replacement-link.log"
+                source.hardlink_to(replacement)
+            source.replace(log)
+        return outcome
+
+    racing = TmuxConsoleAdapter(
+        tmux_binary="tmux",
+        socket_name="mc",
+        allowed_log_root=tmp_path,
+        registration_reader=registrations.get,
+        command_runner=replace_during_fence,
+    )
+
+    refused = racing.read(_ref(), after_cursor=0, maximum_bytes=1024)
+
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "console-runtime-attempt-fenced"
+    assert refused.detail == "The registered output log was replaced."
 
 
 def test_registry_replacement_during_read_returns_no_output_batch(tmp_path: Path) -> None:

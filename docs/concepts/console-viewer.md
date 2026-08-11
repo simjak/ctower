@@ -19,8 +19,9 @@ output.
 The viewer therefore separates three concerns:
 
 - Record facts say which Project, seat, crew engagement, assignment interval, and work session are current.
-- A trusted current-registration reader supplies runtime/runner/epoch/backend identity, and the registered
-  Adapter reports the live Project and tmux incarnation for that backend.
+- A trusted current-registration reader supplies runtime/runner/epoch/backend identity plus the output
+  log's device/inode identity, and the registered Adapter reports the live Project and tmux incarnation for
+  that backend.
 - A `ConsoleViewGrant` authorizes one exact human browser session to claim one bounded stream.
 
 No one concern can substitute for the others.
@@ -39,7 +40,10 @@ An operator first appends one allowance for an exact `ConsoleSessionRef`. The re
 The allowance is eligibility, not a bearer credential. Discovery, mint, renewal, stream open, and every
 stream poll recheck the applicable durable facts and current Adapter observation. The Adapter resolves the
 opaque backend through its injected current-registration reader on every inspection, so replacing or
-withdrawing the runtime/runner/epoch registration fences the old reference without process restart. On the first stream open,
+withdrawing the runtime/runner/epoch registration fences the old reference without process restart. A read
+opens the path beneath the allowlisted root without following links and accepts it only when the descriptor's
+device/inode equals the trusted registration, so regular rename and hard-link substitution fence without
+persisting replacement bytes. On the first stream open,
 the service rechecks the current human session and role binding, Project scope, policy revision, global
 switch, assignment, work session, and revocations before it appends the stream claim and consumes the newest
 grant. A stale assignment, closed work session, replaced runtime, advanced runner epoch, changed `@project`,

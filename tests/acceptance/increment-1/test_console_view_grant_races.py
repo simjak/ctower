@@ -53,6 +53,61 @@ _MAX_CLOSE_SECONDS = 5
 _LIVE_IDENTITY_INVOCATIONS = 2
 
 
+def _replacement_racing_adapter(
+    ref: ConsoleSessionRef,
+    tmp_path: Path,
+    replacement_kind: str,
+    armed: list[bool],
+) -> TmuxConsoleAdapter:
+    log = tmp_path / "console.log"
+    log.write_bytes(b"replacement-race-output")
+    identity = log.stat()
+    registration = ConsoleBackendRegistration(
+        ref.opaque_backend_ref,
+        "mc-engineer-console-p1:0.0",
+        log,
+        ref.runtime_attempt_id,
+        ref.runner_id,
+        ref.runner_epoch,
+        identity.st_dev,
+        identity.st_ino,
+    )
+    registrations = {ref.opaque_backend_ref: registration}
+    replacement_log = tmp_path / "replacement.log"
+    replacement_log.write_bytes(b"untrusted replacement bytes")
+    armed_calls = 0
+
+    def runner(command: tuple[str, ...]) -> CompletedProcess[str]:
+        nonlocal armed_calls
+        stdout = (
+            f"{ref.project_key}\n"
+            if command[-2:] == ("-v", "@project")
+            else ref.backend_incarnation.replace(":", "\t", 1) + "\n"
+        )
+        if armed[0]:
+            armed_calls += 1
+            if armed_calls == _LIVE_IDENTITY_INVOCATIONS:
+                if replacement_kind == "registry":
+                    registrations[ref.opaque_backend_ref] = replace(
+                        registration, runtime_attempt_id=uuid4()
+                    )
+                else:
+                    source = replacement_log
+                    if replacement_kind == "hard-link":
+                        source = tmp_path / "replacement-link.log"
+                        source.hardlink_to(replacement_log)
+                    source.replace(log)
+        return CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+    return TmuxConsoleAdapter(
+        tmux_binary="tmux",
+        socket_name="mc",
+        allowed_log_root=tmp_path,
+        registration_reader=registrations.get,
+        command_runner=runner,
+    )
+
+
 def test_parallel_stream_claim_has_exactly_one_real_postgres_winner(
     tenant: TenantFixture,
 ) -> None:
@@ -99,47 +154,16 @@ def test_parallel_initial_grant_mint_has_one_real_postgres_winner(
     assert count == (1,)
 
 
-def test_registry_replacement_between_inspection_and_read_persists_zero_bytes(
+@pytest.mark.parametrize("replacement_kind", ["registry", "rename", "hard-link"])
+def test_backend_replacement_between_inspection_and_read_persists_zero_bytes(
     tenant: TenantFixture,
     tmp_path: Path,
+    replacement_kind: str,
 ) -> None:
     now = datetime.now(UTC)
     ref = recorded_session_ref(tenant)
-    log = tmp_path / "console.log"
-    log.write_bytes(b"replacement-race-output")
-    registration = ConsoleBackendRegistration(
-        ref.opaque_backend_ref,
-        "mc-engineer-console-p1:0.0",
-        log,
-        ref.runtime_attempt_id,
-        ref.runner_id,
-        ref.runner_epoch,
-    )
-    registrations = {ref.opaque_backend_ref: registration}
-    armed_calls = 0
-    armed = False
-
-    def runner(command: tuple[str, ...]) -> CompletedProcess[str]:
-        nonlocal armed_calls
-        if command[-2:] == ("-v", "@project"):
-            stdout = f"{ref.project_key}\n"
-        else:
-            stdout = ref.backend_incarnation.replace(":", "\t", 1) + "\n"
-        if armed:
-            armed_calls += 1
-            if armed_calls == _LIVE_IDENTITY_INVOCATIONS:
-                registrations[ref.opaque_backend_ref] = replace(
-                    registration, runtime_attempt_id=uuid4()
-                )
-        return CompletedProcess(command, 0, stdout=stdout, stderr="")
-
-    adapter = TmuxConsoleAdapter(
-        tmux_binary="tmux",
-        socket_name="mc",
-        allowed_log_root=tmp_path,
-        registration_reader=registrations.get,
-        command_runner=runner,
-    )
+    armed = [False]
+    adapter = _replacement_racing_adapter(ref, tmp_path, replacement_kind, armed)
     viewer = ConsoleViewer(
         PostgresConsoleAuthority(tenant.database.runtime_dsn, policy=policy()),
         PostgresConsoleOutputStore(tenant.database.runtime_dsn),
@@ -160,7 +184,7 @@ def test_registry_replacement_between_inspection_and_read_persists_zero_bytes(
     stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
     assert isinstance(stream, ConsoleEventStream)
 
-    armed = True
+    armed[0] = True
     closed = next(stream.events)
     assert b'"code":"fenced"' in closed
     with pytest.raises(StopIteration):
