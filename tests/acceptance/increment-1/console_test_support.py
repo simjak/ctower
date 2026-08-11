@@ -66,9 +66,11 @@ class Adapter:
         self.payload = payload
         self.gap_reason: str | None = None
         self.gap_cursor = 0
+        self.inspection_count = 0
 
     def inspect(self, session_ref: ConsoleSessionRef) -> ConsoleBackendObservation:
         del session_ref
+        self.inspection_count += 1
         return self.observation
 
     def read(

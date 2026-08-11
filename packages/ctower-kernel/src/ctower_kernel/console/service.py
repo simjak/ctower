@@ -98,13 +98,16 @@ class ConsoleViewer:
     def allow_session(
         self, actor: Actor, command: ConsoleSessionAllowCommand
     ) -> ConsoleSessionAllowance | RecordProblem:
+        preflight = self._authority.preflight_allow_session(actor, command.session_ref)
+        if preflight is not None:
+            return preflight
         observation = self._adapter.inspect(command.session_ref)
         if isinstance(observation, RecordProblem):
             return observation
         return self._authority.allow_session(actor, command, observation, now=self._clock())
 
     def visible_sessions(self, actor: Actor) -> tuple[ConsoleSessionAllowance, ...] | RecordProblem:
-        candidates = self._authority.visible_allowances(actor)
+        candidates = self._authority.visible_allowances(actor, now=self._clock())
         if isinstance(candidates, RecordProblem):
             return candidates
         visible: list[ConsoleSessionAllowance] = []
@@ -114,6 +117,11 @@ class ConsoleViewer:
                 continue
             observation = self._adapter.inspect(ref)
             if isinstance(observation, RecordProblem) or not _observation_matches(ref, observation):
+                continue
+            current = self._authority.visible_allowances(actor, now=self._clock())
+            if isinstance(current, RecordProblem):
+                return current
+            if allowance.allowance_id not in {item.allowance_id for item in current}:
                 continue
             visible.append(allowance)
         return tuple(visible)
@@ -159,7 +167,7 @@ class ConsoleViewer:
         *,
         now: datetime,
     ) -> ConsoleGrantFacts | RecordProblem:
-        ref = self._authority.session_ref(actor, allowance_id)
+        ref = self._authority.preflight_access(actor, allowance_id, operation="grant", now=now)
         if isinstance(ref, RecordProblem):
             return ref
         observation = self._adapter.inspect(ref)
@@ -181,7 +189,8 @@ class ConsoleViewer:
     def open_stream(
         self, actor: Actor, allowance_id: UUID, *, last_event_id: int | None
     ) -> ConsoleEventStream | RecordProblem:
-        ref = self._authority.session_ref(actor, allowance_id)
+        now = self._clock()
+        ref = self._authority.preflight_access(actor, allowance_id, operation="stream", now=now)
         if isinstance(ref, RecordProblem):
             return ref
         observation = self._adapter.inspect(ref)

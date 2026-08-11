@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import cast
 
-from ctower_kernel.console.models import ConsolePolicy, ConsoleSessionRef
+from ctower_kernel.console.models import (
+    ConsoleBackendObservation,
+    ConsolePolicy,
+    ConsoleSessionRef,
+)
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
@@ -68,9 +72,67 @@ def session_join_refusal(
     return None
 
 
+def _allow_request_refusal(
+    actor: Actor,
+    ref: ConsoleSessionRef,
+    observation: ConsoleBackendObservation,
+) -> RecordProblem | None:
+    refusal = _allow_authority_refusal(actor, ref)
+    return refusal if refusal is not None else _observation_refusal(ref, observation)
+
+
+def _allow_authority_refusal(actor: Actor, ref: ConsoleSessionRef) -> RecordProblem | None:
+    if actor.kind is not PrincipalKind.OPERATOR:
+        return _problem(
+            "console-allowlist-refused", "Console allowlisting requires operator authority."
+        )
+    if actor.tenant_id != ref.tenant_id:
+        return _problem("console-session-unavailable", "The recorded session is unavailable.", 404)
+    return None
+
+
+def _observation_refusal(
+    ref: ConsoleSessionRef, observation: ConsoleBackendObservation
+) -> RecordProblem | None:
+    checks = (
+        (observation.project_key != ref.project_key, "console-project-fence-mismatch"),
+        (
+            observation.runtime_attempt_id != ref.runtime_attempt_id,
+            "console-runtime-attempt-fenced",
+        ),
+        (observation.runner_id != ref.runner_id, "console-runner-fenced"),
+        (observation.runner_epoch != ref.runner_epoch, "console-runner-epoch-fenced"),
+        (observation.opaque_backend_ref != ref.opaque_backend_ref, "console-backend-fenced"),
+        (observation.backend_incarnation != ref.backend_incarnation, "console-incarnation-fenced"),
+    )
+    for refused, code in checks:
+        if refused:
+            return _problem(
+                code, "The live Adapter facts do not match the exact session reference."
+            )
+    return None
+
+
+def _observation_from_ref(ref: ConsoleSessionRef) -> ConsoleBackendObservation:
+    return ConsoleBackendObservation(
+        project_key=ref.project_key,
+        runtime_attempt_id=ref.runtime_attempt_id,
+        runner_id=ref.runner_id,
+        runner_epoch=ref.runner_epoch,
+        opaque_backend_ref=ref.opaque_backend_ref,
+        backend_incarnation=ref.backend_incarnation,
+    )
+
+
 def _grant_refusal(
     row: dict[str, object], policy: ConsolePolicy, *, now: datetime
 ) -> RecordProblem | None:
+    suspended_until = cast(datetime | None, row.get("suspended_until"))
+    if suspended_until is not None and suspended_until > now:
+        return _problem(
+            "console-actor-suspended",
+            "The Actor is temporarily suspended after repeated denials.",
+        )
     if cast(datetime, row["expires_at"]) <= now:
         return _problem("console-grant-expired", "The ConsoleViewGrant has expired.", 401)
     if cast(datetime, row["not_before"]) > now or bool(row["grant_used"]):

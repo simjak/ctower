@@ -22,6 +22,7 @@ __all__ = [
     "StreamDisposition",
     "decide_view_grant",
     "encode_console_chunks",
+    "preflight_view_grant",
 ]
 
 type _RefusalCheck = tuple[bool, str, str]
@@ -77,6 +78,18 @@ def decide_view_grant(
     )
 
 
+def preflight_view_grant(facts: ConsoleGrantFacts, *, now: datetime) -> RecordProblem | None:
+    """Refuse from durable authority before any runtime Adapter inspection."""
+
+    if facts.actor.human_binding_id is None or facts.actor.human_session_id is None:
+        return _problem("console-browser-session-required", "An exact human session is required.")
+    for checks in (_actor_checks(facts, now=now), _session_checks(facts)):
+        refusal = _first_refusal(checks)
+        if refusal is not None:
+            return refusal
+    return None
+
+
 def _grant_window(
     facts: ConsoleGrantFacts,
     previous: ConsoleViewGrant | None,
@@ -110,16 +123,8 @@ def _grant_window(
 
 
 def _authority_refusal(facts: ConsoleGrantFacts, *, now: datetime) -> RecordProblem | None:
-    groups = (
-        _actor_checks(facts, now=now),
-        _session_checks(facts),
-        _live_checks(facts),
-    )
-    for checks in groups:
-        refusal = _first_refusal(checks)
-        if refusal is not None:
-            return refusal
-    return None
+    refusal = preflight_view_grant(facts, now=now)
+    return refusal if refusal is not None else _first_refusal(_live_checks(facts))
 
 
 def _actor_checks(facts: ConsoleGrantFacts, *, now: datetime) -> tuple[_RefusalCheck, ...]:

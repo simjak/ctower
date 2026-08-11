@@ -178,7 +178,8 @@ Use distinct grants for each case:
 ```bash
 uv run pytest tests/contracts/console -q
 uv run pytest tests/modules/console -q
-uv run pytest tests/acceptance/increment-1/test_console_collection_lock.py \
+uv run pytest tests/acceptance/increment-1/test_console_authority_preflight.py \
+  tests/acceptance/increment-1/test_console_collection_lock.py \
   tests/acceptance/increment-1/test_console_reader_role_adoption.py \
   tests/acceptance/increment-1/test_console_transport_disconnect.py \
   tests/acceptance/increment-1/test_console_view_grants.py \

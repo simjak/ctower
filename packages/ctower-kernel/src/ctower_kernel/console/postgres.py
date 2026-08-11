@@ -12,6 +12,10 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ctower_kernel.console._authority_policy import (
+    _allow_authority_refusal,
+    _allow_request_refusal,
+    _observation_from_ref,
+    _observation_refusal,
     session_join_refusal,
     stream_claim_refusal,
     stream_close_reason,
@@ -28,6 +32,7 @@ from ctower_kernel.console.models import (
     ConsoleStreamLease,
     ConsoleViewGrant,
 )
+from ctower_kernel.console.policy import preflight_view_grant
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.identifiers import uuid7
 
@@ -102,6 +107,28 @@ class PostgresConsoleAuthority:
             allowed_at=now,
         )
 
+    def preflight_allow_session(self, actor: Actor, ref: ConsoleSessionRef) -> RecordProblem | None:
+        """Refuse known durable allowance defects before runtime inspection."""
+
+        refusal = _allow_authority_refusal(actor, ref)
+        if refusal is not None:
+            return refusal
+        with _authority_connection(self._dsn) as connection:
+            join_refusal = session_join_refusal(_session_join_row(connection, ref), ref)
+            if join_refusal is not None:
+                return join_refusal
+            existing = connection.execute(
+                "SELECT 1 FROM console_session_allows WHERE recorded_work_session_id = %s",
+                (ref.recorded_work_session_id,),
+            ).fetchone()
+        if existing is not None:
+            return _problem(
+                "console-session-already-allowed",
+                "The recorded work session already has its one allowlist fact.",
+                409,
+            )
+        return None
+
     def session_ref(self, actor: Actor, allowance_id: UUID) -> ConsoleSessionRef | RecordProblem:
         with _authority_connection(self._dsn) as connection:
             row = connection.execute(
@@ -118,7 +145,7 @@ class PostgresConsoleAuthority:
         return _ref_from_row(row)
 
     def visible_allowances(
-        self, actor: Actor
+        self, actor: Actor, *, now: datetime
     ) -> tuple[ConsoleSessionAllowance, ...] | RecordProblem:
         if actor.kind is PrincipalKind.COMMANDER:
             return _problem("console-role-refused", "Commander console viewing is absent.", 404)
@@ -150,11 +177,50 @@ class PostgresConsoleAuthority:
                   AND NOT target.disabled
                   AND revocation.allowance_id IS NULL
                   AND closure.session_id IS NULL
+                  AND NOT COALESCE((
+                      SELECT enabled FROM console_global_kill_switch_facts
+                      WHERE tenant_id = allowance.tenant_id
+                      ORDER BY recorded_at DESC, fact_id DESC LIMIT 1
+                  ), false)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM console_view_suspensions AS suspension
+                      WHERE suspension.tenant_id = allowance.tenant_id
+                        AND suspension.actor_principal_id = %s
+                        AND suspension.expires_at > %s
+                  )
                 ORDER BY allowance.allowed_at, allowance.allowance_id
                 """,
-                (actor.tenant_id, list(actor.project_grants)),
+                (actor.tenant_id, list(actor.project_grants), actor.principal_id, now),
             ).fetchall()
         return tuple(_allowance_from_row(row) for row in rows)
+
+    def preflight_access(
+        self,
+        actor: Actor,
+        allowance_id: UUID,
+        *,
+        operation: Literal["grant", "stream"],
+        now: datetime,
+    ) -> ConsoleSessionRef | RecordProblem:
+        """Refuse durable grant or stream defects before runtime inspection."""
+
+        if operation == "stream":
+            grant = self._claimable_grant(actor, allowance_id, now=now, stream_id=None)
+            return grant if isinstance(grant, RecordProblem) else grant.session_ref
+        ref = self.session_ref(actor, allowance_id)
+        if isinstance(ref, RecordProblem):
+            return ref
+        facts = self.grant_facts(
+            actor,
+            allowance_id,
+            _observation_from_ref(ref),
+            now=now,
+            record_observation=False,
+        )
+        if isinstance(facts, RecordProblem):
+            return facts
+        refusal = preflight_view_grant(facts, now=now)
+        return refusal if refusal is not None else ref
 
     def grant_facts(
         self,
@@ -163,6 +229,7 @@ class PostgresConsoleAuthority:
         observation: ConsoleBackendObservation,
         *,
         now: datetime,
+        record_observation: bool = True,
     ) -> ConsoleGrantFacts | RecordProblem:
         with _authority_connection(self._dsn) as connection:
             row = connection.execute(
@@ -215,7 +282,7 @@ class PostgresConsoleAuthority:
                     actor.tenant_id,
                 ),
             ).fetchone()
-            if row is not None:
+            if row is not None and record_observation:
                 _record_observation(
                     connection,
                     allowance_id,
@@ -433,16 +500,30 @@ class PostgresConsoleAuthority:
     def claim_stream(
         self, actor: Actor, allowance_id: UUID, *, now: datetime
     ) -> ConsoleStreamLease | RecordProblem:
+        stream_id = uuid7(now)
+        grant = self._claimable_grant(actor, allowance_id, now=now, stream_id=stream_id)
+        if isinstance(grant, RecordProblem):
+            return grant
+        return ConsoleStreamLease(stream_id=stream_id, grant=grant, opened_at=now)
+
+    def _claimable_grant(
+        self,
+        actor: Actor,
+        allowance_id: UUID,
+        *,
+        now: datetime,
+        stream_id: UUID | None,
+    ) -> ConsoleViewGrant | RecordProblem:
         if actor.human_session_id is None or actor.human_binding_id is None:
             return _problem(
                 "console-browser-session-required", "An exact human session is required."
             )
-        stream_id = uuid7(now)
         with _authority_connection(self._dsn) as connection:
-            connection.execute(
-                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                (f"console:{actor.tenant_id}:{actor.principal_id}:{actor.human_session_id}",),
-            )
+            if stream_id is not None:
+                connection.execute(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (f"console:{actor.tenant_id}:{actor.principal_id}:{actor.human_session_id}",),
+                )
             active = connection.execute(
                 """
                 SELECT 1
@@ -487,7 +568,13 @@ class PostgresConsoleAuthority:
                         SELECT enabled FROM console_global_kill_switch_facts
                         WHERE tenant_id = view_grant.tenant_id
                         ORDER BY recorded_at DESC, fact_id DESC LIMIT 1
-                    ), false) AS global_enabled
+                    ), false) AS global_enabled,
+                    (
+                        SELECT max(expires_at) FROM console_view_suspensions
+                        WHERE tenant_id = view_grant.tenant_id
+                          AND actor_principal_id = %s
+                          AND expires_at > %s
+                    ) AS suspended_until
                 FROM console_view_grants AS view_grant
                 JOIN console_session_allows AS allowance
                   ON allowance.allowance_id = view_grant.allowance_id
@@ -529,6 +616,8 @@ class PostgresConsoleAuthority:
                 ORDER BY view_grant.grant_sequence DESC LIMIT 1
                 """,
                 (
+                    actor.principal_id,
+                    now,
                     actor.tenant_id,
                     actor.principal_id,
                     actor.human_binding_id,
@@ -544,24 +633,25 @@ class PostgresConsoleAuthority:
             if refusal is not None:
                 return refusal
             grant = _grant_from_row(row)
-            connection.execute(
-                """
-                INSERT INTO console_stream_opens (
-                    stream_id, tenant_id, grant_id, actor_principal_id,
-                    human_session_id, allowance_id, opened_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    stream_id,
-                    actor.tenant_id,
-                    grant.grant_id,
-                    actor.principal_id,
-                    actor.human_session_id,
-                    allowance_id,
-                    now,
-                ),
-            )
-        return ConsoleStreamLease(stream_id=stream_id, grant=grant, opened_at=now)
+            if stream_id is not None:
+                connection.execute(
+                    """
+                    INSERT INTO console_stream_opens (
+                        stream_id, tenant_id, grant_id, actor_principal_id,
+                        human_session_id, allowance_id, opened_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        stream_id,
+                        actor.tenant_id,
+                        grant.grant_id,
+                        actor.principal_id,
+                        actor.human_session_id,
+                        allowance_id,
+                        now,
+                    ),
+                )
+        return grant
 
     def stream_close_reason(
         self, lease: ConsoleStreamLease, *, now: datetime
@@ -741,42 +831,6 @@ def _insert_allowance(
             409,
         )
     return None
-
-
-def _observation_refusal(
-    ref: ConsoleSessionRef, observation: ConsoleBackendObservation
-) -> RecordProblem | None:
-    checks = (
-        (observation.project_key != ref.project_key, "console-project-fence-mismatch"),
-        (
-            observation.runtime_attempt_id != ref.runtime_attempt_id,
-            "console-runtime-attempt-fenced",
-        ),
-        (observation.runner_id != ref.runner_id, "console-runner-fenced"),
-        (observation.runner_epoch != ref.runner_epoch, "console-runner-epoch-fenced"),
-        (observation.opaque_backend_ref != ref.opaque_backend_ref, "console-backend-fenced"),
-        (observation.backend_incarnation != ref.backend_incarnation, "console-incarnation-fenced"),
-    )
-    for refused, code in checks:
-        if refused:
-            return _problem(
-                code, "The live Adapter facts do not match the exact session reference."
-            )
-    return None
-
-
-def _allow_request_refusal(
-    actor: Actor,
-    ref: ConsoleSessionRef,
-    observation: ConsoleBackendObservation,
-) -> RecordProblem | None:
-    if actor.kind is not PrincipalKind.OPERATOR:
-        return _problem(
-            "console-allowlist-refused", "Console allowlisting requires operator authority."
-        )
-    if actor.tenant_id != ref.tenant_id:
-        return _problem("console-session-unavailable", "The recorded session is unavailable.", 404)
-    return _observation_refusal(ref, observation)
 
 
 def _record_observation(
