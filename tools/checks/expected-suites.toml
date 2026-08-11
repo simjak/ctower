@@ -167,12 +167,13 @@ owner = "CT-I1-019"
 phase = "CT-I1-019"
 status = "required"
 path = "tests/acceptance/increment-1"
-patterns = ["test_console_view_grants.py"]
+patterns = ["test_console_view_grants.py", "test_console_view_grant_races.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_console_view_grants.py",
+  "tests/acceptance/increment-1/test_console_view_grant_races.py",
   "-q",
 ]
 timeout_seconds = 900

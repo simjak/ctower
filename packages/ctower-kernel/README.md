@@ -87,14 +87,15 @@ Adapter. Commander Actors and Commander-owned target sessions are absent. The au
 assignment and recorded work session, rechecks the complete current human/session/policy authority before a
 first stream claim consumes the newest grant, and persists allowances, denials, explicit bounded suspension
 facts, human-bound one-use grants, stream claims/closes, revocations, global switch facts, encrypted cursors,
-reader accesses, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and enforces the
+reader accesses and one-use recovery facts, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and enforces the
 five-minute grant, thirty-minute continuous-view, five-second close poll, 16 KiB chunk, 1 MiB/min
 delivery/replay, and 256 KiB pending ceilings. Per-allowance collection is single-writer across processes;
 output and gap facts share durable source order, and truncation advances a source generation before a
 numeric source cursor may recur. Each output object has a fresh AES-GCM data key wrapped under a referenced
 key-encryption key; the service commits an access-attempt fact before invoking the dedicated
-`console_output_reader`-owned recovery function, which returns only the object joined to that fact. It then
-decrypts only data returned through that custody path. The kernel imports no app, web,
+`console_output_reader`-owned recovery function, which consumes the access ID into an immutable recovery
+fact and returns only the joined object once. Replay recovers one object per cycle and rechecks authority
+before the next. It then decrypts only data returned through that custody path. The kernel imports no app, web,
 CLI, tmux, or process implementation and contains no input authority.
 
 Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.

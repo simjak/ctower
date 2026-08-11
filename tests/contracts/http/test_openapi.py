@@ -1,5 +1,3 @@
-"""Minimum public HTTP and RFC 9457 contract."""
-
 from __future__ import annotations
 
 import ast
@@ -306,6 +304,7 @@ _EXPECTED_PROBLEM_CODES = {
     "console-session-revoked",
     "console-session-unavailable",
     "console-stream-already-open",
+    "console-stream-query-refused",
     "dream-dispatch-already-consumed",
     "dream-dispatch-family-excluded",
     "dream-dispatch-lane-unbound",

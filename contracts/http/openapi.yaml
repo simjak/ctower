@@ -3835,6 +3835,7 @@
               "console-session-revoked",
               "console-session-unavailable",
               "console-stream-already-open",
+              "console-stream-query-refused",
               "dream-dispatch-already-consumed",
               "dream-dispatch-family-excluded",
               "dream-dispatch-lane-unbound",

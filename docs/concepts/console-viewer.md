@@ -19,7 +19,8 @@ output.
 The viewer therefore separates three concerns:
 
 - Record facts say which Project, seat, crew engagement, assignment interval, and work session are current.
-- A registered Adapter reports the live Project and tmux incarnation for one configured backend.
+- A trusted current-registration reader supplies runtime/runner/epoch/backend identity, and the registered
+  Adapter reports the live Project and tmux incarnation for that backend.
 - A `ConsoleViewGrant` authorizes one exact human browser session to claim one bounded stream.
 
 No one concern can substitute for the others.
@@ -36,7 +37,9 @@ An operator first appends one allowance for an exact `ConsoleSessionRef`. The re
 - Adapter kind, opaque registered backend reference, and backend incarnation.
 
 The allowance is eligibility, not a bearer credential. Discovery, mint, renewal, stream open, and every
-stream poll recheck the applicable durable facts and live Adapter observation. On the first stream open,
+stream poll recheck the applicable durable facts and current Adapter observation. The Adapter resolves the
+opaque backend through its injected current-registration reader on every inspection, so replacing or
+withdrawing the runtime/runner/epoch registration fences the old reference without process restart. On the first stream open,
 the service rechecks the current human session and role binding, Project scope, policy revision, global
 switch, assignment, work session, and revocations before it appends the stream claim and consumes the newest
 grant. A stale assignment, closed work session, replaced runtime, advanced runner epoch, changed `@project`,
@@ -62,8 +65,8 @@ human browser session, tenant, Project, allowance, full session reference, and p
 expires after at most five minutes. Renewal creates a new grant only after re-evaluating the complete join
 and keeps the original continuous-view start. One renewal chain cannot exceed thirty minutes.
 
-Grant state stays server-side. The SSE URL contains only the allowed session identity; no grant, nonce,
-cookie, or token appears in its query string.
+Grant state stays server-side. The SSE URL contains only the allowed session identity; every query string is
+refused before authority or output access, so no grant, nonce, cookie, cursor, or token can ride in the URL.
 
 ## Restricted output custody
 
@@ -76,8 +79,9 @@ the wrapping-key value.
 The ordinary application role can insert encrypted output and read its metadata, but cannot select content
 or wrapped-key columns. The dedicated NOLOGIN, NOINHERIT `console_output_reader` owns the fixed-search-path
 recovery function. Each authorized recovery attempt appends and commits its access fact before invoking that
-reader-owned content query; the function returns only the object joined to that committed access ID. A
-reader failure therefore cannot erase the attempt fact. Decryption happens only after the query succeeds.
+reader-owned content query; the function consumes that ID into an immutable recovery fact and returns only
+the joined object. An access ID cannot recover content twice, and a reader failure cannot erase the attempt
+fact. Decryption happens only after the one-use query succeeds.
 
 The browser receives base64 output bytes and metadata. Phase 1 does not provide the contextual browser panel
 or safe terminal renderer, so the server foundation is not a claim that hostile terminal control sequences
@@ -86,8 +90,10 @@ are safe to display in a product UI.
 ## Bounded streaming and gaps
 
 One grant can claim at most one SSE stream. The policy caps decoded chunks at 16 KiB, delivery at 1 MiB per
-minute, replay at 1 MiB per minute, and pending bytes at 256 KiB. A durable cursor exists before its chunk is
-broadcast. A per-allowance database lock makes Adapter collection single-writer across processes. Output and
+minute, replay at 1 MiB per minute, and pending bytes at 256 KiB. The synchronous delivery iterator recovers
+one object per cycle and cannot recover the next until the transport resumes it, so pending accounting is
+checked before each yield and cannot grow without acknowledgement. A durable cursor exists before its chunk
+is broadcast. A per-allowance database lock makes Adapter collection single-writer across processes. Output and
 gap facts share one durable source order; when the source truncates, the gap advances a source generation so
 the same numeric source cursor can be recorded again without collision while SSE cursors remain monotonic.
 

@@ -46,10 +46,12 @@ tmux -L mc show-options -t mc:engineer-console-p1 -v @project
 tmux -L mc display-message -p -t mc:engineer-console-p1 '#{session_id}:#{session_created}'
 ```
 
-Create one `ConsoleBackendRegistration` using that exact target, the existing output-log path, runtime
-attempt ID, runner ID, and positive runner epoch. Set `allowed_log_root` to the narrow directory containing
-the registered logs. The Adapter refuses an unknown backend, a log outside that root, a changed Project,
-or a changed incarnation; it does not discover replacements.
+Make the trusted current backend registry return one `ConsoleBackendRegistration` for the opaque reference,
+using that exact target, the existing output-log path, runtime attempt ID, runner ID, and positive runner
+epoch. Inject its lookup as `registration_reader` and set `allowed_log_root` to the narrow directory
+containing the registered logs. Every inspect/read resolves the registry again. The Adapter refuses a
+withdrawn or malformed backend, a log outside that root, a changed Project, or a changed incarnation; it
+never discovers or silently rebinds replacements.
 
 ## 3. Compose the explicit policy and viewer
 
@@ -131,7 +133,8 @@ From the private origin, use the secure browser session plus matching CSRF cooki
 1. list `/v1/console/sessions` and confirm only the allowed current session appears;
 2. mint `/v1/console/sessions/{id}/grants` and confirm `maximum_uses` is `1` and expiry is no later than five
    minutes;
-3. open `/v1/console/sessions/{id}/events` without a credential query parameter;
+3. open `/v1/console/sessions/{id}/events` without any query parameters; the boundary refuses the entire
+   query string before stream authority or output access;
 4. confirm `Content-Type: text/event-stream`, `Cache-Control: no-store`, and
    `X-Accel-Buffering: no`, with no content encoding or CORS authority;
 5. record only cursor, decoded-byte count, ciphertext/object digest, event type, and elapsed time.
@@ -163,7 +166,8 @@ Use distinct grants for each case:
 ```bash
 uv run pytest tests/contracts/console -q
 uv run pytest tests/modules/console -q
-uv run pytest tests/acceptance/increment-1/test_console_view_grants.py -q
+uv run pytest tests/acceptance/increment-1/test_console_view_grants.py \
+  tests/acceptance/increment-1/test_console_view_grant_races.py -q
 just check
 just verify
 ```
@@ -191,6 +195,7 @@ The archived digest-only record should name:
 | Refusal | Check |
 |---|---|
 | `console-origin-refused` | The `Origin` must equal the one configured HTTPS origin byte-for-byte. |
+| `console-stream-query-refused` | Remove the entire query string; reconnect state belongs only in `Last-Event-ID`. |
 | `console-csrf-invalid` / `auth-csrf-invalid` | Header, secure cookie, and stored digest must represent the same CSRF value. |
 | `console-session-join-stale` | The assignment interval is current and the recorded work session is open and exact. |
 | `console-project-fence-mismatch` | Live tmux `@project` still equals the allowed Project. |

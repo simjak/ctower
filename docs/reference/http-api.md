@@ -176,6 +176,9 @@ notification. See the [morning digest concept](../concepts/morning-digest.md).
 | `POST` | `/v1/console/sessions/{console_session_id}/renewals` | `renewConsoleViewGrant` | — | mutation | forbidden | `201`, `401`, `403`, `404` |
 | `GET` | `/v1/console/sessions/{console_session_id}/events` | `streamConsoleEvents` | — | stream claim | forbidden | `200`, `401`, `403`, `404`, `409`, `422` |
 
+The Console event route refuses every query string before it evaluates stream authority or reads output.
+Reconnect supplies the non-negative durable cursor only through `Last-Event-ID`.
+
 The three `/v1/admin/console` routes use operator bearer authentication. An allowance request carries the
 complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` Phase-1 values.
 Revocation carries a 1–500-character reason. The global switch carries `enabled` and a 1–500-character

@@ -93,7 +93,10 @@ class Adapter:
 
 
 def policy(
-    *, grant_ttl_seconds: int = 300, policy_revision: str = "console-phase1-r1"
+    *,
+    grant_ttl_seconds: int = 300,
+    pending_bytes: int = 256 * 1024,
+    policy_revision: str = "console-phase1-r1",
 ) -> ConsolePolicy:
     return ConsolePolicy(
         grant_ttl_seconds=grant_ttl_seconds,
@@ -104,7 +107,7 @@ def policy(
         delivery_window_seconds=60,
         replay_window_bytes=1024 * 1024,
         replay_window_seconds=60,
-        pending_bytes=256 * 1024,
+        pending_bytes=pending_bytes,
         denial_limit=3,
         denial_window_seconds=300,
         suspension_seconds=900,
@@ -149,6 +152,7 @@ def console_setup(
     now: datetime,
     *,
     clock: Clock | None = None,
+    pending_bytes: int = 256 * 1024,
 ) -> tuple[
     ConsoleViewer,
     PostgresConsoleAuthority,
@@ -160,7 +164,9 @@ def console_setup(
     active_clock = clock or Clock(now)
     ref = recorded_session_ref(tenant)
     adapter = Adapter(observation(ref), b"console-authority-matrix-output\n")
-    authority = PostgresConsoleAuthority(tenant.database.runtime_dsn, policy=policy())
+    authority = PostgresConsoleAuthority(
+        tenant.database.runtime_dsn, policy=policy(pending_bytes=pending_bytes)
+    )
     viewer = ConsoleViewer(
         authority,
         PostgresConsoleOutputStore(tenant.database.runtime_dsn),

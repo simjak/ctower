@@ -29,11 +29,11 @@ execute a shell.
 
 | Control | Required proof |
 |---|---|
-| Exact identity join | Project, non-Commander target and Actor, seat, crew, assignment interval, work session, runtime attempt, runner/epoch, backend, live `@project`, and incarnation match at every decision point. First open rechecks current human-session, binding, Project, policy, switch, assignment/session, and revocation facts before the stream claim consumes a grant. |
+| Exact identity join | Project, non-Commander target and Actor, seat, crew, assignment interval, work session, runtime attempt, runner/epoch, backend, live `@project`, and incarnation match at every decision point. The Adapter rereads the trusted current backend registry on each inspection. First open rechecks current human-session, binding, Project, policy, switch, assignment/session, and revocation facts before the stream claim consumes a grant. |
 | Human grant binding | Grant binds Actor, human role binding, browser session, allowance, full session reference, and policy revision; one stream use; five-minute TTL; thirty-minute chain. |
-| Browser boundary | Exact HTTPS Origin, secure HttpOnly session cookie, matching secure CSRF cookie/header/persisted digest, no CORS, no credential in URL. |
-| Output custody | RESTRICTED classification, fresh per-object data-key reference, wrapped key under an unresolved reference, ordinary-service content SELECT denied, and a committed access-attempt fact required by every reader-owned content query. |
-| Stream bounds | 16 KiB decoded chunks, 1 MiB/min delivery, 1 MiB/min replay, 256 KiB pending, durable cursor before broadcast, per-allowance single-writer collection, source generations across truncation, and a typed gap before uncertainty. |
+| Browser boundary | Exact HTTPS Origin, secure HttpOnly session cookie, matching secure CSRF cookie/header/persisted digest, no CORS, and refusal of every SSE query string before authority/output access. |
+| Output custody | RESTRICTED classification, fresh per-object data-key reference, wrapped key under an unresolved reference, ordinary-service content SELECT denied, and a committed access-attempt fact consumed by one immutable recovery fact for every reader-owned content query. |
+| Stream bounds | 16 KiB decoded chunks, 1 MiB/min delivery, 1 MiB/min replay, 256 KiB pending, one-object-per-authority-check recovery, durable cursor before broadcast, per-allowance single-writer collection, source generations across truncation, and a typed gap before uncertainty. |
 | Containment | Typed expiry, revocation, replacement fence, and persistent global kill switch close within five seconds; repeated denials append an explicit bounded suspension fact. |
 | Private network | Direct TLS through `serve_console`, with host and port derived from the exact Origin; literal loopback or Tailscale bind, disabled proxy-header authority, empty wildcard sweep, no Funnel/public DNS/Caddy route, and no public negative-probe success. |
 | Direct-path absence | No shell, pane write, key injection, generic process route, Record-tier Adapter client, current-reader fallback, compression, or alternate stream transport. |

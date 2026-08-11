@@ -319,6 +319,15 @@ def _stream_response(
     expected_origin: str,
     last_event_id: str | None,
 ) -> JSONResponse | StreamingResponse:
+    if request.url.query:
+        return problem_response(
+            RecordProblem(
+                code="console-stream-query-refused",
+                detail="The Console stream URL cannot carry query parameters.",
+                status=422,
+                title="Console stream query refused",
+            )
+        )
     actor = _browser_actor(request, access, csrf=csrf, expected_origin=expected_origin)
     if isinstance(actor, RecordProblem):
         return problem_response(actor)

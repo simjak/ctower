@@ -19,12 +19,13 @@ from tools.process_execution import run
 __all__ = ["ConsoleBackendRegistration", "TmuxConsoleAdapter"]
 
 type _CommandRunner = Callable[[tuple[str, ...]], CompletedProcess[str]]
+type _RegistrationReader = Callable[[str], ConsoleBackendRegistration | None]
 _INCARNATION_PARTS = 2
 
 
 @dataclass(frozen=True, slots=True)
 class ConsoleBackendRegistration:
-    """Deploy-time mapping from an opaque ref to one exact runtime backend."""
+    """One strict current-registry result for an exact runtime backend."""
 
     opaque_backend_ref: str
     tmux_target: str
@@ -34,10 +35,33 @@ class ConsoleBackendRegistration:
     runner_epoch: int
 
     def __post_init__(self) -> None:
-        if not self.opaque_backend_ref or not self.tmux_target:
-            raise ValueError("console backend identity cannot be empty")
-        if self.runner_epoch < 1:
-            raise ValueError("console backend runner epoch must be positive")
+        _validate_backend_registration_identity(self)
+        _validate_backend_registration_runtime(self)
+
+
+def _validate_backend_registration_identity(registration: ConsoleBackendRegistration) -> None:
+    if (
+        not isinstance(registration.opaque_backend_ref, str)
+        or not isinstance(registration.tmux_target, str)
+        or not registration.opaque_backend_ref
+        or not registration.tmux_target
+    ):
+        raise ValueError("console backend identity cannot be empty")
+    if not isinstance(registration.output_log, Path):
+        raise TypeError("console output log must be a path")
+
+
+def _validate_backend_registration_runtime(registration: ConsoleBackendRegistration) -> None:
+    if not isinstance(registration.runtime_attempt_id, UUID):
+        raise TypeError("console runtime attempt must be a UUID")
+    if not isinstance(registration.runner_id, str) or not registration.runner_id:
+        raise ValueError("console runner identity cannot be empty")
+    if (
+        not isinstance(registration.runner_epoch, int)
+        or isinstance(registration.runner_epoch, bool)
+        or registration.runner_epoch < 1
+    ):
+        raise ValueError("console backend runner epoch must be positive")
 
 
 class TmuxConsoleAdapter:
@@ -49,23 +73,16 @@ class TmuxConsoleAdapter:
         tmux_binary: str,
         socket_name: str,
         allowed_log_root: Path,
-        registrations: tuple[ConsoleBackendRegistration, ...],
+        registration_reader: _RegistrationReader,
         command_runner: _CommandRunner | None = None,
     ) -> None:
-        if not tmux_binary or not socket_name:
+        if not tmux_binary or not socket_name or not callable(registration_reader):
             raise ValueError("tmux binary and socket name must be explicit")
         self._tmux_binary = tmux_binary
         self._socket_name = socket_name
         self._allowed_log_root = allowed_log_root.resolve(strict=True)
         self._command_runner = command_runner or _run_command
-        self._registrations: dict[str, ConsoleBackendRegistration] = {}
-        for registration in registrations:
-            resolved = registration.output_log.resolve(strict=False)
-            if not resolved.is_relative_to(self._allowed_log_root):
-                raise ValueError("console output log is outside the allowlisted root")
-            if registration.opaque_backend_ref in self._registrations:
-                raise ValueError("console backend references must be unique")
-            self._registrations[registration.opaque_backend_ref] = registration
+        self._registration_reader = registration_reader
 
     def inspect(self, session_ref: ConsoleSessionRef) -> ConsoleBackendObservation | RecordProblem:
         registration = self._registration(session_ref)
@@ -141,10 +158,24 @@ class TmuxConsoleAdapter:
             return _problem(
                 "console-adapter-unregistered", "The requested Adapter kind is not registered."
             )
-        registration = self._registrations.get(session_ref.opaque_backend_ref)
+        registration = self._registration_reader(session_ref.opaque_backend_ref)
         if registration is None:
             return _problem(
                 "console-adapter-unregistered", "The requested backend is not registered."
+            )
+        if (
+            not isinstance(registration, ConsoleBackendRegistration)
+            or registration.opaque_backend_ref != session_ref.opaque_backend_ref
+        ):
+            return _problem(
+                "console-adapter-malformed",
+                "The current backend registry returned a mismatched registration.",
+            )
+        resolved = registration.output_log.resolve(strict=False)
+        if not resolved.is_relative_to(self._allowed_log_root):
+            return _problem(
+                "console-adapter-unregistered",
+                "The registered output log is outside the allowlisted root.",
             )
         return registration
 

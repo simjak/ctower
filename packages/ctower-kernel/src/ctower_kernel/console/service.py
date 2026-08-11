@@ -239,13 +239,9 @@ class ConsoleViewer:
         ref: ConsoleSessionRef,
         state: _StreamState,
     ) -> Generator[bytes, None, bool]:
-        status = self._authority.stream_close_reason(lease, now=self._clock())
+        status = self._active_close_reason(lease, ref)
         if status is not None:
             state.close_code = status
-            return True
-        observation = self._adapter.inspect(ref)
-        if isinstance(observation, RecordProblem) or not _observation_matches(ref, observation):
-            state.close_code = "fenced"
             return True
         access_kind: Literal["open", "reconnect", "replay", "forensic"] = (
             "reconnect" if state.reconnect else "open"
@@ -262,8 +258,19 @@ class ConsoleViewer:
             yield self._custody_gap(lease, state)
             return True
         if replay:
-            return (yield from self._replay_outputs(lease, state, replay))
+            return (yield from self._replay_outputs(lease, ref, state, replay))
         return (yield from self._read_adapter(lease, ref, state))
+
+    def _active_close_reason(
+        self, lease: ConsoleStreamLease, ref: ConsoleSessionRef
+    ) -> StreamCloseCode | None:
+        status = self._authority.stream_close_reason(lease, now=self._clock())
+        if status is not None:
+            return status
+        observation = self._adapter.inspect(ref)
+        if isinstance(observation, RecordProblem) or not _observation_matches(ref, observation):
+            return "fenced"
+        return None
 
     def _custody_gap(self, lease: ConsoleStreamLease, state: _StreamState) -> bytes:
         state.close_code = "output_unavailable"
@@ -307,24 +314,29 @@ class ConsoleViewer:
             state.durable_cursor,
         ):
             return None
-        self._record_bounded_gap(
+        gap_cursor = self._record_bounded_gap(
             lease,
             state.source_cursor,
             state.source_generation,
             "unprovable_range",
         )
         state.gap_required = True
-        state.durable_cursor = 0
-        return _gap(None, "unprovable_range")
+        state.durable_cursor = gap_cursor
+        return _gap(gap_cursor, "unprovable_range", event_id=gap_cursor)
 
     def _replay_outputs(
         self,
         lease: ConsoleStreamLease,
+        ref: ConsoleSessionRef,
         state: _StreamState,
         outputs: tuple[StoredConsoleOutput | StoredConsoleGap, ...],
     ) -> Generator[bytes, None, bool]:
         now = self._clock()
         for output in outputs:
+            close_reason = self._active_close_reason(lease, ref)
+            if close_reason is not None:
+                state.close_code = close_reason
+                return True
             if isinstance(output, StoredConsoleGap):
                 yield _gap(output.cursor, output.reason, event_id=output.cursor)
                 state.durable_cursor = output.cursor

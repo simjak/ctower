@@ -79,6 +79,7 @@ def test_console_migration_names_append_only_facts_and_output_reader_role() -> N
         "console_stream_closes",
         "console_output_objects",
         "console_output_access_facts",
+        "console_output_recovery_facts",
         "console_global_kill_switch_facts",
         "console_view_suspensions",
     ):

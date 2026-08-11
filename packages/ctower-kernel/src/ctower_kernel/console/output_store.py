@@ -154,7 +154,7 @@ class PostgresConsoleOutputStore:
         access_kind: Literal["open", "reconnect", "replay", "forensic"],
         *,
         now: datetime,
-        limit: int = 64,
+        limit: int = 1,
     ) -> tuple[StoredConsoleOutput | StoredConsoleGap, ...] | RecordProblem:
         """Record each recovery attempt durably before the custody-role SELECT."""
 
@@ -206,7 +206,7 @@ class PostgresConsoleOutputStore:
             return _stored_gap(row)
         access_id = uuid7(now)
         self._record_access(access_id, lease, object_id, access_kind, now=now)
-        recovered = self._recover_object(access_id)
+        recovered = self._recover_object(access_id, now=now)
         if recovered is None:
             raise RuntimeError("authorized Console output object disappeared")
         return _stored_output(recovered)
@@ -240,13 +240,13 @@ class PostgresConsoleOutputStore:
                 ),
             )
 
-    def _recover_object(self, access_id: UUID) -> dict[str, object] | None:
+    def _recover_object(self, access_id: UUID, *, now: datetime) -> dict[str, object] | None:
         with _authority_connection(self._dsn) as connection:
             return connection.execute(
                 """
-                SELECT * FROM recover_console_output_object(%s)
+                SELECT * FROM recover_console_output_object(%s, %s)
                 """,
-                (access_id,),
+                (access_id, now),
             ).fetchone()
 
     def record_gap(

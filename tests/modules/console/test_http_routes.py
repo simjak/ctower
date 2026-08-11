@@ -326,6 +326,11 @@ def test_browser_routes_return_each_pre_stream_refusal_without_opening_output() 
             f"/v1/console/sessions/{_ALLOWANCE_ID}/events",
             headers=_browser_headers(cursor="-1"),
         )
+        query_credential = client.get(
+            f"/v1/console/sessions/{_ALLOWANCE_ID}/events?grant=must-not-enter",
+            headers=_browser_headers(),
+        )
+        calls_before_authority_refusal = tuple(viewer.calls)
         viewer.outcome = _problem("console-grant-unavailable")
         refused_stream = client.get(
             f"/v1/console/sessions/{_ALLOWANCE_ID}/events", headers=_browser_headers()
@@ -341,6 +346,9 @@ def test_browser_routes_return_each_pre_stream_refusal_without_opening_output() 
     assert missing_csrf.json()["code"] == "console-csrf-invalid"
     assert malformed.json()["code"] == "console-cursor-invalid"
     assert negative.json()["code"] == "console-cursor-invalid"
+    assert query_credential.status_code == _HTTP_UNPROCESSABLE
+    assert query_credential.json()["code"] == "console-stream-query-refused"
+    assert not any(call[0] == "stream" for call in calls_before_authority_refusal)
     assert refused_stream.json()["code"] == "console-grant-unavailable"
     assert refused_visible.json()["code"] == "console-grant-unavailable"
     assert refused_grant.json()["code"] == "console-grant-unavailable"

@@ -490,6 +490,7 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
     assert [(row["table_name"], row["privilege_type"]) for row in grants] == [
         ("console_output_access_facts", "SELECT"),
         ("console_output_objects", "SELECT"),
+        ("console_output_recovery_facts", "INSERT"),
     ]
     with (
         pytest.raises(psycopg.errors.InsufficientPrivilege),
@@ -554,8 +555,9 @@ def test_reader_failure_preserves_the_committed_access_attempt(
     assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
 
     def fail_after_access(
-        _store: PostgresConsoleOutputStore, _access_id: UUID
+        _store: PostgresConsoleOutputStore, _access_id: UUID, *, now: datetime
     ) -> dict[str, object] | None:
+        del now
         raise psycopg.OperationalError("injected reader failure")
 
     monkeypatch.setattr(PostgresConsoleOutputStore, "_recover_object", fail_after_access)

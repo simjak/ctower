@@ -209,6 +209,11 @@ CREATE TABLE console_output_access_facts (
     FOREIGN KEY (accessed_by, tenant_id) REFERENCES principals(principal_id, tenant_id)
 );
 
+CREATE TABLE console_output_recovery_facts (
+    access_id uuid PRIMARY KEY REFERENCES console_output_access_facts(access_id),
+    recovered_at timestamptz NOT NULL
+);
+
 CREATE TABLE console_output_gap_facts (
     gap_id uuid PRIMARY KEY,
     cursor bigint NOT NULL DEFAULT nextval('console_output_objects_cursor_seq') UNIQUE,
@@ -226,24 +231,34 @@ CREATE TABLE console_output_gap_facts (
         REFERENCES console_session_allows(allowance_id, tenant_id)
 );
 
-CREATE FUNCTION recover_console_output_object(p_access_id uuid)
+CREATE FUNCTION recover_console_output_object(p_access_id uuid, p_recovered_at timestamptz)
 RETURNS SETOF console_output_objects
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog
 AS $function$
-    SELECT object.*
+BEGIN
+    INSERT INTO public.console_output_recovery_facts (access_id, recovered_at)
+    SELECT access.access_id, p_recovered_at
+    FROM public.console_output_access_facts AS access
+    WHERE access.access_id = p_access_id AND access.outcome = 'authorized';
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+    RETURN QUERY SELECT object.*
     FROM public.console_output_objects AS object
     JOIN public.console_output_access_facts AS access
       ON access.tenant_id = object.tenant_id
      AND access.object_id = object.object_id
-    WHERE access.access_id = p_access_id
+    WHERE access.access_id = p_access_id;
+END
 $function$;
-ALTER FUNCTION recover_console_output_object(uuid) OWNER TO console_output_reader;
+ALTER FUNCTION recover_console_output_object(uuid, timestamptz)
+    OWNER TO console_output_reader;
 REVOKE CREATE ON SCHEMA public FROM console_output_reader;
-REVOKE ALL ON FUNCTION recover_console_output_object(uuid)
+REVOKE ALL ON FUNCTION recover_console_output_object(uuid, timestamptz)
     FROM PUBLIC, ctower_svc, ctower_projection;
-GRANT EXECUTE ON FUNCTION recover_console_output_object(uuid) TO ctower_svc;
+GRANT EXECUTE ON FUNCTION recover_console_output_object(uuid, timestamptz) TO ctower_svc;
 
 CREATE TABLE console_adapter_observation_facts (
     observation_id uuid PRIMARY KEY,
@@ -293,6 +308,9 @@ CREATE TRIGGER console_output_objects_immutable
 CREATE TRIGGER console_output_access_facts_immutable
     BEFORE UPDATE OR DELETE ON console_output_access_facts
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
+CREATE TRIGGER console_output_recovery_facts_immutable
+    BEFORE UPDATE OR DELETE ON console_output_recovery_facts
+    FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
 CREATE TRIGGER console_output_gap_facts_immutable
     BEFORE UPDATE OR DELETE ON console_output_gap_facts
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
@@ -304,7 +322,8 @@ REVOKE ALL ON console_session_allows, console_session_revocations,
     console_global_kill_switch_facts, console_view_denials, console_view_suspensions,
     console_view_grants,
     console_view_grant_revocations, console_stream_opens, console_stream_closes,
-    console_output_objects, console_output_access_facts, console_output_gap_facts,
+    console_output_objects, console_output_access_facts, console_output_recovery_facts,
+    console_output_gap_facts,
     console_adapter_observation_facts
     FROM PUBLIC, ctower_svc, ctower_projection, console_output_reader;
 REVOKE ALL ON SEQUENCE console_output_objects_cursor_seq
@@ -330,3 +349,4 @@ GRANT USAGE, SELECT ON SEQUENCE console_output_objects_cursor_seq TO ctower_svc;
 GRANT USAGE, SELECT ON SEQUENCE console_source_positions_sequence TO ctower_svc;
 GRANT USAGE, SELECT ON SEQUENCE console_view_grants_grant_sequence_seq TO ctower_svc;
 GRANT SELECT ON console_output_objects, console_output_access_facts TO console_output_reader;
+GRANT INSERT ON console_output_recovery_facts TO console_output_reader;
