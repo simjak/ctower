@@ -2381,7 +2381,7 @@ the same registry, ledger, and operator answer read.
    same fail-silent class the health sweep killed, wearing different clothes.
 4. **Rotation is policy over measurement, and restores.** Rotation selects a target by the (harness,
    account, model) the seat actually runs; it never rotates on a window that self-clears cheaper than
-   the restart it would cause (D57's spawn cost rule). When a seat is moved to a fallback model to
+   the restart it would cause (the operational rule carried in Mission Control's capacity probe and fleet self-heal playbook). When a seat is moved to a fallback model to
    survive a cap, the tower records the original model as the desired state and RESTORES it
    automatically once the capped triple reports clear — a survival substitution is never permanent
    drift.
