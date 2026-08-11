@@ -2391,6 +2391,12 @@ the same registry, ledger, and operator answer read.
    partial/unknown epistemics. A delivery receipt for an unanswerable session is not an answer. The
    five-surface lock holds; browser surfacing remains CT-I2-005-gated and this adds no public ingress.
 
+6. **The night's defect classes carry regressions (R2932, fleet layer).** Liveness includes can-it-run-its-assigned-model:
+   a seat whose model is capped is typed unusable, never healthy — the stall that produced this decision would have been
+   caught by that property alone. An empty-but-present credential fails a named completeness assertion, and an injection
+   into a seat that cannot answer fails a delivery assertion rather than returning a delivered receipt. Each ships only
+   with its failing-then-passing test.
+
 Rejected alternatives: account-level cap state (tonight's Fable-capped/Opus-alive case refutes it);
 per-harness bespoke watch scripts (the unreliable Claude scripts and the Hermes Codex pool are exactly
 what this replaces); storing credential values to simplify rotation (violates the secrets-are-
