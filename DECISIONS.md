@@ -2293,3 +2293,48 @@ Rejected alternatives:
   described; the exact current join plus short-lived grant is the authority boundary.
 - Adding typing to the same candidate. A read stream cannot mint or carry command authority, and Q3's
   final-admission, byte-vocabulary, custody, and containment controls remain separate work.
+
+## D57 — Fleet self-heal is a first-class ctower feature: registry, liveness, respawn policy, event ledger, drills (product, 2026-08-11, operator orders R2928/R2929)
+
+The operator ordered, verbatim, "self heal must be a ctower feature" (R2928) and "cTower must recover
+from server restarts including your session" (R2929). The night of 2026-08-11 produced six tmux fleet
+deaths; recovery machinery existed only as loose Mission Control tooling with no single owner, and the
+best evidence of the failure class is that the fleet watchdog misclassified as dead the very lane that
+eliminates pane-rendering liveness reads — part 1 arguing for itself. This decision fixes the program's
+DESTINATION: the R2923/R2927 engineering continues unchanged in Mission Control, and its durable home is
+a tower feature specced as CT-I1-022 with acceptance family AC-FLEET-01..05.
+
+1. **Seat-and-crew registry as data.** The tower persists a versioned registry of every registered seat
+   and crew: project, substrate identity, and exactly ONE respawn owner per seat. The ownership map is
+   data under Catalog revision custody, never a doc. A second claimed owner is refused by name.
+2. **No stored resume ids.** A registry row names the seat identity only; session-resume identity is
+   DISCOVERED at respawn time from seat transcript state, never stored statically anywhere. The two live
+   defects motivating this (hardcoded stale `RESUME=` in `mc-commander-respawn.sh` and the same id in the
+   MC seats registry) are the class this rule structurally removes.
+3. **Liveness from typed evidence only.** Per-seat liveness (alive/working/idle/dead/capped) derives from
+   typed probe and event ingest with last-evidence timestamps. Pane-rendered text is not a liveness or
+   cap-detection source. Stale or missing evidence yields typed `unknown`, never inferred health.
+4. **Respawn policy as tower config; executors are agents.** Local executors (systemd units, seat-guard,
+   cron bootstrap) consume respawn policy through the generated client and stand down when they are not
+   the registered owner. All respawn claims serialize under one spawn-lock protocol; a losing claimant
+   records stand-down, never a second spawn — the dueling-respawner same-second race observed live on
+   2026-08-11 is the defect this retires.
+5. **Death/respawn event ledger.** Every observed seat or crew death, respawn claim, respawn result, cap
+   event, and drill outcome appends one durable typed tower event with cause and claimant identity.
+6. **Drills are tower-run acceptance, isolated first.** The kill-drill (server killed, registered owners
+   rebuild every seat) and the reboot-drill (host boots, boot-enabled services come up, fleet bootstraps,
+   ALL seats respawn including commander with discovered resume identity, routines fire) run as tower-run
+   workflow tickets with frozen criteria, proven on an isolated substrate before any live drill. A drill
+   success flag alone cannot resolve the ticket, mirroring the backup/restore drill law.
+7. **The operator surface is the front.** The feature's I1-scope deliverable answers "is everything
+   moving, anything capped or blocked" as one deterministic API read plus protected CLI rendering with
+   typed partial/unknown epistemics. The five-surface lock holds: browser Fleet-surface deepening remains
+   CT-I2-005-gated, and this feature adds no new public ingress and no sixth surface.
+
+Rejected alternatives: leaving self-heal as Mission Control shell tooling (no owner, no ledger, no drill
+authority — the configuration that produced the six-death night); storing resume ids in the registry
+(reintroduces the stale-resume defect as data); pane-scrape liveness (the display-artifact class the
+operator's forensics closed); multiple concurrent respawn watchers per seat (the race is the crash-fix
+candidate, not governance). Specifying CT-I1-022 activates nothing: implementation waits on its stated
+dependencies and ordinary activation, and R2928/R2929 drain into ctower through the R2927 intake path
+when it lands.
