@@ -3,7 +3,8 @@
 This page is the evidence-backed retroactive sweep required by
 [issue #438](https://github.com/simjak/ctower/issues/438) and operator Decision 11 (2026-08-10): every
 feature must name unit, integration, and end-to-end coverage. It reports the repository at commit
-`2b56c41`; it does not expand product scope or override `SPEC.md`.
+`ed257d6`, where every selector named below exists and was run; this page's own rebinding to that
+commit is the only change after it. It does not expand product scope or override `SPEC.md`.
 
 ## What the three layers mean
 
@@ -41,25 +42,28 @@ each missing cell has one issue.
 
 ## Live audit evidence
 
-The selectors above were run together on `2b56c41` with Python 3.14.3, Node 24.16.0, pnpm 10.20.0,
-PostgreSQL test containers, and the frozen Node dependency graph. The clean run collected 29 tests and
-reported `29 passed, 0 skipped` in 36.50 seconds. The one warning was Starlette's existing `httpx`
-deprecation warning and did not change a verdict.
+The selectors above were run together on `ed257d6` with Python 3.14.3, Node 24.16.0, pnpm 10.20.0,
+PostgreSQL test containers, and the frozen Node dependency graph. The clean run collected 37 tests and
+reported `37 passed, 0 skipped` — 9 subtests included — in 56.67 seconds. The one warning was Starlette's
+existing `httpx` deprecation warning and did not change a verdict.
 
-The browser selectors initially failed closed because the frozen Node dependencies had not been installed.
-After `pnpm install --frozen-lockfile --ignore-scripts`, the same selectors passed; the complete 29-selector
-set was then rerun cleanly. No failed or skipped selector is recorded as `PRESENT`.
+The browser selectors fail closed unless the frozen Node dependencies are installed, so
+`pnpm install --frozen-lockfile --ignore-scripts` is a precondition of the run rather than part of it. No
+failed or skipped selector is recorded as `PRESENT`.
 
 The expected-suite manifest independently reports `browser-e2e` as deferred to `CT-I2-005`, and the real
-test tree contains no feature E2E tests meeting the running-instance bar. That is why all 14 E2E cells are
+test tree contains no feature E2E tests meeting the running-instance bar. That is why all 15 E2E cells are
 gaps even though several real-PostgreSQL acceptance tests and one stub-backed browser suite exist.
 
 ## Gap priority
 
 Issues [#440](https://github.com/simjak/ctower/issues/440) through
-[#456](https://github.com/simjak/ctower/issues/456) are one-to-one with the 17 missing cells. Daily operator
+[#456](https://github.com/simjak/ctower/issues/456), plus [#458](https://github.com/simjak/ctower/issues/458)
+for the compose round trip, are one-to-one with the 18 missing cells. Daily operator
 surfaces and communication paths carry `priority-p1`: chat send, terminal read, dream output, Request
-capture, Rulings, digest, briefs, notification mirror, promotion, portfolio, and Inbox send. Routine,
+capture, Rulings, digest, briefs, notification mirror, promotion, portfolio, and Inbox send. #458 is the
+compose gap and is labelled `enhancement` rather than `tech-debt`, because it is the operator's own
+undelivered round trip rather than a retroactively found hole; it ranks with the p1 surfaces. Routine,
 GitLab-provider, and generic connector E2E remain explicit gaps but rank below the controls the operator
 touches directly each day.
 
