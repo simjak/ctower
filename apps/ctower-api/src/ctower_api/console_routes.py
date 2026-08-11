@@ -9,7 +9,7 @@ from urllib.parse import SplitResult, urlsplit
 from uuid import UUID
 
 from fastapi import FastAPI, Header, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ctower_api._auth_routes import CSRF_COOKIE, SESSION_COOKIE
@@ -134,11 +134,11 @@ def _install_admin_routes(app: FastAPI, access: Access, console: ConsoleViewer) 
         return await _allow_session_response(request, access, console)
 
     @app.post("/v1/admin/console/sessions/{console_session_id}/revocation", status_code=204)
-    async def revoke_session(console_session_id: UUID, request: Request) -> JSONResponse:
+    async def revoke_session(console_session_id: UUID, request: Request) -> Response:
         return await _revoke_session_response(request, access, console, console_session_id)
 
     @app.post("/v1/admin/console/kill-switch", status_code=204)
-    async def set_kill_switch(request: Request) -> JSONResponse:
+    async def set_kill_switch(request: Request) -> Response:
         return await _switch_response(request, access, console)
 
 
@@ -188,7 +188,7 @@ async def _revoke_session_response(
     access: Access,
     console: ConsoleViewer,
     console_session_id: UUID,
-) -> JSONResponse:
+) -> Response:
     actor = access.authenticate(request.headers.get("Authorization"))
     if isinstance(actor, RecordProblem):
         return problem_response(actor)
@@ -202,9 +202,7 @@ async def _revoke_session_response(
     return _empty_response(outcome)
 
 
-async def _switch_response(
-    request: Request, access: Access, console: ConsoleViewer
-) -> JSONResponse:
+async def _switch_response(request: Request, access: Access, console: ConsoleViewer) -> Response:
     actor = access.authenticate(request.headers.get("Authorization"))
     if isinstance(actor, RecordProblem):
         return problem_response(actor)
@@ -218,11 +216,11 @@ async def _switch_response(
     return _empty_response(outcome)
 
 
-def _empty_response(outcome: RecordProblem | None) -> JSONResponse:
+def _empty_response(outcome: RecordProblem | None) -> Response:
     return (
         problem_response(outcome)
         if isinstance(outcome, RecordProblem)
-        else JSONResponse(None, status_code=204)
+        else Response(status_code=204)
     )
 
 

@@ -225,7 +225,11 @@ def test_operator_routes_accept_strict_commands_and_return_typed_receipts() -> N
     assert allowed.status_code == _HTTP_CREATED
     assert allowed.json()["console_session_id"] == str(_ALLOWANCE_ID)
     assert revoked.status_code == _HTTP_NO_CONTENT
+    assert revoked.content == b""
+    assert "content-length" not in revoked.headers
     assert switched.status_code == _HTTP_NO_CONTENT
+    assert switched.content == b""
+    assert "content-length" not in switched.headers
     assert [name for name, _value in viewer.calls] == ["allow", "revoke", "switch"]
 
 
