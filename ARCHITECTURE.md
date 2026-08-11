@@ -640,15 +640,18 @@ registered tmux/log Adapter -> encrypt + durable cursor -> audited output reader
                                       +---- gap/close facts <---+
 ```
 
-The allowance fixes the Project, non-Commander seat/crew engagement, assignment interval, recorded work
+The allowance fixes the Project, enabled non-Commander seat/crew engagement, assignment interval, recorded work
 session, runtime attempt, runner/epoch, backend reference, and tmux incarnation. It is not a bearer grant.
 At discovery, mint, renewal, stream open, and each stream poll, the control plane rejoins durable facts and
-asks the registered Adapter for the live `@project` and incarnation. Any replacement fences the old
-reference rather than rebinding a familiar tmux name.
+asks the registered Adapter for the live `@project` and incarnation. Each read validates the current
+registration and live identity before and after reading from a no-follow descriptor, so replacement bytes
+cannot reach custody. Any replacement fences the old reference rather than rebinding a familiar tmux name.
 
 The browser never receives a database credential, Adapter credential, or grant token in a URL. Its existing
 secure human-session cookie and the exact CSRF proof identify the Actor; one configured private HTTPS Origin
-is admitted. Grant state remains server-side and one stream claim consumes it. Every chunk is committed as
+is admitted. Grant state remains server-side and one stream claim consumes it. A bounded ASGI producer keeps
+authority polling independent from a blocked network send, discards only still-unsent chunks when its 256 KiB
+decoded cap is crossed, and commits a typed gap and close. Every chunk is committed as
 encrypted RESTRICTED content before broadcast, and only the dedicated output-reader connection can select
 and decrypt it after appending the access fact. The service role can write ciphertext and read metadata, but
 cannot retrieve content or wrapped keys through its ordinary connection.

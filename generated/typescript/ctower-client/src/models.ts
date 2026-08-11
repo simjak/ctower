@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:5cce1befc8205031d2af619f8cfe79eaf5ce94946be24652fd37d2d4acde9f02
+// Authored contract digest: sha256:04a6fd3af1b08ccacd2427320b2cb0c3601af716ccc5005d53e97502ec4774ee
 
 export type ActivityClass = "work" | "verification";
 

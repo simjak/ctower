@@ -147,6 +147,7 @@ class PostgresConsoleAuthority:
                   AND assignment.principal_id = allowance.seat_principal_id
                   AND session.started_by = allowance.seat_principal_id
                   AND target.kind <> 'commander'
+                  AND NOT target.disabled
                   AND revocation.allowance_id IS NULL
                   AND closure.session_id IS NULL
                 ORDER BY allowance.allowed_at, allowance.allowance_id
@@ -175,6 +176,7 @@ class PostgresConsoleAuthority:
                         AND session.project_key = allowance.project_key
                         AND session.crew_name = allowance.crew_name
                         AND target.kind <> 'commander'
+                        AND NOT target.disabled
                         AND closure.session_id IS NULL
                     ) AS session_join_current,
                     COALESCE((
@@ -479,6 +481,7 @@ class PostgresConsoleAuthority:
                         AND work_session.project_key = allowance.project_key
                         AND work_session.crew_name = allowance.crew_name
                         AND target.kind <> 'commander'
+                        AND NOT target.disabled
                     ) AS work_session_current,
                     COALESCE((
                         SELECT enabled FROM console_global_kill_switch_facts
@@ -577,8 +580,18 @@ class PostgresConsoleAuthority:
                         WHERE tenant_id = view_grant.tenant_id
                         ORDER BY recorded_at DESC, fact_id DESC LIMIT 1
                     ), false) AS global_enabled,
-                    assignment.released_at IS NULL AS assignment_current,
-                    closure.session_id IS NULL AS work_session_current
+                    (
+                        assignment.released_at IS NULL
+                        AND assignment.principal_id = allowance.seat_principal_id
+                    ) AS assignment_current,
+                    (
+                        closure.session_id IS NULL
+                        AND work_session.started_by = allowance.seat_principal_id
+                        AND work_session.project_key = allowance.project_key
+                        AND work_session.crew_name = allowance.crew_name
+                        AND target.kind <> 'commander'
+                        AND NOT target.disabled
+                    ) AS work_session_current
                 FROM console_view_grants AS view_grant
                 JOIN console_session_allows AS allowance
                   ON allowance.allowance_id = view_grant.allowance_id
@@ -589,8 +602,16 @@ class PostgresConsoleAuthority:
                   ON assignment.ticket_id = allowance.assignment_ticket_id
                  AND assignment.assignment_kind = allowance.assignment_kind
                  AND assignment.interval_sequence = allowance.assignment_interval_sequence
+                 AND assignment.tenant_id = allowance.tenant_id
+                JOIN ticket_work_sessions AS work_session
+                  ON work_session.session_id = allowance.recorded_work_session_id
+                 AND work_session.tenant_id = allowance.tenant_id
+                JOIN principals AS target
+                  ON target.principal_id = allowance.seat_principal_id
+                 AND target.tenant_id = allowance.tenant_id
                 LEFT JOIN ticket_work_session_closures AS closure
-                  ON closure.session_id = allowance.recorded_work_session_id
+                  ON closure.session_id = work_session.session_id
+                 AND closure.tenant_id = work_session.tenant_id
                 LEFT JOIN console_view_grant_revocations AS grant_revocation
                   ON grant_revocation.grant_id = view_grant.grant_id
                 LEFT JOIN console_session_revocations AS session_revocation
@@ -639,6 +660,7 @@ def _session_join_row(
     return connection.execute(
         """
         SELECT session.project_key, session.crew_name, session.started_by, target.kind,
+            target.disabled,
             assignment.principal_id, assignment.released_at,
             closure.session_id IS NOT NULL AS closed
         FROM ticket_work_sessions AS session

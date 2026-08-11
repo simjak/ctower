@@ -26,8 +26,9 @@ command history, evidence file, URL, status report, or log.
 ## 1. Provision database roles and migrations
 
 Apply the signed migration chain using the repository's normal migration procedure. The cluster step creates
-the NOLOGIN, NOINHERIT `console_output_reader`; database migration `0063` creates the append-only Console
-facts, the fixed-search-path reader-owned recovery function, and exact privileges.
+the exact NOLOGIN, NOINHERIT `console_output_reader` or refuses an unsafe pre-existing role with unexpected
+attributes, membership, settings, ownership, or grants. Database migration `0063` creates the append-only
+Console facts, the fixed-search-path reader-owned recovery function, and exact privileges.
 
 Verify the reader boundary through the named acceptance test:
 
@@ -49,9 +50,11 @@ tmux -L mc display-message -p -t mc:engineer-console-p1 '#{session_id}:#{session
 Make the trusted current backend registry return one `ConsoleBackendRegistration` for the opaque reference,
 using that exact target, the existing output-log path, runtime attempt ID, runner ID, and positive runner
 epoch. Inject its lookup as `registration_reader` and set `allowed_log_root` to the narrow directory
-containing the registered logs. Every inspect/read resolves the registry again. The Adapter refuses a
+containing the registered logs. The log must be an absolute regular-file path with no symlink component.
+Every inspect/read resolves the registry again, and each read rechecks the complete registry and live tmux
+identity both before and after reading from its already-open no-follow descriptor. The Adapter refuses a
 withdrawn or malformed backend, a log outside that root, a changed Project, or a changed incarnation; it
-never discovers or silently rebinds replacements.
+never discovers, follows, persists bytes from, or silently rebinds replacements.
 
 ## 3. Compose the explicit policy and viewer
 
@@ -140,9 +143,14 @@ From the private origin, use the secure browser session plus matching CSRF cooki
 5. record only cursor, decoded-byte count, ciphertext/object digest, event type, and elapsed time.
 
 Never archive the `data` value of an output event. For reconnect, send only the last durable cursor in the
-`Last-Event-ID` header. Treat `chunk`, `gap`, and `closed` as the complete event set. A `gap` reason may be
+`Last-Event-ID` header as a non-negative signed-64-bit integer. Treat `chunk`, `gap`, and `closed` as the
+complete event set. A `gap` reason may be
 `cursor_unavailable`, `source_truncated`, `unprovable_range`, `slow_consumer`, or `rate_limited`; a null
 `next_cursor` means continuity cannot be asserted and must not be replaced with a guessed cursor.
+
+The HTTP transport prefetches only within the configured decoded pending-byte cap. If a client blocks ASGI
+delivery past that queue, the server discards only the still-unsent queue, commits a `slow_consumer` gap and
+typed close, and bounds each send by the authority poll interval (never more than five seconds).
 
 ## 7. Prove expiry, revocation, and fences
 

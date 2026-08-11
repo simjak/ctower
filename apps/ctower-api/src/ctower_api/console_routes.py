@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ctower_api._auth_routes import CSRF_COOKIE, SESSION_COOKIE
 from ctower_api._http_support import problem_response
 from ctower_api.console_network import ConsoleListenerError, validate_bind_host
+from ctower_api.console_streaming import console_streaming_response
 from ctower_kernel.access import Access
 from ctower_kernel.console import (
     ConsoleGlobalSwitchCommand,
@@ -29,6 +30,7 @@ from ctower_kernel.record import Actor, RecordProblem
 __all__ = ["ConsoleRuntime", "install_console_routes", "validate_console_origin"]
 
 _CSRF_HEADER = "X-Ctower-CSRF"
+_MAX_INT64 = 9_223_372_036_854_775_807
 
 
 @dataclass(frozen=True, slots=True)
@@ -337,11 +339,7 @@ def _stream_response(
     outcome = console.open_stream(actor, console_session_id, last_event_id=cursor)
     if isinstance(outcome, RecordProblem):
         return problem_response(outcome)
-    return StreamingResponse(
-        outcome.events,
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
-    )
+    return console_streaming_response(outcome)
 
 
 def _last_event_cursor(value: str | None) -> int | RecordProblem | None:
@@ -351,7 +349,7 @@ def _last_event_cursor(value: str | None) -> int | RecordProblem | None:
         cursor = int(value)
     except ValueError:
         cursor = -1
-    if cursor < 0:
+    if not 0 <= cursor <= _MAX_INT64:
         return RecordProblem(
             code="console-cursor-invalid",
             detail="Last-Event-ID must be a non-negative durable cursor.",

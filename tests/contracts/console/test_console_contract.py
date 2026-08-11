@@ -88,6 +88,29 @@ def test_console_migration_names_append_only_facts_and_output_reader_role() -> N
     assert "refuse_immutable_control_fact_mutation" in migration
 
 
+def test_output_reader_role_adoption_refuses_every_unsafe_preexisting_shape() -> None:
+    migration = (
+        ROOT / "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql"
+    ).read_text(encoding="utf-8")
+    for catalog_fact in (
+        "rolcanlogin",
+        "rolsuper",
+        "rolcreatedb",
+        "rolcreaterole",
+        "rolinherit",
+        "rolreplication",
+        "rolbypassrls",
+        "rolconnlimit",
+        "rolpassword",
+        "rolvaliduntil",
+        "pg_auth_members",
+        "pg_db_role_setting",
+        "pg_shdepend",
+    ):
+        assert catalog_fact in migration
+    assert "unsafe pre-existing console_output_reader role" in migration
+
+
 def test_phase1_verification_manifest_names_every_required_element_and_gate() -> None:
     manifest = json.loads(
         (ROOT / "contracts/domain/console/phase1-verification.json").read_text(encoding="utf-8")

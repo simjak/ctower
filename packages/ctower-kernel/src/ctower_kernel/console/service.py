@@ -63,6 +63,14 @@ class ConsoleEventStream:
 
     lease: ConsoleStreamLease
     events: Iterator[bytes]
+    maximum_pending_bytes: int
+    maximum_stall_seconds: int
+    _slow_consumer_close: Callable[[], tuple[bytes, ...]]
+
+    def close_slow_consumer(self) -> tuple[bytes, ...]:
+        """Close after the HTTP transport proves its unsent queue crossed the bound."""
+
+        return self._slow_consumer_close()
 
 
 @dataclass(slots=True)
@@ -75,6 +83,10 @@ class _StreamState:
     reconnect: bool
     close_code: StreamCloseCode = "client_disconnected"
     gap_required: bool = False
+
+
+class _SlowConsumerError(Exception):
+    """Private transport-to-kernel signal for one proven pending-byte overflow."""
 
 
 class ConsoleViewer:
@@ -202,7 +214,13 @@ class ConsoleViewer:
             after_cursor=last_event_id or 0,
             reconnect=last_event_id is not None,
         )
-        return ConsoleEventStream(lease=lease, events=events)
+        return ConsoleEventStream(
+            lease=lease,
+            events=events,
+            maximum_pending_bytes=self._authority.policy.pending_bytes,
+            maximum_stall_seconds=self._authority.policy.revocation_poll_seconds,
+            _slow_consumer_close=lambda: _close_slow_consumer(events),
+        )
 
     def _stream_events(
         self,
@@ -222,6 +240,17 @@ class ConsoleViewer:
                 if terminal:
                     yield _closed(state.close_code)
                     return
+        except _SlowConsumerError:
+            state.close_code = "slow_consumer"
+            state.gap_required = True
+            gap_cursor = self._record_bounded_gap(
+                lease,
+                state.source_cursor,
+                state.source_generation,
+                "slow_consumer",
+            )
+            yield _gap(gap_cursor, "slow_consumer", event_id=gap_cursor)
+            yield _closed(state.close_code)
         except GeneratorExit:
             state.close_code = "client_disconnected"
             raise
@@ -360,7 +389,7 @@ class ConsoleViewer:
                 return True
             try:
                 payload = self._decrypt_output(lease, output)
-            except RuntimeError:
+            except (RuntimeError, ValueError):
                 state.close_code = "output_unavailable"
                 state.gap_required = True
                 gap_cursor = self._record_bounded_gap(
@@ -371,19 +400,7 @@ class ConsoleViewer:
                 )
                 yield _gap(gap_cursor, "cursor_unavailable", event_id=gap_cursor)
                 return True
-            if state.window.add_pending(len(payload)) is StreamDisposition.SLOW_CONSUMER:
-                state.close_code = "slow_consumer"
-                state.gap_required = True
-                gap_cursor = self._record_bounded_gap(
-                    lease,
-                    output.source_cursor,
-                    output.source_generation,
-                    "slow_consumer",
-                )
-                yield _gap(gap_cursor, "slow_consumer", event_id=gap_cursor)
-                return True
             yield _chunk(output, payload)
-            state.window.flush_pending(len(payload))
             state.durable_cursor = output.cursor
             state.source_cursor = max(state.source_cursor, output.source_cursor)
             state.source_generation = output.source_generation
@@ -417,11 +434,13 @@ class ConsoleViewer:
             if batch.gap:
                 reason = _gap_reason(batch.gap_reason)
                 state.source_generation += 1
-                gap_cursor = self._record_bounded_gap(
-                    lease,
-                    batch.source_cursor,
-                    state.source_generation,
-                    reason,
+                gap_cursor = self._output_store.record_gap_locked(
+                    lease.grant.allowance_id,
+                    lease.grant.tenant_id,
+                    source_cursor=batch.source_cursor,
+                    source_generation=state.source_generation,
+                    reason=reason,
+                    now=self._clock(),
                 )
                 state.gap_required = True
                 state.durable_cursor = gap_cursor
@@ -597,3 +616,17 @@ def _gap_reason(
 
 def _problem(code: str, detail: str, status: int = 403) -> RecordProblem:
     return RecordProblem(code=code, detail=detail, status=status, title="Console operation refused")
+
+
+def _close_slow_consumer(events: Iterator[bytes]) -> tuple[bytes, ...]:
+    generator = events if isinstance(events, Generator) else None
+    if generator is None:
+        raise RuntimeError("Console stream events do not accept transport closure")
+    closed: list[bytes] = []
+    try:
+        event = generator.throw(_SlowConsumerError())
+        while True:
+            closed.append(event)
+            event = next(generator)
+    except StopIteration:
+        return tuple(closed)

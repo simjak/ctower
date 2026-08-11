@@ -83,13 +83,14 @@ absent relation is empty.
 
 Console Phase 1 is isolated in `console/`. `ConsoleViewer` is the small public Interface over a pure exact
 grant decision, append-only PostgreSQL authority, encrypted output custody, and an injected read-only runtime
-Adapter. Commander Actors and Commander-owned target sessions are absent. The authority rejoins the current
+Adapter. Commander Actors and disabled or Commander-owned target sessions are absent. The authority rejoins the current
 assignment and recorded work session, rechecks the complete current human/session/policy authority before a
 first stream claim consumes the newest grant, and persists allowances, denials, explicit bounded suspension
 facts, human-bound one-use grants, stream claims/closes, revocations, global switch facts, encrypted cursors,
 reader accesses and one-use recovery facts, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and enforces the
 five-minute grant, thirty-minute continuous-view, five-second close poll, 16 KiB chunk, 1 MiB/min
-delivery/replay, and 256 KiB pending ceilings. Per-allowance collection is single-writer across processes;
+delivery/replay, and 256 KiB pending ceilings. The API owns the bounded pending queue so blocked ASGI sends
+cannot stop authority polling. Per-allowance output and gap collection is single-writer across processes;
 output and gap facts share durable source order, and truncation advances a source generation before a
 numeric source cursor may recur. Each output object has a fresh AES-GCM data key wrapped under a referenced
 key-encryption key; the service commits an access-attempt fact before invoking the dedicated

@@ -36,9 +36,10 @@ switch routes together with exact-Origin, human-session, and CSRF browser discov
 The viewer and configured Origin must be injected together. `serve_console` is the supported direct-HTTPS
 startup path and derives its host and port only from that validated literal private Origin. Its registered
 tmux Adapter rereads an injected trusted current registration and reads only its declared existing pipe-pane
-log, checks live `@project` and session incarnation through bounded argument arrays, and has no Record-tier
-client, shell, pane write, or generic-process route. The SSE boundary rejects every query string before
-authority or output access.
+log through a no-follow descriptor, checks the complete registration plus live `@project` and incarnation
+before and after each read, and has no Record-tier client, shell, pane write, or generic-process route. The
+SSE boundary rejects every query string before authority or output access and owns a bounded decoded-byte
+prefetch queue so a blocked send cannot block authority polling.
 Wildcard, public, hostname, default, and proxy-derived listener authority fail closed. This boundary provides
 no browser UI and never falls back to the existing dogfood terminal reader.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof

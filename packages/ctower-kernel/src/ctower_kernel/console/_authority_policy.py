@@ -131,6 +131,7 @@ def _session_join_matches(row: dict[str, object], ref: ConsoleSessionRef) -> boo
         and row["started_by"] == ref.seat_principal_id
         and row["principal_id"] == ref.seat_principal_id
         and str(row["kind"]) != "commander"
+        and not bool(row["disabled"])
         and row["released_at"] is None
         and not bool(row["closed"])
     )

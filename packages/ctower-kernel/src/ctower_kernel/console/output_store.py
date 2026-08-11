@@ -265,6 +265,34 @@ class PostgresConsoleOutputStore:
         *,
         now: datetime,
     ) -> int:
+        with self.collection_lock(allowance_id, tenant_id):
+            return self.record_gap_locked(
+                allowance_id,
+                tenant_id,
+                source_cursor=source_cursor,
+                source_generation=source_generation,
+                reason=reason,
+                now=now,
+            )
+
+    def record_gap_locked(
+        self,
+        allowance_id: UUID,
+        tenant_id: UUID,
+        *,
+        source_cursor: int,
+        source_generation: int,
+        reason: Literal[
+            "cursor_unavailable",
+            "source_truncated",
+            "unprovable_range",
+            "slow_consumer",
+            "rate_limited",
+        ],
+        now: datetime,
+    ) -> int:
+        """Insert one gap while the caller holds the per-allowance collection lock."""
+
         with _authority_connection(self._dsn) as connection:
             row = connection.execute(
                 """

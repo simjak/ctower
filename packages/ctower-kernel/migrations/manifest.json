@@ -578,7 +578,7 @@
     },
     {
       "path": "0062_console_output_reader_role.sql",
-      "sha256": "sha256:dda35dded14a8a6c47a1c411f4effaaaf64cc686bdc3ec8223108945e2449e5d",
+      "sha256": "sha256:74df1ef0e7bd06810f54e1d6aeca2de8f758d95414697fbb2447f6868972d5c2",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",

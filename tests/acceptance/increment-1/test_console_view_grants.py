@@ -259,11 +259,19 @@ def test_active_stream_expiry_closes_at_the_exact_absolute_deadline(
     assert row == {"closed_at": grant.expires_at}
 
 
-def test_commander_owned_target_is_absent_before_any_console_fact(
+@pytest.mark.parametrize("target_state", ["commander", "disabled"])
+def test_ineligible_target_is_absent_before_any_console_fact(
     tenant: TenantFixture,
+    target_state: str,
 ) -> None:
     now = datetime.now(UTC)
-    ref = _recorded_session_ref(tenant, commander=True)
+    ref = _recorded_session_ref(tenant, commander=target_state == "commander")
+    if target_state == "disabled":
+        with psycopg.connect(tenant.database.admin_dsn) as connection:
+            connection.execute(
+                "UPDATE principals SET disabled = true WHERE principal_id = %s",
+                (ref.seat_principal_id,),
+            )
     viewer = ConsoleViewer(
         PostgresConsoleAuthority(tenant.database.runtime_dsn, policy=_policy()),
         PostgresConsoleOutputStore(tenant.database.runtime_dsn),
@@ -465,18 +473,31 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
 ) -> None:
     with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
         role = connection.execute(
-            "SELECT rolcanlogin, rolinherit FROM pg_roles WHERE rolname = 'console_output_reader'"
-        ).fetchone()
-        runtime_membership = connection.execute(
             """
-            SELECT 1
+            SELECT rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolinherit,
+                rolreplication, rolbypassrls, rolconnlimit
+            FROM pg_roles WHERE rolname = 'console_output_reader'
+            """
+        ).fetchone()
+        memberships = connection.execute(
+            """
+            SELECT member.rolname AS member_name, granted.rolname AS granted_name,
+                membership.admin_option
             FROM pg_auth_members AS membership
             JOIN pg_roles AS member ON member.oid = membership.member
-            JOIN pg_roles AS target ON target.oid = membership.roleid
-            WHERE member.rolname IN ('ctower_svc', 'ctower_runtime')
-              AND target.rolname = 'console_output_reader'
+            JOIN pg_roles AS granted ON granted.oid = membership.roleid
+            WHERE member.rolname = 'console_output_reader'
+               OR granted.rolname = 'console_output_reader'
+            ORDER BY member.rolname, granted.rolname
             """
-        ).fetchone()
+        ).fetchall()
+        settings = connection.execute(
+            """
+            SELECT 1 FROM pg_db_role_setting AS setting
+            JOIN pg_roles AS role ON role.oid = setting.setrole
+            WHERE role.rolname = 'console_output_reader'
+            """
+        ).fetchall()
         grants = connection.execute(
             """
             SELECT table_name, privilege_type
@@ -485,8 +506,24 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
             ORDER BY table_name, privilege_type
             """
         ).fetchall()
-    assert role == {"rolcanlogin": False, "rolinherit": False}
-    assert runtime_membership is None
+    assert role == {
+        "rolcanlogin": False,
+        "rolsuper": False,
+        "rolcreatedb": False,
+        "rolcreaterole": False,
+        "rolinherit": False,
+        "rolreplication": False,
+        "rolbypassrls": False,
+        "rolconnlimit": -1,
+    }
+    assert memberships == [
+        {
+            "member_name": "ctower_admin",
+            "granted_name": "console_output_reader",
+            "admin_option": False,
+        }
+    ]
+    assert settings == []
     assert [(row["table_name"], row["privilege_type"]) for row in grants] == [
         ("console_output_access_facts", "SELECT"),
         ("console_output_objects", "SELECT"),

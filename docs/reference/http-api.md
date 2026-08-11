@@ -177,7 +177,8 @@ notification. See the [morning digest concept](../concepts/morning-digest.md).
 | `GET` | `/v1/console/sessions/{console_session_id}/events` | `streamConsoleEvents` | — | stream claim | forbidden | `200`, `401`, `403`, `404`, `409`, `422` |
 
 The Console event route refuses every query string before it evaluates stream authority or reads output.
-Reconnect supplies the non-negative durable cursor only through `Last-Event-ID`.
+Reconnect supplies the durable cursor only through `Last-Event-ID`, bounded from zero through the maximum
+signed 64-bit value; malformed, negative, and larger values refuse before a stream claim.
 
 The three `/v1/admin/console` routes use operator bearer authentication. An allowance request carries the
 complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` Phase-1 values.
@@ -192,7 +193,7 @@ secure CSRF cookie and match the persisted session digest. Discovery returns onl
 sessions. Mint and renewal return a grant receipt without its nonce; `maximum_uses` is always `1`, expiry is
 at most five minutes, and renewal retains the original continuous-view start for the thirty-minute ceiling.
 
-The event URL carries no credential. `Last-Event-ID` is an optional non-negative durable cursor header.
+The event URL carries no credential. `Last-Event-ID` is an optional signed-64-bit durable cursor header.
 Success is `text/event-stream` with `Cache-Control: no-store` and `X-Accel-Buffering: no`; compression and
 CORS authority are absent. Event shapes are:
 

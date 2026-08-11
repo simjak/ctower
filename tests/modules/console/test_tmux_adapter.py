@@ -16,6 +16,7 @@ from ctower_kernel.record import RecordProblem
 
 _IDENTITY_INVOCATIONS = 2
 _REPLACEMENT_EPOCH = 8
+_READ_INCARNATION_INVOCATION = 2
 
 
 def _ref(**changes: object) -> ConsoleSessionRef:
@@ -247,3 +248,49 @@ def test_log_read_refuses_invalid_ranges_and_reports_truncation(tmp_path: Path) 
     absent = adapter.read(_ref(), after_cursor=0, maximum_bytes=1)
     assert isinstance(absent, RecordProblem)
     assert absent.code == "console-output-unavailable"
+
+
+def test_log_read_refuses_a_symlink_even_when_it_resolves_beneath_the_root(
+    tmp_path: Path,
+) -> None:
+    adapter, log, registrations = _adapter(tmp_path, _Runner())
+    link = tmp_path / "linked.log"
+    link.symlink_to(log)
+    current = registrations["crew:engineer-console-p1"]
+    registrations[current.opaque_backend_ref] = replace(current, output_log=link)
+
+    refused = adapter.read(_ref(), after_cursor=0, maximum_bytes=1)
+
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "console-output-unavailable"
+
+
+def test_registry_replacement_during_read_returns_no_output_batch(tmp_path: Path) -> None:
+    runner = _Runner()
+    _adapter_instance, _log, registrations = _adapter(tmp_path, runner)
+    original = registrations["crew:engineer-console-p1"]
+    calls = 0
+
+    def replace_during_read(command: tuple[str, ...]) -> CompletedProcess[str]:
+        nonlocal calls
+        calls += 1
+        outcome = runner(command)
+        if calls == _READ_INCARNATION_INVOCATION:
+            registrations[original.opaque_backend_ref] = replace(
+                original,
+                runtime_attempt_id=UUID("80000000-0000-0000-0000-000000000002"),
+            )
+        return outcome
+
+    racing = TmuxConsoleAdapter(
+        tmux_binary="tmux",
+        socket_name="mc",
+        allowed_log_root=tmp_path,
+        registration_reader=registrations.get,
+        command_runner=replace_during_read,
+    )
+
+    refused = racing.read(_ref(), after_cursor=0, maximum_bytes=6)
+
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "console-runtime-attempt-fenced"

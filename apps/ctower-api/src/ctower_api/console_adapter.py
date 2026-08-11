@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+import stat
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import CompletedProcess
+from typing import BinaryIO
 from uuid import UUID
 
 from ctower_kernel.console import (
@@ -49,6 +52,8 @@ def _validate_backend_registration_identity(registration: ConsoleBackendRegistra
         raise ValueError("console backend identity cannot be empty")
     if not isinstance(registration.output_log, Path):
         raise TypeError("console output log must be a path")
+    if not registration.output_log.is_absolute():
+        raise ValueError("console output log must be an absolute path")
 
 
 def _validate_backend_registration_runtime(registration: ConsoleBackendRegistration) -> None:
@@ -88,6 +93,13 @@ class TmuxConsoleAdapter:
         registration = self._registration(session_ref)
         if isinstance(registration, RecordProblem):
             return registration
+        return self._observe(session_ref, registration)
+
+    def _observe(
+        self,
+        session_ref: ConsoleSessionRef,
+        registration: ConsoleBackendRegistration,
+    ) -> ConsoleBackendObservation | RecordProblem:
         project = self._invoke("show-options", "-t", registration.tmux_target, "-v", "@project")
         if isinstance(project, RecordProblem):
             return project
@@ -130,26 +142,60 @@ class TmuxConsoleAdapter:
     ) -> ConsoleOutputBatch | RecordProblem:
         """Read an exact byte range from a registered pipe-pane log."""
 
+        if after_cursor < 0 or not 1 <= maximum_bytes <= 1024 * 1024:
+            return _problem("console-cursor-invalid", "The requested output range is invalid.")
         registration = self._registration(session_ref)
         if isinstance(registration, RecordProblem):
             return registration
-        if after_cursor < 0 or not 1 <= maximum_bytes <= 1024 * 1024:
-            return _problem("console-cursor-invalid", "The requested output range is invalid.")
-        path = registration.output_log.resolve(strict=False)
-        if not path.is_relative_to(self._allowed_log_root) or not path.is_file():
+        before = self._observe(session_ref, registration)
+        if isinstance(before, RecordProblem) or not _observation_matches(session_ref, before):
+            return _fenced_observation(before)
+        snapshot = self._read_snapshot(registration, after_cursor, maximum_bytes)
+        if not isinstance(snapshot, tuple):
+            return snapshot
+        payload, source_cursor = snapshot
+        fence = self._post_read_fence(session_ref, registration)
+        return fence or ConsoleOutputBatch(payload=payload, source_cursor=source_cursor)
+
+    def _read_snapshot(
+        self,
+        registration: ConsoleBackendRegistration,
+        after_cursor: int,
+        maximum_bytes: int,
+    ) -> tuple[bytes, int] | ConsoleOutputBatch | RecordProblem:
+        try:
+            stream = _open_log_beneath(self._allowed_log_root, registration.output_log)
+        except OSError:
             return _problem("console-output-unavailable", "The registered output log is absent.")
-        size = path.stat().st_size
-        if after_cursor > size:
-            return ConsoleOutputBatch(
-                payload=b"",
-                source_cursor=size,
-                gap=True,
-                gap_reason="source-truncated",
-            )
-        with path.open("rb") as stream:
+        with stream:
+            size = os.fstat(stream.fileno()).st_size
+            if after_cursor > size:
+                return ConsoleOutputBatch(
+                    payload=b"",
+                    source_cursor=size,
+                    gap=True,
+                    gap_reason="source-truncated",
+                )
             stream.seek(after_cursor)
             payload = stream.read(maximum_bytes)
-        return ConsoleOutputBatch(payload=payload, source_cursor=after_cursor + len(payload))
+        return payload, after_cursor + len(payload)
+
+    def _post_read_fence(
+        self,
+        session_ref: ConsoleSessionRef,
+        registration: ConsoleBackendRegistration,
+    ) -> RecordProblem | None:
+        current = self._registration(session_ref)
+        if isinstance(current, RecordProblem):
+            return current
+        after = self._observe(session_ref, current)
+        if (
+            current != registration
+            or isinstance(after, RecordProblem)
+            or not _observation_matches(session_ref, after)
+        ):
+            return _fenced_observation(after)
+        return None
 
     def _registration(
         self, session_ref: ConsoleSessionRef
@@ -171,8 +217,7 @@ class TmuxConsoleAdapter:
                 "console-adapter-malformed",
                 "The current backend registry returned a mismatched registration.",
             )
-        resolved = registration.output_log.resolve(strict=False)
-        if not resolved.is_relative_to(self._allowed_log_root):
+        if _relative_log_path(self._allowed_log_root, registration.output_log) is None:
             return _problem(
                 "console-adapter-unregistered",
                 "The registered output log is outside the allowlisted root.",
@@ -198,3 +243,62 @@ def _run_command(command: tuple[str, ...]) -> CompletedProcess[str]:
 
 def _problem(code: str, detail: str) -> RecordProblem:
     return RecordProblem(code=code, detail=detail, status=403, title="Console backend refused")
+
+
+def _observation_matches(
+    session_ref: ConsoleSessionRef, observation: ConsoleBackendObservation
+) -> bool:
+    return (
+        observation.project_key == session_ref.project_key
+        and observation.runtime_attempt_id == session_ref.runtime_attempt_id
+        and observation.runner_id == session_ref.runner_id
+        and observation.runner_epoch == session_ref.runner_epoch
+        and observation.opaque_backend_ref == session_ref.opaque_backend_ref
+        and observation.backend_incarnation == session_ref.backend_incarnation
+    )
+
+
+def _fenced_observation(
+    observation: ConsoleBackendObservation | RecordProblem,
+) -> RecordProblem:
+    if isinstance(observation, RecordProblem):
+        return observation
+    return _problem(
+        "console-runtime-attempt-fenced",
+        "The registered runtime changed across the bounded output read.",
+    )
+
+
+def _relative_log_path(root: Path, output_log: Path) -> Path | None:
+    try:
+        relative = output_log.relative_to(root)
+    except ValueError:
+        return None
+    if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
+        return None
+    return relative
+
+
+def _open_log_beneath(root: Path, output_log: Path) -> BinaryIO:
+    relative = _relative_log_path(root, output_log)
+    if relative is None:
+        raise FileNotFoundError("registered log is outside its root")
+    directory_flags = os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY | os.O_NOFOLLOW
+    file_flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW
+    root_fd = os.open(root, directory_flags)
+    directory_fd = root_fd
+    try:
+        for part in relative.parts[:-1]:
+            next_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            if directory_fd != root_fd:
+                os.close(directory_fd)
+            directory_fd = next_fd
+        file_fd = os.open(relative.parts[-1], file_flags, dir_fd=directory_fd)
+        if not stat.S_ISREG(os.fstat(file_fd).st_mode):
+            os.close(file_fd)
+            raise FileNotFoundError("registered output is not a regular file")
+        return os.fdopen(file_fd, "rb", closefd=True)
+    finally:
+        if directory_fd != root_fd:
+            os.close(directory_fd)
+        os.close(root_fd)

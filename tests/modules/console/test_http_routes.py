@@ -134,7 +134,15 @@ class _Viewer:
         self.calls.append(("stream", last_event_id))
         if self.outcome is not None:
             return self.outcome
-        return cast(ConsoleEventStream, SimpleNamespace(events=iter((b"event: closed\n\n",))))
+        return cast(
+            ConsoleEventStream,
+            SimpleNamespace(
+                events=iter((b"event: closed\n\n",)),
+                maximum_pending_bytes=256 * 1024,
+                maximum_stall_seconds=5,
+                close_slow_consumer=lambda: (),
+            ),
+        )
 
 
 def _app() -> tuple[FastAPI, _Access, _Viewer]:
@@ -326,6 +334,10 @@ def test_browser_routes_return_each_pre_stream_refusal_without_opening_output() 
             f"/v1/console/sessions/{_ALLOWANCE_ID}/events",
             headers=_browser_headers(cursor="-1"),
         )
+        oversized = client.get(
+            f"/v1/console/sessions/{_ALLOWANCE_ID}/events",
+            headers=_browser_headers(cursor=str(2**63)),
+        )
         query_credential = client.get(
             f"/v1/console/sessions/{_ALLOWANCE_ID}/events?grant=must-not-enter",
             headers=_browser_headers(),
@@ -346,6 +358,7 @@ def test_browser_routes_return_each_pre_stream_refusal_without_opening_output() 
     assert missing_csrf.json()["code"] == "console-csrf-invalid"
     assert malformed.json()["code"] == "console-cursor-invalid"
     assert negative.json()["code"] == "console-cursor-invalid"
+    assert oversized.json()["code"] == "console-cursor-invalid"
     assert query_credential.status_code == _HTTP_UNPROCESSABLE
     assert query_credential.json()["code"] == "console-stream-query-refused"
     assert not any(call[0] == "stream" for call in calls_before_authority_refusal)

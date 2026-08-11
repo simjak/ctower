@@ -187,7 +187,7 @@
         "parameters": [
           {"$ref": "#/components/parameters/ConsoleSessionId"},
           {"$ref": "#/components/parameters/ConsoleCsrf"},
-          {"name": "Last-Event-ID", "in": "header", "required": false, "schema": {"type": "integer", "minimum": 0}}
+          {"name": "Last-Event-ID", "in": "header", "required": false, "schema": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807}}
         ],
         "responses": {
           "202": {

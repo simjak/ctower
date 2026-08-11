@@ -90,12 +90,13 @@ are safe to display in a product UI.
 ## Bounded streaming and gaps
 
 One grant can claim at most one SSE stream. The policy caps decoded chunks at 16 KiB, delivery at 1 MiB per
-minute, replay at 1 MiB per minute, and pending bytes at 256 KiB. The synchronous delivery iterator recovers
-one object per cycle and cannot recover the next until the transport resumes it, so pending accounting is
-checked before each yield and cannot grow without acknowledgement. A durable cursor exists before its chunk
-is broadcast. A per-allowance database lock makes Adapter collection single-writer across processes. Output and
-gap facts share one durable source order; when the source truncates, the gap advances a source generation so
-the same numeric source cursor can be recorded again without collision while SSE cursors remain monotonic.
+minute, replay at 1 MiB per minute, and pending bytes at 256 KiB. A bounded ASGI producer continues the
+one-object-per-authority-check loop while a network send is blocked, but never queues more than that decoded
+cap. Crossing it replaces only still-unsent chunks with a durable `slow_consumer` gap and typed close; each
+send is also bounded by the at-most-five-second authority poll interval. A durable cursor exists before its
+chunk is broadcast. A per-allowance database lock serializes both Adapter output and gap commits across
+processes. When the source truncates, the gap advances a source generation so the same numeric source cursor
+can be recorded again without collision while SSE cursors remain monotonic.
 
 Reconnect uses the `Last-Event-ID` header. If the source was truncated, a requested range cannot be proved,
 or a rate/queue limit is reached, the server appends a gap fact and emits a typed `gap` event. The strict SSE
