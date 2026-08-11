@@ -2296,13 +2296,14 @@ Rejected alternatives:
 
 ## D57 — Fleet self-heal is a first-class ctower feature: registry, liveness, respawn policy, event ledger, drills (product, 2026-08-11, operator orders R2928/R2929)
 
-The operator ordered, verbatim, "self heal must be a ctower feature" (R2928) and "cTower must recover
-from server restarts including your session" (R2929). The night of 2026-08-11 produced six tmux fleet
-deaths; recovery machinery existed only as loose Mission Control tooling with no single owner, and the
-best evidence of the failure class is that the fleet watchdog misclassified as dead the very lane that
-eliminates pane-rendering liveness reads — part 1 arguing for itself. This decision fixes the program's
-DESTINATION: the R2923/R2927 engineering continues unchanged in Mission Control, and its durable home is
-a tower feature specced as CT-I1-022 with acceptance family AC-FLEET-01..05.
+The fleet watchdog misclassified as dead the very lane that eliminates pane-rendering liveness reads —
+part 1 arguing for itself, and the motivating exhibit of this decision's failure class. Behind it stand
+the operator's verbatim orders — "self heal must be a ctower feature" (R2928) and "cTower must recover
+from server restarts including your session" (R2929) — and the night of 2026-08-11, which produced six
+tmux fleet deaths while recovery machinery existed only as loose Mission Control tooling with no single
+owner. This decision fixes the program's DESTINATION: the R2923/R2927 engineering continues unchanged in
+Mission Control, and its durable home is a tower feature specced as CT-I1-022 with acceptance family
+AC-FLEET-01..05.
 
 1. **Seat-and-crew registry as data.** The tower persists a versioned registry of every registered seat
    and crew: project, substrate identity, and exactly ONE respawn owner per seat. The ownership map is
@@ -2311,9 +2312,12 @@ a tower feature specced as CT-I1-022 with acceptance family AC-FLEET-01..05.
    DISCOVERED at respawn time from seat transcript state, never stored statically anywhere. The two live
    defects motivating this (hardcoded stale `RESUME=` in `mc-commander-respawn.sh` and the same id in the
    MC seats registry) are the class this rule structurally removes.
-3. **Liveness from typed evidence only.** Per-seat liveness (alive/working/idle/dead/capped) derives from
-   typed probe and event ingest with last-evidence timestamps. Pane-rendered text is not a liveness or
-   cap-detection source. Stale or missing evidence yields typed `unknown`, never inferred health.
+3. **Liveness from typed evidence only.** Per-seat liveness holds the operator's four-state model
+   (alive/working/idle/dead) and derives from typed probe and event ingest with last-evidence
+   timestamps. Account-cap status is a separate orthogonal typed fact with its own evidence timestamps
+   — folded beside liveness in the operator answer, never a fifth liveness state. Pane-rendered text is
+   not a liveness or cap-detection source. Stale or missing evidence yields typed `unknown`, never
+   inferred health.
 4. **Respawn policy as tower config; executors are agents.** Local executors (systemd units, seat-guard,
    cron bootstrap) consume respawn policy through the generated client and stand down when they are not
    the registered owner. All respawn claims serialize under one spawn-lock protocol; a losing claimant
@@ -2323,9 +2327,13 @@ a tower feature specced as CT-I1-022 with acceptance family AC-FLEET-01..05.
    event, and drill outcome appends one durable typed tower event with cause and claimant identity.
 6. **Drills are tower-run acceptance, isolated first.** The kill-drill (server killed, registered owners
    rebuild every seat) and the reboot-drill (host boots, boot-enabled services come up, fleet bootstraps,
-   ALL seats respawn including commander with discovered resume identity, routines fire) run as tower-run
-   workflow tickets with frozen criteria, proven on an isolated substrate before any live drill. A drill
-   success flag alone cannot resolve the ticket, mirroring the backup/restore drill law.
+   ALL seats respawn including commander, routines fire) run as tower-run workflow tickets with frozen
+   criteria, proven on an isolated substrate before any live drill. The reboot-drill proves session
+   CONTINUITY, not merely discovery: the discovered identity must resume the same pre-reboot seat
+   session, evidenced by pre/post session-identity equality per seat. Prerequisite: dynamic-crew respawn
+   recipes persist reboot-durably before registration — a volatile-path recipe is refused at
+   registration. A drill success flag alone cannot resolve the ticket, mirroring the backup/restore
+   drill law.
 7. **The operator surface is the front.** The feature's I1-scope deliverable answers "is everything
    moving, anything capped or blocked" as one deterministic API read plus protected CLI rendering with
    typed partial/unknown epistemics. The five-surface lock holds: browser Fleet-surface deepening remains
