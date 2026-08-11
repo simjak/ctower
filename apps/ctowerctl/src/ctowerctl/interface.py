@@ -25,6 +25,7 @@ from ctower_client.models import (
 from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_cli
 from ctowerctl import (
     _attention_commands,
+    _beat_dispatch_commands,
     _bootstrap_commands,
     _company_commands,
     _credential_commands,
@@ -288,6 +289,7 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         "inbox",
         "knowledge",
         "dream-dispatch",
+        "beat-dispatch",
         "request",
         "ruling",
     }:
@@ -308,8 +310,13 @@ def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) ->
         return _ticket_commands.execute_query(arguments, client)
     if arguments.area == "knowledge":
         return _knowledge_commands.execute_query(arguments, client)
-    if arguments.area == "dream-dispatch":
-        return _dream_dispatch_commands.execute_query(arguments, client)
+    if arguments.area in {"dream-dispatch", "beat-dispatch"}:
+        handler = (
+            _dream_dispatch_commands.execute_query
+            if arguments.area == "dream-dispatch"
+            else _beat_dispatch_commands.execute_query
+        )
+        return handler(arguments, client)
     if arguments.area == "request":
         return _request_commands.execute_query(arguments, client)
     if arguments.area == "ruling":

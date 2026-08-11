@@ -2089,7 +2089,61 @@ Rejected alternatives:
 - Adding a transport or scheduler inside ctower. Existing notification rails and director-owned scheduling
   already supply those responsibilities without widening the trust boundary.
 
-## D52 — GitHub Issues is the second narrow connector through the frozen Phase-1 seam (engineering, 2026-08-10, issue #429)
+## D52 — Fleet beats pin full prompts in Routine custody and leave delivery custody external (engineering, 2026-08-10, issue #433)
+
+The five operator-ordered fleet beats move schedule truth into ctower without turning the trusted Runtime
+into a tmux driver or silently minting a delivery principal. This supersedes D51 clause 5 only for the
+director-owned mechanism that schedules the existing morning-digest prompt: the operator's later ruling
+moves that schedule from crontab into the fixed digest beat. D51's read-model, source, rendering, and
+notification-rail boundaries remain unchanged.
+
+1. Each scheduled `ctower.beat.*@1` revision pins an exact UTC minute/hour set, stable source label, full
+   prompt, prompt digest, and the fixed `commander` DIRECTOR target. The closed effect contract also admits
+   the verified `mc-commander-manibo` session for operator-ordered path evidence; the five scheduled packs
+   remain fixed to `commander`. Registration validates the digest before the immutable revision is accepted;
+   delivery never rereads a mutable source file.
+2. A queued occurrence transactionally records the ordinary Routine fact and one immutable beat-dispatch
+   effect containing the same full prompt. Stable occurrence/effect identities and the existing scheduler
+   uniqueness constraints prevent duplicate server truth.
+3. Operator-only reads expose the five registered beat revisions with next fires and list their emitted
+   effects. These reads create no claim, receipt, lane binding, credential, or dispatch authority.
+4. Mission Control owns a sibling consumer because deterministic DIRECTOR injection and a local delivery
+   ledger are cohesive concerns distinct from the dream consumer's model selection, worktree, execution,
+   artifact, and output-custody workflow. The append-only claim/delivery/replay ledger permits one normal
+   injection and zero replay injections; an interrupted claimed delivery refuses ambiguous reinjection.
+5. Server-side consumption remains absent. Adding it requires a separately authorized authenticated
+   lane-binding and receipt ceremony. Until then, the external ledger is explicit delivery evidence rather
+   than invented ctower custody.
+
+Rejected alternatives:
+
+- Reading prompt files at delivery. A mutable file could change after occurrence emission and make replay
+  non-deterministic.
+- Extending the dream consumer. Its model gate, branch/worktree lifecycle, artifact digest, and output
+  consumption would make a simple fixed-session delivery path a catch-all service.
+- Treating successful `tmux send-keys` as server consumption. No authenticated beat executor binding or
+  durable target acknowledgement currently exists, so such a receipt would assert authority and proof the
+  system does not possess.
+
+## D53 — Hour-specific fleet beats preserve Europe/Vilnius civil time (operator, 2026-08-11, issue #433)
+
+This supersedes D52 clause 1 only for schedule timezone custody. The operator's stated digest and sprint
+hours are Europe/Vilnius civil times, not UTC hours. Encoding them as UTC made both routines three hours
+late during EEST and would remain wrong by a different offset during EET.
+
+1. `ctower.beat.digest@1` pins minute `12`, hour `7`, and timezone `Europe/Vilnius`.
+2. `ctower.beat.sprint@1` pins minute `23`, hours `2, 8, 14, 20`, and timezone `Europe/Vilnius`.
+3. The Runtime resolves those literal civil-time marks through the installed IANA zone and records the
+   resulting UTC next-fire instant. Summer and winter schedule tests prove the offset follows DST.
+4. The three minute-only fleet beats remain UTC because their operator intent is an offset-independent
+   cadence rather than named civil hours. All other D52 custody and delivery boundaries remain unchanged.
+
+Rejected alternative:
+
+- Shifting the two schedules to fixed UTC hours. That reproduces the intended EEST instants only until the
+  next DST transition and silently moves the operator's civil-time schedule by one hour in winter.
+
+## D54 — GitHub Issues is the second narrow connector through the frozen Phase-1 seam (engineering, 2026-08-10, issue #429)
 
 This decision supersedes only D39's GitLab-only provider scope and D43's deferral of GitHub product behavior.
 D39's narrow issue-to-ticket/proof-close behavior and D43's provider-neutral authority split remain binding.

@@ -17,6 +17,7 @@ from starlette.responses import Response
 
 from ctower_api._attention_finding_routes import install_attention_finding_routes
 from ctower_api._auth_routes import install_auth_routes
+from ctower_api._beat_dispatch_routes import BeatDispatchRuntime, install_beat_dispatch_routes
 from ctower_api._board_context_routes import install_board_context_routes
 from ctower_api._board_routes import install_board_routes
 from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
@@ -182,6 +183,7 @@ def create_app(
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
     dream_dispatch_runtime: DreamDispatchRuntime | None = None,
+    beat_dispatch_runtime: BeatDispatchRuntime | None = None,
     migration: object | None = None,
     migration_importer_resolver: _MigrationImporterResolver | None = None,
     migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
@@ -224,8 +226,9 @@ def create_app(
     _install_synthetic_boundary(
         app, access, record, synthetic_runtime, synthetic_revision, recorder
     )
-    if dream_dispatch_runtime is not None:
-        install_dream_dispatch_routes(app, access, record, dream_dispatch_runtime, recorder)
+    _install_dispatch_routes(
+        app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, recorder
+    )
     return app
 
 
@@ -364,6 +367,20 @@ def _install_synthetic_boundary(
             synthetic_revision,
             recorder,
         )
+
+
+def _install_dispatch_routes(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    dream_runtime: DreamDispatchRuntime | None,
+    beat_runtime: BeatDispatchRuntime | None,
+    recorder: TelemetryRecorder,
+) -> None:
+    if dream_runtime is not None:
+        install_dream_dispatch_routes(app, access, record, dream_runtime, recorder)
+    if beat_runtime is not None:
+        install_beat_dispatch_routes(app, access, beat_runtime, recorder)
 
 
 def _install_access_routes(

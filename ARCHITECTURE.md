@@ -217,8 +217,11 @@ audit; two-party native Inbox threads with ordered messages, per-recipient unrea
 thread-to-ticket links visible from Board cards, including atomic public promotion that either creates a P2
 ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
-caller-observed token counts; seven fixed Routine revisions (three I1 maintenance revisions plus four
-nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet); an accepted-only,
+caller-observed token counts; twelve fixed Routine revisions (three I1 maintenance revisions, four
+nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
+revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
+full-prompt effects target the external DIRECTOR delivery ledger; corrected digests replace only the
+tenant's active trigger and preserve prior revision/effect history); an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
@@ -333,7 +336,7 @@ ports.
 Integrations is provider-neutral internally: it owns the strict `IssueConnector` result seam, bounded retry
 executor, leased/fenced tick, opaque progress, closed-world custody, observations, and delivery receipts.
 The API-owned closed registry currently admits only GitLab and composes each active Catalog registration as
-an isolated loop. D52 additionally activates one GitHub Issues provider through that frozen seam with
+an isolated loop. D54 additionally activates one GitHub Issues provider through that frozen seam with
 reference-only App-key custody, server-side repository-scoped token minting, and pinned
 `api.github.com:443` egress. It does not activate general provider product scope, dynamic
 plugins, or any new network boundary.

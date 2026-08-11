@@ -1,8 +1,8 @@
 # Issue connector framework proposal
 
 Status: subordinate proposal for [GitHub issue #381](https://github.com/simjak/ctower/issues/381). Its
-Phase-1 internal extraction is adopted by `SPEC.md` and D43. Phase 2 GitHub Issues is adopted by D52 and
-CT-I1-019; Phases 3 and 4 remain proposals and are not activated.
+Phase-1 internal extraction is adopted by `SPEC.md` and D43. Phase 2 GitHub Issues is adopted by D54 and
+CT-I1-020; Phases 3 and 4 remain proposals and are not activated.
 
 This document proposes how ctower can turn the shipped GitLab issue integration into one narrow issue-
 connector framework, add GitHub Issues as the second implementation, and put every connector-created ticket
@@ -10,7 +10,7 @@ through explicit project-commander triage. It is deliberately limited to issue t
 poll, normalize, update, and proof-gated close-back shape.
 
 `SPEC.md` remains authoritative. It accepts GitLab under D39, the provider-neutral ownership seam under
-D43, and the narrow GitHub Issues provider under D52. Triage/priority and connector-N remain deferred.
+D43, and the narrow GitHub Issues provider under D54. Triage/priority and connector-N remain deferred.
 
 ## Outcome
 
@@ -349,7 +349,7 @@ or choose close eligibility.
 
 ### CX-12 — GitHub proves the plug point while core stays frozen
 
-**Accepted by D52/#429.** GitHub Issues passes the unchanged shared conformance suite and a
+**Accepted by D54/#429.** GitHub Issues passes the unchanged shared conformance suite and a
 real fixture repository round trip without changes to the core freeze set below. A connector-specific test
 fixture or static registry row is not a core change.
 
@@ -721,6 +721,6 @@ claim of existing implementation.
 
 ## Sign-off
 
-Phases 1 and 2 are implemented under `SPEC.md`, D43, and D52. The later phases remain ready for architecture, security,
+Phases 1 and 2 are implemented under `SPEC.md`, D43, and D54. The later phases remain ready for architecture, security,
 product-authority, and sequencing review; this proposal does not authorize or supersede their canonical
 activation requirements.

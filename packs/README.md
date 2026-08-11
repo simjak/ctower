@@ -13,7 +13,10 @@ criteria/evidence/verdict path; remote execution, images, effects, and executabl
 hard-eligible candidates with bounded aging and checkpoint-only preemption; it is not a Runtime dispatcher,
 timer authority, or claim that unattended scheduling is active.
 
-The three `packs/routines/ctower.i1.*@1` revisions are the complete CP3-B Runtime set. They schedule only
-typed fixed-operation jobs, and each declared revision digest is recomputed from its complete canonical
-authored body before registration. CP3-B does not dispatch those jobs or activate synthetic, backup, anchor,
-credential, object-store, or remote-execution effects.
+The twelve authored Routine revisions comprise three CP3-B maintenance revisions, four nightly dream
+revisions, and five fleet-beat revisions. Each declared revision digest is recomputed from its complete
+canonical authored body before registration. Beat revisions pin the canonical prompt text, source label,
+content digest, timezone-local minute/hour set, and `commander` delivery target. Digest and sprint pin
+literal Europe/Vilnius hours so their UTC instants follow DST. Registering a corrected digest replaces only
+the tenant's active trigger and preserves prior immutable facts; emitted effects remain external
+delivery intents rather than arbitrary Runtime dispatch.
