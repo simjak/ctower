@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/simjak/ctower/compare/v0.27.0...v0.28.0) (2026-08-11)
+
+
+### Features
+
+* **ui:** add the /inbox compose control over the pair-grouped rail ([#465](https://github.com/simjak/ctower/issues/465)) ([59489df](https://github.com/simjak/ctower/commit/59489df052f8e30e0ab8b754510fb69a0f7f7802))
+
 ## [0.27.0](https://github.com/simjak/ctower/compare/v0.26.0...v0.27.0) (2026-08-11)
 
 
