@@ -472,6 +472,21 @@ prompt through the consumer into DIRECTOR; a replay records zero injection; the 
 schedule proof, fallback recommendation, same-candidate docs, full release gate, and Director receipt
 confirmation are recorded.
 
+### I1.14 — GitHub Issues connector
+
+**Stable work:** `CT-I1-020`.
+
+Add GitHub Issues as the second provider through the frozen Phase-1 connector seam. The API composition
+path keeps the App private key reference-only, signs App JWTs server-side, mints and refreshes one
+repository-selected least-privilege installation token, pins egress to `api.github.com:443`, and supports
+key rotation and fail-closed revocation. Provider code owns strict issue mapping, immutable repository-ID
+identity, pull-request exclusion, equal-timestamp tie-breaking, and replay-safe proof-gated close.
+
+**Exit:** AC-GH-01..08 and GH-C01..C08 pass through the unchanged shared conformance suite and a real
+PostgreSQL + MockTransport issue-to-ticket-to-proof-close transcript; the Phase-1 freeze set has an empty
+diff; the full release gate is green on the exact candidate; Commander-dispatched CSO exact-head
+re-verification passes before independent judgment review.
+
 ## Increment 2 — autonomous generic workflow and one factory golden path
 
 ### I2.1 — Deepen generic Workflow and Proof/policy

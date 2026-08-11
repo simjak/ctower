@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/integration-v3.schema.json",
+  "title": "GitHubIssueIntegrationComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key", "adapter", "authority", "execution", "github", "ctower", "label_map", "private_key_binding"],
+  "properties": {
+    "schema": { "const": "ctower.integration/v3" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "adapter": { "const": "github-issues" },
+    "authority": { "const": "co_source" },
+    "execution": { "const": "standing_sync" },
+    "github": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app_client_id", "installation_id", "repository_id", "repository_owner", "repository_name", "private_key_binding_revision", "repository_selection", "permissions", "import_updated_after", "page_size", "poll_interval_seconds"],
+      "properties": {
+        "app_client_id": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "installation_id": { "type": "integer", "minimum": 1 },
+        "repository_id": { "type": "integer", "minimum": 1 },
+        "repository_owner": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$" },
+        "repository_name": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,100}$" },
+        "private_key_binding_revision": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "repository_selection": { "const": "selected" },
+        "permissions": {
+          "type": "object", "additionalProperties": false,
+          "required": ["issues", "metadata"],
+          "properties": { "issues": { "const": "write" }, "metadata": { "const": "read" } }
+        },
+        "import_updated_after": { "type": "string", "format": "date-time" },
+        "page_size": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "poll_interval_seconds": { "type": "integer", "minimum": 15, "maximum": 3600 }
+      }
+    },
+    "ctower": {
+      "type": "object", "additionalProperties": false,
+      "required": ["project_key", "initial_custodian_id"],
+      "properties": {
+        "project_key": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" },
+        "initial_custodian_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "label_map": {
+      "type": "array", "maxItems": 100,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["github", "ctower"],
+        "properties": {
+          "github": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "ctower": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$" }
+        }
+      }
+    },
+    "private_key_binding": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,127}$" }
+  }
+}

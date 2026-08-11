@@ -173,7 +173,7 @@ def _activate_payloads(
         _resource(
             kind="integration",
             key=str(payload["key"]),
-            schema_ref="ctower.integration/v2",
+            schema_ref=str(payload["schema"]),
             payload=payload,
         )
         for payload in payloads
@@ -181,7 +181,10 @@ def _activate_payloads(
     resources.append(_label_vocabulary())
     secret_refs = cast(list[JsonValue], raw_bundle["secret_binding_refs"])
     secret_refs.extend(
-        {"name": str(payload["token_binding"]), "reference_class": "runtime-binding"}
+        {
+            "name": str(payload.get("token_binding", payload.get("private_key_binding"))),
+            "reference_class": "runtime-binding",
+        }
         for payload in payloads
     )
     bundle = CompanyBundle.model_validate_json(json.dumps(raw_bundle))

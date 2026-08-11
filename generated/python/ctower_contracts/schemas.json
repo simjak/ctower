@@ -41,6 +41,7 @@
     "ctower.inbox/v2": "contracts/domain/inbox/inbox-v2.schema.json",
     "ctower.integration/v1": "contracts/components/integration.schema.json",
     "ctower.integration/v2": "contracts/components/integration-v2.schema.json",
+    "ctower.integration/v3": "contracts/components/integration-v3.schema.json",
     "ctower.knowledge-document/v1": "contracts/domain/knowledge/knowledge.schema.json",
     "ctower.label-vocabulary/v1": "contracts/components/label-vocabulary.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
@@ -134,6 +135,7 @@
     "https://ctower.local/contracts/components/harness.schema.json": "contracts/components/harness.schema.json",
     "https://ctower.local/contracts/components/image.schema.json": "contracts/components/image.schema.json",
     "https://ctower.local/contracts/components/integration-v2.schema.json": "contracts/components/integration-v2.schema.json",
+    "https://ctower.local/contracts/components/integration-v3.schema.json": "contracts/components/integration-v3.schema.json",
     "https://ctower.local/contracts/components/integration.schema.json": "contracts/components/integration.schema.json",
     "https://ctower.local/contracts/components/label-vocabulary.schema.json": "contracts/components/label-vocabulary.schema.json",
     "https://ctower.local/contracts/components/notification.schema.json": "contracts/components/notification.schema.json",
@@ -2248,6 +2250,164 @@
         "token_binding"
       ],
       "title": "GitLabIssueIntegrationComponent",
+      "type": "object"
+    },
+    "contracts/components/integration-v3.schema.json": {
+      "$id": "https://ctower.local/contracts/components/integration-v3.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "const": "github-issues"
+        },
+        "authority": {
+          "const": "co_source"
+        },
+        "ctower": {
+          "additionalProperties": false,
+          "properties": {
+            "initial_custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_key",
+            "initial_custodian_id"
+          ],
+          "type": "object"
+        },
+        "execution": {
+          "const": "standing_sync"
+        },
+        "github": {
+          "additionalProperties": false,
+          "properties": {
+            "app_client_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "import_updated_after": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "installation_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "page_size": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "permissions": {
+              "additionalProperties": false,
+              "properties": {
+                "issues": {
+                  "const": "write"
+                },
+                "metadata": {
+                  "const": "read"
+                }
+              },
+              "required": [
+                "issues",
+                "metadata"
+              ],
+              "type": "object"
+            },
+            "poll_interval_seconds": {
+              "maximum": 3600,
+              "minimum": 15,
+              "type": "integer"
+            },
+            "private_key_binding_revision": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "repository_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "repository_name": {
+              "pattern": "^[A-Za-z0-9._-]{1,100}$",
+              "type": "string"
+            },
+            "repository_owner": {
+              "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$",
+              "type": "string"
+            },
+            "repository_selection": {
+              "const": "selected"
+            }
+          },
+          "required": [
+            "app_client_id",
+            "installation_id",
+            "repository_id",
+            "repository_owner",
+            "repository_name",
+            "private_key_binding_revision",
+            "repository_selection",
+            "permissions",
+            "import_updated_after",
+            "page_size",
+            "poll_interval_seconds"
+          ],
+          "type": "object"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "label_map": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "ctower": {
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
+              },
+              "github": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "github",
+              "ctower"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "private_key_binding": {
+          "pattern": "^[A-Z][A-Z0-9_]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.integration/v3"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "adapter",
+        "authority",
+        "execution",
+        "github",
+        "ctower",
+        "label_map",
+        "private_key_binding"
+      ],
+      "title": "GitHubIssueIntegrationComponent",
       "type": "object"
     },
     "contracts/components/integration.schema.json": {
@@ -16788,6 +16948,11 @@
       "id": "https://ctower.local/contracts/components/integration-v2.schema.json",
       "path": "contracts/components/integration-v2.schema.json",
       "sha256": "sha256:73b24957d8bf7c3deb369d7bb69c98eb00f513cefe12c3b0811c98a452e4a968"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/integration-v3.schema.json",
+      "path": "contracts/components/integration-v3.schema.json",
+      "sha256": "sha256:59a963f7df5a1b2ce64f5e19635e002788af12ccfaf2dd13ba81d12032908bf6"
     },
     {
       "id": "https://ctower.local/contracts/components/integration.schema.json",
