@@ -651,6 +651,10 @@ At discovery, mint, renewal, stream open, and each stream poll, the control plan
 asks the registered Adapter for the live `@project` and incarnation. Each read validates the current
 registration and live identity before and after reading from a no-follow descriptor, so replacement bytes
 cannot reach custody. Any replacement fences the old reference rather than rebinding a familiar tmux name.
+Grant, stream-open, output, and custody-access persistence also lock the exact tenant, Actor, human
+binding/session, target, assignment, work session, and allowance anchors in one fixed database order
+through commit. An overlapping revocation or authority change therefore completes either before the final
+recheck or after the persisted decision, never between them.
 
 The browser never receives a database credential, Adapter credential, or grant token in a URL. Its existing
 secure human-session cookie and the exact CSRF proof identify the Actor; one configured private HTTPS Origin

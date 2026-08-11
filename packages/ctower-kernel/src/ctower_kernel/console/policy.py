@@ -135,6 +135,11 @@ def _actor_checks(facts: ConsoleGrantFacts, *, now: datetime) -> tuple[_RefusalC
             "Commander cannot view.",
         ),
         (
+            not facts.human_session_current or not facts.human_binding_current,
+            "console-reauthentication-required",
+            "The exact human authorization is no longer current.",
+        ),
+        (
             facts.session_ref.project_key not in facts.actor.project_grants,
             "console-project-refused",
             "The Actor has no exact Project grant.",

@@ -80,10 +80,10 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0065_console_view_grants.sql",
-    "schema_sha256": ("sha256:4acb4951e4cf5330d871f5b01646a4234d3c829d44b9a51a11239a7130f3f928"),
+    "schema_sha256": ("sha256:f4045f0b63325a9180d548fcaaddee46fb3e337a24f7ec3cc17edef2c924a9cf"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:6d72f4a75a4852cff2751d35bfabaf56b5dceea487aa3dac1107971d098513f5"
+        "sum256:546ac002f20bd7858804707aa943232826080d9b497b88fcf9c31d405d666edf"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

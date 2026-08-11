@@ -68,6 +68,21 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
                 has_schema_privilege('console_output_reader', 'public', 'CREATE') AS create
             """
         ).fetchone()
+        lock_privileges = connection.execute(
+            """
+            SELECT
+                has_function_privilege(
+                    'ctower_svc',
+                    'lock_console_authority_anchors(uuid,uuid,uuid,uuid,uuid)',
+                    'EXECUTE'
+                ) AS service_execute,
+                has_function_privilege(
+                    'console_output_reader',
+                    'lock_console_authority_anchors(uuid,uuid,uuid,uuid,uuid)',
+                    'EXECUTE'
+                ) AS reader_execute
+            """
+        ).fetchone()
     assert role == {
         "rolcanlogin": False,
         "rolsuper": False,
@@ -92,6 +107,7 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
         ("console_output_recovery_facts", "INSERT"),
     ]
     assert schema_privileges == {"usage": True, "create": False}
+    assert lock_privileges == {"service_execute": True, "reader_execute": False}
     with (
         pytest.raises(psycopg.errors.InsufficientPrivilege),
         psycopg.connect(tenant.database.runtime_dsn) as connection,

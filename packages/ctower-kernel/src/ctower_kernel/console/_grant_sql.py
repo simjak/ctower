@@ -44,7 +44,16 @@ def _grant_facts_row(
                 WHERE tenant_id = allowance.tenant_id
                   AND actor_principal_id = %s
                   AND expires_at > %s
-            ) AS suspended_until
+            ) AS suspended_until,
+            (
+                human_session.expires_at > %s
+                AND human_session_revocation.session_id IS NULL
+            ) AS human_session_current,
+            (
+                human_binding.role = %s
+                AND allowance.project_key = ANY(human_binding.project_keys)
+                AND human_binding_revocation.binding_id IS NULL
+            ) AS human_binding_current
         FROM console_session_allows AS allowance
         JOIN assignment_intervals AS assignment
           ON assignment.ticket_id = allowance.assignment_ticket_id
@@ -56,14 +65,39 @@ def _grant_facts_row(
         JOIN principals AS target
           ON target.principal_id = allowance.seat_principal_id
          AND target.tenant_id = allowance.tenant_id
+        JOIN human_sessions AS human_session
+          ON human_session.session_id = %s
+         AND human_session.tenant_id = allowance.tenant_id
+         AND human_session.principal_id = %s
+         AND human_session.binding_id = %s
+        JOIN human_role_bindings AS human_binding
+          ON human_binding.binding_id = human_session.binding_id
+         AND human_binding.tenant_id = human_session.tenant_id
+         AND human_binding.principal_id = human_session.principal_id
         LEFT JOIN ticket_work_session_closures AS closure
           ON closure.session_id = session.session_id
          AND closure.tenant_id = session.tenant_id
         LEFT JOIN console_session_revocations AS revocation
           ON revocation.allowance_id = allowance.allowance_id
+        LEFT JOIN human_session_revocations AS human_session_revocation
+          ON human_session_revocation.session_id = human_session.session_id
+         AND human_session_revocation.tenant_id = human_session.tenant_id
+        LEFT JOIN human_role_binding_revocations AS human_binding_revocation
+          ON human_binding_revocation.binding_id = human_binding.binding_id
+         AND human_binding_revocation.tenant_id = human_binding.tenant_id
         WHERE allowance.allowance_id = %s AND allowance.tenant_id = %s
         """,
-        (actor.principal_id, now, allowance_id, actor.tenant_id),
+        (
+            actor.principal_id,
+            now,
+            now,
+            actor.kind.value,
+            actor.human_session_id,
+            actor.principal_id,
+            actor.human_binding_id,
+            allowance_id,
+            actor.tenant_id,
+        ),
     ).fetchone()
 
 

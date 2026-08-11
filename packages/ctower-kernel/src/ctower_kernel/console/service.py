@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from typing import Literal, Protocol, cast
 from uuid import UUID
 
+import psycopg
+
 from ctower_kernel.console.cipher import AesGcmConsoleCipher
 from ctower_kernel.console.models import (
     ConsoleBackendObservation,
@@ -26,13 +28,14 @@ from ctower_kernel.console.models import (
     ConsoleViewGrant,
     StoredConsoleGap,
     StoredConsoleOutput,
+    StreamCloseCode,
 )
 from ctower_kernel.console.output_store import PostgresConsoleOutputStore
 from ctower_kernel.console.policy import (
     ConsoleStreamWindow,
     StreamDisposition,
 )
-from ctower_kernel.console.postgres import PostgresConsoleAuthority, StreamCloseCode
+from ctower_kernel.console.postgres import PostgresConsoleAuthority
 from ctower_kernel.console.stream import ConsoleEventStream, _drain_events, _TransportRequests
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.identifiers import uuid7
@@ -136,16 +139,19 @@ class ConsoleViewer:
         if isinstance(observation, RecordProblem):
             self._authority.record_denial(actor, allowance_id, observation.code, now=now)
             return observation
+        decision_now = self._clock()
         outcome = self._authority.decide_grant(
             actor,
             allowance_id,
             observation,
-            identifiers=ConsoleGrantIdentifiers(grant_id=uuid7(now), nonce=uuid7(now)),
+            identifiers=ConsoleGrantIdentifiers(
+                grant_id=uuid7(decision_now), nonce=uuid7(decision_now)
+            ),
             renewal=renewal,
-            now=now,
+            now=decision_now,
         )
         if isinstance(outcome, RecordProblem) and outcome.code != "console-grant-already-current":
-            self._authority.record_denial(actor, allowance_id, outcome.code, now=now)
+            self._authority.record_denial(actor, allowance_id, outcome.code, now=decision_now)
         return outcome
 
     def revoke_session(
@@ -260,8 +266,14 @@ class ConsoleViewer:
             lease,
             state.durable_cursor,
             access_kind,
+            authorize=lambda connection: self._authority.lock_stream_write_authority(
+                connection, lease, now=self._clock()
+            ),
             now=self._clock(),
         )
+        if isinstance(replay, str):
+            state.close_code = replay
+            return True
         if isinstance(replay, RecordProblem):
             yield self._custody_gap(lease, state)
             return True
@@ -395,7 +407,9 @@ class ConsoleViewer:
         *,
         transport_requests: _TransportRequests,
     ) -> Generator[bytes, None, bool]:
-        with self._output_store.collection_lock(lease.grant.allowance_id, lease.grant.tenant_id):
+        with self._output_store.collection_lock(
+            lease.grant.allowance_id, lease.grant.tenant_id
+        ) as connection:
             if self._refresh_source_position(lease, state):
                 return False
             batch = self._adapter.read(
@@ -403,11 +417,7 @@ class ConsoleViewer:
                 after_cursor=state.source_cursor,
                 maximum_bytes=self._authority.policy.decoded_chunk_bytes,
             )
-            close_reason = (
-                "fenced"
-                if isinstance(batch, RecordProblem)
-                else self._active_close_reason(lease, ref)
-            )
+            close_reason = self._post_read_close_reason(connection, lease, ref, batch)
             if close_reason is not None:
                 state.close_code = close_reason
                 return True
@@ -416,6 +426,7 @@ class ConsoleViewer:
                 reason = _gap_reason(batch.gap_reason)
                 state.source_generation += 1
                 gap_cursor = self._output_store.record_gap_locked(
+                    connection,
                     lease.grant.allowance_id,
                     lease.grant.tenant_id,
                     source_cursor=batch.source_cursor,
@@ -439,6 +450,7 @@ class ConsoleViewer:
                 state.close_code = "rate_limited"
                 state.gap_required = True
                 gap_cursor = self._output_store.record_gap_locked(
+                    connection,
                     lease.grant.allowance_id,
                     lease.grant.tenant_id,
                     source_cursor=state.source_cursor,
@@ -449,9 +461,25 @@ class ConsoleViewer:
                 )
                 yield _gap(gap_cursor, "rate_limited", event_id=gap_cursor)
                 return True
-            self._persist_batch(lease, batch, source_generation=state.source_generation)
+            self._persist_batch(connection, lease, batch, source_generation=state.source_generation)
             state.source_cursor = batch.source_cursor
         return False
+
+    def _post_read_close_reason(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        lease: ConsoleStreamLease,
+        ref: ConsoleSessionRef,
+        batch: ConsoleOutputBatch | RecordProblem,
+    ) -> StreamCloseCode | None:
+        if isinstance(batch, RecordProblem):
+            return "fenced"
+        observation = self._adapter.inspect(ref)
+        if isinstance(observation, RecordProblem) or not _observation_matches(ref, observation):
+            return "fenced"
+        if batch.gap or batch.payload:
+            return self._authority.lock_stream_write_authority(connection, lease, now=self._clock())
+        return self._authority.stream_close_reason(lease, now=self._clock())
 
     def _refresh_source_position(self, lease: ConsoleStreamLease, state: _StreamState) -> bool:
         position = self._output_store.latest_source_position(
@@ -474,6 +502,7 @@ class ConsoleViewer:
 
     def _persist_batch(
         self,
+        connection: psycopg.Connection[dict[str, object]],
         lease: ConsoleStreamLease,
         batch: ConsoleOutputBatch,
         *,
@@ -488,7 +517,8 @@ class ConsoleViewer:
             object_id,
         )
         envelope = self._cipher.encrypt(object_id, batch.payload, aad=aad)
-        self._output_store.append_output(
+        self._output_store.append_output_locked(
+            connection,
             lease.grant.allowance_id,
             lease.grant.tenant_id,
             batch.source_cursor,

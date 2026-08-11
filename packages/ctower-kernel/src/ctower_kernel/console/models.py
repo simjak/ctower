@@ -26,6 +26,19 @@ __all__ = [
     "ConsoleViewGrant",
     "StoredConsoleGap",
     "StoredConsoleOutput",
+    "StreamCloseCode",
+]
+
+type StreamCloseCode = Literal[
+    "expired",
+    "revoked",
+    "fenced",
+    "rate_limited",
+    "slow_consumer",
+    "reauthentication_required",
+    "globally_disabled",
+    "output_unavailable",
+    "client_disconnected",
 ]
 
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
@@ -179,6 +192,8 @@ class ConsoleGrantFacts:
     observed_backend_incarnation: str
     session_revoked: bool
     suspended_until: datetime | None
+    human_session_current: bool
+    human_binding_current: bool
 
 
 @dataclass(frozen=True, slots=True)

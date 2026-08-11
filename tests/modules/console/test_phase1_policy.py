@@ -106,6 +106,8 @@ def _facts(**changes: object) -> ConsoleGrantFacts:
         "observed_backend_incarnation": "$9:1786400000",
         "session_revoked": False,
         "suspended_until": None,
+        "human_session_current": True,
+        "human_binding_current": True,
     }
     values.update(changes)
     return ConsoleGrantFacts(**values)
@@ -173,6 +175,8 @@ def test_exact_visible_facts_mint_a_one_use_five_minute_bound_grant() -> None:
         ({"adapter_registered": False}, "console-adapter-unregistered"),
         ({"global_kill_switch_enabled": True}, "console-globally-disabled"),
         ({"session_revoked": True}, "console-session-revoked"),
+        ({"human_session_current": False}, "console-reauthentication-required"),
+        ({"human_binding_current": False}, "console-reauthentication-required"),
         ({"sensitivity_class": "regulated"}, "console-sensitivity-refused"),
         ({"loop_kind": "bh-loop"}, "console-loop-kind-refused"),
     ],

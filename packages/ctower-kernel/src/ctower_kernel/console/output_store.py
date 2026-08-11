@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Literal, cast
@@ -16,6 +16,7 @@ from ctower_kernel.console.models import (
     ConsoleStreamLease,
     StoredConsoleGap,
     StoredConsoleOutput,
+    StreamCloseCode,
 )
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.identifiers import uuid7
@@ -69,8 +70,9 @@ class PostgresConsoleOutputStore:
             ).fetchone()
         return cast(int, row["cursor"]) if row is not None else 0
 
-    def append_output(
+    def append_output_locked(
         self,
+        connection: psycopg.Connection[dict[str, object]],
         allowance_id: UUID,
         tenant_id: UUID,
         source_cursor: int,
@@ -81,44 +83,45 @@ class PostgresConsoleOutputStore:
         decoded_bytes: int,
         now: datetime,
     ) -> int:
-        with _authority_connection(self._dsn) as connection:
-            row = connection.execute(
-                """
-                INSERT INTO console_output_objects (
-                    object_id, tenant_id, allowance_id, source_cursor, source_generation,
-                    ciphertext,
-                    content_nonce, wrapped_data_key, wrapping_nonce,
-                    wrapping_key_reference, data_key_reference, object_sha256,
-                    decoded_bytes, recorded_at
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s
-                )
-                RETURNING cursor
-                """,
-                (
-                    envelope.object_id,
-                    tenant_id,
-                    allowance_id,
-                    source_cursor,
-                    source_generation,
-                    envelope.ciphertext,
-                    envelope.content_nonce,
-                    envelope.wrapped_data_key,
-                    envelope.wrapping_nonce,
-                    envelope.wrapping_key_reference,
-                    envelope.data_key_reference,
-                    object_sha256,
-                    decoded_bytes,
-                    now,
-                ),
-            ).fetchone()
+        row = connection.execute(
+            """
+            INSERT INTO console_output_objects (
+                object_id, tenant_id, allowance_id, source_cursor, source_generation,
+                ciphertext,
+                content_nonce, wrapped_data_key, wrapping_nonce,
+                wrapping_key_reference, data_key_reference, object_sha256,
+                decoded_bytes, recorded_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s
+            )
+            RETURNING cursor
+            """,
+            (
+                envelope.object_id,
+                tenant_id,
+                allowance_id,
+                source_cursor,
+                source_generation,
+                envelope.ciphertext,
+                envelope.content_nonce,
+                envelope.wrapped_data_key,
+                envelope.wrapping_nonce,
+                envelope.wrapping_key_reference,
+                envelope.data_key_reference,
+                object_sha256,
+                decoded_bytes,
+                now,
+            ),
+        ).fetchone()
         if row is None:
             raise RuntimeError("console output insert returned no cursor")
         return cast(int, row["cursor"])
 
     @contextmanager
-    def collection_lock(self, allowance_id: UUID, tenant_id: UUID) -> Iterator[None]:
+    def collection_lock(
+        self, allowance_id: UUID, tenant_id: UUID
+    ) -> Iterator[psycopg.Connection[dict[str, object]]]:
         """Serialize Adapter collection for one exact allowed session across processes."""
 
         with _authority_connection(self._dsn) as connection:
@@ -126,7 +129,7 @@ class PostgresConsoleOutputStore:
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
                 (f"console-collection:{tenant_id}:{allowance_id}",),
             )
-            yield
+            yield connection
 
     def owns_cursor(self, allowance_id: UUID, tenant_id: UUID, cursor: int) -> bool:
         if cursor == 0:
@@ -154,13 +157,18 @@ class PostgresConsoleOutputStore:
         cursor: int,
         access_kind: Literal["open", "reconnect", "replay", "forensic"],
         *,
+        authorize: Callable[[psycopg.Connection[dict[str, object]]], StreamCloseCode | None],
         now: datetime,
         limit: int = 1,
-    ) -> tuple[StoredConsoleOutput | StoredConsoleGap, ...] | RecordProblem:
-        """Record each recovery attempt durably before the custody-role SELECT."""
+    ) -> tuple[StoredConsoleOutput | StoredConsoleGap, ...] | RecordProblem | StreamCloseCode:
+        """Lock authority and record recovery access before the custody-role SELECT."""
 
         try:
+            authorized: list[tuple[dict[str, object], UUID | None]] = []
             with _authority_connection(self._dsn) as connection:
+                close_code = authorize(connection)
+                if close_code is not None:
+                    return close_code
                 metadata = connection.execute(
                     """
                     SELECT cursor, object_id, NULL::bigint AS source_cursor,
@@ -184,7 +192,20 @@ class PostgresConsoleOutputStore:
                         limit,
                     ),
                 ).fetchall()
-            events = [self._recover_event(lease, row, access_kind, now=now) for row in metadata]
+                for row in metadata:
+                    object_id = cast(UUID | None, row["object_id"])
+                    access_id = None if object_id is None else uuid7(now)
+                    if access_id is not None and object_id is not None:
+                        self._record_access_locked(
+                            connection,
+                            access_id,
+                            lease,
+                            object_id,
+                            access_kind,
+                            now=now,
+                        )
+                    authorized.append((row, access_id))
+            events = [self._recover_event(row, access_id, now=now) for row, access_id in authorized]
         except psycopg.Error:
             return RecordProblem(
                 code="console-output-unavailable",
@@ -196,24 +217,21 @@ class PostgresConsoleOutputStore:
 
     def _recover_event(
         self,
-        lease: ConsoleStreamLease,
         row: dict[str, object],
-        access_kind: Literal["open", "reconnect", "replay", "forensic"],
+        access_id: UUID | None,
         *,
         now: datetime,
     ) -> StoredConsoleOutput | StoredConsoleGap:
-        object_id = cast(UUID | None, row["object_id"])
-        if object_id is None:
+        if access_id is None:
             return _stored_gap(row)
-        access_id = uuid7(now)
-        self._record_access(access_id, lease, object_id, access_kind, now=now)
         recovered = self._recover_object(access_id, now=now)
         if recovered is None:
             raise RuntimeError("authorized Console output object disappeared")
         return _stored_output(recovered)
 
-    def _record_access(
+    def _record_access_locked(
         self,
+        connection: psycopg.Connection[dict[str, object]],
         access_id: UUID,
         lease: ConsoleStreamLease,
         object_id: UUID,
@@ -221,25 +239,24 @@ class PostgresConsoleOutputStore:
         *,
         now: datetime,
     ) -> None:
-        with _authority_connection(self._dsn) as connection:
-            connection.execute(
-                """
-                INSERT INTO console_output_access_facts (
-                    access_id, tenant_id, object_id, grant_id, stream_id,
-                    access_kind, outcome, accessed_by, accessed_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, 'authorized', %s, %s)
-                """,
-                (
-                    access_id,
-                    lease.grant.tenant_id,
-                    object_id,
-                    lease.grant.grant_id,
-                    lease.stream_id,
-                    access_kind,
-                    lease.grant.actor_principal_id,
-                    now,
-                ),
-            )
+        connection.execute(
+            """
+            INSERT INTO console_output_access_facts (
+                access_id, tenant_id, object_id, grant_id, stream_id,
+                access_kind, outcome, accessed_by, accessed_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, 'authorized', %s, %s)
+            """,
+            (
+                access_id,
+                lease.grant.tenant_id,
+                object_id,
+                lease.grant.grant_id,
+                lease.stream_id,
+                access_kind,
+                lease.grant.actor_principal_id,
+                now,
+            ),
+        )
 
     def _recover_object(self, access_id: UUID, *, now: datetime) -> dict[str, object] | None:
         with _authority_connection(self._dsn) as connection:
@@ -267,8 +284,9 @@ class PostgresConsoleOutputStore:
         advances_source_position: bool,
         now: datetime,
     ) -> int:
-        with self.collection_lock(allowance_id, tenant_id):
+        with self.collection_lock(allowance_id, tenant_id) as connection:
             return self.record_gap_locked(
+                connection,
                 allowance_id,
                 tenant_id,
                 source_cursor=source_cursor,
@@ -280,6 +298,7 @@ class PostgresConsoleOutputStore:
 
     def record_gap_locked(
         self,
+        connection: psycopg.Connection[dict[str, object]],
         allowance_id: UUID,
         tenant_id: UUID,
         *,
@@ -297,26 +316,25 @@ class PostgresConsoleOutputStore:
     ) -> int:
         """Insert one gap while the caller holds the per-allowance collection lock."""
 
-        with _authority_connection(self._dsn) as connection:
-            row = connection.execute(
-                """
-                INSERT INTO console_output_gap_facts (
-                    gap_id, tenant_id, allowance_id, source_cursor,
-                    source_generation, advances_source_position, reason, recorded_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING cursor
-                """,
-                (
-                    uuid7(now),
-                    tenant_id,
-                    allowance_id,
-                    source_cursor,
-                    source_generation,
-                    advances_source_position,
-                    reason,
-                    now,
-                ),
-            ).fetchone()
+        row = connection.execute(
+            """
+            INSERT INTO console_output_gap_facts (
+                gap_id, tenant_id, allowance_id, source_cursor,
+                source_generation, advances_source_position, reason, recorded_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING cursor
+            """,
+            (
+                uuid7(now),
+                tenant_id,
+                allowance_id,
+                source_cursor,
+                source_generation,
+                advances_source_position,
+                reason,
+                now,
+            ),
+        ).fetchone()
         if row is None:
             raise RuntimeError("console output gap insert returned no cursor")
         return cast(int, row["cursor"])

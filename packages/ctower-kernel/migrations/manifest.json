@@ -2,9 +2,9 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0065_console_view_grants.sql",
-    "schema_sha256": "sha256:4acb4951e4cf5330d871f5b01646a4234d3c829d44b9a51a11239a7130f3f928",
+    "schema_sha256": "sha256:f4045f0b63325a9180d548fcaaddee46fb3e337a24f7ec3cc17edef2c924a9cf",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:6d72f4a75a4852cff2751d35bfabaf56b5dceea487aa3dac1107971d098513f5"
+    "schema_object_sum256": "sum256:546ac002f20bd7858804707aa943232826080d9b497b88fcf9c31d405d666edf"
   },
   "migrations": [
     {
@@ -606,7 +606,7 @@
     },
     {
       "path": "0065_console_view_grants.sql",
-      "sha256": "sha256:e3920804abecc60eb1853867b9489ba47c575543e69882fa1e69c7fef473b776",
+      "sha256": "sha256:64a166620b489dc5d90b00dc3e101b45414719e09a2cd24ff04f878b8de7c59e",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",

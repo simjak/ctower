@@ -45,6 +45,12 @@ switch, assignment, work session, and revocations before it appends the stream c
 grant. A stale assignment, closed work session, replaced runtime, advanced runner epoch, changed `@project`,
 or recreated tmux session fences the reference instead of rebinding it.
 
+The final grant, stream-open, encrypted-output, and custody-access decisions use one database-owned
+anchor-lock primitive. It locks the exact tenant, Actor, human binding/session, target, assignment, work
+session, and allowance in a fixed order and holds those locks through persistence. Authority changes that
+overlap this point must finish entirely before the recheck or after the persisted fact; they cannot commit
+in the handoff gap.
+
 ```text
 operator allowance ------+
 current Record facts -----+--> exact grant decision --> one stream claim

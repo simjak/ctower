@@ -276,6 +276,66 @@ CREATE TABLE console_adapter_observation_facts (
         REFERENCES console_session_allows(allowance_id, tenant_id)
 );
 
+CREATE FUNCTION lock_console_authority_anchors(
+    p_tenant_id uuid,
+    p_actor_principal_id uuid,
+    p_human_binding_id uuid,
+    p_human_session_id uuid,
+    p_allowance_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+    v_target_principal_id uuid;
+    v_assignment_ticket_id uuid;
+    v_assignment_kind text;
+    v_assignment_interval_sequence integer;
+    v_recorded_work_session_id uuid;
+BEGIN
+    PERFORM tenant_id FROM public.tenants
+    WHERE tenant_id = p_tenant_id FOR UPDATE;
+
+    SELECT allowance.seat_principal_id,
+        allowance.assignment_ticket_id,
+        allowance.assignment_kind,
+        allowance.assignment_interval_sequence,
+        allowance.recorded_work_session_id
+    INTO v_target_principal_id, v_assignment_ticket_id, v_assignment_kind,
+        v_assignment_interval_sequence, v_recorded_work_session_id
+    FROM public.console_session_allows AS allowance
+    WHERE allowance.allowance_id = p_allowance_id
+      AND allowance.tenant_id = p_tenant_id;
+    IF NOT FOUND THEN
+        RETURN false;
+    END IF;
+
+    PERFORM principal_id FROM public.principals
+    WHERE tenant_id = p_tenant_id
+      AND principal_id IN (p_actor_principal_id, v_target_principal_id)
+    ORDER BY principal_id FOR UPDATE;
+    PERFORM binding_id FROM public.human_role_bindings
+    WHERE binding_id = p_human_binding_id AND tenant_id = p_tenant_id FOR UPDATE;
+    PERFORM session_id FROM public.human_sessions
+    WHERE session_id = p_human_session_id AND tenant_id = p_tenant_id FOR UPDATE;
+    PERFORM ticket_id FROM public.assignment_intervals
+    WHERE ticket_id = v_assignment_ticket_id
+      AND assignment_kind = v_assignment_kind
+      AND interval_sequence = v_assignment_interval_sequence
+    FOR UPDATE;
+    PERFORM session_id FROM public.ticket_work_sessions
+    WHERE session_id = v_recorded_work_session_id AND tenant_id = p_tenant_id FOR UPDATE;
+    PERFORM allowance_id FROM public.console_session_allows
+    WHERE allowance_id = p_allowance_id AND tenant_id = p_tenant_id FOR UPDATE;
+    RETURN true;
+END
+$function$;
+REVOKE ALL ON FUNCTION lock_console_authority_anchors(uuid, uuid, uuid, uuid, uuid)
+    FROM PUBLIC, ctower_svc, ctower_projection, console_output_reader;
+GRANT EXECUTE ON FUNCTION lock_console_authority_anchors(uuid, uuid, uuid, uuid, uuid)
+    TO ctower_svc;
+
 CREATE TRIGGER console_session_allows_immutable
     BEFORE UPDATE OR DELETE ON console_session_allows
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();

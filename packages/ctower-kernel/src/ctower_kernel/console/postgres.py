@@ -7,7 +7,6 @@ from typing import Literal, cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 
 from ctower_kernel.console._authority_policy import (
     _allow_authority_refusal,
@@ -17,6 +16,20 @@ from ctower_kernel.console._authority_policy import (
     session_join_refusal,
     stream_claim_refusal,
     stream_close_reason,
+)
+from ctower_kernel.console._authority_sql import (
+    allowance_lock as _allowance_lock,
+)
+from ctower_kernel.console._authority_sql import (
+    authority_connection as _authority_connection,
+)
+from ctower_kernel.console._authority_sql import (
+    lock_authority_anchors as _lock_authority_anchors,
+)
+from ctower_kernel.console._authority_sql import record_observation as _record_observation
+from ctower_kernel.console._authority_sql import session_join_row as _session_join_row
+from ctower_kernel.console._authority_sql import (
+    stream_authority_row as _stream_authority_row,
 )
 from ctower_kernel.console._grant_sql import (
     _grant_facts_row,
@@ -35,24 +48,13 @@ from ctower_kernel.console.models import (
     ConsoleSessionRevocation,
     ConsoleStreamLease,
     ConsoleViewGrant,
+    StreamCloseCode,
 )
 from ctower_kernel.console.policy import decide_view_grant, preflight_view_grant
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.identifiers import uuid7
 
 __all__ = ["PostgresConsoleAuthority"]
-
-type StreamCloseCode = Literal[
-    "expired",
-    "revoked",
-    "fenced",
-    "rate_limited",
-    "slow_consumer",
-    "reauthentication_required",
-    "globally_disabled",
-    "output_unavailable",
-    "client_disconnected",
-]
 
 
 class PostgresConsoleAuthority:
@@ -191,6 +193,10 @@ class PostgresConsoleAuthority:
     ) -> ConsoleSessionRef | RecordProblem:
         """Refuse durable grant or stream defects before runtime inspection."""
 
+        if actor.human_session_id is None or actor.human_binding_id is None:
+            return _problem(
+                "console-browser-session-required", "An exact human session is required."
+            )
         if operation == "stream":
             grant = self._claimable_grant(actor, allowance_id, now=now, stream_id=None)
             return grant if isinstance(grant, RecordProblem) else grant.session_ref
@@ -225,6 +231,10 @@ class PostgresConsoleAuthority:
 
         with _authority_connection(self._dsn) as connection:
             _allowance_lock(connection, actor.tenant_id, allowance_id)
+            if not _lock_authority_anchors(connection, actor, allowance_id):
+                return _problem(
+                    "console-session-unavailable", "The console session is unavailable.", 404
+                )
             facts = _grant_facts(
                 connection, actor, allowance_id, observation, now=now, record_observation=True
             )
@@ -418,6 +428,10 @@ class PostgresConsoleAuthority:
                     "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
                     (f"console:{actor.tenant_id}:{actor.principal_id}:{actor.human_session_id}",),
                 )
+                if not _lock_authority_anchors(connection, actor, allowance_id):
+                    return _problem(
+                        "console-session-unavailable", "The console session is unavailable.", 404
+                    )
             active = connection.execute(
                 """
                 SELECT 1
@@ -551,63 +565,29 @@ class PostgresConsoleAuthority:
         self, lease: ConsoleStreamLease, *, now: datetime
     ) -> StreamCloseCode | None:
         with _authority_connection(self._dsn) as connection:
-            row = connection.execute(
-                """
-                SELECT view_grant.expires_at, view_grant.policy_revision,
-                    grant_revocation.grant_id IS NOT NULL AS grant_revoked,
-                    session_revocation.allowance_id IS NOT NULL AS session_revoked,
-                    human_revocation.session_id IS NOT NULL AS human_session_revoked,
-                    binding_revocation.binding_id IS NOT NULL AS binding_revoked,
-                    human_session.expires_at AS human_session_expires_at,
-                    COALESCE((
-                        SELECT enabled FROM console_global_kill_switch_facts
-                        WHERE tenant_id = view_grant.tenant_id
-                        ORDER BY recorded_at DESC, fact_id DESC LIMIT 1
-                    ), false) AS global_enabled,
-                    (
-                        assignment.released_at IS NULL
-                        AND assignment.principal_id = allowance.seat_principal_id
-                    ) AS assignment_current,
-                    (
-                        closure.session_id IS NULL
-                        AND work_session.started_by = allowance.seat_principal_id
-                        AND work_session.project_key = allowance.project_key
-                        AND work_session.crew_name = allowance.crew_name
-                        AND target.kind <> 'commander'
-                        AND NOT target.disabled
-                    ) AS work_session_current
-                FROM console_view_grants AS view_grant
-                JOIN console_session_allows AS allowance
-                  ON allowance.allowance_id = view_grant.allowance_id
-                JOIN human_sessions AS human_session
-                  ON human_session.session_id = view_grant.human_session_id
-                 AND human_session.tenant_id = view_grant.tenant_id
-                JOIN assignment_intervals AS assignment
-                  ON assignment.ticket_id = allowance.assignment_ticket_id
-                 AND assignment.assignment_kind = allowance.assignment_kind
-                 AND assignment.interval_sequence = allowance.assignment_interval_sequence
-                 AND assignment.tenant_id = allowance.tenant_id
-                JOIN ticket_work_sessions AS work_session
-                  ON work_session.session_id = allowance.recorded_work_session_id
-                 AND work_session.tenant_id = allowance.tenant_id
-                JOIN principals AS target
-                  ON target.principal_id = allowance.seat_principal_id
-                 AND target.tenant_id = allowance.tenant_id
-                LEFT JOIN ticket_work_session_closures AS closure
-                  ON closure.session_id = work_session.session_id
-                 AND closure.tenant_id = work_session.tenant_id
-                LEFT JOIN console_view_grant_revocations AS grant_revocation
-                  ON grant_revocation.grant_id = view_grant.grant_id
-                LEFT JOIN console_session_revocations AS session_revocation
-                  ON session_revocation.allowance_id = allowance.allowance_id
-                LEFT JOIN human_session_revocations AS human_revocation
-                  ON human_revocation.session_id = view_grant.human_session_id
-                LEFT JOIN human_role_binding_revocations AS binding_revocation
-                  ON binding_revocation.binding_id = view_grant.human_binding_id
-                WHERE view_grant.grant_id = %s AND view_grant.tenant_id = %s
-                """,
-                (lease.grant.grant_id, lease.grant.tenant_id),
-            ).fetchone()
+            row = _stream_authority_row(connection, lease)
+        return cast(StreamCloseCode | None, stream_close_reason(row, self.policy, now=now))
+
+    def lock_stream_write_authority(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        lease: ConsoleStreamLease,
+        *,
+        now: datetime,
+    ) -> StreamCloseCode | None:
+        """Lock every mutable authority anchor through one output persistence commit."""
+
+        actor = Actor(
+            principal_id=lease.grant.actor_principal_id,
+            tenant_id=lease.grant.tenant_id,
+            kind=PrincipalKind.VIEWER,
+            project_grants=frozenset({lease.grant.project_key}),
+            human_binding_id=lease.grant.human_binding_id,
+            human_session_id=lease.grant.human_session_id,
+        )
+        if not _lock_authority_anchors(connection, actor, lease.grant.allowance_id):
+            return "revoked"
+        row = _stream_authority_row(connection, lease)
         return cast(StreamCloseCode | None, stream_close_reason(row, self.policy, now=now))
 
     def close_stream(
@@ -628,23 +608,6 @@ class PostgresConsoleAuthority:
                 """,
                 (lease.stream_id, lease.grant.tenant_id, code, gap_required, now),
             )
-
-
-def _authority_connection(
-    dsn: str,
-) -> psycopg.Connection[dict[str, object]]:
-    connection = psycopg.connect(dsn, row_factory=dict_row)
-    connection.execute("SET ROLE ctower_svc")
-    return connection
-
-
-def _allowance_lock(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, allowance_id: UUID
-) -> None:
-    connection.execute(
-        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-        (f"console-allowance:{tenant_id}:{allowance_id}",),
-    )
 
 
 def _grant_facts(
@@ -690,6 +653,8 @@ def _grant_facts(
         observed_backend_incarnation=observation.backend_incarnation,
         session_revoked=not bool(row["allowlist_active"]),
         suspended_until=cast(datetime | None, row["suspended_until"]),
+        human_session_current=bool(row["human_session_current"]),
+        human_binding_current=bool(row["human_binding_current"]),
     )
 
 
@@ -698,41 +663,6 @@ def _previous_grant(
 ) -> ConsoleViewGrant | None:
     row = _previous_grant_row(connection, actor, allowance_id)
     return None if row is None else _grant_from_row(row)
-
-
-def _session_join_row(
-    connection: psycopg.Connection[dict[str, object]], ref: ConsoleSessionRef
-) -> dict[str, object] | None:
-    return connection.execute(
-        """
-        SELECT session.project_key, session.crew_name, session.started_by, target.kind,
-            target.disabled,
-            assignment.principal_id, assignment.released_at,
-            closure.session_id IS NOT NULL AS closed
-        FROM ticket_work_sessions AS session
-        JOIN assignment_intervals AS assignment
-          ON assignment.ticket_id = %s
-         AND assignment.assignment_kind = %s
-         AND assignment.interval_sequence = %s
-         AND assignment.tenant_id = session.tenant_id
-        JOIN principals AS target
-          ON target.principal_id = session.started_by
-         AND target.tenant_id = session.tenant_id
-        LEFT JOIN ticket_work_session_closures AS closure
-          ON closure.session_id = session.session_id
-         AND closure.tenant_id = session.tenant_id
-        WHERE session.session_id = %s AND session.tenant_id = %s
-          AND session.ticket_id = %s
-        """,
-        (
-            ref.assignment_ticket_id,
-            ref.assignment_kind,
-            ref.assignment_interval_sequence,
-            ref.recorded_work_session_id,
-            ref.tenant_id,
-            ref.assignment_ticket_id,
-        ),
-    ).fetchone()
 
 
 def _insert_allowance(
@@ -787,37 +717,6 @@ def _insert_allowance(
             409,
         )
     return None
-
-
-def _record_observation(
-    connection: psycopg.Connection[dict[str, object]],
-    allowance_id: UUID,
-    tenant_id: UUID,
-    observation: ConsoleBackendObservation,
-    outcome: Literal["matched", "fenced", "unavailable"],
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO console_adapter_observation_facts (
-            observation_id, tenant_id, allowance_id, project_key,
-            runtime_attempt_id, runner_id, runner_epoch, backend_incarnation,
-            outcome, observed_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-        (
-            uuid7(now),
-            tenant_id,
-            allowance_id,
-            observation.project_key,
-            observation.runtime_attempt_id,
-            observation.runner_id,
-            observation.runner_epoch,
-            observation.backend_incarnation,
-            outcome,
-            now,
-        ),
-    )
 
 
 def _ref_from_row(row: dict[str, object]) -> ConsoleSessionRef:
