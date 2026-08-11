@@ -2375,7 +2375,10 @@ the same registry, ledger, and operator answer read.
    declared path. Secret VALUES never enter tower records, logs, events, or fixtures — the tower holds
    references and states. An incomplete credential is a typed named fact (`credential-incomplete`
    naming the account and field), never an exception surfaced as a status, and never a silent skip: a
-   pool whose usable-account count is below its declared count reports that BEFORE the next cap.
+   pool whose usable-account count is below its declared count reports that BEFORE the next cap. Discovery pages
+   EXACTLY ONCE and the incompleteness persists as a standing typed fact — a probe that cannot run must not crash-loop
+   its executor or re-page every cycle. A unit exiting non-zero every run for hours while nothing reports it is the
+   same fail-silent class the health sweep killed, wearing different clothes.
 4. **Rotation is policy over measurement, and restores.** Rotation selects a target by the (harness,
    account, model) the seat actually runs; it never rotates on a window that self-clears cheaper than
    the restart it would cause (D57's spawn cost rule). When a seat is moved to a fallback model to
