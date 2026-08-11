@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/simjak/ctower/compare/v0.26.0...v0.27.0) (2026-08-11)
+
+
+### Features
+
+* add GitHub App issue connector ([#434](https://github.com/simjak/ctower/issues/434)) ([9256541](https://github.com/simjak/ctower/commit/925654157b12aa95f233d3d3a585a3a47f3a361f))
+
 ## [0.26.0](https://github.com/simjak/ctower/compare/v0.25.0...v0.26.0) (2026-08-11)
 
 
