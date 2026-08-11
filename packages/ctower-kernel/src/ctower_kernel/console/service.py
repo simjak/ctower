@@ -9,14 +9,13 @@ import time
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 from uuid import UUID
 
 from ctower_kernel.console.cipher import AesGcmConsoleCipher
 from ctower_kernel.console.models import (
     ConsoleBackendObservation,
     ConsoleGlobalSwitchCommand,
-    ConsoleGrantFacts,
     ConsoleGrantIdentifiers,
     ConsoleOutputBatch,
     ConsoleSessionAllowance,
@@ -32,7 +31,6 @@ from ctower_kernel.console.output_store import PostgresConsoleOutputStore
 from ctower_kernel.console.policy import (
     ConsoleStreamWindow,
     StreamDisposition,
-    decide_view_grant,
 )
 from ctower_kernel.console.postgres import PostgresConsoleAuthority, StreamCloseCode
 from ctower_kernel.console.stream import ConsoleEventStream, _drain_events, _TransportRequests
@@ -129,52 +127,26 @@ class ConsoleViewer:
     def mint_grant(
         self, actor: Actor, allowance_id: UUID, *, renewal: bool = False
     ) -> ConsoleViewGrant | RecordProblem:
-        with self._authority.grant_decision_lock(actor, allowance_id):
-            now = self._clock()
-            facts = self._grant_facts_for_decision(actor, allowance_id, now=now)
-            if isinstance(facts, RecordProblem):
-                return facts
-            previous = self._authority.previous_grant(actor, allowance_id)
-            if renewal and previous is None:
-                problem = _problem(
-                    "console-renewal-unavailable", "There is no prior grant to renew.", 401
-                )
-                self._authority.record_denial(actor, allowance_id, problem.code, now=now)
-                return problem
-            outcome = decide_view_grant(
-                facts,
-                ConsoleGrantIdentifiers(grant_id=uuid7(now), nonce=uuid7(now)),
-                policy=self._authority.policy,
-                now=now,
-                previous_grant=previous if renewal else None,
-            )
-            if isinstance(outcome, RecordProblem):
-                self._authority.record_denial(actor, allowance_id, outcome.code, now=now)
-                return outcome
-            if not renewal and previous is not None and previous.expires_at > now:
-                return _problem(
-                    "console-grant-already-current",
-                    "A current grant already exists; renew it explicitly.",
-                    409,
-                )
-            self._authority.persist_grant(outcome, now=now)
-            return outcome
-
-    def _grant_facts_for_decision(
-        self,
-        actor: Actor,
-        allowance_id: UUID,
-        *,
-        now: datetime,
-    ) -> ConsoleGrantFacts | RecordProblem:
+        now = self._clock()
         ref = self._authority.preflight_access(actor, allowance_id, operation="grant", now=now)
         if isinstance(ref, RecordProblem):
+            self._authority.record_denial(actor, allowance_id, ref.code, now=now)
             return ref
         observation = self._adapter.inspect(ref)
         if isinstance(observation, RecordProblem):
             self._authority.record_denial(actor, allowance_id, observation.code, now=now)
             return observation
-        return self._authority.grant_facts(actor, allowance_id, observation, now=now)
+        outcome = self._authority.decide_grant(
+            actor,
+            allowance_id,
+            observation,
+            identifiers=ConsoleGrantIdentifiers(grant_id=uuid7(now), nonce=uuid7(now)),
+            renewal=renewal,
+            now=now,
+        )
+        if isinstance(outcome, RecordProblem) and outcome.code != "console-grant-already-current":
+            self._authority.record_denial(actor, allowance_id, outcome.code, now=now)
+        return outcome
 
     def revoke_session(
         self, actor: Actor, command: ConsoleSessionRevocation
@@ -424,24 +396,22 @@ class ConsoleViewer:
         transport_requests: _TransportRequests,
     ) -> Generator[bytes, None, bool]:
         with self._output_store.collection_lock(lease.grant.allowance_id, lease.grant.tenant_id):
-            source_cursor, source_generation = self._output_store.latest_source_position(
-                lease.grant.allowance_id, lease.grant.tenant_id
-            )
-            if (source_cursor, source_generation) != (
-                state.source_cursor,
-                state.source_generation,
-            ):
-                state.source_cursor = source_cursor
-                state.source_generation = source_generation
+            if self._refresh_source_position(lease, state):
                 return False
             batch = self._adapter.read(
                 ref,
                 after_cursor=state.source_cursor,
                 maximum_bytes=self._authority.policy.decoded_chunk_bytes,
             )
-            if isinstance(batch, RecordProblem):
-                state.close_code = "fenced"
+            close_reason = (
+                "fenced"
+                if isinstance(batch, RecordProblem)
+                else self._active_close_reason(lease, ref)
+            )
+            if close_reason is not None:
+                state.close_code = close_reason
                 return True
+            batch = cast(ConsoleOutputBatch, batch)
             if batch.gap:
                 reason = _gap_reason(batch.gap_reason)
                 state.source_generation += 1
@@ -482,6 +452,15 @@ class ConsoleViewer:
             self._persist_batch(lease, batch, source_generation=state.source_generation)
             state.source_cursor = batch.source_cursor
         return False
+
+    def _refresh_source_position(self, lease: ConsoleStreamLease, state: _StreamState) -> bool:
+        position = self._output_store.latest_source_position(
+            lease.grant.allowance_id, lease.grant.tenant_id
+        )
+        if position == (state.source_cursor, state.source_generation):
+            return False
+        state.source_cursor, state.source_generation = position
+        return True
 
     def _sleep_to_next_authority_check(
         self, lease: ConsoleStreamLease, transport_requests: _TransportRequests

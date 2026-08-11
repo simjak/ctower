@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Literal, cast
 from uuid import UUID
@@ -20,10 +18,16 @@ from ctower_kernel.console._authority_policy import (
     stream_claim_refusal,
     stream_close_reason,
 )
+from ctower_kernel.console._grant_sql import (
+    _grant_facts_row,
+    _insert_grant,
+    _previous_grant_row,
+)
 from ctower_kernel.console.models import (
     ConsoleBackendObservation,
     ConsoleGlobalSwitchCommand,
     ConsoleGrantFacts,
+    ConsoleGrantIdentifiers,
     ConsolePolicy,
     ConsoleSessionAllowance,
     ConsoleSessionAllowCommand,
@@ -32,7 +36,7 @@ from ctower_kernel.console.models import (
     ConsoleStreamLease,
     ConsoleViewGrant,
 )
-from ctower_kernel.console.policy import preflight_view_grant
+from ctower_kernel.console.policy import decide_view_grant, preflight_view_grant
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.identifiers import uuid7
 
@@ -57,23 +61,6 @@ class PostgresConsoleAuthority:
     def __init__(self, dsn: str, *, policy: ConsolePolicy) -> None:
         self._dsn = dsn
         self.policy = policy
-
-    @contextmanager
-    def grant_decision_lock(self, actor: Actor, allowance_id: UUID) -> Iterator[None]:
-        """Serialize mint and renewal decisions for one Actor/session/allowance chain."""
-
-        if actor.human_session_id is None:
-            yield
-            return
-        with _authority_connection(self._dsn) as connection:
-            connection.execute(
-                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                (
-                    f"console-grant:{actor.tenant_id}:{actor.principal_id}:"
-                    f"{actor.human_session_id}:{allowance_id}",
-                ),
-            )
-            yield
 
     def allow_session(
         self,
@@ -210,172 +197,61 @@ class PostgresConsoleAuthority:
         ref = self.session_ref(actor, allowance_id)
         if isinstance(ref, RecordProblem):
             return ref
-        facts = self.grant_facts(
-            actor,
-            allowance_id,
-            _observation_from_ref(ref),
-            now=now,
-            record_observation=False,
-        )
+        with _authority_connection(self._dsn) as connection:
+            facts = _grant_facts(
+                connection,
+                actor,
+                allowance_id,
+                _observation_from_ref(ref),
+                now=now,
+                record_observation=False,
+            )
         if isinstance(facts, RecordProblem):
             return facts
         refusal = preflight_view_grant(facts, now=now)
         return refusal if refusal is not None else ref
 
-    def grant_facts(
+    def decide_grant(
         self,
         actor: Actor,
         allowance_id: UUID,
         observation: ConsoleBackendObservation,
         *,
+        identifiers: ConsoleGrantIdentifiers,
+        renewal: bool,
         now: datetime,
-        record_observation: bool = True,
-    ) -> ConsoleGrantFacts | RecordProblem:
-        with _authority_connection(self._dsn) as connection:
-            row = connection.execute(
-                """
-                SELECT allowance.*,
-                    revocation.allowance_id IS NULL AS allowlist_active,
-                    assignment.released_at IS NULL AS assignment_current,
-                    (
-                        assignment.principal_id = allowance.seat_principal_id
-                        AND session.started_by = allowance.seat_principal_id
-                        AND session.project_key = allowance.project_key
-                        AND session.crew_name = allowance.crew_name
-                        AND target.kind <> 'commander'
-                        AND NOT target.disabled
-                        AND closure.session_id IS NULL
-                    ) AS session_join_current,
-                    COALESCE((
-                        SELECT enabled FROM console_global_kill_switch_facts
-                        WHERE tenant_id = allowance.tenant_id
-                        ORDER BY recorded_at DESC, fact_id DESC LIMIT 1
-                    ), false) AS global_enabled,
-                    (
-                        SELECT max(expires_at) FROM console_view_suspensions
-                        WHERE tenant_id = allowance.tenant_id
-                          AND actor_principal_id = %s
-                          AND expires_at > %s
-                    ) AS suspended_until
-                FROM console_session_allows AS allowance
-                JOIN assignment_intervals AS assignment
-                  ON assignment.ticket_id = allowance.assignment_ticket_id
-                 AND assignment.assignment_kind = allowance.assignment_kind
-                 AND assignment.interval_sequence = allowance.assignment_interval_sequence
-                JOIN ticket_work_sessions AS session
-                  ON session.session_id = allowance.recorded_work_session_id
-                 AND session.tenant_id = allowance.tenant_id
-                JOIN principals AS target
-                  ON target.principal_id = allowance.seat_principal_id
-                 AND target.tenant_id = allowance.tenant_id
-                LEFT JOIN ticket_work_session_closures AS closure
-                  ON closure.session_id = session.session_id
-                 AND closure.tenant_id = session.tenant_id
-                LEFT JOIN console_session_revocations AS revocation
-                  ON revocation.allowance_id = allowance.allowance_id
-                WHERE allowance.allowance_id = %s AND allowance.tenant_id = %s
-                """,
-                (
-                    actor.principal_id,
-                    now,
-                    allowance_id,
-                    actor.tenant_id,
-                ),
-            ).fetchone()
-            if row is not None and record_observation:
-                _record_observation(
-                    connection,
-                    allowance_id,
-                    actor.tenant_id,
-                    observation,
-                    "matched"
-                    if _observation_refusal(_ref_from_row(row), observation) is None
-                    else "fenced",
-                    now,
-                )
-        if row is None:
-            return _problem(
-                "console-session-unavailable", "The console session is unavailable.", 404
-            )
-        ref = _ref_from_row(row)
-        return ConsoleGrantFacts(
-            actor=actor,
-            allowance_id=allowance_id,
-            session_ref=ref,
-            allowlist_active=bool(row["allowlist_active"]),
-            assignment_current=bool(row["assignment_current"]),
-            session_join_current=bool(row["session_join_current"]),
-            adapter_registered=True,
-            global_kill_switch_enabled=bool(row["global_enabled"]),
-            sensitivity_class=str(row["sensitivity_class"]),
-            loop_kind=str(row["loop_kind"]),
-            observed_project_key=observation.project_key,
-            observed_runtime_attempt_id=observation.runtime_attempt_id,
-            observed_runner_id=observation.runner_id,
-            observed_runner_epoch=observation.runner_epoch,
-            observed_backend_ref=observation.opaque_backend_ref,
-            observed_backend_incarnation=observation.backend_incarnation,
-            session_revoked=not bool(row["allowlist_active"]),
-            suspended_until=cast(datetime | None, row["suspended_until"]),
-        )
+    ) -> ConsoleViewGrant | RecordProblem:
+        """Atomically recheck authority, decide, and persist one grant."""
 
-    def previous_grant(self, actor: Actor, allowance_id: UUID) -> ConsoleViewGrant | None:
         with _authority_connection(self._dsn) as connection:
-            row = connection.execute(
-                """
-                SELECT view_grant.*, allowance.*
-                FROM console_view_grants AS view_grant
-                JOIN console_session_allows AS allowance
-                  ON allowance.allowance_id = view_grant.allowance_id
-                 AND allowance.tenant_id = view_grant.tenant_id
-                WHERE view_grant.tenant_id = %s
-                  AND view_grant.actor_principal_id = %s
-                  AND view_grant.human_session_id = %s
-                  AND view_grant.allowance_id = %s
-                ORDER BY view_grant.grant_sequence DESC LIMIT 1
-                """,
-                (
-                    actor.tenant_id,
-                    actor.principal_id,
-                    actor.human_session_id,
-                    allowance_id,
-                ),
-            ).fetchone()
-        return None if row is None else _grant_from_row(row)
-
-    def persist_grant(self, grant: ConsoleViewGrant, *, now: datetime) -> None:
-        with _authority_connection(self._dsn) as connection:
-            connection.execute(
-                """
-                INSERT INTO console_view_grants (
-                    grant_id, tenant_id, project_key, actor_principal_id,
-                    human_binding_id, human_session_id, allowance_id, policy_revision,
-                    issuer, not_before, expires_at, maximum_uses, nonce,
-                    continuous_view_started_at, renewed_from_grant_id, granted_at
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s
-                )
-                """,
-                (
-                    grant.grant_id,
-                    grant.tenant_id,
-                    grant.project_key,
-                    grant.actor_principal_id,
-                    grant.human_binding_id,
-                    grant.human_session_id,
-                    grant.allowance_id,
-                    grant.policy_revision,
-                    grant.issuer,
-                    grant.not_before,
-                    grant.expires_at,
-                    grant.maximum_uses,
-                    grant.nonce,
-                    grant.continuous_view_started_at,
-                    grant.renewed_from_grant_id,
-                    now,
-                ),
+            _allowance_lock(connection, actor.tenant_id, allowance_id)
+            facts = _grant_facts(
+                connection, actor, allowance_id, observation, now=now, record_observation=True
             )
+            if isinstance(facts, RecordProblem):
+                return facts
+            previous = _previous_grant(connection, actor, allowance_id)
+            if renewal and previous is None:
+                return _problem(
+                    "console-renewal-unavailable", "There is no prior grant to renew.", 401
+                )
+            outcome = decide_view_grant(
+                facts,
+                identifiers,
+                policy=self.policy,
+                now=now,
+                previous_grant=previous if renewal else None,
+            )
+            if isinstance(outcome, RecordProblem):
+                return outcome
+            if not renewal and previous is not None and previous.expires_at > now:
+                return _problem(
+                    "console-grant-already-current",
+                    "A current grant already exists; renew it explicitly.",
+                    409,
+                )
+            _insert_grant(connection, outcome, now=now)
+        return outcome
 
     def record_denial(
         self, actor: Actor, allowance_id: UUID | None, code: str, *, now: datetime
@@ -385,13 +261,36 @@ class PostgresConsoleAuthority:
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
                 (f"console-denial:{actor.tenant_id}:{actor.principal_id}",),
             )
+            active = connection.execute(
+                """
+                SELECT 1 FROM console_view_suspensions
+                WHERE tenant_id = %s AND actor_principal_id = %s AND expires_at > %s
+                """,
+                (actor.tenant_id, actor.principal_id, now),
+            ).fetchone()
+            if active is not None:
+                return
+            safe_allowance = connection.execute(
+                """
+                SELECT allowance_id FROM console_session_allows
+                WHERE allowance_id = %s AND tenant_id = %s
+                """,
+                (allowance_id, actor.tenant_id),
+            ).fetchone()
             connection.execute(
                 """
                 INSERT INTO console_view_denials (
                     denial_id, tenant_id, actor_principal_id, allowance_id, code, denied_at
                 ) VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                (uuid7(now), actor.tenant_id, actor.principal_id, allowance_id, code, now),
+                (
+                    uuid7(now),
+                    actor.tenant_id,
+                    actor.principal_id,
+                    None if safe_allowance is None else allowance_id,
+                    code,
+                    now,
+                ),
             )
             row = connection.execute(
                 """
@@ -405,15 +304,8 @@ class PostgresConsoleAuthority:
                     now - timedelta(seconds=self.policy.denial_window_seconds),
                 ),
             ).fetchone()
-            active = connection.execute(
-                """
-                SELECT 1 FROM console_view_suspensions
-                WHERE tenant_id = %s AND actor_principal_id = %s AND expires_at > %s
-                """,
-                (actor.tenant_id, actor.principal_id, now),
-            ).fetchone()
             denial_count = 0 if row is None else cast(int, row["denial_count"])
-            if denial_count >= self.policy.denial_limit and active is None:
+            if denial_count >= self.policy.denial_limit:
                 connection.execute(
                     """
                     INSERT INTO console_view_suspensions (
@@ -440,6 +332,7 @@ class PostgresConsoleAuthority:
                 "console-revocation-refused", "Console revocation requires operator authority."
             )
         with _authority_connection(self._dsn) as connection:
+            _allowance_lock(connection, actor.tenant_id, command.allowance_id)
             row = connection.execute(
                 "SELECT 1 FROM console_session_allows WHERE allowance_id = %s AND tenant_id = %s",
                 (command.allowance_id, actor.tenant_id),
@@ -520,6 +413,7 @@ class PostgresConsoleAuthority:
             )
         with _authority_connection(self._dsn) as connection:
             if stream_id is not None:
+                _allowance_lock(connection, actor.tenant_id, allowance_id)
                 connection.execute(
                     "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
                     (f"console:{actor.tenant_id}:{actor.principal_id}:{actor.human_session_id}",),
@@ -742,6 +636,68 @@ def _authority_connection(
     connection = psycopg.connect(dsn, row_factory=dict_row)
     connection.execute("SET ROLE ctower_svc")
     return connection
+
+
+def _allowance_lock(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, allowance_id: UUID
+) -> None:
+    connection.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+        (f"console-allowance:{tenant_id}:{allowance_id}",),
+    )
+
+
+def _grant_facts(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    allowance_id: UUID,
+    observation: ConsoleBackendObservation,
+    *,
+    now: datetime,
+    record_observation: bool,
+) -> ConsoleGrantFacts | RecordProblem:
+    row = _grant_facts_row(connection, actor, allowance_id, now=now)
+    if row is not None and record_observation:
+        _record_observation(
+            connection,
+            allowance_id,
+            actor.tenant_id,
+            observation,
+            "matched"
+            if _observation_refusal(_ref_from_row(row), observation) is None
+            else "fenced",
+            now,
+        )
+    if row is None:
+        return _problem("console-session-unavailable", "The console session is unavailable.", 404)
+    ref = _ref_from_row(row)
+    return ConsoleGrantFacts(
+        actor=actor,
+        allowance_id=allowance_id,
+        session_ref=ref,
+        allowlist_active=bool(row["allowlist_active"]),
+        assignment_current=bool(row["assignment_current"]),
+        session_join_current=bool(row["session_join_current"]),
+        adapter_registered=True,
+        global_kill_switch_enabled=bool(row["global_enabled"]),
+        sensitivity_class=str(row["sensitivity_class"]),
+        loop_kind=str(row["loop_kind"]),
+        observed_project_key=observation.project_key,
+        observed_runtime_attempt_id=observation.runtime_attempt_id,
+        observed_runner_id=observation.runner_id,
+        observed_runner_epoch=observation.runner_epoch,
+        observed_backend_ref=observation.opaque_backend_ref,
+        observed_backend_incarnation=observation.backend_incarnation,
+        session_revoked=not bool(row["allowlist_active"]),
+        suspended_until=cast(datetime | None, row["suspended_until"]),
+    )
+
+
+def _previous_grant(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, allowance_id: UUID
+) -> ConsoleViewGrant | None:
+    row = _previous_grant_row(connection, actor, allowance_id)
+    return None if row is None else _grant_from_row(row)
 
 
 def _session_join_row(
