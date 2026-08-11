@@ -24,7 +24,7 @@ Use Docker Compose only to run the documented repository acceptance tests. Do no
 credentials, or real work into their fixture database. For current health vocabulary and redaction rules,
 see [Observability](observability.md) and [Secret handling](../security/secret-handling.md).
 
-CT-I1-020 also defines a verifier-owned private Console shadow proof. It may bind an exact candidate only to
+CT-I1-021 also defines a verifier-owned private Console shadow proof. It may bind an exact candidate only to
 a literal loopback or Tailscale address, against disposable PostgreSQL and one registered existing tmux/log
 target, by following the [Phase-1 Console procedure](console-viewer.md). That proof is not a supported
 deployment, must retain no raw terminal output or credentials, and gives the older direct terminal reader no

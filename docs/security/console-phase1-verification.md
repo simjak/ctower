@@ -1,6 +1,6 @@
 # Console Phase-1 security verification
 
-This page defines the evidence boundary for CT-I1-020. It covers only the read-only viewer server foundation.
+This page defines the evidence boundary for CT-I1-021. It covers only the read-only viewer server foundation.
 It does not approve a browser renderer, terminal input, public exposure, or a production authority epoch.
 
 ## Security claim
@@ -94,7 +94,7 @@ a literal private bind. The proof must show:
 The Phase-1 output stream is one-way. Output bytes, SSE IDs, reconnect cursors, URLs, and browser state cannot
 be interpreted as terminal commands. The Q3 typed-input verdict remains mandatory for Phase 2 and must be
 implemented through its durable command, exact-byte custody, final-admission, race, and containment controls.
-CT-I1-020 satisfies only the Q3 prerequisite that a proven Phase-1 viewer foundation exist; it activates no
+CT-I1-021 satisfies only the Q3 prerequisite that a proven Phase-1 viewer foundation exist; it activates no
 typing route or grant.
 
 ## Related material

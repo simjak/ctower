@@ -104,6 +104,8 @@ async def _fail_first_body_send(stream: ConsoleEventStream) -> float:
 
     async def send(message: dict[str, object]) -> None:
         if message.get("type") == "http.response.body" and message.get("body"):
+            # Let the producer enter its next synchronous read before the peer drops.
+            await asyncio.sleep(0.05)
             raise OSError("peer disconnected")
 
     started = time.monotonic()

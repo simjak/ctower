@@ -269,6 +269,15 @@
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
+    "AC-GH-01": [
+      "contracts/components/integration-v3.schema.json"
+    ],
+    "AC-GH-02": [
+      "contracts/components/integration-v3.schema.json"
+    ],
+    "AC-GH-03": [
+      "contracts/components/integration-v3.schema.json"
+    ],
     "AC-GL-01": [
       "contracts/components/integration-v2.schema.json",
       "contracts/domain/integrations/gitlab-issue-sync.schema.json",
@@ -1004,6 +1013,7 @@
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
       "contracts/components/integration-v2.schema.json",
+      "contracts/components/integration-v3.schema.json",
       "contracts/components/integration.schema.json",
       "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",
@@ -1617,6 +1627,7 @@
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
       "contracts/components/integration-v2.schema.json",
+      "contracts/components/integration-v3.schema.json",
       "contracts/components/integration.schema.json",
       "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",

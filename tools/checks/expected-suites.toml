@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-020"
+active_phase = "CT-I1-021"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -27,6 +27,7 @@ phase_order = [
   "CT-I1-018",
   "CT-I1-019",
   "CT-I1-020",
+  "CT-I1-021",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -94,8 +95,8 @@ timeout_seconds = 120
 
 [[suite]]
 id = "console-phase1-contracts"
-owner = "CT-I1-020"
-phase = "CT-I1-020"
+owner = "CT-I1-021"
+phase = "CT-I1-021"
 status = "required"
 path = "tests/contracts/console"
 patterns = ["test_*.py"]
@@ -154,8 +155,8 @@ timeout_seconds = 300
 
 [[suite]]
 id = "console-phase1-module"
-owner = "CT-I1-020"
-phase = "CT-I1-020"
+owner = "CT-I1-021"
+phase = "CT-I1-021"
 status = "required"
 path = "tests/modules/console"
 patterns = ["test_*.py"]
@@ -164,8 +165,8 @@ timeout_seconds = 300
 
 [[suite]]
 id = "console-phase1-acceptance"
-owner = "CT-I1-020"
-phase = "CT-I1-020"
+owner = "CT-I1-021"
+phase = "CT-I1-021"
 status = "required"
 path = "tests/acceptance/increment-1"
 patterns = [
@@ -724,6 +725,34 @@ command = [
   "tests/acceptance/increment-1/test_connector_registration_isolation.py",
   "-q",
 ]
+timeout_seconds = 900
+
+[[suite]]
+id = "github-connector-controls"
+owner = "CT-I1-020"
+phase = "CT-I1-020"
+status = "required"
+path = "tests/modules/integrations"
+patterns = ["test_github_*.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/modules/integrations/test_github_security_controls.py",
+  "tests/modules/integrations/test_github_issue_semantics.py",
+  "tests/modules/integrations/test_github_connector_conformance.py",
+  "-q",
+]
+timeout_seconds = 300
+
+[[suite]]
+id = "github-connector-acceptance"
+owner = "CT-I1-020"
+phase = "CT-I1-020"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_connector_github_integration.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_connector_github_integration.py", "-q"]
 timeout_seconds = 900
 
 [[suite]]

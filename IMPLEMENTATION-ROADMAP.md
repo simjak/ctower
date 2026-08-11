@@ -66,7 +66,9 @@ INCREMENT 1 — durable task-management dogfood
               |
  [CT-I1-019: five immutable fleet-beat routines + external DIRECTOR ledger]
               |
- [CT-I1-020: contextual Console viewer server foundation]
+ [CT-I1-020: narrow GitHub Issues connector]
+              |
+ [CT-I1-021: contextual Console viewer server foundation]
               |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
@@ -474,16 +476,31 @@ prompt through the consumer into DIRECTOR; a replay records zero injection; the 
 schedule proof, fallback recommendation, same-candidate docs, full release gate, and Director receipt
 confirmation are recorded.
 
-### I1.14 — Contextual Console viewer server foundation
+### I1.14 — GitHub Issues connector
 
 **Stable work:** `CT-I1-020`.
 
-After CT-I1-019, incorporate only the Phase-1 server foundation from the approved Console source. Add one
-operator-authored allowance over the exact current Project, non-Commander seat/crew engagement, assignment
-interval, recorded work session, runtime attempt, runner/epoch, registered backend, live tmux `@project`,
-and incarnation. The control plane then mints a one-use human-binding/browser-session `ConsoleViewGrant`
-for at most five minutes, re-evaluates every fact on renewal, and limits one continuous view to thirty
-minutes.
+Add GitHub Issues as the second provider through the frozen Phase-1 connector seam. The API composition
+path keeps the App private key reference-only, signs App JWTs server-side, mints and refreshes one
+repository-selected least-privilege installation token, pins egress to `api.github.com:443`, and supports
+key rotation and fail-closed revocation. Provider code owns strict issue mapping, immutable repository-ID
+identity, pull-request exclusion, equal-timestamp tie-breaking, and replay-safe proof-gated close.
+
+**Exit:** AC-GH-01..08 and GH-C01..C08 pass through the unchanged shared conformance suite and a real
+PostgreSQL + MockTransport issue-to-ticket-to-proof-close transcript; the Phase-1 freeze set has an empty
+diff; the full release gate is green on the exact candidate; Commander-dispatched CSO exact-head
+re-verification passes before independent judgment review.
+
+### I1.15 — Contextual Console viewer server foundation
+
+**Stable work:** `CT-I1-021`.
+
+After CT-I1-019 and CT-I1-020, incorporate only the Phase-1 server foundation from the approved Console
+source. Add one operator-authored allowance over the exact current Project, non-Commander seat/crew
+engagement, assignment interval, recorded work session, runtime attempt, runner/epoch, registered backend,
+live tmux `@project`, and incarnation. The control plane then mints a one-use human-binding/browser-session
+`ConsoleViewGrant` for at most five minutes, re-evaluates every fact on renewal, and limits one continuous
+view to thirty minutes.
 
 The browser routes reuse CT-I1-013's secure human session and require the exact configured private Origin
 plus CSRF equality across header, cookie, and persisted digest. The credential-free SSE path commits each

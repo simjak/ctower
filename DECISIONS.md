@@ -2142,10 +2142,39 @@ Rejected alternative:
 
 - Shifting the two schedules to fixed UTC hours. That reproduces the intended EEST instants only until the
   next DST transition and silently moves the operator's civil-time schedule by one hour in winter.
-## D54 — Console Phase 1 is an exact-grant, bounded, private viewer server foundation (engineering, 2026-08-11, issue #437)
+## D54 — GitHub Issues is the second narrow connector through the frozen Phase-1 seam (engineering, 2026-08-10, issue #429)
+
+This decision supersedes only D39's GitLab-only provider scope and D43's deferral of GitHub product behavior.
+D39's narrow issue-to-ticket/proof-close behavior and D43's provider-neutral authority split remain binding.
+
+1. One statically registered GitHub Issues provider may poll one selected repository through the unchanged
+   two-method connector Interface. The kernel authority, persistence schema, control worker, and shared
+   conformance harness remain frozen; no webhook, pull request, dynamic provider, or public connector surface
+   is authorized.
+2. Catalog holds only a deployment private-key reference and non-secret App, installation, repository, and
+   binding-revision identifiers. The trusted API composition path resolves the key only while signing an
+   RS256 App JWT and caches only an opaque, short-lived installation token in process memory.
+3. Token minting explicitly selects the immutable repository ID with exactly Issues write and Metadata read.
+   GitHub egress is pinned to HTTPS `api.github.com:443`; redirects, destination drift, broader grants,
+   unsupported auth, and webhook ingress fail closed.
+4. Rotation changes the binding revision and invalidates cached tokens without old-key reuse. Revocation
+   invalidates cache before the remote drill and leaves authentication closed. Secret-tainted values never
+   reach observable output.
+5. External identity is `github:<repository_id>:<issue_number>`. Repository rename does not change custody;
+   pull requests are excluded; equal timestamps order by immutable issue ID; proof-gated comment and close
+   reconcile through the existing exactly-once connector authority.
+
+Rejected alternatives:
+
+- Storing a standing installation token or private key in Catalog. Both violate reference-only custody.
+- Adding GitHub branches to kernel connector authority. The accepted Phase-1 seam already admits the provider.
+- Using webhooks or following provider redirects. Neither is needed for the narrow polling scope and both
+  widen ingress or credential-egress exposure.
+
+## D55 — Console Phase 1 is an exact-grant, bounded, private viewer server foundation (engineering, 2026-08-11, issue #437)
 
 The contextual Console proposal at source commit `ddb760e2751b84b2824eb620c5bdd0356c79b291` is incorporated
-only for the complete Phase-1 server foundation. This activates CT-I1-020 without activating a product UI
+only for the complete Phase-1 server foundation. This activates CT-I1-021 without activating a product UI
 or the separately governed typing phase.
 
 1. One append-only operator allowance names the exact Project, non-Commander seat/crew engagement,
@@ -2168,7 +2197,7 @@ or the separately governed typing phase.
 6. The registered Adapter may inspect live tmux identity and read only its declared existing pipe-pane log.
    It uses bounded argument-array process execution and has no Record-tier client, shell, pane-write,
    key-injection, generic-process, or fallback path.
-7. CT-I1-020 proves only this server foundation. It does not realize the contextual browser panel or safe
+7. CT-I1-021 proves only this server foundation. It does not realize the contextual browser panel or safe
    terminal renderer, and it grants no input authority. Phase 2 still requires the complete Q3 controls and
    its own stable ticket. The pre-existing `apps/ctower-ui` terminal reader satisfies none of the Phase-1
    evidence because it does not use this identity, grant, custody, transport, or Adapter chain.

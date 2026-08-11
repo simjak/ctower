@@ -214,7 +214,7 @@ them:
 In plain terms: the HTTP API and the command line are built first, and ctower does not become the system of
 record for its own work until they hold up. Product browser work — the interface, its tests, and its proof —
 starts later, at a planned point the roadmap calls I2.4. The separate server-mediated `ctower-ui` Inbox
-dogfood controls are the narrow D41/D44 exception, not a supported product UI. CT-I1-020 adds a second
+dogfood controls are the narrow D41/D44 exception, not a supported product UI. CT-I1-021 adds a second
 narrow pre-UI exception: browser-authenticated Console server routes and their private shadow proof, but no
 product panel or renderer. The two paths are not compatible and the older terminal reader is not Console
 evidence. `I1`, `I2.4` and `CT-I2-005` are

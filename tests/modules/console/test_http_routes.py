@@ -134,13 +134,18 @@ class _Viewer:
         self.calls.append(("stream", last_event_id))
         if self.outcome is not None:
             return self.outcome
+        events = iter((b"event: closed\n\n",))
         return cast(
             ConsoleEventStream,
             SimpleNamespace(
-                events=iter((b"event: closed\n\n",)),
+                events=events,
                 maximum_pending_bytes=256 * 1024,
                 maximum_stall_seconds=5,
+                next_event=lambda: next(events, None),
+                request_slow_consumer=lambda: None,
                 close_slow_consumer=lambda: (),
+                request_client_disconnected=lambda: None,
+                close_client_disconnected=lambda: (),
             ),
         )
 

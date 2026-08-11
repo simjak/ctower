@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Protocol
 from uuid import UUID
 
+from ctower_api.connectors.github.registration import GitHubRuntimeRegistration
 from ctower_api.connectors.gitlab.registration import GitLabRuntimeRegistration
 from ctower_kernel.catalog.interface import JsonValue
 from ctower_kernel.integrations import ConnectorRegistration, IssueConnector
@@ -22,7 +23,7 @@ class RuntimeConnectorRegistration(Protocol):
     @property
     def registration(self) -> ConnectorRegistration: ...
 
-    def build(self, resolved_credential: str) -> IssueConnector: ...
+    def build(self, resolve_secret: Callable[[str], str]) -> IssueConnector: ...
 
 
 class _RegistrationParser(Protocol):
@@ -59,5 +60,10 @@ CONNECTOR_REGISTRATIONS: Mapping[str, ConnectorFactory] = _closed_registry(
         adapter_kind=GitLabRuntimeRegistration.adapter_kind,
         schema_ref=GitLabRuntimeRegistration.schema_ref,
         from_catalog=GitLabRuntimeRegistration.from_catalog,
-    )
+    ),
+    ConnectorFactory(
+        adapter_kind=GitHubRuntimeRegistration.adapter_kind,
+        schema_ref=GitHubRuntimeRegistration.schema_ref,
+        from_catalog=GitHubRuntimeRegistration.from_catalog,
+    ),
 )

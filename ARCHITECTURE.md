@@ -44,7 +44,7 @@ their typed Request executions, then Ticket proof links. Generated API/client an
 partial and unknown sources explicitly. Delivery reuses Mission Control's existing notification rail; this
 candidate adds no store, scheduler, identity, adapter, Slack/Hermes path, or director-cron change.
 
-The contextual Console viewer server foundation is a tested CT-I1-020 candidate. It joins one operator
+The contextual Console viewer server foundation is a tested CT-I1-021 candidate. It joins one operator
 allowance to current Record facts and live registered tmux identity, issues one short-lived exact human
 `ConsoleViewGrant`, and streams cursor-addressed encrypted output through a bounded SSE reader. The browser
 boundary reuses the existing human session and adds exact Origin and CSRF enforcement; the runtime boundary
@@ -343,7 +343,9 @@ ports.
 Integrations is provider-neutral internally: it owns the strict `IssueConnector` result seam, bounded retry
 executor, leased/fenced tick, opaque progress, closed-world custody, observations, and delivery receipts.
 The API-owned closed registry currently admits only GitLab and composes each active Catalog registration as
-an isolated loop. This internal extraction does not activate GitHub, general provider product scope, dynamic
+an isolated loop. D54 additionally activates one GitHub Issues provider through that frozen seam with
+reference-only App-key custody, server-side repository-scoped token minting, and pinned
+`api.github.com:443` egress. It does not activate general provider product scope, dynamic
 plugins, or any new network boundary.
 
 | Deep Module | Authority hidden behind its Interface |
@@ -1001,7 +1003,7 @@ I1: L0 contracts/repository gates
      -> CT-I1-016 immutable Agreements ledger
      -> CT-I1-017 Request-derived decision briefs closed by linked Rulings
      -> CT-I1-018 native morning digest + existing-rail delivery
-     -> CT-I1-020 contextual Console viewer server foundation
+     -> CT-I1-021 contextual Console viewer server foundation
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof

@@ -136,7 +136,7 @@ async def _produce(
             if slow_close_requested.is_set():
                 await _queue_slow_close(stream, queue, pending, client_disconnected_requested)
                 return
-            event = await asyncio.to_thread(_next_event, stream)
+            event = await asyncio.to_thread(stream.next_event)
             if client_disconnected_requested.is_set():
                 await _queue_client_close(stream, queue, pending)
                 return
@@ -194,13 +194,6 @@ async def _queue_client_close(
 
 def _is_slow_consumer_gap(event: bytes) -> bool:
     return b"event: gap\n" in event and b'"reason":"slow_consumer"' in event
-
-
-def _next_event(stream: ConsoleEventStream) -> bytes | None:
-    try:
-        return next(stream.events)
-    except StopIteration:
-        return None
 
 
 def _decoded_chunk_bytes(event: bytes) -> int:

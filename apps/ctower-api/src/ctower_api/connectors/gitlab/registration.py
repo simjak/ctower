@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import ClassVar, Literal
@@ -112,5 +113,5 @@ class GitLabRuntimeRegistration:
             ),
         )
 
-    def build(self, resolved_credential: str) -> GitLabIssueConnector:
-        return GitLabIssueConnector(self.config, token=resolved_credential)
+    def build(self, resolve_secret: Callable[[str], str]) -> GitLabIssueConnector:
+        return GitLabIssueConnector(self.config, token=resolve_secret(self.token_binding))

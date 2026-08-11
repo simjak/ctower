@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Iterator
-from dataclasses import dataclass
-from threading import Event
+from dataclasses import dataclass, field
+from threading import Event, Lock
 
 from ctower_kernel.console.models import ConsoleStreamLease
 
@@ -23,6 +23,16 @@ class ConsoleEventStream:
     _client_disconnected_request: Callable[[], None]
     _slow_consumer_close: Callable[[], tuple[bytes, ...]]
     _client_disconnected_close: Callable[[], tuple[bytes, ...]]
+    _event_lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+
+    def next_event(self) -> bytes | None:
+        """Advance the synchronous generator through its one serialized owner."""
+
+        with self._event_lock:
+            try:
+                return next(self.events)
+            except StopIteration:
+                return None
 
     def request_slow_consumer(self) -> None:
         """Wake the serialized generator so its own thread commits the typed close."""
@@ -33,7 +43,8 @@ class ConsoleEventStream:
         """Close after the HTTP transport proves its unsent queue crossed the bound."""
 
         self.request_slow_consumer()
-        return self._slow_consumer_close()
+        with self._event_lock:
+            return self._slow_consumer_close()
 
     def request_client_disconnected(self) -> None:
         """Wake the serialized generator after the transport proves disconnection."""
@@ -44,7 +55,8 @@ class ConsoleEventStream:
         """Drain the generator on its owner thread and persist one disconnect close."""
 
         self.request_client_disconnected()
-        return self._client_disconnected_close()
+        with self._event_lock:
+            return self._client_disconnected_close()
 
 
 @dataclass(slots=True)
