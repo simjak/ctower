@@ -228,16 +228,10 @@ def create_app(
     _install_synthetic_boundary(
         app, access, record, synthetic_runtime, synthetic_revision, recorder
     )
-    _install_dispatch_routes(
-        app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, recorder
+    _install_runtime_boundaries(
+        app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
     )
-    _install_console_boundary(app, access, console)
     return app
-
-
-def _install_console_boundary(app: FastAPI, access: Access, console: ConsoleRuntime | None) -> None:
-    if console is not None:
-        install_console_routes(app, access, console)
 
 
 def _install_application_routes(
@@ -377,18 +371,21 @@ def _install_synthetic_boundary(
         )
 
 
-def _install_dispatch_routes(
+def _install_runtime_boundaries(
     app: FastAPI,
     access: Access,
     record: Record,
     dream_runtime: DreamDispatchRuntime | None,
     beat_runtime: BeatDispatchRuntime | None,
+    console_runtime: ConsoleRuntime | None,
     recorder: TelemetryRecorder,
 ) -> None:
     if dream_runtime is not None:
         install_dream_dispatch_routes(app, access, record, dream_runtime, recorder)
     if beat_runtime is not None:
         install_beat_dispatch_routes(app, access, beat_runtime, recorder)
+    if console_runtime is not None:
+        install_console_routes(app, access, console_runtime)
 
 
 def _install_access_routes(
