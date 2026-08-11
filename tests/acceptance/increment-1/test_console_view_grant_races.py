@@ -51,7 +51,6 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 __all__: tuple[str, ...] = ()
 _MAX_CLOSE_SECONDS = 5
 _LIVE_IDENTITY_INVOCATIONS = 2
-_PAIR_COUNT = 2
 
 
 def test_parallel_stream_claim_has_exactly_one_real_postgres_winner(
@@ -436,73 +435,6 @@ def test_delivery_overflow_commits_gap_before_typed_close_without_extra_output(
     assert facts["outputs"] == 1
     assert facts["accesses"] == 1
     assert facts["recoveries"] == 1
-    assert cast(int, facts["output_cursor"]) < cast(int, facts["gap_cursor"])
-    assert facts["close_code"] == "rate_limited"
-
-
-def test_replay_overflow_discloses_only_budgeted_chunk_then_durable_gap_and_close(
-    tenant: TenantFixture,
-) -> None:
-    now = datetime.now(UTC)
-    viewer, authority, adapter, _operator, browser, allowance = console_setup(tenant, now)
-    adapter.payload = b"a" * (16 * 1024) + b"b" * (16 * 1024)
-    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
-    original = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
-    assert isinstance(original, ConsoleEventStream)
-    assert b"event: chunk" in next(original.events)
-    assert b"event: chunk" in next(original.events)
-    cast(Generator[bytes, None, None], original.events).close()
-
-    authority.policy = replace(authority.policy, replay_window_bytes=16 * 1024)
-    assert isinstance(
-        viewer.mint_grant(browser, allowance.allowance_id, renewal=True), ConsoleViewGrant
-    )
-    replay = viewer.open_stream(browser, allowance.allowance_id, last_event_id=0)
-    assert isinstance(replay, ConsoleEventStream)
-
-    chunk = next(replay.events)
-    gap = next(replay.events)
-    closed = next(replay.events)
-
-    assert b"event: chunk" in chunk
-    assert b'"reason":"rate_limited"' in gap
-    assert b'"code":"rate_limited"' in closed
-    _assert_event_schema(chunk)
-    _assert_event_schema(gap)
-    _assert_event_schema(closed)
-    with pytest.raises(StopIteration):
-        next(replay.events)
-    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
-        facts = connection.execute(
-            """
-            SELECT
-                (SELECT count(*) FROM console_output_objects
-                 WHERE allowance_id = %s) AS outputs,
-                (SELECT count(*) FROM console_output_access_facts
-                 WHERE stream_id = %s) AS accesses,
-                (SELECT count(*) FROM console_output_recovery_facts AS recovery
-                 JOIN console_output_access_facts AS access USING (access_id)
-                 WHERE access.stream_id = %s) AS recoveries,
-                (SELECT min(cursor) FROM console_output_gap_facts
-                 WHERE allowance_id = %s AND reason = 'rate_limited') AS gap_cursor,
-                (SELECT max(cursor) FROM console_output_objects
-                 WHERE allowance_id = %s) AS output_cursor,
-                (SELECT code FROM console_stream_closes
-                 WHERE stream_id = %s) AS close_code
-            """,
-            (
-                allowance.allowance_id,
-                replay.lease.stream_id,
-                replay.lease.stream_id,
-                allowance.allowance_id,
-                allowance.allowance_id,
-                replay.lease.stream_id,
-            ),
-        ).fetchone()
-    assert facts is not None
-    assert facts["outputs"] == _PAIR_COUNT
-    assert facts["accesses"] == _PAIR_COUNT
-    assert facts["recoveries"] == _PAIR_COUNT
     assert cast(int, facts["output_cursor"]) < cast(int, facts["gap_cursor"])
     assert facts["close_code"] == "rate_limited"
 

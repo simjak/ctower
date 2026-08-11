@@ -223,6 +223,7 @@ CREATE TABLE console_output_gap_facts (
     allowance_id uuid NOT NULL,
     source_cursor bigint NOT NULL CHECK (source_cursor >= 0),
     source_generation bigint NOT NULL CHECK (source_generation >= 1),
+    advances_source_position boolean NOT NULL,
     reason text NOT NULL CHECK (reason IN (
         'cursor_unavailable', 'source_truncated', 'unprovable_range',
         'slow_consumer', 'rate_limited'

@@ -2,7 +2,7 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0065_console_view_grants.sql",
-    "schema_sha256": "sha256:4c5235992fa02a0d6cf90fdf9e48f523761f471f48cf9286a76953aead0f2a92",
+    "schema_sha256": "sha256:4acb4951e4cf5330d871f5b01646a4234d3c829d44b9a51a11239a7130f3f928",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:6d72f4a75a4852cff2751d35bfabaf56b5dceea487aa3dac1107971d098513f5"
   },
@@ -596,7 +596,7 @@
     },
     {
       "path": "0064_console_output_reader_role.sql",
-      "sha256": "sha256:03c53c5dd6cce65d7f4c65abc497f1bf850265725ed9bd2f5dfcf8f77c121abb",
+      "sha256": "sha256:2475da971e7d4771ad7763970faa6a4fa318eee93a12461df94b7eaca296d93f",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
@@ -606,7 +606,7 @@
     },
     {
       "path": "0065_console_view_grants.sql",
-      "sha256": "sha256:5ce0da9339fdaca714a15ef27bca0f1bf93618a4fbf4b49c87035188ddc32962",
+      "sha256": "sha256:e3920804abecc60eb1853867b9489ba47c575543e69882fa1e69c7fef473b776",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",

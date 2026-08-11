@@ -42,6 +42,7 @@ class PostgresConsoleOutputStore:
                     SELECT source_cursor, source_generation, source_position
                     FROM console_output_gap_facts
                     WHERE allowance_id = %s AND tenant_id = %s
+                      AND advances_source_position
                 ) AS positions
                 ORDER BY source_position DESC LIMIT 1
                 """,
@@ -263,6 +264,7 @@ class PostgresConsoleOutputStore:
             "rate_limited",
         ],
         *,
+        advances_source_position: bool,
         now: datetime,
     ) -> int:
         with self.collection_lock(allowance_id, tenant_id):
@@ -272,6 +274,7 @@ class PostgresConsoleOutputStore:
                 source_cursor=source_cursor,
                 source_generation=source_generation,
                 reason=reason,
+                advances_source_position=advances_source_position,
                 now=now,
             )
 
@@ -289,6 +292,7 @@ class PostgresConsoleOutputStore:
             "slow_consumer",
             "rate_limited",
         ],
+        advances_source_position: bool,
         now: datetime,
     ) -> int:
         """Insert one gap while the caller holds the per-allowance collection lock."""
@@ -298,8 +302,8 @@ class PostgresConsoleOutputStore:
                 """
                 INSERT INTO console_output_gap_facts (
                     gap_id, tenant_id, allowance_id, source_cursor,
-                    source_generation, reason, recorded_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    source_generation, advances_source_position, reason, recorded_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING cursor
                 """,
                 (
@@ -308,6 +312,7 @@ class PostgresConsoleOutputStore:
                     allowance_id,
                     source_cursor,
                     source_generation,
+                    advances_source_position,
                     reason,
                     now,
                 ),

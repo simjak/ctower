@@ -26,7 +26,8 @@ from ctower_kernel.console.policy import (
     encode_console_chunks,
 )
 from ctower_kernel.console.postgres import PostgresConsoleAuthority
-from ctower_kernel.console.service import ConsoleEventStream, ConsoleViewer
+from ctower_kernel.console.service import ConsoleViewer
+from ctower_kernel.console.stream import ConsoleEventStream
 
 __all__ = [
     "AesGcmConsoleCipher",

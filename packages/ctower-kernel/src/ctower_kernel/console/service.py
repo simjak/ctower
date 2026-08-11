@@ -9,7 +9,6 @@ import time
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from threading import Event
 from typing import Literal, Protocol
 from uuid import UUID
 
@@ -36,6 +35,7 @@ from ctower_kernel.console.policy import (
     decide_view_grant,
 )
 from ctower_kernel.console.postgres import PostgresConsoleAuthority, StreamCloseCode
+from ctower_kernel.console.stream import ConsoleEventStream, _drain_events, _TransportRequests
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.identifiers import uuid7
 
@@ -56,29 +56,6 @@ class ConsoleBackendAdapter(Protocol):
         after_cursor: int,
         maximum_bytes: int,
     ) -> ConsoleOutputBatch | RecordProblem: ...
-
-
-@dataclass(frozen=True, slots=True)
-class ConsoleEventStream:
-    """Claimed stream plus its lazily driven SSE body."""
-
-    lease: ConsoleStreamLease
-    events: Iterator[bytes]
-    maximum_pending_bytes: int
-    maximum_stall_seconds: int
-    _slow_consumer_request: Callable[[], None]
-    _slow_consumer_close: Callable[[], tuple[bytes, ...]]
-
-    def request_slow_consumer(self) -> None:
-        """Wake the serialized generator so its own thread commits the typed close."""
-
-        self._slow_consumer_request()
-
-    def close_slow_consumer(self) -> tuple[bytes, ...]:
-        """Close after the HTTP transport proves its unsent queue crossed the bound."""
-
-        self.request_slow_consumer()
-        return self._slow_consumer_close()
 
 
 @dataclass(slots=True)
@@ -217,21 +194,23 @@ class ConsoleViewer:
         lease = self._authority.claim_stream(actor, allowance_id, now=self._clock())
         if isinstance(lease, RecordProblem):
             return lease
-        slow_consumer_requested = Event()
+        requests = _TransportRequests.create()
         events = self._stream_events(
             lease,
             ref,
             after_cursor=last_event_id or 0,
             reconnect=last_event_id is not None,
-            slow_consumer_requested=slow_consumer_requested,
+            transport_requests=requests,
         )
         return ConsoleEventStream(
             lease=lease,
             events=events,
             maximum_pending_bytes=self._authority.policy.pending_bytes,
             maximum_stall_seconds=self._authority.policy.revocation_poll_seconds,
-            _slow_consumer_request=slow_consumer_requested.set,
-            _slow_consumer_close=lambda: _close_slow_consumer(events),
+            _slow_consumer_request=requests.request_slow_consumer,
+            _client_disconnected_request=requests.request_client_disconnected,
+            _slow_consumer_close=lambda: _drain_events(events),
+            _client_disconnected_close=lambda: _drain_events(events),
         )
 
     def _stream_events(
@@ -241,7 +220,7 @@ class ConsoleViewer:
         *,
         after_cursor: int,
         reconnect: bool,
-        slow_consumer_requested: Event,
+        transport_requests: _TransportRequests,
     ) -> Iterator[bytes]:
         state = self._stream_state(lease, after_cursor=after_cursor, reconnect=reconnect)
         try:
@@ -249,7 +228,7 @@ class ConsoleViewer:
             initial_gap = self._initial_cursor_gap(lease, state, newest=newest)
             yield from _optional_event(initial_gap)
             while True:
-                terminal = yield from self._stream_cycle(lease, ref, state, slow_consumer_requested)
+                terminal = yield from self._stream_cycle(lease, ref, state, transport_requests)
                 if terminal:
                     yield _closed(state.close_code)
                     return
@@ -280,9 +259,12 @@ class ConsoleViewer:
         lease: ConsoleStreamLease,
         ref: ConsoleSessionRef,
         state: _StreamState,
-        slow_consumer_requested: Event,
+        transport_requests: _TransportRequests,
     ) -> Generator[bytes, None, bool]:
-        if slow_consumer_requested.is_set():
+        if transport_requests.client_disconnected.is_set():
+            state.close_code = "client_disconnected"
+            return True
+        if transport_requests.slow_consumer.is_set():
             raise _SlowConsumerError
         status = self._active_close_reason(lease, ref)
         if status is not None:
@@ -305,9 +287,7 @@ class ConsoleViewer:
         if replay:
             return (yield from self._replay_outputs(lease, ref, state, replay))
         return (
-            yield from self._read_adapter(
-                lease, ref, state, slow_consumer_requested=slow_consumer_requested
-            )
+            yield from self._read_adapter(lease, ref, state, transport_requests=transport_requests)
         )
 
     def _active_close_reason(
@@ -432,7 +412,7 @@ class ConsoleViewer:
         ref: ConsoleSessionRef,
         state: _StreamState,
         *,
-        slow_consumer_requested: Event,
+        transport_requests: _TransportRequests,
     ) -> Generator[bytes, None, bool]:
         with self._output_store.collection_lock(lease.grant.allowance_id, lease.grant.tenant_id):
             source_cursor, source_generation = self._output_store.latest_source_position(
@@ -462,6 +442,7 @@ class ConsoleViewer:
                     source_cursor=batch.source_cursor,
                     source_generation=state.source_generation,
                     reason=reason,
+                    advances_source_position=True,
                     now=self._clock(),
                 )
                 state.gap_required = True
@@ -470,7 +451,7 @@ class ConsoleViewer:
                 yield _gap(gap_cursor, reason, event_id=gap_cursor)
                 return False
             if not batch.payload:
-                self._sleep_to_next_authority_check(lease, slow_consumer_requested)
+                self._sleep_to_next_authority_check(lease, transport_requests)
                 return False
             if (
                 state.window.admit_delivery(len(batch.payload), at=self._clock())
@@ -484,6 +465,7 @@ class ConsoleViewer:
                     source_cursor=state.source_cursor,
                     source_generation=state.source_generation,
                     reason="rate_limited",
+                    advances_source_position=False,
                     now=self._clock(),
                 )
                 yield _gap(gap_cursor, "rate_limited", event_id=gap_cursor)
@@ -493,12 +475,12 @@ class ConsoleViewer:
         return False
 
     def _sleep_to_next_authority_check(
-        self, lease: ConsoleStreamLease, slow_consumer_requested: Event
+        self, lease: ConsoleStreamLease, transport_requests: _TransportRequests
     ) -> None:
         remaining = max(0.0, (lease.grant.expires_at - self._clock()).total_seconds())
         delay = min(float(self._authority.policy.revocation_poll_seconds), remaining)
         if self._interruptible_sleep:
-            slow_consumer_requested.wait(delay)
+            transport_requests.wake.wait(delay)
         else:
             self._sleeper(delay)
 
@@ -573,6 +555,7 @@ class ConsoleViewer:
             source_cursor,
             source_generation,
             reason,
+            advances_source_position=False,
             now=self._clock(),
         )
 
@@ -646,15 +629,3 @@ def _gap_reason(
 
 def _problem(code: str, detail: str, status: int = 403) -> RecordProblem:
     return RecordProblem(code=code, detail=detail, status=status, title="Console operation refused")
-
-
-def _close_slow_consumer(events: Iterator[bytes]) -> tuple[bytes, ...]:
-    generator = events if isinstance(events, Generator) else None
-    if generator is None:
-        raise RuntimeError("Console stream events do not accept transport closure")
-    closed: list[bytes] = []
-    try:
-        while True:
-            closed.append(next(generator))
-    except StopIteration:
-        return tuple(closed)

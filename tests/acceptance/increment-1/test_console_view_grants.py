@@ -444,6 +444,7 @@ def test_reconnect_replays_a_committed_truncation_gap_before_the_new_generation(
         0,
         2,
         "source_truncated",
+        advances_source_position=True,
         now=now,
     )
     adapter.payload = b"again"

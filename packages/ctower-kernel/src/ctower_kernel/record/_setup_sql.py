@@ -483,19 +483,17 @@ def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
     with _migration_control_sql.migration_control(role_admin_dsn) as control:
         _reconcile_database_roles_locked(role_admin_dsn)
         transfer_pending = _console_reader_ownership_transfer_pending(role_admin_dsn)
-        if transfer_pending:
-            _set_console_reader_schema_create(role_admin_dsn, enabled=True)
-        try:
-            with psycopg.connect(migrator_dsn) as connection:
-                connection.execute("SET ROLE ctower_admin")
-                pending = apply_database_migrations(
-                    connection,
-                    database_migrations,
-                    loaded.baseline,
-                )
-        finally:
+        with psycopg.connect(migrator_dsn) as connection:
+            connection.execute("SET ROLE ctower_admin")
             if transfer_pending:
-                _set_console_reader_schema_create(role_admin_dsn, enabled=False)
+                connection.execute("GRANT CREATE ON SCHEMA public TO console_output_reader")
+            pending = apply_database_migrations(
+                connection,
+                database_migrations,
+                loaded.baseline,
+            )
+            if transfer_pending:
+                connection.execute("REVOKE CREATE ON SCHEMA public FROM console_output_reader")
         # Database migrations can create role-governed functions and grants.
         # Close that boundary before attesting; failure leaves no ledger.
         _reconcile_database_roles_locked(role_admin_dsn)
@@ -512,16 +510,6 @@ def _console_reader_ownership_transfer_pending(admin_dsn: str) -> bool:
             """
         ).fetchone()
     return row == (True,)
-
-
-def _set_console_reader_schema_create(admin_dsn: str, *, enabled: bool) -> None:
-    statement = (
-        "GRANT CREATE ON SCHEMA public TO console_output_reader"
-        if enabled
-        else "REVOKE CREATE ON SCHEMA public FROM console_output_reader"
-    )
-    with psycopg.connect(admin_dsn) as connection:
-        connection.execute(statement)
 
 
 def provision_bootstrap(

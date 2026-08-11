@@ -6,11 +6,14 @@ import hashlib
 import time
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, datetime
 from threading import Barrier, Lock
 from typing import cast
+from uuid import UUID
 
 import psycopg
+import pytest
 from console_test_support import (
     Adapter,
     browser_actor,
@@ -39,6 +42,9 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
 _GRANT_CHAIN_LENGTH = 3
+_PAIR_COUNT = 2
+_TRIPLE_COUNT = 3
+_QUADRUPLE_COUNT = 4
 
 
 def test_two_authorized_actors_collect_one_shared_source_position_serially(
@@ -161,3 +167,98 @@ def test_parallel_renew_before_use_forms_one_linear_latest_grant_chain(
         ).fetchone()
     assert claimed == {"grant_id": chain[2]["grant_id"]}
     cast(Generator[bytes, None, None], stream.events).close()
+
+
+def test_replay_overflow_does_not_regress_the_live_collection_source_head(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, authority, adapter, _operator, browser, allowance = console_setup(tenant, now)
+    adapter.payload = b"a" * (16 * 1024) + b"b" * (16 * 1024) + b"c" * (16 * 1024)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    original = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(original, ConsoleEventStream)
+    assert all(b"event: chunk" in next(original.events) for _index in range(_TRIPLE_COUNT))
+    cast(Generator[bytes, None, None], original.events).close()
+
+    authority.policy = replace(authority.policy, replay_window_bytes=16 * 1024)
+    assert isinstance(
+        viewer.mint_grant(browser, allowance.allowance_id, renewal=True), ConsoleViewGrant
+    )
+    replay = viewer.open_stream(browser, allowance.allowance_id, last_event_id=0)
+    assert isinstance(replay, ConsoleEventStream)
+    assert b"event: chunk" in next(replay.events)
+    gap = next(replay.events)
+    assert b'"reason":"rate_limited"' in gap
+    assert b'"code":"rate_limited"' in next(replay.events)
+    gap_cursor = int(gap.splitlines()[0].removeprefix(b"id: "))
+    with pytest.raises(StopIteration):
+        next(replay.events)
+    _assert_replay_rate_limit_facts(tenant, allowance.allowance_id, replay)
+
+    authority.policy = replace(authority.policy, replay_window_bytes=1024 * 1024)
+    adapter.payload += b"d" * (16 * 1024)
+    assert isinstance(
+        viewer.mint_grant(browser, allowance.allowance_id, renewal=True), ConsoleViewGrant
+    )
+    continuation = viewer.open_stream(
+        browser,
+        allowance.allowance_id,
+        last_event_id=gap_cursor,
+    )
+    assert isinstance(continuation, ConsoleEventStream)
+    assert b"event: chunk" in next(continuation.events)
+    _assert_source_head_continued_once(tenant, allowance.allowance_id)
+    cast(Generator[bytes, None, None], continuation.events).close()
+
+
+def _assert_replay_rate_limit_facts(
+    tenant: TenantFixture,
+    allowance_id: UUID,
+    replay: ConsoleEventStream,
+) -> None:
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        facts = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM console_output_objects
+                 WHERE allowance_id = %s) AS outputs,
+                (SELECT count(*) FROM console_output_access_facts
+                 WHERE stream_id = %s) AS accesses,
+                (SELECT count(*) FROM console_output_recovery_facts AS recovery
+                 JOIN console_output_access_facts AS access USING (access_id)
+                 WHERE access.stream_id = %s) AS recoveries,
+                (SELECT code FROM console_stream_closes
+                 WHERE stream_id = %s) AS close_code
+            """,
+            (
+                allowance_id,
+                replay.lease.stream_id,
+                replay.lease.stream_id,
+                replay.lease.stream_id,
+            ),
+        ).fetchone()
+    assert facts == {
+        "outputs": _TRIPLE_COUNT,
+        "accesses": _PAIR_COUNT,
+        "recoveries": _PAIR_COUNT,
+        "close_code": "rate_limited",
+    }
+
+
+def _assert_source_head_continued_once(tenant: TenantFixture, allowance_id: UUID) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        source_cursors = connection.execute(
+            """
+            SELECT source_cursor FROM console_output_objects
+            WHERE allowance_id = %s ORDER BY source_position
+            """,
+            (allowance_id,),
+        ).fetchall()
+    assert source_cursors == [
+        (16 * 1024,),
+        (32 * 1024,),
+        (48 * 1024,),
+        (64 * 1024,),
+    ]
+    assert len(source_cursors) == _QUADRUPLE_COUNT

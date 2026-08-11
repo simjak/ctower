@@ -106,13 +106,18 @@ def test_output_reader_role_adoption_refuses_every_unsafe_preexisting_shape() ->
         "pg_auth_members",
         "pg_db_role_setting",
         "pg_shdepend",
+        "aclexplode",
+        "pg_attribute",
     ):
         assert catalog_fact in migration
     assert "dependency.deptype = 'o'" in migration
     assert "dependency.deptype = 'a'" in migration
     assert "has_schema_privilege(reader_role, 'public', 'CREATE')" in migration
     assert "GRANT USAGE, CREATE" not in migration
-    assert "GRANT CREATE ON SCHEMA" not in migration
+    assert "GRANT CREATE ON SCHEMA public TO console_output_reader" not in migration
+    assert "GRANT CREATE ON SCHEMA public TO ctower_admin WITH GRANT OPTION" in migration
+    assert "actual_table_acl <> expected_table_acl" in migration
+    assert "dependency.dbid IN" in migration
     assert "unsafe pre-existing console_output_reader role" in migration
 
     database_migration = (
@@ -124,9 +129,13 @@ def test_output_reader_role_adoption_refuses_every_unsafe_preexisting_shape() ->
         encoding="utf-8"
     )
     assert "_console_reader_ownership_transfer_pending" in setup
-    assert "_set_console_reader_schema_create(role_admin_dsn, enabled=True)" in setup
-    assert "finally:" in setup
-    assert "_set_console_reader_schema_create(role_admin_dsn, enabled=False)" in setup
+    grant = 'connection.execute("GRANT CREATE ON SCHEMA public TO console_output_reader")'
+    apply = "pending = apply_database_migrations("
+    revoke = 'connection.execute("REVOKE CREATE ON SCHEMA public FROM console_output_reader")'
+    assert setup.index(grant) < setup.index(apply) < setup.index(revoke)
+    assert "_set_console_reader_schema_create" not in setup
+
+    assert "advances_source_position boolean NOT NULL" in database_migration
 
 
 def test_phase1_verification_manifest_names_every_required_element_and_gate() -> None:

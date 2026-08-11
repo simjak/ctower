@@ -28,7 +28,9 @@ command history, evidence file, URL, status report, or log.
 Apply the signed migration chain using the repository's normal migration procedure. The cluster step creates
 the exact NOLOGIN, NOINHERIT `console_output_reader` or refuses an unsafe pre-existing role with unexpected
 attributes, membership, settings, ownership, or grants. Database migration `0065` creates the append-only
-Console facts, the fixed-search-path reader-owned recovery function, and exact privileges.
+Console facts, the fixed-search-path reader-owned recovery function, and exact privileges. Its temporary
+reader `CREATE` grant, ownership handoff, and revoke are one database transaction, so interruption leaves
+no residual schema authority.
 
 Verify the reader boundary through the named acceptance test:
 
@@ -150,7 +152,9 @@ complete event set. A `gap` reason may be
 
 The HTTP transport prefetches only within the configured decoded pending-byte cap. If a client blocks ASGI
 delivery past that queue, the server discards only the still-unsent queue, commits a `slow_consumer` gap and
-typed close, and bounds each send by the authority poll interval (never more than five seconds).
+typed close, and bounds each send by the authority poll interval (never more than five seconds). An immediate
+transport error or cancellation instead drains the serialized producer to exactly one `client_disconnected`
+close without a slow-consumer gap.
 
 ## 7. Prove expiry, revocation, and fences
 
@@ -176,6 +180,7 @@ uv run pytest tests/contracts/console -q
 uv run pytest tests/modules/console -q
 uv run pytest tests/acceptance/increment-1/test_console_collection_lock.py \
   tests/acceptance/increment-1/test_console_reader_role_adoption.py \
+  tests/acceptance/increment-1/test_console_transport_disconnect.py \
   tests/acceptance/increment-1/test_console_view_grants.py \
   tests/acceptance/increment-1/test_console_view_grant_races.py -q
 just check
