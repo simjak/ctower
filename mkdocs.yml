@@ -68,6 +68,8 @@ nav:
       - Protected CLI and spool: guides/protected-cli.md
       - CompanyBundle: guides/company-bundle.md
       - Contribution guide: https://github.com/simjak/ctower/blob/main/CONTRIBUTING.md
+  - Testing:
+      - Shipped feature coverage matrix: testing/coverage-matrix.md
   - Advanced and internals:
       - internals.md
       - Delivery state: project-status.md
