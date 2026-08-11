@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import ipaddress
+from pathlib import Path
+from typing import cast
 
 import pytest
+from fastapi import FastAPI
 
 from ctower_api.console_network import ConsoleListenerError, inspect_ss_sweep, validate_bind_host
+from ctower_api.console_routes import ConsoleRuntime
+from ctower_api.console_server import serve_console
+from ctower_kernel.console import ConsoleViewer
+
+_CONSOLE_PORT = 8443
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1", "100.84.252.114", "fd7a:115c:a1e0::1"])
@@ -43,3 +51,34 @@ def test_ss_sweep_retains_positive_tailnet_inventory_without_false_wildcard() ->
     result = inspect_ss_sweep(output, console_ports=frozenset({8443}))
     assert not result.wildcard_listeners
     assert result.private_listeners == ("100.84.252.114:8443",)
+
+
+def test_supported_console_server_uses_only_the_runtime_private_https_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def run(app: FastAPI, **options: object) -> None:
+        captured.update({"app": app, **options})
+
+    monkeypatch.setattr("ctower_api.console_server.uvicorn.run", run)
+    app = FastAPI()
+    runtime = ConsoleRuntime(
+        cast(ConsoleViewer, object()),
+        "https://100.84.252.114:8443",
+    )
+
+    serve_console(
+        app,
+        runtime,
+        certificate_file=Path("/run/ctower/console-cert.pem"),
+        private_key_file=Path("/run/ctower/console-key.pem"),
+    )
+
+    assert captured["app"] is app
+    assert captured["host"] == "100.84.252.114"
+    assert captured["port"] == _CONSOLE_PORT
+    assert captured["ssl_certfile"] == "/run/ctower/console-cert.pem"
+    assert captured["ssl_keyfile"] == "/run/ctower/console-key.pem"
+    assert captured["proxy_headers"] is False
+    assert captured["forwarded_allow_ips"] == ""

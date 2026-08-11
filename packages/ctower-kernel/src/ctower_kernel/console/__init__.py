@@ -15,6 +15,7 @@ from ctower_kernel.console.models import (
     ConsoleSessionRevocation,
     ConsoleStreamLease,
     ConsoleViewGrant,
+    StoredConsoleGap,
     StoredConsoleOutput,
 )
 from ctower_kernel.console.output_store import PostgresConsoleOutputStore
@@ -47,6 +48,7 @@ __all__ = [
     "ConsoleViewer",
     "PostgresConsoleAuthority",
     "PostgresConsoleOutputStore",
+    "StoredConsoleGap",
     "StoredConsoleOutput",
     "StreamDisposition",
     "decide_view_grant",

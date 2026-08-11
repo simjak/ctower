@@ -29,13 +29,13 @@ execute a shell.
 
 | Control | Required proof |
 |---|---|
-| Exact identity join | Project, seat, crew, assignment interval, work session, runtime attempt, runner/epoch, backend, live `@project`, and incarnation match at every decision point. |
+| Exact identity join | Project, non-Commander target and Actor, seat, crew, assignment interval, work session, runtime attempt, runner/epoch, backend, live `@project`, and incarnation match at every decision point. First open rechecks current human-session, binding, Project, policy, switch, assignment/session, and revocation facts before the stream claim consumes a grant. |
 | Human grant binding | Grant binds Actor, human role binding, browser session, allowance, full session reference, and policy revision; one stream use; five-minute TTL; thirty-minute chain. |
 | Browser boundary | Exact HTTPS Origin, secure HttpOnly session cookie, matching secure CSRF cookie/header/persisted digest, no CORS, no credential in URL. |
-| Output custody | RESTRICTED classification, fresh per-object data-key reference, wrapped key under an unresolved reference, ordinary-service content SELECT denied, dedicated reader access fact. |
-| Stream bounds | 16 KiB decoded chunks, 1 MiB/min delivery, 1 MiB/min replay, 256 KiB pending, durable cursor before broadcast, gap before uncertainty. |
-| Containment | Typed expiry, revocation, replacement fence, and persistent global kill switch close within five seconds; denial suspension is explicit. |
-| Private network | Literal loopback or Tailscale bind, empty wildcard sweep, no Funnel/public DNS/Caddy route, no public negative-probe success. |
+| Output custody | RESTRICTED classification, fresh per-object data-key reference, wrapped key under an unresolved reference, ordinary-service content SELECT denied, and a committed access-attempt fact required by every reader-owned content query. |
+| Stream bounds | 16 KiB decoded chunks, 1 MiB/min delivery, 1 MiB/min replay, 256 KiB pending, durable cursor before broadcast, per-allowance single-writer collection, source generations across truncation, and a typed gap before uncertainty. |
+| Containment | Typed expiry, revocation, replacement fence, and persistent global kill switch close within five seconds; repeated denials append an explicit bounded suspension fact. |
+| Private network | Direct TLS through `serve_console`, with host and port derived from the exact Origin; literal loopback or Tailscale bind, disabled proxy-header authority, empty wildcard sweep, no Funnel/public DNS/Caddy route, and no public negative-probe success. |
 | Direct-path absence | No shell, pane write, key injection, generic process route, Record-tier Adapter client, current-reader fallback, compression, or alternate stream transport. |
 
 ## Evidence handling
@@ -61,9 +61,11 @@ Run and retain typed outcomes for:
 2. Commander, foreign-Project, unallowed, revoked, stale-assignment, and closed-work-session discovery/mint;
 3. changed live Project, runtime attempt, runner identity, runner epoch, backend reference, and tmux incarnation;
 4. repeated grant claim, expired renewal, continuous-view exhaustion, invalid reconnect cursor, source
-   truncation, replay overflow, delivery overflow, and slow consumer;
-5. ordinary application-role attempts to select output content and direct attempts to assume the dedicated
-   reader role;
+   truncation with numeric cursor reuse in a new generation, concurrent collectors, replay overflow,
+   delivery overflow, and slow consumer;
+5. ordinary application-role attempts to select output content, direct attempts to assume the dedicated
+   reader role, and an injected reader failure after the access-attempt fact commits but before content is
+   selected;
 6. wildcard/public/hostname binds, Docker proxy wildcard listeners, Funnel publication, public-origin reach,
    and an unexpected Console port;
 7. import/process inventory checks for Record-tier Adapter access, shell execution, pane write, generic

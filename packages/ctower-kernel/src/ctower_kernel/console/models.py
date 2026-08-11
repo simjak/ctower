@@ -24,6 +24,7 @@ __all__ = [
     "ConsoleSessionRevocation",
     "ConsoleStreamLease",
     "ConsoleViewGrant",
+    "StoredConsoleGap",
     "StoredConsoleOutput",
 ]
 
@@ -279,9 +280,26 @@ class StoredConsoleOutput:
 
     cursor: int
     source_cursor: int
+    source_generation: int
     decoded_bytes: int
     object_sha256: bytes
     envelope: ConsoleCiphertext
+
+
+@dataclass(frozen=True, slots=True)
+class StoredConsoleGap:
+    """Durable continuity break replayed in the shared SSE cursor order."""
+
+    cursor: int
+    source_cursor: int
+    source_generation: int
+    reason: Literal[
+        "cursor_unavailable",
+        "source_truncated",
+        "unprovable_range",
+        "slow_consumer",
+        "rate_limited",
+    ]
 
 
 @dataclass(frozen=True, slots=True)

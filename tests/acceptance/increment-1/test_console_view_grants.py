@@ -3,28 +3,60 @@
 from __future__ import annotations
 
 import hashlib
-import secrets
+import json
+from collections.abc import Generator
 from contextlib import suppress
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import cast
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import psycopg
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from httpx import Response
+import pytest
+from console_test_support import (
+    Adapter as _Adapter,
+)
+from console_test_support import (
+    Clock as _Clock,
+)
+from console_test_support import (
+    apply_first_open_change as _apply_first_open_change,
+)
+from console_test_support import (
+    assert_ciphertext_and_access_fact as _assert_ciphertext_and_access_fact,
+)
+from console_test_support import (
+    assert_immutable_grant as _assert_immutable_grant,
+)
+from console_test_support import (
+    browser_actor as _browser_actor,
+)
+from console_test_support import (
+    browser_context as _browser_context,
+)
+from console_test_support import (
+    console_http_responses as _console_http_responses,
+)
+from console_test_support import (
+    console_setup as _console_setup,
+)
+from console_test_support import (
+    observation as _observation,
+)
+from console_test_support import (
+    policy as _policy,
+)
+from console_test_support import (
+    recorded_session_ref as _recorded_session_ref,
+)
+from jsonschema import Draft202012Validator
 from psycopg.rows import dict_row
-from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.console_routes import ConsoleRuntime
 from ctower_api.interface import create_app
 from ctower_kernel.console import (
     AesGcmConsoleCipher,
-    ConsoleBackendObservation,
-    ConsoleOutputBatch,
-    ConsolePolicy,
     ConsoleSessionAllowCommand,
     ConsoleSessionRef,
     ConsoleSessionRevocation,
@@ -34,9 +66,7 @@ from ctower_kernel.console import (
     PostgresConsoleOutputStore,
 )
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
-from ctower_kernel.record.human_identity import HumanRoleBindingIssue
 from ctower_kernel.record.postgres import PostgresRecord
-from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
 
@@ -44,63 +74,7 @@ _HTTP_ACCEPTED = 202
 _HTTP_CREATED = 201
 _HTTP_FORBIDDEN = 403
 _HTTP_OK = 200
-
-
-@dataclass(slots=True)
-class _Clock:
-    now: datetime
-
-    def __call__(self) -> datetime:
-        return self.now
-
-    def sleep(self, seconds: float) -> None:
-        self.now += timedelta(seconds=seconds)
-
-
-@dataclass(frozen=True, slots=True)
-class _BrowserContext:
-    actor: Actor
-    csrf_token: str
-    session_token: str
-
-
-class _Adapter:
-    def __init__(self, observation: ConsoleBackendObservation, payload: bytes) -> None:
-        self.observation = observation
-        self.payload = payload
-
-    def inspect(self, session_ref: ConsoleSessionRef) -> ConsoleBackendObservation:
-        del session_ref
-        return self.observation
-
-    def read(
-        self,
-        session_ref: ConsoleSessionRef,
-        *,
-        after_cursor: int,
-        maximum_bytes: int,
-    ) -> ConsoleOutputBatch:
-        del session_ref
-        payload = self.payload[after_cursor : after_cursor + maximum_bytes]
-        return ConsoleOutputBatch(payload=payload, source_cursor=after_cursor + len(payload))
-
-
-def _policy(*, grant_ttl_seconds: int = 300) -> ConsolePolicy:
-    return ConsolePolicy(
-        grant_ttl_seconds=grant_ttl_seconds,
-        maximum_continuous_view_seconds=1_800,
-        revocation_poll_seconds=5,
-        decoded_chunk_bytes=16 * 1024,
-        delivery_window_bytes=1024 * 1024,
-        delivery_window_seconds=60,
-        replay_window_bytes=1024 * 1024,
-        replay_window_seconds=60,
-        pending_bytes=256 * 1024,
-        denial_limit=3,
-        denial_window_seconds=300,
-        suspension_seconds=900,
-        policy_revision="console-phase1-r1",
-    )
+_DENIAL_LIMIT = 3
 
 
 def test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced(
@@ -210,6 +184,237 @@ def test_expiry_and_runtime_replacement_are_typed_refusals(tenant: TenantFixture
     assert expired.code == "console-grant-expired"
 
 
+def test_active_runtime_replacement_closes_typed_within_the_poll_bound(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    clock = _Clock(now)
+    viewer, authority, adapter, _operator, browser, allowance = _console_setup(
+        tenant, now, clock=clock
+    )
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert not isinstance(stream, RecordProblem)
+    assert b"event: chunk" in next(stream.events)
+    ref = authority.session_ref(browser, allowance.allowance_id)
+    assert isinstance(ref, ConsoleSessionRef)
+    replaced_at = clock.now
+    adapter.observation = _observation(ref, backend_incarnation="$replacement:active")
+
+    closed = next(stream.events)
+    assert b'"code":"fenced"' in closed
+    with suppress(StopIteration):
+        next(stream.events)
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        row = connection.execute(
+            "SELECT code, closed_at FROM console_stream_closes WHERE stream_id = %s",
+            (stream.lease.stream_id,),
+        ).fetchone()
+    assert row == {"code": "fenced", "closed_at": replaced_at}
+    assert cast(datetime, row["closed_at"]) <= replaced_at + timedelta(seconds=5)
+
+
+def test_commander_owned_target_is_absent_before_any_console_fact(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    ref = _recorded_session_ref(tenant, commander=True)
+    viewer = ConsoleViewer(
+        PostgresConsoleAuthority(tenant.database.runtime_dsn, policy=_policy()),
+        PostgresConsoleOutputStore(tenant.database.runtime_dsn),
+        _Adapter(_observation(ref), b"must-not-be-visible"),
+        AesGcmConsoleCipher(
+            wrapping_key=hashlib.sha256(b"commander-target-refusal").digest(),
+            wrapping_key_reference="secret-service:ctower-development/console-output-kek",
+        ),
+        clock=lambda: now,
+    )
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+
+    refused = viewer.allow_session(
+        operator,
+        ConsoleSessionAllowCommand(ref, "restricted", "standard"),
+    )
+
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "console-session-join-stale"
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        count = connection.execute(
+            "SELECT count(*) AS count FROM console_session_allows"
+        ).fetchone()
+    assert count == {"count": 0}
+
+
+@pytest.mark.parametrize(
+    ("change", "expected_code"),
+    [
+        ("global", "console-globally-disabled"),
+        ("session", "console-session-revoked"),
+        ("human-session", "console-reauthentication-required"),
+        ("human-binding", "console-reauthentication-required"),
+        ("assignment", "console-session-revoked"),
+        ("work-session", "console-session-revoked"),
+        ("policy", "console-policy-stale"),
+    ],
+)
+def test_first_open_rechecks_current_authority_without_consuming_the_grant(
+    tenant: TenantFixture,
+    change: str,
+    expected_code: str,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, authority, _adapter, operator, browser, allowance = _console_setup(tenant, now)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+
+    _apply_first_open_change(
+        change,
+        tenant,
+        viewer,
+        authority,
+        operator,
+        browser,
+        allowance,
+        now=now,
+    )
+
+    refused = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == expected_code
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        count = connection.execute("SELECT count(*) AS count FROM console_stream_opens").fetchone()
+    assert count == {"count": 0}
+
+
+def test_three_persisted_denials_suspend_for_the_full_fifteen_minutes(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    clock = _Clock(now)
+    viewer, authority, adapter, _operator, browser, allowance = _console_setup(
+        tenant, now, clock=clock
+    )
+    ref = cast(ConsoleSessionRef, authority.session_ref(browser, allowance.allowance_id))
+    adapter.observation = _observation(ref, backend_incarnation="$denied:2")
+
+    for _index in range(_DENIAL_LIMIT):
+        denied = viewer.mint_grant(browser, allowance.allowance_id)
+        assert isinstance(denied, RecordProblem)
+        assert denied.code == "console-incarnation-fenced"
+
+    adapter.observation = _observation(ref)
+    suspended = viewer.mint_grant(browser, allowance.allowance_id)
+    assert isinstance(suspended, RecordProblem)
+    assert suspended.code == "console-actor-suspended"
+    clock.now = now + timedelta(seconds=899)
+    still_suspended = viewer.mint_grant(browser, allowance.allowance_id)
+    assert isinstance(still_suspended, RecordProblem)
+    assert still_suspended.code == "console-actor-suspended"
+    clock.now = now + timedelta(seconds=900)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        row = connection.execute(
+            """
+            SELECT denial_count, suspended_at, expires_at
+            FROM console_view_suspensions
+            """
+        ).fetchone()
+    assert row is not None
+    assert row["denial_count"] == _DENIAL_LIMIT
+    assert row["suspended_at"] == now
+    assert row["expires_at"] == now + timedelta(minutes=15)
+
+
+def test_renew_before_use_replaces_the_only_claimable_grant(tenant: TenantFixture) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, _adapter, _operator, browser, allowance = _console_setup(tenant, now)
+    original = viewer.mint_grant(browser, allowance.allowance_id)
+    assert isinstance(original, ConsoleViewGrant)
+    replacement = viewer.mint_grant(browser, allowance.allowance_id, renewal=True)
+    assert isinstance(replacement, ConsoleViewGrant)
+
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+
+    assert not isinstance(stream, RecordProblem)
+    assert stream.lease.grant.grant_id == replacement.grant_id
+    assert stream.lease.grant.grant_id != original.grant_id
+
+
+def test_source_truncation_starts_a_new_generation_without_cursor_collision(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, adapter, _operator, browser, allowance = _console_setup(tenant, now)
+    adapter.payload = b"first"
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert not isinstance(stream, RecordProblem)
+    assert b"event: chunk" in next(stream.events)
+
+    adapter.gap_reason = "source-truncated"
+    adapter.gap_cursor = 0
+    adapter.payload = b"again"
+    assert b'"reason":"source_truncated"' in next(stream.events)
+    assert b"event: chunk" in next(stream.events)
+    cast(Generator[bytes, None, None], stream.events).close()
+
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        rows = connection.execute(
+            """
+            SELECT source_cursor, source_generation
+            FROM console_output_objects ORDER BY source_position
+            """
+        ).fetchall()
+    assert rows == [
+        {"source_cursor": 5, "source_generation": 1},
+        {"source_cursor": 5, "source_generation": 2},
+    ]
+
+
+def test_reconnect_replays_a_committed_truncation_gap_before_the_new_generation(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, adapter, _operator, browser, allowance = _console_setup(tenant, now)
+    adapter.payload = b"first"
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    original = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert not isinstance(original, RecordProblem)
+    first = next(original.events)
+    first_cursor = int(first.splitlines()[0].removeprefix(b"id: "))
+    cast(Generator[bytes, None, None], original.events).close()
+
+    store = PostgresConsoleOutputStore(tenant.database.runtime_dsn)
+    gap_cursor = store.record_gap(
+        allowance.allowance_id,
+        tenant.tenant_id,
+        0,
+        2,
+        "source_truncated",
+        now=now,
+    )
+    adapter.payload = b"again"
+    assert isinstance(
+        viewer.mint_grant(browser, allowance.allowance_id, renewal=True), ConsoleViewGrant
+    )
+    reconnect = viewer.open_stream(
+        browser,
+        allowance.allowance_id,
+        last_event_id=first_cursor,
+    )
+    assert not isinstance(reconnect, RecordProblem)
+
+    gap = next(reconnect.events)
+    chunk = next(reconnect.events)
+
+    assert gap.startswith(f"id: {gap_cursor}\nevent: gap\n".encode())
+    assert b'"next_cursor":' + str(gap_cursor).encode() in gap
+    assert b'"reason":"source_truncated"' in gap
+    assert b"event: chunk" in chunk
+    assert int(chunk.splitlines()[0].removeprefix(b"id: ")) > gap_cursor
+    cast(Generator[bytes, None, None], reconnect.events).close()
+
+
 def test_console_output_reader_role_has_only_the_authored_custody_surface(
     tenant: TenantFixture,
 ) -> None:
@@ -217,13 +422,14 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
         role = connection.execute(
             "SELECT rolcanlogin, rolinherit FROM pg_roles WHERE rolname = 'console_output_reader'"
         ).fetchone()
-        membership = connection.execute(
+        runtime_membership = connection.execute(
             """
             SELECT 1
             FROM pg_auth_members AS membership
             JOIN pg_roles AS member ON member.oid = membership.member
             JOIN pg_roles AS target ON target.oid = membership.roleid
-            WHERE member.rolname = 'ctower_svc' AND target.rolname = 'console_output_reader'
+            WHERE member.rolname IN ('ctower_svc', 'ctower_runtime')
+              AND target.rolname = 'console_output_reader'
             """
         ).fetchone()
         grants = connection.execute(
@@ -235,10 +441,92 @@ def test_console_output_reader_role_has_only_the_authored_custody_surface(
             """
         ).fetchall()
     assert role == {"rolcanlogin": False, "rolinherit": False}
-    assert membership is not None
+    assert runtime_membership is None
     assert [(row["table_name"], row["privilege_type"]) for row in grants] == [
-        ("console_output_objects", "SELECT")
+        ("console_output_access_facts", "SELECT"),
+        ("console_output_objects", "SELECT"),
     ]
+    with (
+        pytest.raises(psycopg.errors.InsufficientPrivilege),
+        psycopg.connect(tenant.database.runtime_dsn) as connection,
+    ):
+        connection.execute("SET ROLE ctower_svc")
+        connection.execute("SELECT ciphertext FROM console_output_objects LIMIT 1")
+    with (
+        pytest.raises(psycopg.errors.InsufficientPrivilege),
+        psycopg.connect(tenant.database.runtime_dsn) as connection,
+    ):
+        connection.execute("SET ROLE console_output_reader")
+
+
+def test_custody_failure_emits_a_typed_gap_and_close(
+    tenant: TenantFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, _adapter, _operator, browser, allowance = _console_setup(tenant, now)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert not isinstance(stream, RecordProblem)
+    assert b"event: chunk" in next(stream.events)
+
+    def fail_reader(*_args: object, **_kwargs: object) -> RecordProblem:
+        return RecordProblem(
+            code="console-output-unavailable",
+            detail="Injected custody outage.",
+            status=503,
+            title="Console output unavailable",
+        )
+
+    monkeypatch.setattr(PostgresConsoleOutputStore, "outputs_after", fail_reader)
+    gap = next(stream.events)
+    closed = next(stream.events)
+    assert b'"reason":"cursor_unavailable"' in gap
+    assert b'"code":"output_unavailable"' in closed
+    with pytest.raises(StopIteration):
+        next(stream.events)
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        facts = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM console_output_access_facts) AS access_count,
+                (SELECT count(*) FROM console_output_gap_facts
+                 WHERE reason = 'cursor_unavailable') AS gap_count,
+                (SELECT code FROM console_stream_closes
+                 WHERE stream_id = %s) AS close_code
+            """,
+            (stream.lease.stream_id,),
+        ).fetchone()
+    assert facts == {"access_count": 1, "gap_count": 1, "close_code": "output_unavailable"}
+
+
+def test_reader_failure_preserves_the_committed_access_attempt(
+    tenant: TenantFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, _adapter, _operator, browser, allowance = _console_setup(tenant, now)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+
+    def fail_after_access(
+        _store: PostgresConsoleOutputStore, _access_id: UUID
+    ) -> dict[str, object] | None:
+        raise psycopg.OperationalError("injected reader failure")
+
+    monkeypatch.setattr(PostgresConsoleOutputStore, "_recover_object", fail_after_access)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert not isinstance(stream, RecordProblem)
+    assert b'"reason":"cursor_unavailable"' in next(stream.events)
+    assert b'"code":"output_unavailable"' in next(stream.events)
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        facts = connection.execute(
+            """
+            SELECT access_kind, outcome
+            FROM console_output_access_facts
+            ORDER BY accessed_at, access_id
+            """
+        ).fetchall()
+    assert facts == [{"access_kind": "open", "outcome": "authorized"}]
 
 
 def test_console_http_boundary_requires_exact_origin_cookie_csrf_and_secret_free_sse_url(
@@ -270,7 +558,7 @@ def test_console_http_boundary_requires_exact_origin_cookie_csrf_and_secret_free
         ConsoleSessionAllowCommand(ref, "restricted", "standard"),
     )
     assert not isinstance(allowance, RecordProblem)
-    origin = "https://console.private.test"
+    origin = "https://100.84.252.114:8443"
     app = create_app(
         PostgresRecord(tenant.database.runtime_dsn),
         console=ConsoleRuntime(viewer, origin),
@@ -295,228 +583,14 @@ def test_console_http_boundary_requires_exact_origin_cookie_csrf_and_secret_free
     assert "event: chunk" in streamed.text
     assert "event: closed" in streamed.text
     assert '"code":"expired"' in streamed.text
-
-
-def _console_http_responses(
-    app: FastAPI,
-    origin: str,
-    browser: _BrowserContext,
-    allowance_id: UUID,
-) -> tuple[Response, Response, Response, Response, Response]:
-    with TestClient(app, base_url=origin) as client:
-        client.cookies.set("__Host-ctower_session", browser.session_token)
-        client.cookies.set("__Host-ctower_csrf", browser.csrf_token)
-        refused_origin = client.get(
-            "/v1/console/sessions",
-            headers={"Origin": "https://foreign.example", "X-Ctower-CSRF": browser.csrf_token},
+    validator = Draft202012Validator(
+        json.loads(
+            (
+                Path(__file__).parents[3]
+                / "contracts/domain/console/console-stream-event.schema.json"
+            ).read_text(encoding="utf-8")
         )
-        refused_csrf = client.get(
-            "/v1/console/sessions",
-            headers={"Origin": origin, "X-Ctower-CSRF": "wrong-csrf"},
-        )
-        visible = client.get(
-            "/v1/console/sessions",
-            headers={"Origin": origin, "X-Ctower-CSRF": browser.csrf_token},
-        )
-        minted = client.post(
-            f"/v1/console/sessions/{allowance_id}/grants",
-            headers={"Origin": origin, "X-Ctower-CSRF": browser.csrf_token},
-        )
-        streamed = client.get(
-            f"/v1/console/sessions/{allowance_id}/events",
-            headers={"Origin": origin, "X-Ctower-CSRF": browser.csrf_token},
-        )
-    return refused_origin, refused_csrf, visible, minted, streamed
-
-
-def _recorded_session_ref(tenant: TenantFixture) -> ConsoleSessionRef:
-    credential = secrets.token_urlsafe(32)
-    seat_principal_id, ticket_id, session_id = _create_recorded_session(tenant, credential)
-    with psycopg.connect(tenant.database.runtime_dsn, row_factory=dict_row) as connection:
-        connection.execute("SET ROLE ctower_svc")
-        assignment = connection.execute(
-            """
-            SELECT assignment_kind, interval_sequence
-            FROM assignment_intervals
-            WHERE ticket_id = %s AND released_at IS NULL
-            """,
-            (ticket_id,),
-        ).fetchone()
-    assert assignment is not None
-    runtime_attempt_id = uuid4()
-    return ConsoleSessionRef(
-        tenant_id=tenant.tenant_id,
-        project_key="ctower",
-        seat_principal_id=seat_principal_id,
-        crew_name="engineer-console-p1",
-        assignment_ticket_id=ticket_id,
-        assignment_kind=str(assignment["assignment_kind"]),
-        assignment_interval_sequence=cast(int, assignment["interval_sequence"]),
-        recorded_work_session_id=session_id,
-        runtime_attempt_id=runtime_attempt_id,
-        runner_id="mission-control",
-        runner_epoch=1,
-        adapter_key="tmux-v1",
-        opaque_backend_ref=f"crew:{session_id}",
-        backend_incarnation=f"${session_id}:1",
     )
-
-
-def _create_recorded_session(tenant: TenantFixture, credential: str) -> tuple[UUID, UUID, UUID]:
-    with TestClient(create_app(PostgresRecord(tenant.database.runtime_dsn))) as client:
-        issued = cast(
-            Response,
-            client.post(
-                "/v1/admin/seat-credentials",
-                json={
-                    "credential_digest": (
-                        f"sha256:{hashlib.sha256(credential.encode()).hexdigest()}"
-                    ),
-                    "credential_ref": "secret-ref:test/ctower/console-seat",
-                    "display_name": f"Console Seat {uuid4().hex[:8]}",
-                    "project_key": "ctower",
-                    "scopes": ["capture", "transition", "evidence"],
-                    "seat_key": f"console-seat-{uuid4().hex[:8]}",
-                },
-                headers=_headers(tenant.operator_credential),
-            ),
-        )
-        assert issued.status_code == _HTTP_ACCEPTED, issued.text
-        seat_principal_id = UUID(str(issued.json()["principal_id"]))
-        created = cast(
-            Response,
-            client.post(
-                "/v1/tickets",
-                json={
-                    "initial_custodian_id": str(seat_principal_id),
-                    "priority": "P1",
-                    "source": {"kind": "console-acceptance", "ref": f"gh437-{uuid4()}"},
-                    "title": "Console Phase-1 acceptance target",
-                },
-                headers=_headers(tenant.operator_credential),
-            ),
-        )
-        assert created.status_code == _HTTP_ACCEPTED, created.text
-        ticket_id = UUID(str(created.json()["ticket"]["ticket_id"]))
-        started = cast(
-            Response,
-            client.post(
-                f"/v1/tickets/{ticket_id}/sessions",
-                json={
-                    "branch_ref": "feat/console-phase1-viewer",
-                    "crew_name": "engineer-console-p1",
-                    "harness_ref": "codex",
-                    "model_ref": "gpt-5.6-sol",
-                    "seat_key": "engineer",
-                    "worktree_ref": "/srv/projects/ctower/.worktrees/console-p1",
-                },
-                headers=_headers(credential),
-            ),
-        )
-        assert started.status_code == _HTTP_ACCEPTED, started.text
-        session_id = UUID(str(started.json()["session_id"]))
-    return seat_principal_id, ticket_id, session_id
-
-
-def _browser_context(tenant: TenantFixture, *, now: datetime) -> _BrowserContext:
-    record = PostgresRecord(tenant.database.runtime_dsn)
-    binding = record.human_identity.bind_role(
-        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
-        HumanRoleBindingIssue(
-            client_command_id=uuid4(),
-            display_name=f"Console Viewer {uuid4().hex[:8]}",
-            oidc_issuer="https://console-idp.example.test",
-            oidc_subject=f"viewer-{uuid4()}",
-            project_keys=("ctower",),
-            role="viewer",
-        ),
-        request_digest=hashlib.sha256(uuid4().bytes).digest(),
-        now=now,
-        telemetry=_telemetry(),
-    )
-    assert not isinstance(binding, RecordProblem)
-    session_token = secrets.token_urlsafe(32)
-    csrf_token = secrets.token_urlsafe(32)
-    record.human_identity.issue_session(
-        binding.principal_id,
-        tenant.tenant_id,
-        binding.binding_id,
-        "viewer",
-        session_digest=hashlib.sha256(session_token.encode()).digest(),
-        csrf_digest=hashlib.sha256(csrf_token.encode()).digest(),
-        now=now,
-        ttl_seconds=3600,
-    )
-    actor = record.human_identity.actor_for_session(
-        hashlib.sha256(session_token.encode()).digest(), now=now
-    )
-    assert actor is not None and not isinstance(actor, RecordProblem)
-    return _BrowserContext(actor=actor, csrf_token=csrf_token, session_token=session_token)
-
-
-def _browser_actor(tenant: TenantFixture, *, now: datetime) -> Actor:
-    return _browser_context(tenant, now=now).actor
-
-
-def _observation(
-    ref: ConsoleSessionRef, *, backend_incarnation: str | None = None
-) -> ConsoleBackendObservation:
-    return ConsoleBackendObservation(
-        project_key=ref.project_key,
-        runtime_attempt_id=ref.runtime_attempt_id,
-        runner_id=ref.runner_id,
-        runner_epoch=ref.runner_epoch,
-        opaque_backend_ref=ref.opaque_backend_ref,
-        backend_incarnation=backend_incarnation or ref.backend_incarnation,
-    )
-
-
-def _headers(credential: str) -> dict[str, str]:
-    command_id = uuid4()
-    return {
-        **telemetry_headers(command_id),
-        "Authorization": f"Bearer {credential}",
-        "Idempotency-Key": str(command_id),
-    }
-
-
-def _telemetry() -> TelemetryContext:
-    command_id = str(uuid4())
-    return TelemetryContext(
-        schema="ctower.telemetry-context/v1",
-        trace_id="0" * 32,
-        span_id="0" * 16,
-        trace_flags=0,
-        correlation_id=command_id,
-        causation_id=command_id,
-        tenant_id="acceptance",
-        actor_id="acceptance",
-        command_id=command_id,
-    )
-
-
-def _assert_ciphertext_and_access_fact(tenant: TenantFixture, plaintext: bytes) -> None:
-    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
-        output = connection.execute(
-            "SELECT ciphertext, wrapped_data_key, data_key_reference FROM console_output_objects"
-        ).fetchone()
-        access_count = connection.execute(
-            "SELECT count(*) AS count FROM console_output_access_facts"
-        ).fetchone()
-    assert output is not None and access_count is not None
-    assert plaintext not in bytes(cast(bytes, output["ciphertext"]))
-    assert plaintext not in bytes(cast(bytes, output["wrapped_data_key"]))
-    assert output["data_key_reference"] is not None
-    assert access_count["count"] == 1
-
-
-def _assert_immutable_grant(tenant: TenantFixture, grant_id: UUID) -> None:
-    try:
-        with psycopg.connect(tenant.database.admin_dsn) as connection:
-            connection.execute(
-                "UPDATE console_view_grants SET policy_revision = 'tampered' WHERE grant_id = %s",
-                (grant_id,),
-            )
-    except psycopg.errors.ObjectNotInPrerequisiteState:
-        return
-    raise AssertionError("console grant UPDATE unexpectedly succeeded")
+    for line in streamed.text.splitlines():
+        if line.startswith("data: "):
+            validator.validate(json.loads(line.removeprefix("data: ")))

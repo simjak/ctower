@@ -6,4 +6,6 @@ BEGIN
 END
 $$;
 
-GRANT console_output_reader TO ctower_svc;
+GRANT console_output_reader TO ctower_admin;
+GRANT USAGE, CREATE ON SCHEMA public TO console_output_reader;
+REVOKE console_output_reader FROM ctower_svc, ctower_runtime;

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hmac
 from dataclasses import dataclass
 from typing import Annotated, Literal
+from urllib.parse import SplitResult, urlsplit
 from uuid import UUID
 
 from fastapi import FastAPI, Header, Request
@@ -13,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ctower_api._auth_routes import CSRF_COOKIE, SESSION_COOKIE
 from ctower_api._http_support import problem_response
+from ctower_api.console_network import ConsoleListenerError, validate_bind_host
 from ctower_kernel.access import Access
 from ctower_kernel.console import (
     ConsoleGlobalSwitchCommand,
@@ -35,6 +37,51 @@ class ConsoleRuntime:
 
     viewer: ConsoleViewer
     expected_origin: str
+
+    def __post_init__(self) -> None:
+        """Reject any origin that cannot also be the exact private listener."""
+
+        _console_origin_listener(self.expected_origin)
+
+    @property
+    def listener_host(self) -> str:
+        """Return the already-validated literal listener host."""
+
+        return _console_origin_listener(self.expected_origin)[0]
+
+    @property
+    def listener_port(self) -> int:
+        """Return the already-validated exact listener port."""
+
+        return _console_origin_listener(self.expected_origin)[1]
+
+
+def _console_origin_listener(origin: str) -> tuple[str, int]:
+    parsed = urlsplit(origin)
+    try:
+        port = parsed.port
+    except ValueError as error:
+        raise ConsoleListenerError("console origin port is invalid") from error
+    if not _is_exact_https_origin(parsed, port):
+        raise ConsoleListenerError("console origin must be an exact HTTPS private address and port")
+    hostname = parsed.hostname
+    if hostname is None or port is None:  # pragma: no cover - predicate proves both
+        raise ConsoleListenerError("console origin has no listener address")
+    validate_bind_host(hostname)
+    return hostname, port
+
+
+def _is_exact_https_origin(origin: SplitResult, port: int | None) -> bool:
+    return (
+        origin.scheme == "https"
+        and origin.hostname is not None
+        and origin.username is None
+        and origin.password is None
+        and port is not None
+        and not origin.path
+        and not origin.query
+        and not origin.fragment
+    )
 
 
 class _StrictModel(BaseModel):

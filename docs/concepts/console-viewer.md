@@ -36,9 +36,11 @@ An operator first appends one allowance for an exact `ConsoleSessionRef`. The re
 - Adapter kind, opaque registered backend reference, and backend incarnation.
 
 The allowance is eligibility, not a bearer credential. Discovery, mint, renewal, stream open, and every
-stream poll recheck the applicable durable facts and live Adapter observation. A stale assignment, closed
-work session, replaced runtime, advanced runner epoch, changed `@project`, or recreated tmux session fences
-the reference instead of rebinding it.
+stream poll recheck the applicable durable facts and live Adapter observation. On the first stream open,
+the service rechecks the current human session and role binding, Project scope, policy revision, global
+switch, assignment, work session, and revocations before it appends the stream claim and consumes the newest
+grant. A stale assignment, closed work session, replaced runtime, advanced runner epoch, changed `@project`,
+or recreated tmux session fences the reference instead of rebinding it.
 
 ```text
 operator allowance ------+
@@ -48,9 +50,10 @@ live Adapter observation -+              ^
 human role binding + browser session ----+
 ```
 
-Commander sessions are deliberately absent. Viewers and operators still need an exact Project grant. Three
-denials inside the configured five-minute window suspend the Actor for fifteen minutes under the Phase-1
-policy.
+Commander authority is deliberately absent on both sides of the join: a Commander-owned target engagement
+cannot receive an allowance, and a Commander Actor cannot discover, mint, or claim a stream. Viewers and
+operators still need an exact Project grant. Three denials inside the configured five-minute window append
+an immutable suspension fact and suspend the Actor for the fact's full fifteen-minute interval.
 
 ## Grant lifetime
 
@@ -71,8 +74,10 @@ Database rows keep ciphertext, nonces, a distinct data-key reference, and the wr
 the wrapping-key value.
 
 The ordinary application role can insert encrypted output and read its metadata, but cannot select content
-or wrapped-key columns. Only the dedicated NOLOGIN, NOINHERIT `console_output_reader` role may use the
-recovery connection. Each recovery appends an access fact before decryption.
+or wrapped-key columns. The dedicated NOLOGIN, NOINHERIT `console_output_reader` owns the fixed-search-path
+recovery function. Each authorized recovery attempt appends and commits its access fact before invoking that
+reader-owned content query; the function returns only the object joined to that committed access ID. A
+reader failure therefore cannot erase the attempt fact. Decryption happens only after the query succeeds.
 
 The browser receives base64 output bytes and metadata. Phase 1 does not provide the contextual browser panel
 or safe terminal renderer, so the server foundation is not a claim that hostile terminal control sequences
@@ -82,12 +87,15 @@ are safe to display in a product UI.
 
 One grant can claim at most one SSE stream. The policy caps decoded chunks at 16 KiB, delivery at 1 MiB per
 minute, replay at 1 MiB per minute, and pending bytes at 256 KiB. A durable cursor exists before its chunk is
-broadcast.
+broadcast. A per-allowance database lock makes Adapter collection single-writer across processes. Output and
+gap facts share one durable source order; when the source truncates, the gap advances a source generation so
+the same numeric source cursor can be recorded again without collision while SSE cursors remain monotonic.
 
 Reconnect uses the `Last-Event-ID` header. If the source was truncated, a requested range cannot be proved,
-or a rate/queue limit is reached, the server appends a gap fact and emits a typed `gap` event. It never skips
-uncertain bytes silently. Expiry, session revocation, replacement fences, or the global kill switch emit a
-typed `closed` event within the five-second polling ceiling.
+or a rate/queue limit is reached, the server appends a gap fact and emits a typed `gap` event. The strict SSE
+schema includes `rate_limited` alongside the cursor, truncation, unprovable-range, and slow-consumer gap
+reasons. It never skips uncertain bytes silently. Expiry, session revocation, replacement fences, or the
+global kill switch emit a typed `closed` event within the five-second polling ceiling.
 
 ## Private browser and process boundaries
 
@@ -97,8 +105,10 @@ Every browser request needs all three of these proofs:
 2. the secure HttpOnly human-session cookie;
 3. the same CSRF value in the secure CSRF cookie, `X-Ctower-CSRF` header, and stored SHA-256 digest.
 
-The listener accepts only an explicit literal loopback or Tailscale address. Hostname defaults, wildcard
-binds, public addresses, CORS, Tailscale Funnel, and response compression are outside the boundary.
+The supported listener entry point is `ctower_api.console_server.serve_console`. It derives its bind host
+and port from the same validated exact HTTPS Origin, enables TLS directly, and disables proxy-header
+authority. The listener accepts only an explicit literal loopback or Tailscale address. Hostname defaults,
+wildcard binds, public addresses, CORS, Tailscale Funnel, and response compression are outside the boundary.
 
 The Adapter uses bounded argument arrays to inspect one registered tmux target and reads only its configured
 log beneath an allowlisted root. It has no Record-tier client, shell execution, pane-write or key-injection

@@ -83,14 +83,19 @@ absent relation is empty.
 
 Console Phase 1 is isolated in `console/`. `ConsoleViewer` is the small public Interface over a pure exact
 grant decision, append-only PostgreSQL authority, encrypted output custody, and an injected read-only runtime
-Adapter. The authority rejoins the current assignment and recorded work session and persists allowances,
-denials, suspensions, human-bound one-use grants, stream claims/closes, revocations, global switch facts,
-encrypted cursors, reader accesses, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and
-enforces the five-minute grant, thirty-minute continuous-view, five-second close poll, 16 KiB chunk,
-1 MiB/min delivery/replay, and 256 KiB pending ceilings. Each output object has a fresh AES-GCM data key
-wrapped under a referenced key-encryption key; only the dedicated `console_output_reader` path can decrypt
-after an access fact is appended. The kernel imports no app, web, CLI, tmux, or process implementation and
-contains no input authority.
+Adapter. Commander Actors and Commander-owned target sessions are absent. The authority rejoins the current
+assignment and recorded work session, rechecks the complete current human/session/policy authority before a
+first stream claim consumes the newest grant, and persists allowances, denials, explicit bounded suspension
+facts, human-bound one-use grants, stream claims/closes, revocations, global switch facts, encrypted cursors,
+reader accesses, gaps, and live Adapter observations. `ConsolePolicy` has no defaults and enforces the
+five-minute grant, thirty-minute continuous-view, five-second close poll, 16 KiB chunk, 1 MiB/min
+delivery/replay, and 256 KiB pending ceilings. Per-allowance collection is single-writer across processes;
+output and gap facts share durable source order, and truncation advances a source generation before a
+numeric source cursor may recur. Each output object has a fresh AES-GCM data key wrapped under a referenced
+key-encryption key; the service commits an access-attempt fact before invoking the dedicated
+`console_output_reader`-owned recovery function, which returns only the object joined to that fact. It then
+decrypts only data returned through that custody path. The kernel imports no app, web,
+CLI, tmux, or process implementation and contains no input authority.
 
 Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.
 Org writes require operator authority; project writes and reads reuse Record's persisted project-seat checks.

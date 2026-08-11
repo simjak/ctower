@@ -33,11 +33,12 @@ successful artifact; authentication, role, and malformed-date failures remain tr
 stores nothing and owns no scheduler or notification delivery.
 The optional Phase-1 Console composition mounts bearer-authenticated operator allowance/revocation/global
 switch routes together with exact-Origin, human-session, and CSRF browser discovery/grant/renewal/SSE routes.
-The viewer and configured Origin must be injected together. Its registered tmux Adapter reads only one
-declared existing pipe-pane log, checks live `@project` and session incarnation through bounded argument
-arrays, and has no Record-tier client, shell, pane write, or generic-process route. The listener host is
-validated separately as a literal loopback or Tailscale address; wildcard, public, and hostname defaults fail
-closed. This boundary provides no browser UI and never falls back to the existing dogfood terminal reader.
+The viewer and configured Origin must be injected together. `serve_console` is the supported direct-HTTPS
+startup path and derives its host and port only from that validated literal private Origin. Its registered
+tmux Adapter reads only one declared existing pipe-pane log, checks live `@project` and session incarnation
+through bounded argument arrays, and has no Record-tier client, shell, pane write, or generic-process route.
+Wildcard, public, hostname, default, and proxy-derived listener authority fail closed. This boundary provides
+no browser UI and never falls back to the existing dogfood terminal reader.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers
 never catch up the projection. One common mutation envelope asks Record to reconcile the exact command root and

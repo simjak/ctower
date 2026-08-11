@@ -27,12 +27,12 @@ command history, evidence file, URL, status report, or log.
 
 Apply the signed migration chain using the repository's normal migration procedure. The cluster step creates
 the NOLOGIN, NOINHERIT `console_output_reader`; database migration `0063` creates the append-only Console
-facts and exact privileges.
+facts, the fixed-search-path reader-owned recovery function, and exact privileges.
 
 Verify the reader boundary through the named acceptance test:
 
 ```bash
-uv run pytest tests/acceptance/increment-1/test_console_view_grants.py::test_console_output_reader_is_exact_dedicated_role -q
+uv run pytest tests/acceptance/increment-1/test_console_view_grants.py::test_console_output_reader_role_has_only_the_authored_custody_surface -q
 ```
 
 Do not grant the application service direct SELECT access to encrypted content or wrapped-key columns.
@@ -83,9 +83,25 @@ app = create_app(
 
 ## 4. Bind the HTTPS listener privately
 
-Validate the literal host with `validate_bind_host` before starting the server. Admit only `127.0.0.1`,
-`::1`, or an address in Tailscale's `100.64.0.0/10` or `fd7a:115c:a1e0::/48` ranges. Do not pass a hostname,
-`0.0.0.0`, `::`, a public address, or an omitted/default host.
+Start the direct-HTTPS listener through its supported entry point:
+
+```python
+from pathlib import Path
+
+from ctower_api.console_server import serve_console
+
+serve_console(
+    app,
+    runtime,
+    certificate_file=Path("/run/ctower/console.crt"),
+    private_key_file=Path("/run/ctower/console.key"),
+)
+```
+
+It derives the literal host and port from `ConsoleRuntime` after the runtime has admitted only `127.0.0.1`,
+`::1`, or an address in Tailscale's `100.64.0.0/10` or `fd7a:115c:a1e0::/48` ranges. It serves TLS directly,
+disables proxy-header authority, and has no separate hostname, wildcard, public, proxy-derived, or
+omitted/default host argument.
 
 After start, capture the Console port from the live listener inventory:
 
@@ -121,7 +137,9 @@ From the private origin, use the secure browser session plus matching CSRF cooki
 5. record only cursor, decoded-byte count, ciphertext/object digest, event type, and elapsed time.
 
 Never archive the `data` value of an output event. For reconnect, send only the last durable cursor in the
-`Last-Event-ID` header.
+`Last-Event-ID` header. Treat `chunk`, `gap`, and `closed` as the complete event set. A `gap` reason may be
+`cursor_unavailable`, `source_truncated`, `unprovable_range`, `slow_consumer`, or `rate_limited`; a null
+`next_cursor` means continuity cannot be asserted and must not be replaced with a guessed cursor.
 
 ## 7. Prove expiry, revocation, and fences
 
@@ -136,6 +154,9 @@ Use distinct grants for each case:
   fence code and reveals no output.
 - Activate `POST /v1/admin/console/kill-switch` and confirm new admission refuses and active streams close with
   `globally_disabled`; clear it only through a later operator fact with a reason.
+- Cause three controlled denied grant decisions in the configured five-minute window and confirm one
+  append-only suspension fact retains the denial count, start, and full fifteen-minute expiry. Stop the
+  probe there; do not generate additional denials during the suspension.
 
 ## 8. Run the named gates
 
@@ -157,7 +178,8 @@ The archived digest-only record should name:
 - candidate commit and migration/schema manifest digests;
 - Project, crew, registered backend reference, runtime attempt, runner/epoch, and incarnation digests or
   non-secret identifiers;
-- allowance/grant/stream/object/access/gap/close fact IDs;
+- allowance/grant/stream/object/access/gap/close/suspension fact IDs, plus source generation and durable
+  cursor metadata;
 - output byte count and cryptographic digest, never output content;
 - exact Origin and private bind endpoint;
 - `ss` private/wildcard classification and Funnel result;

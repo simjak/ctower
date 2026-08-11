@@ -75,8 +75,24 @@ CREATE TABLE console_view_denials (
 CREATE INDEX console_view_denials_actor_window
     ON console_view_denials (tenant_id, actor_principal_id, denied_at DESC);
 
+CREATE TABLE console_view_suspensions (
+    suspension_id uuid PRIMARY KEY,
+    tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
+    actor_principal_id uuid NOT NULL,
+    denial_count integer NOT NULL CHECK (denial_count >= 3),
+    reason text NOT NULL CHECK (length(reason) BETWEEN 1 AND 500),
+    suspended_at timestamptz NOT NULL,
+    expires_at timestamptz NOT NULL,
+    FOREIGN KEY (actor_principal_id, tenant_id)
+        REFERENCES principals(principal_id, tenant_id),
+    CHECK (expires_at > suspended_at)
+);
+CREATE INDEX console_view_suspensions_actor_expiry
+    ON console_view_suspensions (tenant_id, actor_principal_id, expires_at DESC);
+
 CREATE TABLE console_view_grants (
     grant_id uuid PRIMARY KEY,
+    grant_sequence bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$'),
     actor_principal_id uuid NOT NULL,
@@ -107,7 +123,7 @@ CREATE TABLE console_view_grants (
 );
 CREATE INDEX console_view_grants_actor_session
     ON console_view_grants (
-        tenant_id, actor_principal_id, human_session_id, allowance_id, granted_at DESC
+        tenant_id, actor_principal_id, human_session_id, allowance_id, grant_sequence DESC
     );
 
 CREATE TABLE console_view_grant_revocations (
@@ -145,19 +161,24 @@ CREATE TABLE console_stream_closes (
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     code text NOT NULL CHECK (code IN (
         'expired', 'revoked', 'fenced', 'rate_limited', 'slow_consumer',
-        'reauthentication_required', 'globally_disabled', 'client_disconnected'
+        'reauthentication_required', 'globally_disabled', 'output_unavailable',
+        'client_disconnected'
     )),
     gap_required boolean NOT NULL,
     closed_at timestamptz NOT NULL,
     FOREIGN KEY (stream_id, tenant_id) REFERENCES console_stream_opens(stream_id, tenant_id)
 );
 
+CREATE SEQUENCE console_source_positions_sequence;
+
 CREATE TABLE console_output_objects (
     cursor bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source_position bigint NOT NULL DEFAULT nextval('console_source_positions_sequence') UNIQUE,
     object_id uuid NOT NULL UNIQUE,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     allowance_id uuid NOT NULL,
     source_cursor bigint NOT NULL CHECK (source_cursor >= 0),
+    source_generation bigint NOT NULL CHECK (source_generation >= 1),
     ciphertext bytea NOT NULL,
     content_nonce bytea NOT NULL CHECK (octet_length(content_nonce) = 12),
     wrapped_data_key bytea NOT NULL,
@@ -169,7 +190,7 @@ CREATE TABLE console_output_objects (
     recorded_at timestamptz NOT NULL,
     FOREIGN KEY (allowance_id, tenant_id)
         REFERENCES console_session_allows(allowance_id, tenant_id),
-    UNIQUE (allowance_id, source_cursor),
+    UNIQUE (allowance_id, source_generation, source_cursor),
     UNIQUE (cursor, tenant_id)
 );
 
@@ -180,6 +201,7 @@ CREATE TABLE console_output_access_facts (
     grant_id uuid NOT NULL,
     stream_id uuid NOT NULL,
     access_kind text NOT NULL CHECK (access_kind IN ('open', 'reconnect', 'replay', 'forensic')),
+    outcome text NOT NULL CHECK (outcome = 'authorized'),
     accessed_by uuid NOT NULL,
     accessed_at timestamptz NOT NULL,
     FOREIGN KEY (grant_id, tenant_id) REFERENCES console_view_grants(grant_id, tenant_id),
@@ -189,9 +211,12 @@ CREATE TABLE console_output_access_facts (
 
 CREATE TABLE console_output_gap_facts (
     gap_id uuid PRIMARY KEY,
+    cursor bigint NOT NULL DEFAULT nextval('console_output_objects_cursor_seq') UNIQUE,
+    source_position bigint NOT NULL DEFAULT nextval('console_source_positions_sequence') UNIQUE,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     allowance_id uuid NOT NULL,
     source_cursor bigint NOT NULL CHECK (source_cursor >= 0),
+    source_generation bigint NOT NULL CHECK (source_generation >= 1),
     reason text NOT NULL CHECK (reason IN (
         'cursor_unavailable', 'source_truncated', 'unprovable_range',
         'slow_consumer', 'rate_limited'
@@ -200,6 +225,25 @@ CREATE TABLE console_output_gap_facts (
     FOREIGN KEY (allowance_id, tenant_id)
         REFERENCES console_session_allows(allowance_id, tenant_id)
 );
+
+CREATE FUNCTION recover_console_output_object(p_access_id uuid)
+RETURNS SETOF console_output_objects
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+    SELECT object.*
+    FROM public.console_output_objects AS object
+    JOIN public.console_output_access_facts AS access
+      ON access.tenant_id = object.tenant_id
+     AND access.object_id = object.object_id
+    WHERE access.access_id = p_access_id
+$function$;
+ALTER FUNCTION recover_console_output_object(uuid) OWNER TO console_output_reader;
+REVOKE CREATE ON SCHEMA public FROM console_output_reader;
+REVOKE ALL ON FUNCTION recover_console_output_object(uuid)
+    FROM PUBLIC, ctower_svc, ctower_projection;
+GRANT EXECUTE ON FUNCTION recover_console_output_object(uuid) TO ctower_svc;
 
 CREATE TABLE console_adapter_observation_facts (
     observation_id uuid PRIMARY KEY,
@@ -228,6 +272,9 @@ CREATE TRIGGER console_global_kill_switch_facts_immutable
 CREATE TRIGGER console_view_denials_immutable
     BEFORE UPDATE OR DELETE ON console_view_denials
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
+CREATE TRIGGER console_view_suspensions_immutable
+    BEFORE UPDATE OR DELETE ON console_view_suspensions
+    FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
 CREATE TRIGGER console_view_grants_immutable
     BEFORE UPDATE OR DELETE ON console_view_grants
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
@@ -254,23 +301,32 @@ CREATE TRIGGER console_adapter_observation_facts_immutable
     FOR EACH ROW EXECUTE FUNCTION refuse_immutable_control_fact_mutation();
 
 REVOKE ALL ON console_session_allows, console_session_revocations,
-    console_global_kill_switch_facts, console_view_denials, console_view_grants,
+    console_global_kill_switch_facts, console_view_denials, console_view_suspensions,
+    console_view_grants,
     console_view_grant_revocations, console_stream_opens, console_stream_closes,
     console_output_objects, console_output_access_facts, console_output_gap_facts,
     console_adapter_observation_facts
     FROM PUBLIC, ctower_svc, ctower_projection, console_output_reader;
 REVOKE ALL ON SEQUENCE console_output_objects_cursor_seq
     FROM PUBLIC, ctower_svc, ctower_projection, console_output_reader;
+REVOKE ALL ON SEQUENCE console_source_positions_sequence
+    FROM PUBLIC, ctower_svc, ctower_projection, console_output_reader;
+REVOKE ALL ON SEQUENCE console_view_grants_grant_sequence_seq
+    FROM PUBLIC, ctower_svc, ctower_projection, console_output_reader;
 
 GRANT INSERT, SELECT ON console_session_allows, console_session_revocations,
     console_global_kill_switch_facts, console_view_denials, console_view_grants,
+    console_view_suspensions,
     console_view_grant_revocations, console_stream_opens, console_stream_closes,
     console_output_access_facts, console_output_gap_facts, console_adapter_observation_facts
     TO ctower_svc;
 GRANT INSERT ON console_output_objects TO ctower_svc;
 GRANT SELECT (
-    cursor, object_id, tenant_id, allowance_id, source_cursor,
+    cursor, source_position, object_id, tenant_id, allowance_id,
+    source_cursor, source_generation,
     object_sha256, decoded_bytes, recorded_at
 ) ON console_output_objects TO ctower_svc;
 GRANT USAGE, SELECT ON SEQUENCE console_output_objects_cursor_seq TO ctower_svc;
-GRANT SELECT ON console_output_objects TO console_output_reader;
+GRANT USAGE, SELECT ON SEQUENCE console_source_positions_sequence TO ctower_svc;
+GRANT USAGE, SELECT ON SEQUENCE console_view_grants_grant_sequence_seq TO ctower_svc;
+GRANT SELECT ON console_output_objects, console_output_access_facts TO console_output_reader;

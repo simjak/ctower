@@ -2,9 +2,9 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0063_console_view_grants.sql",
-    "schema_sha256": "sha256:ad8f9ad3c931145135d6fb54fe7a5a5af722173acc14754041356c6b00f501a6",
+    "schema_sha256": "sha256:2044df5312b98f452c735017443cd466f5c82550262d962f699f63408f86829c",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:fea51cb1e79e14d9d6a13fbf071a06d176d24bd2f768ede8779044117bd9e1e1"
+    "schema_object_sum256": "sum256:5e06e3aa65bfc48a47649e6e5baeb4627adaa4f08903b7344ff43e8341e110c2"
   },
   "migrations": [
     {
@@ -578,17 +578,17 @@
     },
     {
       "path": "0062_console_output_reader_role.sql",
-      "sha256": "sha256:c2bcdf239a32fa0a06668c492ad2f869fd3a09f55c99d9e2fe6c2b61d818a81e",
+      "sha256": "sha256:dda35dded14a8a6c47a1c411f4effaaaf64cc686bdc3ec8223108945e2449e5d",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_output_reader_role_has_only_the_authored_custody_surface",
-      "rollback_or_forward_compensation": "Preserve the dedicated non-login output-reader identity and ctower service membership until every encrypted Console output object is beyond retention; revoke membership only through reviewed forward compensation after disabling admission.",
+      "rollback_or_forward_compensation": "Preserve the dedicated non-login output-reader identity, its administrator-only ownership path, and the audited recovery function until every encrypted Console output object is beyond retention; change membership only through reviewed forward compensation after disabling admission.",
       "backup_checkpoint": "Before role reconciliation on a nonempty cluster, capture the console_output_reader attributes, memberships, sessions, owned objects, and grants plus a verified cluster-role backup; the new role starts NOLOGIN and NOINHERIT."
     },
     {
       "path": "0063_console_view_grants.sql",
-      "sha256": "sha256:3d1cc1c12797664ab65fd41401fe4b0732ee84385069c8a5868c43d67d7ed0a7",
+      "sha256": "sha256:43d9b39bf6a39dd6b205f02239369bc0e3789ecaf08baa410c938e3e64e40913",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",

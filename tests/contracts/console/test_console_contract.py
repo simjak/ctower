@@ -54,6 +54,9 @@ def test_stream_contract_names_exact_sse_security_and_bounded_close_events() -> 
     event_types = {variant["properties"]["type"]["const"] for variant in variants}
     assert event_types == {"chunk", "gap", "closed"}
     closed = next(item for item in variants if item["properties"]["type"]["const"] == "closed")
+    gap = next(item for item in variants if item["properties"]["type"]["const"] == "gap")
+    assert gap["properties"]["next_cursor"]["minimum"] == 1
+    assert "rate_limited" in gap["properties"]["reason"]["enum"]
     assert set(closed["properties"]["code"]["enum"]) >= {
         "expired",
         "revoked",
@@ -77,6 +80,7 @@ def test_console_migration_names_append_only_facts_and_output_reader_role() -> N
         "console_output_objects",
         "console_output_access_facts",
         "console_global_kill_switch_facts",
+        "console_view_suspensions",
     ):
         assert f"CREATE TABLE {table}" in migration
     assert "console_output_reader" in migration

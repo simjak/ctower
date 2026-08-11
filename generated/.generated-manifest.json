@@ -158,7 +158,7 @@
         },
         {
           "path": "contracts/domain/console/console-stream-event.schema.json",
-          "sha256": "sha256:cde460306fa21343ea291f5203ed0d91822babd2b7f8e8a86ffee3ac8c4c49f6"
+          "sha256": "sha256:b7a204e4055ca3f5da6ece2514b0d94d073d908ffd32aadd45a51a6b0a1bb450"
         },
         {
           "path": "contracts/domain/console/console-view-grant.schema.json",
@@ -508,7 +508,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:b1fed322f1f897024f5112b829c04083bbd8f675b40872e81dd55db3fa8cd954"
+          "sha256": "sha256:91fa6a96517f489a3d95a36c5c73dfd287f2427e5532556ce9b8a695ad2a4b7b"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

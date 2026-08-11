@@ -16,6 +16,7 @@ from ctower_kernel.console.cipher import AesGcmConsoleCipher
 from ctower_kernel.console.models import (
     ConsoleBackendObservation,
     ConsoleGlobalSwitchCommand,
+    ConsoleGrantFacts,
     ConsoleGrantIdentifiers,
     ConsoleOutputBatch,
     ConsoleSessionAllowance,
@@ -24,6 +25,7 @@ from ctower_kernel.console.models import (
     ConsoleSessionRevocation,
     ConsoleStreamLease,
     ConsoleViewGrant,
+    StoredConsoleGap,
     StoredConsoleOutput,
 )
 from ctower_kernel.console.output_store import PostgresConsoleOutputStore
@@ -69,6 +71,7 @@ class _StreamState:
     after_cursor: int
     durable_cursor: int
     source_cursor: int
+    source_generation: int
     reconnect: bool
     close_code: StreamCloseCode = "client_disconnected"
     gap_required: bool = False
@@ -120,7 +123,44 @@ class ConsoleViewer:
     def mint_grant(
         self, actor: Actor, allowance_id: UUID, *, renewal: bool = False
     ) -> ConsoleViewGrant | RecordProblem:
-        now = self._clock()
+        with self._authority.grant_decision_lock(actor, allowance_id):
+            now = self._clock()
+            facts = self._grant_facts_for_decision(actor, allowance_id, now=now)
+            if isinstance(facts, RecordProblem):
+                return facts
+            previous = self._authority.previous_grant(actor, allowance_id)
+            if renewal and previous is None:
+                problem = _problem(
+                    "console-renewal-unavailable", "There is no prior grant to renew.", 401
+                )
+                self._authority.record_denial(actor, allowance_id, problem.code, now=now)
+                return problem
+            outcome = decide_view_grant(
+                facts,
+                ConsoleGrantIdentifiers(grant_id=uuid7(now), nonce=uuid7(now)),
+                policy=self._authority.policy,
+                now=now,
+                previous_grant=previous if renewal else None,
+            )
+            if isinstance(outcome, RecordProblem):
+                self._authority.record_denial(actor, allowance_id, outcome.code, now=now)
+                return outcome
+            if not renewal and previous is not None and previous.expires_at > now:
+                return _problem(
+                    "console-grant-already-current",
+                    "A current grant already exists; renew it explicitly.",
+                    409,
+                )
+            self._authority.persist_grant(outcome, now=now)
+            return outcome
+
+    def _grant_facts_for_decision(
+        self,
+        actor: Actor,
+        allowance_id: UUID,
+        *,
+        now: datetime,
+    ) -> ConsoleGrantFacts | RecordProblem:
         ref = self._authority.session_ref(actor, allowance_id)
         if isinstance(ref, RecordProblem):
             return ref
@@ -128,30 +168,7 @@ class ConsoleViewer:
         if isinstance(observation, RecordProblem):
             self._authority.record_denial(actor, allowance_id, observation.code, now=now)
             return observation
-        facts = self._authority.grant_facts(actor, allowance_id, observation, now=now)
-        if isinstance(facts, RecordProblem):
-            return facts
-        previous = self._authority.previous_grant(actor, allowance_id)
-        if renewal and previous is None:
-            problem = _problem(
-                "console-renewal-unavailable", "There is no prior grant to renew.", 401
-            )
-            self._authority.record_denial(actor, allowance_id, problem.code, now=now)
-            return problem
-        if not renewal and previous is not None and previous.expires_at <= now:
-            previous = None
-        outcome = decide_view_grant(
-            facts,
-            ConsoleGrantIdentifiers(grant_id=uuid7(now), nonce=uuid7(now)),
-            policy=self._authority.policy,
-            now=now,
-            previous_grant=previous,
-        )
-        if isinstance(outcome, RecordProblem):
-            self._authority.record_denial(actor, allowance_id, outcome.code, now=now)
-            return outcome
-        self._authority.persist_grant(outcome, now=now)
-        return outcome
+        return self._authority.grant_facts(actor, allowance_id, observation, now=now)
 
     def revoke_session(
         self, actor: Actor, command: ConsoleSessionRevocation
@@ -201,30 +218,7 @@ class ConsoleViewer:
             initial_gap = self._initial_cursor_gap(lease, state, newest=newest)
             yield from _optional_event(initial_gap)
             while True:
-                status = self._authority.stream_close_reason(lease, now=self._clock())
-                if status is not None:
-                    state.close_code = status
-                    yield _closed(status)
-                    return
-                observation = self._adapter.inspect(ref)
-                if isinstance(observation, RecordProblem) or not _observation_matches(
-                    ref, observation
-                ):
-                    state.close_code = "fenced"
-                    yield _closed("fenced")
-                    return
-                replay = self._output_store.outputs_after(
-                    lease.grant.allowance_id,
-                    lease.grant.tenant_id,
-                    state.durable_cursor,
-                )
-                if replay:
-                    terminal = yield from self._replay_outputs(lease, state, replay)
-                    if terminal:
-                        yield _closed(state.close_code)
-                        return
-                    continue
-                terminal = yield from self._read_adapter(lease, ref, state)
+                terminal = yield from self._stream_cycle(lease, ref, state)
                 if terminal:
                     yield _closed(state.close_code)
                     return
@@ -239,10 +233,56 @@ class ConsoleViewer:
                 now=self._clock(),
             )
 
+    def _stream_cycle(
+        self,
+        lease: ConsoleStreamLease,
+        ref: ConsoleSessionRef,
+        state: _StreamState,
+    ) -> Generator[bytes, None, bool]:
+        status = self._authority.stream_close_reason(lease, now=self._clock())
+        if status is not None:
+            state.close_code = status
+            return True
+        observation = self._adapter.inspect(ref)
+        if isinstance(observation, RecordProblem) or not _observation_matches(ref, observation):
+            state.close_code = "fenced"
+            return True
+        access_kind: Literal["open", "reconnect", "replay", "forensic"] = (
+            "reconnect" if state.reconnect else "open"
+        )
+        if state.durable_cursor != state.after_cursor:
+            access_kind = "replay"
+        replay = self._output_store.outputs_after(
+            lease,
+            state.durable_cursor,
+            access_kind,
+            now=self._clock(),
+        )
+        if isinstance(replay, RecordProblem):
+            yield self._custody_gap(lease, state)
+            return True
+        if replay:
+            return (yield from self._replay_outputs(lease, state, replay))
+        return (yield from self._read_adapter(lease, ref, state))
+
+    def _custody_gap(self, lease: ConsoleStreamLease, state: _StreamState) -> bytes:
+        state.close_code = "output_unavailable"
+        state.gap_required = True
+        gap_cursor = self._record_bounded_gap(
+            lease,
+            state.source_cursor,
+            state.source_generation,
+            "cursor_unavailable",
+        )
+        return _gap(gap_cursor, "cursor_unavailable", event_id=gap_cursor)
+
     def _stream_state(
         self, lease: ConsoleStreamLease, *, after_cursor: int, reconnect: bool
     ) -> _StreamState:
         policy = self._authority.policy
+        source_cursor, source_generation = self._output_store.latest_source_position(
+            lease.grant.allowance_id, lease.grant.tenant_id
+        )
         return _StreamState(
             window=ConsoleStreamWindow(
                 delivery_window_bytes=policy.delivery_window_bytes,
@@ -253,56 +293,88 @@ class ConsoleViewer:
             ),
             after_cursor=after_cursor,
             durable_cursor=after_cursor,
-            source_cursor=self._output_store.latest_source_cursor(
-                lease.grant.allowance_id, lease.grant.tenant_id
-            ),
+            source_cursor=source_cursor,
+            source_generation=source_generation,
             reconnect=reconnect,
         )
 
     def _initial_cursor_gap(
         self, lease: ConsoleStreamLease, state: _StreamState, *, newest: int
     ) -> bytes | None:
-        if state.durable_cursor <= newest:
+        if state.durable_cursor <= newest and self._output_store.owns_cursor(
+            lease.grant.allowance_id,
+            lease.grant.tenant_id,
+            state.durable_cursor,
+        ):
             return None
-        self._record_bounded_gap(lease, state.source_cursor, "unprovable_range")
+        self._record_bounded_gap(
+            lease,
+            state.source_cursor,
+            state.source_generation,
+            "unprovable_range",
+        )
         state.gap_required = True
-        state.durable_cursor = newest
-        return _gap(newest, "unprovable_range")
+        state.durable_cursor = 0
+        return _gap(None, "unprovable_range")
 
     def _replay_outputs(
         self,
         lease: ConsoleStreamLease,
         state: _StreamState,
-        outputs: tuple[StoredConsoleOutput, ...],
+        outputs: tuple[StoredConsoleOutput | StoredConsoleGap, ...],
     ) -> Generator[bytes, None, bool]:
         now = self._clock()
         for output in outputs:
+            if isinstance(output, StoredConsoleGap):
+                yield _gap(output.cursor, output.reason, event_id=output.cursor)
+                state.durable_cursor = output.cursor
+                state.source_cursor = output.source_cursor
+                state.source_generation = output.source_generation
+                state.gap_required = True
+                continue
             if (
                 state.window.admit_replay(output.decoded_bytes, at=now)
                 is not StreamDisposition.ADMITTED
             ):
                 state.close_code = "rate_limited"
                 state.gap_required = True
-                self._record_bounded_gap(lease, output.source_cursor, "rate_limited")
-                yield _gap(output.cursor, "rate_limited")
+                gap_cursor = self._record_bounded_gap(
+                    lease,
+                    output.source_cursor,
+                    output.source_generation,
+                    "rate_limited",
+                )
+                yield _gap(gap_cursor, "rate_limited", event_id=gap_cursor)
                 return True
-            access_kind: Literal["open", "reconnect", "replay", "forensic"] = (
-                "reconnect" if state.reconnect else "open"
-            )
-            if state.durable_cursor != state.after_cursor:
-                access_kind = "replay"
-            self._output_store.record_output_access(lease, output, access_kind, now=now)
-            payload = self._decrypt_output(lease, output)
+            try:
+                payload = self._decrypt_output(lease, output)
+            except RuntimeError:
+                state.close_code = "output_unavailable"
+                state.gap_required = True
+                gap_cursor = self._record_bounded_gap(
+                    lease,
+                    output.source_cursor,
+                    output.source_generation,
+                    "cursor_unavailable",
+                )
+                yield _gap(gap_cursor, "cursor_unavailable", event_id=gap_cursor)
+                return True
             if state.window.add_pending(len(payload)) is StreamDisposition.SLOW_CONSUMER:
                 state.close_code = "slow_consumer"
                 state.gap_required = True
-                self._record_bounded_gap(lease, output.source_cursor, "slow_consumer")
-                yield _gap(output.cursor, "slow_consumer")
+                gap_cursor = self._record_bounded_gap(
+                    lease,
+                    output.source_cursor,
+                    output.source_generation,
+                    "slow_consumer",
+                )
+                yield _gap(gap_cursor, "slow_consumer", event_id=gap_cursor)
                 return True
             yield _chunk(output, payload)
             state.window.flush_pending(len(payload))
             state.durable_cursor = output.cursor
             state.source_cursor = max(state.source_cursor, output.source_cursor)
+            state.source_generation = output.source_generation
         return False
 
     def _read_adapter(
@@ -311,43 +383,73 @@ class ConsoleViewer:
         ref: ConsoleSessionRef,
         state: _StreamState,
     ) -> Generator[bytes, None, bool]:
-        batch = self._adapter.read(
-            ref,
-            after_cursor=state.source_cursor,
-            maximum_bytes=self._authority.policy.decoded_chunk_bytes,
-        )
-        if isinstance(batch, RecordProblem):
-            state.close_code = "fenced"
-            return True
-        if batch.gap:
-            reason = _gap_reason(batch.gap_reason)
-            self._record_bounded_gap(lease, batch.source_cursor, reason)
-            state.gap_required = True
+        with self._output_store.collection_lock(lease.grant.allowance_id, lease.grant.tenant_id):
+            source_cursor, source_generation = self._output_store.latest_source_position(
+                lease.grant.allowance_id, lease.grant.tenant_id
+            )
+            if (source_cursor, source_generation) != (
+                state.source_cursor,
+                state.source_generation,
+            ):
+                state.source_cursor = source_cursor
+                state.source_generation = source_generation
+                return False
+            batch = self._adapter.read(
+                ref,
+                after_cursor=state.source_cursor,
+                maximum_bytes=self._authority.policy.decoded_chunk_bytes,
+            )
+            if isinstance(batch, RecordProblem):
+                state.close_code = "fenced"
+                return True
+            if batch.gap:
+                reason = _gap_reason(batch.gap_reason)
+                state.source_generation += 1
+                gap_cursor = self._record_bounded_gap(
+                    lease,
+                    batch.source_cursor,
+                    state.source_generation,
+                    reason,
+                )
+                state.gap_required = True
+                state.durable_cursor = gap_cursor
+                state.source_cursor = batch.source_cursor
+                yield _gap(gap_cursor, reason, event_id=gap_cursor)
+                return False
+            if not batch.payload:
+                self._sleeper(float(self._authority.policy.revocation_poll_seconds))
+                return False
+            if (
+                state.window.admit_delivery(len(batch.payload), at=self._clock())
+                is StreamDisposition.RATE_LIMITED
+            ):
+                state.close_code = "rate_limited"
+                state.gap_required = True
+                gap_cursor = self._record_bounded_gap(
+                    lease,
+                    state.source_cursor,
+                    state.source_generation,
+                    "rate_limited",
+                )
+                yield _gap(gap_cursor, "rate_limited", event_id=gap_cursor)
+                return True
+            self._persist_batch(lease, batch, source_generation=state.source_generation)
             state.source_cursor = batch.source_cursor
-            yield _gap(None, reason)
-            return False
-        if not batch.payload:
-            self._sleeper(float(self._authority.policy.revocation_poll_seconds))
-            return False
-        if (
-            state.window.admit_delivery(len(batch.payload), at=self._clock())
-            is StreamDisposition.RATE_LIMITED
-        ):
-            state.close_code = "rate_limited"
-            state.gap_required = True
-            self._record_bounded_gap(lease, state.source_cursor, "rate_limited")
-            yield _gap(None, "rate_limited")
-            return True
-        self._persist_batch(lease, batch)
-        state.source_cursor = batch.source_cursor
         return False
 
-    def _persist_batch(self, lease: ConsoleStreamLease, batch: ConsoleOutputBatch) -> None:
+    def _persist_batch(
+        self,
+        lease: ConsoleStreamLease,
+        batch: ConsoleOutputBatch,
+        *,
+        source_generation: int,
+    ) -> None:
         object_id = uuid7(self._clock())
         aad = _object_aad(
             lease.grant.tenant_id,
             lease.grant.allowance_id,
             batch.source_cursor,
+            source_generation,
             object_id,
         )
         envelope = self._cipher.encrypt(object_id, batch.payload, aad=aad)
@@ -355,6 +457,7 @@ class ConsoleViewer:
             lease.grant.allowance_id,
             lease.grant.tenant_id,
             batch.source_cursor,
+            source_generation,
             envelope,
             object_sha256=hashlib.sha256(batch.payload).digest(),
             decoded_bytes=len(batch.payload),
@@ -366,6 +469,7 @@ class ConsoleViewer:
             lease.grant.tenant_id,
             lease.grant.allowance_id,
             output.source_cursor,
+            output.source_generation,
             output.envelope.object_id,
         )
         payload = self._cipher.decrypt(
@@ -389,6 +493,7 @@ class ConsoleViewer:
         self,
         lease: ConsoleStreamLease,
         source_cursor: int,
+        source_generation: int,
         reason: Literal[
             "cursor_unavailable",
             "source_truncated",
@@ -396,11 +501,12 @@ class ConsoleViewer:
             "slow_consumer",
             "rate_limited",
         ],
-    ) -> None:
-        self._output_store.record_gap(
+    ) -> int:
+        return self._output_store.record_gap(
             lease.grant.allowance_id,
             lease.grant.tenant_id,
             source_cursor,
+            source_generation,
             reason,
             now=self._clock(),
         )
@@ -422,8 +528,14 @@ def _optional_event(event: bytes | None) -> Iterator[bytes]:
         yield event
 
 
-def _object_aad(tenant_id: UUID, allowance_id: UUID, source_cursor: int, object_id: UUID) -> bytes:
-    return f"{tenant_id}:{allowance_id}:{source_cursor}:{object_id}".encode()
+def _object_aad(
+    tenant_id: UUID,
+    allowance_id: UUID,
+    source_cursor: int,
+    source_generation: int,
+    object_id: UUID,
+) -> bytes:
+    return (f"{tenant_id}:{allowance_id}:{source_generation}:{source_cursor}:{object_id}").encode()
 
 
 def _chunk(output: StoredConsoleOutput, payload: bytes) -> bytes:
@@ -439,8 +551,12 @@ def _chunk(output: StoredConsoleOutput, payload: bytes) -> bytes:
     )
 
 
-def _gap(next_cursor: int | None, reason: str) -> bytes:
-    return _sse("gap", {"type": "gap", "reason": reason, "next_cursor": next_cursor})
+def _gap(next_cursor: int | None, reason: str, *, event_id: int | None = None) -> bytes:
+    return _sse(
+        "gap",
+        {"type": "gap", "reason": reason, "next_cursor": next_cursor},
+        event_id=event_id,
+    )
 
 
 def _closed(code: str) -> bytes:

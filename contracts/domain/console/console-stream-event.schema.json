@@ -20,7 +20,7 @@
       "required": ["next_cursor", "reason", "type"],
       "properties": {
         "next_cursor": {"type": ["integer", "null"], "minimum": 1},
-        "reason": {"type": "string", "enum": ["cursor_unavailable", "source_truncated", "unprovable_range", "slow_consumer"]},
+        "reason": {"type": "string", "enum": ["cursor_unavailable", "source_truncated", "unprovable_range", "slow_consumer", "rate_limited"]},
         "type": {"type": "string", "const": "gap"}
       }
     },
@@ -29,7 +29,7 @@
       "additionalProperties": false,
       "required": ["code", "type"],
       "properties": {
-        "code": {"type": "string", "enum": ["expired", "revoked", "fenced", "rate_limited", "slow_consumer", "reauthentication_required", "globally_disabled"]},
+        "code": {"type": "string", "enum": ["expired", "revoked", "fenced", "rate_limited", "slow_consumer", "reauthentication_required", "globally_disabled", "output_unavailable"]},
         "type": {"type": "string", "const": "closed"}
       }
     }

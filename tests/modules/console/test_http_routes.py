@@ -8,9 +8,11 @@ from types import SimpleNamespace
 from typing import cast
 from uuid import UUID
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from ctower_api.console_network import ConsoleListenerError
 from ctower_api.console_routes import ConsoleRuntime, install_console_routes
 from ctower_kernel.access import Access
 from ctower_kernel.console import (
@@ -21,7 +23,7 @@ from ctower_kernel.console import (
 )
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
-_ORIGIN = "https://console.private.test"
+_ORIGIN = "https://100.84.252.114:8443"
 _TENANT_ID = UUID("10000000-0000-0000-0000-000000000001")
 _OPERATOR_ID = UUID("20000000-0000-0000-0000-000000000001")
 _VIEWER_ID = UUID("30000000-0000-0000-0000-000000000001")
@@ -183,6 +185,24 @@ def _client(app: FastAPI) -> TestClient:
     return client
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://100.84.252.114:8443",
+        "https://0.0.0.0:8443",
+        "https://203.0.113.10:8443",
+        "https://console.private.test:8443",
+        "https://100.84.252.114:8443/path",
+        "https://100.84.252.114",
+    ],
+)
+def test_console_runtime_refuses_any_origin_that_is_not_the_exact_private_listener(
+    origin: str,
+) -> None:
+    with pytest.raises(ConsoleListenerError):
+        ConsoleRuntime(cast(ConsoleViewer, object()), origin)
+
+
 def test_operator_routes_accept_strict_commands_and_return_typed_receipts() -> None:
     app, _access, viewer = _app()
     with TestClient(app) as client:
@@ -321,3 +341,6 @@ def test_browser_routes_return_each_pre_stream_refusal_without_opening_output() 
     assert refused_visible.json()["code"] == "console-grant-unavailable"
     assert refused_grant.json()["code"] == "console-grant-unavailable"
     assert refused_browser.json()["code"] == "auth-session-invalid"
+
+
+__all__: tuple[str, ...] = ()
