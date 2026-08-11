@@ -125,6 +125,7 @@ def revoke_human_role(
 
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
+        _console_authority_lock(connection, actor.tenant_id)
         connection.execute(
             "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
             (f"{actor.principal_id}:{command.client_command_id}",),
@@ -358,6 +359,7 @@ def revoke_human_session(dsn: str, session_digest: bytes, *, reason: str, now: d
         ).fetchone()
         if row is None:
             return
+        _console_authority_lock(connection, cast(UUID, row["tenant_id"]))
         connection.execute(
             """
             INSERT INTO human_session_revocations (session_id, tenant_id, reason, revoked_at)
@@ -366,6 +368,17 @@ def revoke_human_session(dsn: str, session_digest: bytes, *, reason: str, now: d
             """,
             (row["session_id"], row["tenant_id"], reason, now),
         )
+
+
+def _console_authority_lock(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID
+) -> None:
+    """Serialize revocation facts against Console authority persistence."""
+
+    connection.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+        (f"console-authority:{tenant_id}",),
+    )
 
 
 def _actor_from_binding_row(row: dict[str, object]) -> Actor:

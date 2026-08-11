@@ -652,10 +652,11 @@ asks the registered Adapter for the live `@project` and incarnation. Each read v
 registration and live identity before and after reading from a no-follow descriptor, so replacement bytes
 cannot reach custody. Any replacement fences the old reference rather than rebinding a familiar tmux name.
 Grant, stream-open, output, and custody-access persistence serialize Console-owned append-only authority
-changes on one tenant-scoped advisory lock, then lock the exact assignment, work session, Actor/target,
-human binding/session, and allowance rows in the database order shared with canonical Work changes. Those
-locks remain through commit, so an overlapping authority change completes before the final recheck or after
-the persisted decision, never between them and without an inverse tenant-to-assignment lock cycle.
+changes and canonical human binding/session revocations on one tenant-scoped advisory lock, then lock the
+exact assignment, work session, Actor/target, human binding/session, and allowance rows in the database
+order shared with canonical Work changes. Those locks remain through commit, so an overlapping authority
+change completes before the final recheck or after the persisted decision, never between them and without
+an inverse binding/principal or tenant/assignment lock cycle.
 
 The browser never receives a database credential, Adapter credential, or grant token in a URL. Its existing
 secure human-session cookie and the exact CSRF proof identify the Actor; one configured private HTTPS Origin

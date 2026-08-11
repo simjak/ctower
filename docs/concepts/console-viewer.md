@@ -46,10 +46,11 @@ grant. A stale assignment, closed work session, replaced runtime, advanced runne
 or recreated tmux session fences the reference instead of rebinding it.
 
 The final grant, stream-open, encrypted-output, and custody-access decisions use one database-owned
-anchor-lock primitive. Console-owned append-only authority changes share one tenant advisory lock; each
-decision then locks the exact assignment, work session, Actor/target, human binding/session, and allowance
-rows in the order compatible with canonical Work changes. The locks remain through persistence, so an
-overlap finishes before the recheck or after the persisted fact without a handoff gap or inverse lock cycle.
+anchor-lock primitive. Console-owned append-only authority changes and canonical human binding/session
+revocations share one tenant advisory lock; each decision then locks the exact assignment, work session,
+Actor/target, human binding/session, and allowance rows in the order compatible with canonical Work changes.
+The locks remain through persistence, so an overlap finishes before the recheck or after the persisted fact
+without a handoff gap or inverse binding/principal or assignment/tenant lock cycle.
 Output and gap facts commit before their SSE event is returned, and a quiet poll releases its transaction
 and collection lock before it waits.
 

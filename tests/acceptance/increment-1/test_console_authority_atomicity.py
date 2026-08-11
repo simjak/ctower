@@ -37,8 +37,9 @@ from ctower_kernel.console import (
     PostgresConsoleOutputStore,
 )
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record.human_identity import HumanRoleBindingRevocation
 from ctower_kernel.record.postgres import PostgresRecord
-from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.telemetry import NoopTelemetry, TelemetryContext
 from ctower_kernel.work import AssignmentKind, ChangeAssignment, Work, WorkReceipt
 from ctower_kernel.work.postgres import PostgresWork
 
@@ -117,6 +118,47 @@ def test_stream_open_insert_serializes_a_concurrent_human_revocation(
     assert mutation_blocked
     assert isinstance(opened, ConsoleEventStream)
     assert b'"code":"reauthentication_required"' in next(opened.events)
+
+
+def test_grant_insert_serializes_canonical_human_role_revocation(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, _adapter, operator, browser, allowance = console_setup(tenant, now)
+    assert browser.human_binding_id is not None
+    record = PostgresRecord(tenant.database.runtime_dsn, telemetry=NoopTelemetry())
+    command = HumanRoleBindingRevocation(
+        client_command_id=uuid4(),
+        binding_id=browser.human_binding_id,
+        reason="canonical Console authority race",
+    )
+    key, blocker = _install_insert_barrier(tenant, "grant")
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            grant_future = executor.submit(viewer.mint_grant, browser, allowance.allowance_id)
+            _wait_for_insert_barrier(tenant, key)
+            revoke_future = executor.submit(
+                record.human_identity.revoke_role,
+                operator,
+                command,
+                request_digest=hashlib.sha256(b"canonical-console-revoke").digest(),
+                now=now,
+                telemetry=_telemetry(),
+            )
+            revoke_blocked = _future_remained_blocked(revoke_future)
+            blocker.execute("SELECT pg_advisory_unlock(%s)", (key,))
+            granted = grant_future.result(timeout=_WAIT_SECONDS)
+            revoked = revoke_future.result(timeout=_WAIT_SECONDS)
+    finally:
+        blocker.close()
+
+    assert revoke_blocked
+    assert isinstance(granted, ConsoleViewGrant)
+    assert not isinstance(revoked, RecordProblem)
+    assert revoked.state == "revoked"
+    refused = viewer.mint_grant(browser, allowance.allowance_id, renewal=True)
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "console-reauthentication-required"
 
 
 def test_output_insert_serializes_a_concurrent_global_disable(
