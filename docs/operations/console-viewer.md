@@ -27,7 +27,7 @@ command history, evidence file, URL, status report, or log.
 
 Apply the signed migration chain using the repository's normal migration procedure. The cluster step creates
 the exact NOLOGIN, NOINHERIT `console_output_reader` or refuses an unsafe pre-existing role with unexpected
-attributes, membership, settings, ownership, or grants. Database migration `0063` creates the append-only
+attributes, membership, settings, ownership, or grants. Database migration `0065` creates the append-only
 Console facts, the fixed-search-path reader-owned recovery function, and exact privileges.
 
 Verify the reader boundary through the named acceptance test:
