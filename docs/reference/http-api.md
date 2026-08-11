@@ -202,7 +202,10 @@ CORS authority are absent. Event shapes are:
 - `gap`: `reason` is `cursor_unavailable`, `source_truncated`, `unprovable_range`, `slow_consumer`, or
   `rate_limited`; `next_cursor` is an integer or `null`.
 - `closed`: `code` is `expired`, `revoked`, `fenced`, `rate_limited`, `slow_consumer`,
-  `reauthentication_required`, `globally_disabled`, or `client_disconnected`.
+  `reauthentication_required`, `globally_disabled`, or `output_unavailable`.
+
+`client_disconnected` is durable internal stream-close evidence after the HTTP transport is gone; it is not
+an SSE event because no connected client remains to receive it.
 
 Delivery and replay are each capped at 1 MiB per minute, queued pending bytes at 256 KiB, and grant/revocation
 state is polled at least every five seconds. See [Console view grants](../concepts/console-viewer.md) and the

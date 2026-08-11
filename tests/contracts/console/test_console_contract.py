@@ -57,12 +57,15 @@ def test_stream_contract_names_exact_sse_security_and_bounded_close_events() -> 
     gap = next(item for item in variants if item["properties"]["type"]["const"] == "gap")
     assert gap["properties"]["next_cursor"]["minimum"] == 1
     assert "rate_limited" in gap["properties"]["reason"]["enum"]
-    assert set(closed["properties"]["code"]["enum"]) >= {
+    assert set(closed["properties"]["code"]["enum"]) == {
         "expired",
         "revoked",
         "fenced",
         "rate_limited",
         "slow_consumer",
+        "reauthentication_required",
+        "globally_disabled",
+        "output_unavailable",
     }
 
 
