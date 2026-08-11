@@ -33,7 +33,7 @@ Console facts, the fixed-search-path reader-owned recovery function, and exact p
 Verify the reader boundary through the named acceptance test:
 
 ```bash
-uv run pytest tests/acceptance/increment-1/test_console_view_grants.py::test_console_output_reader_role_has_only_the_authored_custody_surface -q
+uv run pytest tests/acceptance/increment-1/test_console_reader_role_adoption.py::test_console_output_reader_role_has_only_the_authored_custody_surface -q
 ```
 
 Do not grant the application service direct SELECT access to encrypted content or wrapped-key columns.
@@ -174,7 +174,9 @@ Use distinct grants for each case:
 ```bash
 uv run pytest tests/contracts/console -q
 uv run pytest tests/modules/console -q
-uv run pytest tests/acceptance/increment-1/test_console_view_grants.py \
+uv run pytest tests/acceptance/increment-1/test_console_collection_lock.py \
+  tests/acceptance/increment-1/test_console_reader_role_adoption.py \
+  tests/acceptance/increment-1/test_console_view_grants.py \
   tests/acceptance/increment-1/test_console_view_grant_races.py -q
 just check
 just verify
