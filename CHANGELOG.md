@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/simjak/ctower/compare/v0.25.0...v0.26.0) (2026-08-11)
+
+
+### Features
+
+* add fleet beat routines ([#439](https://github.com/simjak/ctower/issues/439)) ([4ccb915](https://github.com/simjak/ctower/commit/4ccb91530d9a46f68eea55fd1f3e8b4d28562871)), closes [#433](https://github.com/simjak/ctower/issues/433)
+
 ## [0.25.0](https://github.com/simjak/ctower/compare/v0.24.0...v0.25.0) (2026-08-10)
 
 
