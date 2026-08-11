@@ -2346,3 +2346,51 @@ operator's forensics closed); multiple concurrent respawn watchers per seat (the
 candidate, not governance). Specifying CT-I1-022 activates nothing: implementation waits on its stated
 dependencies and ordinary activation, and R2928/R2929 drain into ctower through the R2927 intake path
 when it lands.
+
+## D58 — Harness capacity and credentials are a modular tower feature; the tower answers the capped operator (product, 2026-08-11, operator order R2931)
+
+The operator ordered, verbatim intent: "when claude session got limits I need to get response from
+ctower instead of: delivered to the Commander session. And ctower must track each subscription usage
+limits codex and claude and control credentials pulls and rotate them... modular with base class for
+every harness to track and accounts to track." Tonight proved every clause. Fable capped pool-wide
+while Opus on the SAME account kept working — an account-level cap model cannot express that, and the
+commander seat that stalled could not report its own stall. Two of three pooled Claude credential files
+held EMPTY access tokens, so the cap watch crash-looped on `ValueError` and the pool had ONE usable
+account with nothing reporting that fact. And a capped seat's only operator-visible artifact was a
+delivery receipt for a message no live model could answer. This decision specs CT-I1-023 with
+acceptance family AC-CAP-01..05; it extends CT-I1-022's fleet feature rather than duplicating it —
+the same registry, ledger, and operator answer read.
+
+1. **Capacity is per harness × per account × per model.** The unit of exhaustion is a (harness,
+   account, model) triple with its own state and reset time, never an account-level boolean. A model
+   capped on one account says nothing about another model on that account. The declared inventory is
+   data: three Claude accounts, three Codex accounts, one z.ai, one Alibaba, one OpenRouter API key.
+2. **One modular Adapter contract per harness.** Each harness implements the same small typed
+   Interface — probe capacity, report credential completeness, describe supported models — behind a
+   shared base contract. Adding a harness adds one Adapter and its conformance run, never a change to
+   the core. Probes are real requests against the harness's own substrate; rendered terminal text is
+   never a capacity source (D57's rule, inherited).
+3. **Credentials are tracked as REFERENCES with completeness state.** The tower records, per account,
+   whether its credential is present, complete, and unexpired, and pulls or rotates it through the
+   declared path. Secret VALUES never enter tower records, logs, events, or fixtures — the tower holds
+   references and states. An incomplete credential is a typed named fact (`credential-incomplete`
+   naming the account and field), never an exception surfaced as a status, and never a silent skip: a
+   pool whose usable-account count is below its declared count reports that BEFORE the next cap.
+4. **Rotation is policy over measurement, and restores.** Rotation selects a target by the (harness,
+   account, model) the seat actually runs; it never rotates on a window that self-clears cheaper than
+   the restart it would cause (D57's spawn cost rule). When a seat is moved to a fallback model to
+   survive a cap, the tower records the original model as the desired state and RESTORES it
+   automatically once the capped triple reports clear — a survival substitution is never permanent
+   drift.
+5. **The tower answers the capped operator.** When any seat is capped, the operator-facing answer
+   comes from the tower — which triple is exhausted, when it resets, what the seat was moved to, and
+   what still moves — through the CT-I1-022 answer read (API + protected CLI) with the same typed
+   partial/unknown epistemics. A delivery receipt for an unanswerable session is not an answer. The
+   five-surface lock holds; browser surfacing remains CT-I2-005-gated and this adds no public ingress.
+
+Rejected alternatives: account-level cap state (tonight's Fable-capped/Opus-alive case refutes it);
+per-harness bespoke watch scripts (the unreliable Claude scripts and the Hermes Codex pool are exactly
+what this replaces); storing credential values to simplify rotation (violates the secrets-are-
+references invariant); permanent fallback-model substitution (silent capability drift the operator
+never chose). Specifying CT-I1-023 activates nothing; implementation waits on its dependencies, and
+R2931 drains into ctower through the R2927 intake path when it lands.
