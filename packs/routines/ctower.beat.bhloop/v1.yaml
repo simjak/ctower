@@ -1,0 +1,19 @@
+{
+  "schema_id": "ctower.routine/v3",
+  "routine_ref": "ctower.beat.bhloop@1",
+  "revision_digest": "sha256:0d15e862add90f269ec2f94b37c9eacc53b615537952325837dda35a5fbd92e9",
+  "schedule": {"kind": "minute_hour_set", "timezone": "UTC", "minutes": [9, 24, 39, 54], "hours": null},
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 900,
+  "handler_kind": "beat_dispatch",
+  "component_digests": ["sha256:df64756b3616875f0b764f5662fcc27e4c29a4e13f00cfb54d94fbef8e9b6f5c"],
+  "beat_dispatch": {
+    "beat_key": "bhloop", "prompt_source": "state/beats/bhloop.txt",
+    "prompt_sha256": "sha256:df64756b3616875f0b764f5662fcc27e4c29a4e13f00cfb54d94fbef8e9b6f5c",
+    "prompt": "BH.LOOP TODAY-TODO MONITOR + DELIVERY & ACCESS REPORT (operator standing order 2026-07-31; system-cron since 2026-08-10 — never expires). Sweep bh-loop delivery: (1) process commander-bhloop reports in the director inbox; (2) commander silent 2+ fires → capture pane and push; (3) verify operator-facing links serve (app.bh-labs.com + mockups) — a 404 is a P1 to commander-bhloop; (4) track Miami-cut counters via the commander, tasks never time. NOTE: R2900 stand-down — curtain-watch-only until the operator approves M0/M1. Movement → ONE Slack line; silence otherwise.",
+    "target_session": "commander"
+  }
+}

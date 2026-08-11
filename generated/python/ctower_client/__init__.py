@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -20,6 +20,11 @@ from ctower_client.models import (
     AttentionFindingResult,
     AuditEvent,
     AuditPage,
+    BeatDispatchEffect,
+    BeatDispatchEffectList,
+    BeatRoutine,
+    BeatRoutineList,
+    BeatSchedule,
     BlockerOpenedAuditData,
     BlockerResolvedAuditData,
     BlockIntent,
@@ -298,6 +303,11 @@ __all__ = [
     "AttentionFindingResult",
     "AuditEvent",
     "AuditPage",
+    "BeatDispatchEffect",
+    "BeatDispatchEffectList",
+    "BeatRoutine",
+    "BeatRoutineList",
+    "BeatSchedule",
     "BlockIntent",
     "BlockerOpenedAuditData",
     "BlockerResolvedAuditData",

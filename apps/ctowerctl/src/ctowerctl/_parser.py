@@ -100,6 +100,7 @@ def _parser() -> argparse.ArgumentParser:
     _spool_parser(areas.add_parser("spool"))
     attention_parser(areas.add_parser("attention"))
     _dream_dispatch_parser(areas.add_parser("dream-dispatch"))
+    _beat_dispatch_parser(areas.add_parser("beat-dispatch"))
     _dream_lane_parser(areas.add_parser("dream-lane"))
     return parser
 
@@ -123,6 +124,14 @@ def _dream_dispatch_parser(parser: argparse.ArgumentParser) -> None:
     _command_id(consume)
     consume.add_argument("effect_id", type=UUID)
     consume.add_argument("--output-digest", required=True, type=_sha256_digest)
+
+
+def _beat_dispatch_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    list_parser = actions.add_parser("list")
+    list_parser.set_defaults(cli_name="beat-dispatch list")
+    routines = actions.add_parser("routines")
+    routines.set_defaults(cli_name="beat-dispatch routines")
 
 
 def _dream_lane_parser(parser: argparse.ArgumentParser) -> None:

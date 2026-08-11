@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bdc8dc288fd77dcb4c0c9e610f4de167c44c8ccedf7931bed68aeedca0f6f26e
+Authored contract digest: sha256:590fd2134945ee6e4a41259bb4f5d342c2b320ae96184283b5c231f1ac5dff9b
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ from ctower_client.models import (
     AssignmentList,
     AttentionFindingResult,
     AuditPage,
+    BeatDispatchEffectList,
+    BeatRoutineList,
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
@@ -1012,6 +1014,36 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_beat_dispatch_effects(
+        self,
+    ) -> BeatDispatchEffectList:
+        response = self._http.get(
+            "/v1/runtime/beat-dispatches",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: BeatDispatchEffectList}, {401: Problem, 403: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_beat_routines(
+        self,
+    ) -> BeatRoutineList:
+        response = self._http.get(
+            "/v1/runtime/beat-routines",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: BeatRoutineList}, {401: Problem, 403: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_dream_dispatch_effects(
