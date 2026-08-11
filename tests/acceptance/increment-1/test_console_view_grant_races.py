@@ -19,9 +19,11 @@ from uuid import uuid4
 import psycopg
 import pytest
 from console_test_support import (
+    Adapter,
     apply_first_open_change,
     browser_actor,
     console_setup,
+    observation,
     policy,
     recorded_session_ref,
 )
@@ -49,6 +51,7 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 __all__: tuple[str, ...] = ()
 _MAX_CLOSE_SECONDS = 5
 _LIVE_IDENTITY_INVOCATIONS = 2
+_PAIR_COUNT = 2
 
 
 def test_parallel_stream_claim_has_exactly_one_real_postgres_winner(
@@ -255,6 +258,72 @@ def test_default_pending_cap_closes_a_backpressured_asgi_stream_within_five_seco
     assert facts == [{"reason": "slow_consumer"}]
 
 
+def test_first_subcap_frame_transport_stall_commits_slow_consumer_gap_and_close(
+    tenant: TenantFixture,
+) -> None:
+    ref = recorded_session_ref(tenant)
+    adapter = Adapter(observation(ref), b"one-frame")
+    authority = PostgresConsoleAuthority(
+        tenant.database.runtime_dsn,
+        policy=replace(policy(), revocation_poll_seconds=1),
+    )
+    viewer = ConsoleViewer(
+        authority,
+        PostgresConsoleOutputStore(tenant.database.runtime_dsn),
+        adapter,
+        AesGcmConsoleCipher(
+            wrapping_key=hashlib.sha256(b"first-frame-stall").digest(),
+            wrapping_key_reference="secret-service:ctower-development/console-output-kek",
+        ),
+    )
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    browser = browser_actor(tenant, now=datetime.now(UTC))
+    allowance = viewer.allow_session(
+        operator, ConsoleSessionAllowCommand(ref, "restricted", "standard")
+    )
+    assert isinstance(allowance, ConsoleSessionAllowance)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(stream, ConsoleEventStream)
+
+    elapsed = asyncio.run(_stall_first_subcap_frame(stream))
+
+    assert elapsed <= _MAX_CLOSE_SECONDS
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        facts = connection.execute(
+            """
+            SELECT gap.reason, close.code, close.gap_required
+            FROM console_output_gap_facts AS gap
+            CROSS JOIN console_stream_closes AS close
+            WHERE gap.allowance_id = %s AND close.stream_id = %s
+            """,
+            (allowance.allowance_id, stream.lease.stream_id),
+        ).fetchone()
+    assert facts == {
+        "reason": "slow_consumer",
+        "code": "slow_consumer",
+        "gap_required": True,
+    }
+
+
+async def _stall_first_subcap_frame(stream: ConsoleEventStream) -> float:
+    response = console_streaming_response(stream)
+    first_body = asyncio.Event()
+    never_release = asyncio.Event()
+
+    async def send(message: dict[str, object]) -> None:
+        if message.get("type") == "http.response.body" and message.get("body"):
+            first_body.set()
+            await never_release.wait()
+
+    task = asyncio.create_task(response.stream_response(cast(Send, send)))
+    await asyncio.wait_for(first_body.wait(), timeout=2)
+    started = time.monotonic()
+    with pytest.raises(OSError, match="bounded send deadline"):
+        await asyncio.wait_for(task, timeout=_MAX_CLOSE_SECONDS)
+    return time.monotonic() - started
+
+
 async def _hold_first_asgi_send(
     tenant: TenantFixture, stream: ConsoleEventStream
 ) -> tuple[list[dict[str, object]], float]:
@@ -311,6 +380,131 @@ def _assert_event_schema(event: bytes) -> None:
         line.removeprefix(b"data: ") for line in event.splitlines() if line.startswith(b"data: ")
     )
     validator.validate(json.loads(data))
+
+
+def test_delivery_overflow_commits_gap_before_typed_close_without_extra_output(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, authority, adapter, _operator, browser, allowance = console_setup(tenant, now)
+    authority.policy = replace(authority.policy, delivery_window_bytes=16 * 1024)
+    adapter.payload = b"a" * (16 * 1024) + b"b"
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(stream, ConsoleEventStream)
+
+    chunk = next(stream.events)
+    gap = next(stream.events)
+    closed = next(stream.events)
+
+    assert b"event: chunk" in chunk
+    assert b'"reason":"rate_limited"' in gap
+    assert b'"code":"rate_limited"' in closed
+    _assert_event_schema(chunk)
+    _assert_event_schema(gap)
+    _assert_event_schema(closed)
+    with pytest.raises(StopIteration):
+        next(stream.events)
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        facts = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM console_output_objects
+                 WHERE allowance_id = %s) AS outputs,
+                (SELECT count(*) FROM console_output_access_facts
+                 WHERE stream_id = %s) AS accesses,
+                (SELECT count(*) FROM console_output_recovery_facts AS recovery
+                 JOIN console_output_access_facts AS access USING (access_id)
+                 WHERE access.stream_id = %s) AS recoveries,
+                (SELECT min(cursor) FROM console_output_gap_facts
+                 WHERE allowance_id = %s AND reason = 'rate_limited') AS gap_cursor,
+                (SELECT max(cursor) FROM console_output_objects
+                 WHERE allowance_id = %s) AS output_cursor,
+                (SELECT code FROM console_stream_closes
+                 WHERE stream_id = %s) AS close_code
+            """,
+            (
+                allowance.allowance_id,
+                stream.lease.stream_id,
+                stream.lease.stream_id,
+                allowance.allowance_id,
+                allowance.allowance_id,
+                stream.lease.stream_id,
+            ),
+        ).fetchone()
+    assert facts is not None
+    assert facts["outputs"] == 1
+    assert facts["accesses"] == 1
+    assert facts["recoveries"] == 1
+    assert cast(int, facts["output_cursor"]) < cast(int, facts["gap_cursor"])
+    assert facts["close_code"] == "rate_limited"
+
+
+def test_replay_overflow_discloses_only_budgeted_chunk_then_durable_gap_and_close(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, authority, adapter, _operator, browser, allowance = console_setup(tenant, now)
+    adapter.payload = b"a" * (16 * 1024) + b"b" * (16 * 1024)
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    original = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(original, ConsoleEventStream)
+    assert b"event: chunk" in next(original.events)
+    assert b"event: chunk" in next(original.events)
+    cast(Generator[bytes, None, None], original.events).close()
+
+    authority.policy = replace(authority.policy, replay_window_bytes=16 * 1024)
+    assert isinstance(
+        viewer.mint_grant(browser, allowance.allowance_id, renewal=True), ConsoleViewGrant
+    )
+    replay = viewer.open_stream(browser, allowance.allowance_id, last_event_id=0)
+    assert isinstance(replay, ConsoleEventStream)
+
+    chunk = next(replay.events)
+    gap = next(replay.events)
+    closed = next(replay.events)
+
+    assert b"event: chunk" in chunk
+    assert b'"reason":"rate_limited"' in gap
+    assert b'"code":"rate_limited"' in closed
+    _assert_event_schema(chunk)
+    _assert_event_schema(gap)
+    _assert_event_schema(closed)
+    with pytest.raises(StopIteration):
+        next(replay.events)
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        facts = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM console_output_objects
+                 WHERE allowance_id = %s) AS outputs,
+                (SELECT count(*) FROM console_output_access_facts
+                 WHERE stream_id = %s) AS accesses,
+                (SELECT count(*) FROM console_output_recovery_facts AS recovery
+                 JOIN console_output_access_facts AS access USING (access_id)
+                 WHERE access.stream_id = %s) AS recoveries,
+                (SELECT min(cursor) FROM console_output_gap_facts
+                 WHERE allowance_id = %s AND reason = 'rate_limited') AS gap_cursor,
+                (SELECT max(cursor) FROM console_output_objects
+                 WHERE allowance_id = %s) AS output_cursor,
+                (SELECT code FROM console_stream_closes
+                 WHERE stream_id = %s) AS close_code
+            """,
+            (
+                allowance.allowance_id,
+                replay.lease.stream_id,
+                replay.lease.stream_id,
+                allowance.allowance_id,
+                allowance.allowance_id,
+                replay.lease.stream_id,
+            ),
+        ).fetchone()
+    assert facts is not None
+    assert facts["outputs"] == _PAIR_COUNT
+    assert facts["accesses"] == _PAIR_COUNT
+    assert facts["recoveries"] == _PAIR_COUNT
+    assert cast(int, facts["output_cursor"]) < cast(int, facts["gap_cursor"])
+    assert facts["close_code"] == "rate_limited"
 
 
 @pytest.mark.parametrize(

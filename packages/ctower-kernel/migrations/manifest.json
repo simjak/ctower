@@ -596,17 +596,17 @@
     },
     {
       "path": "0064_console_output_reader_role.sql",
-      "sha256": "sha256:422533c2228b5af1d51e1a42deecb55175726c5f21330b4e800572523c13b4ab",
+      "sha256": "sha256:03c53c5dd6cce65d7f4c65abc497f1bf850265725ed9bd2f5dfcf8f77c121abb",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_output_reader_role_has_only_the_authored_custody_surface",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_console_reader_role_adoption.py::test_console_output_reader_role_has_only_the_authored_custody_surface",
       "rollback_or_forward_compensation": "Preserve the dedicated non-login output-reader identity, its administrator-only ownership path, and the audited recovery function until every encrypted Console output object is beyond retention; change membership only through reviewed forward compensation after disabling admission.",
       "backup_checkpoint": "Before role reconciliation on a nonempty cluster, capture the console_output_reader attributes, memberships, sessions, owned objects, and grants plus a verified cluster-role backup; the new role starts NOLOGIN and NOINHERIT."
     },
     {
       "path": "0065_console_view_grants.sql",
-      "sha256": "sha256:f6664cf571bb6a3bed73fce9b003b69b39a334996425884d2b4c5868a48ae411",
+      "sha256": "sha256:5ce0da9339fdaca714a15ef27bca0f1bf93618a4fbf4b49c87035188ddc32962",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",

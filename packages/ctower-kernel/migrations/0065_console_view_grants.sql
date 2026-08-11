@@ -256,7 +256,6 @@ END
 $function$;
 ALTER FUNCTION recover_console_output_object(uuid, timestamptz)
     OWNER TO console_output_reader;
-REVOKE CREATE ON SCHEMA public FROM console_output_reader;
 REVOKE ALL ON FUNCTION recover_console_output_object(uuid, timestamptz)
     FROM PUBLIC, ctower_svc, ctower_projection;
 GRANT EXECUTE ON FUNCTION recover_console_output_object(uuid, timestamptz) TO ctower_svc;

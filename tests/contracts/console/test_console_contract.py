@@ -108,7 +108,25 @@ def test_output_reader_role_adoption_refuses_every_unsafe_preexisting_shape() ->
         "pg_shdepend",
     ):
         assert catalog_fact in migration
+    assert "dependency.deptype = 'o'" in migration
+    assert "dependency.deptype = 'a'" in migration
+    assert "has_schema_privilege(reader_role, 'public', 'CREATE')" in migration
+    assert "GRANT USAGE, CREATE" not in migration
+    assert "GRANT CREATE ON SCHEMA" not in migration
     assert "unsafe pre-existing console_output_reader role" in migration
+
+    database_migration = (
+        ROOT / "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
+    ).read_text(encoding="utf-8")
+    assert "ALTER FUNCTION recover_console_output_object(uuid, timestamptz)" in database_migration
+    assert "GRANT CREATE ON SCHEMA" not in database_migration
+    setup = (ROOT / "packages/ctower-kernel/src/ctower_kernel/record/_setup_sql.py").read_text(
+        encoding="utf-8"
+    )
+    assert "_console_reader_ownership_transfer_pending" in setup
+    assert "_set_console_reader_schema_create(role_admin_dsn, enabled=True)" in setup
+    assert "finally:" in setup
+    assert "_set_console_reader_schema_create(role_admin_dsn, enabled=False)" in setup
 
 
 def test_phase1_verification_manifest_names_every_required_element_and_gate() -> None:

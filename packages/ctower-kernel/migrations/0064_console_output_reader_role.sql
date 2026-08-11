@@ -34,7 +34,7 @@ BEGIN
     ) OR EXISTS (
         SELECT 1 FROM pg_catalog.pg_db_role_setting AS setting
         WHERE setting.setrole = reader_role
-    ) OR EXISTS (
+    ) OR pg_catalog.has_schema_privilege(reader_role, 'public', 'CREATE') OR EXISTS (
         SELECT 1
         FROM pg_catalog.pg_shdepend AS dependency
         WHERE dependency.refclassid = 'pg_catalog.pg_authid'::regclass
@@ -47,22 +47,28 @@ BEGIN
           AND dependency.deptype IN ('o', 'a')
           AND NOT (
               (
-                  dependency.classid = 'pg_catalog.pg_namespace'::regclass
-                  AND dependency.objid = 'public'::regnamespace
-              )
-              OR (
-                  dependency.classid = 'pg_catalog.pg_proc'::regclass
+                  dependency.deptype = 'o'
+                  AND dependency.classid = 'pg_catalog.pg_proc'::regclass
                   AND dependency.objid = to_regprocedure(
                       'recover_console_output_object(uuid,timestamp with time zone)'
                   )
               )
               OR (
-                  dependency.classid = 'pg_catalog.pg_class'::regclass
-                  AND dependency.objid = ANY(ARRAY[
-                      to_regclass('public.console_output_objects'),
-                      to_regclass('public.console_output_access_facts'),
-                      to_regclass('public.console_output_recovery_facts')
-                  ]::oid[])
+                  dependency.deptype = 'a'
+                  AND (
+                      (
+                          dependency.classid = 'pg_catalog.pg_namespace'::regclass
+                          AND dependency.objid = 'public'::regnamespace
+                      )
+                      OR (
+                          dependency.classid = 'pg_catalog.pg_class'::regclass
+                          AND dependency.objid = ANY(ARRAY[
+                              to_regclass('public.console_output_objects'),
+                              to_regclass('public.console_output_access_facts'),
+                              to_regclass('public.console_output_recovery_facts')
+                          ]::oid[])
+                      )
+                  )
               )
           )
     ) THEN
@@ -72,14 +78,5 @@ END
 $$;
 
 GRANT console_output_reader TO ctower_admin;
-GRANT USAGE, CREATE ON SCHEMA public TO console_output_reader;
-DO $$
-BEGIN
-    IF to_regprocedure(
-        'public.recover_console_output_object(uuid,timestamp with time zone)'
-    ) IS NOT NULL THEN
-        REVOKE CREATE ON SCHEMA public FROM console_output_reader;
-    END IF;
-END
-$$;
+GRANT USAGE ON SCHEMA public TO console_output_reader;
 REVOKE console_output_reader FROM ctower_svc, ctower_runtime;

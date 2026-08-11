@@ -6,6 +6,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from threading import Event
 from typing import cast
 
 from starlette.responses import StreamingResponse
@@ -27,7 +28,9 @@ _END = object()
 
 class _ConsoleStreamingResponse(StreamingResponse):
     def __init__(self, stream: ConsoleEventStream) -> None:
-        self._console_body = _bounded_events(stream)
+        self._stream = stream
+        self._slow_close_requested = Event()
+        self._console_body = _bounded_events(stream, self._slow_close_requested)
         super().__init__(
             self._console_body,
             media_type="text/event-stream",
@@ -50,7 +53,10 @@ class _ConsoleStreamingResponse(StreamingResponse):
                 timeout=self._stall_seconds,
             )
         except TimeoutError as error:
-            await self._console_body.aclose()
+            self._slow_close_requested.set()
+            self._stream.request_slow_consumer()
+            async for _discarded in self.body_iterator:
+                pass
             raise OSError("Console SSE transport exceeded its bounded send deadline") from error
 
 
@@ -60,10 +66,12 @@ def console_streaming_response(stream: ConsoleEventStream) -> StreamingResponse:
     return _ConsoleStreamingResponse(stream)
 
 
-async def _bounded_events(stream: ConsoleEventStream) -> AsyncGenerator[bytes, None]:
+async def _bounded_events(
+    stream: ConsoleEventStream, slow_close_requested: Event
+) -> AsyncGenerator[bytes, None]:
     queue: asyncio.Queue[_QueuedEvent | object] = asyncio.Queue()
     pending = [0]
-    producer = asyncio.create_task(_produce(stream, queue, pending))
+    producer = asyncio.create_task(_produce(stream, queue, pending, slow_close_requested))
     try:
         while True:
             item = await queue.get()
@@ -84,10 +92,17 @@ async def _produce(
     stream: ConsoleEventStream,
     queue: asyncio.Queue[_QueuedEvent | object],
     pending: list[int],
+    slow_close_requested: Event,
 ) -> None:
     try:
         while True:
+            if slow_close_requested.is_set():
+                await _queue_slow_close(stream, queue, pending)
+                return
             event = await asyncio.to_thread(_next_event, stream)
+            if slow_close_requested.is_set():
+                await _queue_slow_close(stream, queue, pending, first_event=event)
+                return
             if event is None:
                 return
             queued = _QueuedEvent(event, _decoded_chunk_bytes(event))
@@ -104,11 +119,20 @@ async def _queue_slow_close(
     stream: ConsoleEventStream,
     queue: asyncio.Queue[_QueuedEvent | object],
     pending: list[int],
+    *,
+    first_event: bytes | None = None,
 ) -> None:
     _discard_waiting(queue, pending)
+    stream.request_slow_consumer()
     closing = await asyncio.to_thread(stream.close_slow_consumer)
+    if first_event is not None and _is_slow_consumer_gap(first_event):
+        closing = (first_event, *closing)
     for terminal in closing:
         queue.put_nowait(_QueuedEvent(terminal, 0))
+
+
+def _is_slow_consumer_gap(event: bytes) -> bool:
+    return b"event: gap\n" in event and b'"reason":"slow_consumer"' in event
 
 
 def _next_event(stream: ConsoleEventStream) -> bytes | None:
