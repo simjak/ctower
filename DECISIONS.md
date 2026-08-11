@@ -2361,16 +2361,24 @@ delivery receipt for a message no live model could answer. This decision specs C
 acceptance family AC-CAP-01..06; it extends CT-I1-022's fleet feature rather than duplicating it —
 the same registry, ledger, and operator answer read.
 
-1. **Capacity is per harness × per account × per model.** The unit of exhaustion is a (harness,
+1. **Capacity is measured on the artifact the seat actually uses, or it is `unproven`.** The unit of measurement is the
+   exact credential a running seat authenticates with; a pooled copy, a state-level marker, or a sibling identity record is
+   not that artifact and may not stand in for it. Two probe generations failed here in opposite directions on the same
+   night — one inferred `alive` from a usage endpoint while real calls were refused, the other called real models against
+   pooled copies the seats do not use and reported `capped` while the live credential answered. A reading whose target
+   cannot be proven to be the seat's artifact is typed `unproven`; automatic model restore and every drill gate refuse to
+   act on it, because a confident wrong reading is worse than an honest absent one.
+
+2. **Capacity is per harness × per account × per model.** The unit of exhaustion is a (harness,
    account, model) triple with its own state and reset time, never an account-level boolean. A model
    capped on one account says nothing about another model on that account. The declared inventory is
    data: three Claude accounts, three Codex accounts, one z.ai, one Alibaba, one OpenRouter API key.
-2. **One modular Adapter contract per harness.** Each harness implements the same small typed
+3. **One modular Adapter contract per harness.** Each harness implements the same small typed
    Interface — probe capacity, report credential completeness, describe supported models — behind a
    shared base contract. Adding a harness adds one Adapter and its conformance run, never a change to
    the core. Probes are real requests against the harness's own substrate; rendered terminal text is
    never a capacity source (D57's rule, inherited).
-3. **Credentials are tracked as REFERENCES with completeness state.** The tower records, per account,
+4. **Credentials are tracked as REFERENCES with completeness state.** The tower records, per account,
    whether its credential is present, complete, and unexpired, and pulls or rotates it through the
    declared path. Secret VALUES never enter tower records, logs, events, or fixtures — the tower holds
    references and states. An incomplete credential is a typed named fact (`credential-incomplete`
@@ -2379,19 +2387,19 @@ the same registry, ledger, and operator answer read.
    EXACTLY ONCE and the incompleteness persists as a standing typed fact — a probe that cannot run must not crash-loop
    its executor or re-page every cycle. A unit exiting non-zero every run for hours while nothing reports it is the
    same fail-silent class the health sweep killed, wearing different clothes.
-4. **Rotation is policy over measurement, and restores.** Rotation selects a target by the (harness,
+5. **Rotation is policy over measurement, and restores.** Rotation selects a target by the (harness,
    account, model) the seat actually runs; it never rotates on a window that self-clears cheaper than
    the restart it would cause (the operational rule carried in Mission Control's capacity probe and fleet self-heal playbook). When a seat is moved to a fallback model to
    survive a cap, the tower records the original model as the desired state and RESTORES it
    automatically once the capped triple reports clear — a survival substitution is never permanent
    drift.
-5. **The tower answers the capped operator.** When any seat is capped, the operator-facing answer
+6. **The tower answers the capped operator.** When any seat is capped, the operator-facing answer
    comes from the tower — which triple is exhausted, when it resets, what the seat was moved to, and
    what still moves — through the CT-I1-022 answer read (API + protected CLI) with the same typed
    partial/unknown epistemics. A delivery receipt for an unanswerable session is not an answer. The
    five-surface lock holds; browser surfacing remains CT-I2-005-gated and this adds no public ingress.
 
-6. **The night's defect classes carry regressions (R2932, fleet layer).** Assigned-model operability is a separate typed
+7. **The night's defect classes carry regressions (R2932, fleet layer).** Assigned-model operability is a separate typed
    fact derived from capacity, NOT a liveness state — D57 clause 3's four-state liveness stands unchanged and is not
    superseded here. A seat whose assigned model is capped reports liveness `alive` beside operability `unusable`, and the
    composite operator answer must refuse to call it healthy or moving; the stall that produced this decision would have been
