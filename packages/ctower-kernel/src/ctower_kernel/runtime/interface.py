@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
+
 if TYPE_CHECKING:
     from ctower_kernel.record import RecordProblem
 
@@ -43,14 +45,17 @@ __all__ = [
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 _FIXED_HANDLERS = frozenset({"synthetic_four_stage", "daily_backup", "record_anchor"})
-_HANDLERS = _FIXED_HANDLERS | {"dream_dispatch"}
+_HANDLERS = _FIXED_HANDLERS | {"dream_dispatch", "beat_dispatch"}
 _MAX_CATCH_UP = 100
 _MAX_TIMEOUT_SECONDS = 86400
+_MAX_MINUTE_MARK = 59
+_MAX_HOUR_MARK = 23
 
 
 class ScheduleKind(StrEnum):
     DAILY = "daily"
     HOURLY = "hourly"
+    MINUTE_HOUR_SET = "minute_hour_set"
 
 
 class ConcurrencyPolicy(StrEnum):
@@ -331,6 +336,7 @@ class SchedulerScan:
     occurrences: tuple[RoutineOccurrence, ...]
     jobs: tuple[FixedOperationJob, ...]
     dream_dispatches: tuple[DreamDispatchEffect, ...] = ()
+    beat_dispatches: tuple[BeatDispatchEffect, ...] = ()
 
 
 class _RoutineStore(Protocol):
@@ -432,6 +438,9 @@ class RoutineRevision:
     timeout_seconds: int
     component_digests: tuple[str, ...]
     dream_dispatch: DreamDispatchSpec | None = None
+    minute_marks: tuple[int, ...] = ()
+    hour_marks: tuple[int, ...] | None = None
+    beat_dispatch: BeatDispatchSpec | None = None
 
     def __post_init__(self) -> None:
         _validate_revision_identity(self)
@@ -445,6 +454,16 @@ class RoutineRevision:
         if self.schedule_kind is ScheduleKind.HOURLY:
             current = instant.astimezone(UTC)
             return current.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        if self.schedule_kind is ScheduleKind.MINUTE_HOUR_SET:
+            zone = ZoneInfo(self.timezone)
+            local = instant.astimezone(zone).replace(second=0, microsecond=0)
+            for minutes in range(1, 60 * 24 * 8):
+                candidate = local + timedelta(minutes=minutes)
+                if candidate.minute in self.minute_marks and (
+                    self.hour_marks is None or candidate.hour in self.hour_marks
+                ):
+                    return candidate.astimezone(UTC)
+            raise RuntimeError("minute-hour Routine has no resolvable fire in the bounded calendar")
         zone = ZoneInfo(self.timezone)
         local_date = instant.astimezone(zone).date()
         for days in range(370):
@@ -489,6 +508,8 @@ def _validate_revision_identity(revision: RoutineRevision) -> None:
         raise ValueError("Routine handler is outside the authored fixed subset")
     if (revision.handler_kind == "dream_dispatch") != (revision.dream_dispatch is not None):
         raise ValueError("only a dream-dispatch Routine carries effect facts")
+    if (revision.handler_kind == "beat_dispatch") != (revision.beat_dispatch is not None):
+        raise ValueError("only a beat-dispatch Routine carries fleet beat facts")
 
 
 def _validate_revision_limits(revision: RoutineRevision) -> None:
@@ -503,10 +524,31 @@ def _validate_revision_schedule(revision: RoutineRevision) -> None:
         raise ValueError("daily Routine requires a local civil time")
     if revision.local_time is not None and revision.local_time.tzinfo is not None:
         raise ValueError("Routine local civil time cannot carry an offset")
+    if revision.schedule_kind is ScheduleKind.MINUTE_HOUR_SET:
+        _validate_minute_hour_schedule(revision)
+    elif revision.minute_marks or revision.hour_marks is not None:
+        raise ValueError("only a minute-hour Routine carries minute and hour marks")
     try:
         ZoneInfo(revision.timezone)
     except ZoneInfoNotFoundError as error:
         raise ValueError("Routine timezone must be an installed IANA zone") from error
+
+
+def _validate_minute_hour_schedule(revision: RoutineRevision) -> None:
+    if revision.local_time is not None:
+        raise ValueError("minute-hour Routine cannot carry a local civil time")
+    _validate_marks(revision.minute_marks, maximum=_MAX_MINUTE_MARK, label="minute")
+    if revision.hour_marks is not None:
+        _validate_marks(revision.hour_marks, maximum=_MAX_HOUR_MARK, label="hour")
+
+
+def _validate_marks(marks: tuple[int, ...], *, maximum: int, label: str) -> None:
+    if (
+        not marks
+        or tuple(sorted(set(marks))) != marks
+        or any(mark < 0 or mark > maximum for mark in marks)
+    ):
+        raise ValueError(f"{label} marks must be unique, ordered, and between 0 and {maximum}")
 
 
 def _catch_up_outcomes(routine: RoutineRevision, count: int) -> tuple[OccurrenceOutcome, ...]:

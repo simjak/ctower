@@ -1,0 +1,19 @@
+{
+  "schema_id": "ctower.routine/v3",
+  "routine_ref": "ctower.beat.migration@1",
+  "revision_digest": "sha256:e10e3506046e463238bbd538da7a0183dcf41b45068a50f10a8b64865680389e",
+  "schedule": {"kind": "minute_hour_set", "timezone": "UTC", "minutes": [4, 19, 34, 49], "hours": null},
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 900,
+  "handler_kind": "beat_dispatch",
+  "component_digests": ["sha256:a533640c4f206f3afd3fcb5bd9b1e0abc8c4b2495bc02cd13437739cd1400f6d"],
+  "beat_dispatch": {
+    "beat_key": "migration", "prompt_source": "state/beats/migration.txt",
+    "prompt_sha256": "sha256:a533640c4f206f3afd3fcb5bd9b1e0abc8c4b2495bc02cd13437739cd1400f6d",
+    "prompt": "MIGRATION DRIVE (operator-ordered 2026-08-01, 15-min cadence — PUSH, don't just monitor; system-cron since 2026-08-10 — never expires). Director drives the kanban→ctower migration; board: board/ctower-migration-status.md. Each fire: (1) tools/notify --read --as director — process reports; board counters + log on movement. (2) STALL CHECK: counter unmoved 2 fires with no named blocked-on → capture that commander's pane and push directly. (2b) CTOWER CLOSE WATCH every fire: capture the ctower pane AND verify claims vs primary evidence (merged=gh MERGED, filed=id, landed=artifact); log deviations by name; push same-fire. (3) Drive streams: lanes finish, follow-ups ticket, monitors → inboxes. (4) GAPS (R2698): USER STORY P1 to ctower → spec+ticket+counter → slack-say when filed AND shipped. (5) ESCALATION: operator decisions → Slack DM immediately. (6) Counters MOVED: board + ONE movement line via tools/slack-say; silence otherwise. Task counters only, never ETAs; plain sentences; in ADDITION to the health sweep.",
+    "target_session": "commander"
+  }
+}

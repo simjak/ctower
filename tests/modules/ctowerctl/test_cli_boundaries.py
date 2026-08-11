@@ -30,9 +30,8 @@ from ctower_client.models import (
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
 from ctowerctl import _credential_commands, _ruling_commands, _workflow_commands, main
 from ctowerctl._attention_commands import build_mutation as build_attention_mutation
-from ctowerctl._attention_commands import (
-    mutation_command_names as attention_mutations,
-)
+from ctowerctl._attention_commands import mutation_command_names as attention_mutations
+from ctowerctl._beat_dispatch_commands import query_command_names as beat_dispatch_queries
 from ctowerctl._company_commands import (
     load_bundle,
 )
@@ -137,6 +136,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | knowledge_queries()
         | session_queries()
         | dream_dispatch_queries()
+        | beat_dispatch_queries()
         | (digest_queries() | request_queries() | _ruling_commands.query_command_names())
     )
     refusals = migration_refusals()
