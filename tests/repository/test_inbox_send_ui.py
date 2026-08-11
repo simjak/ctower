@@ -212,7 +212,7 @@ class InboxSendComponentTests(unittest.TestCase):
     def test_the_provenance_line_names_both_server_authorized_paths(self) -> None:
         foot = (_SURFACE / "frame/RecordFoot.tsx").read_text(encoding="utf-8")
 
-        self.assertIn("server-authorized Inbox send and promotion paths", foot)
+        self.assertIn("server-authorized Inbox compose, send and promotion paths", foot)
         self.assertNotIn("read-only v1 · no mutation path exists on this surface", foot)
 
 

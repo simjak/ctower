@@ -250,6 +250,8 @@ def _inbox_parser(parser: argparse.ArgumentParser) -> None:
     list_parser = actions.add_parser("list")
     list_parser.set_defaults(cli_name="inbox list")
     list_parser.add_argument("--unread", action="store_true")
+    correspondents = actions.add_parser("correspondents")
+    correspondents.set_defaults(cli_name="inbox correspondents")
     read = actions.add_parser("read")
     read.set_defaults(cli_name="inbox read")
     read.add_argument("thread_id", type=UUID)

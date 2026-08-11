@@ -437,6 +437,38 @@ class InboxThreadList:
 
 
 @dataclass(frozen=True, slots=True)
+class InboxCorrespondent:
+    project_key: str
+    seat_key: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {"project_key": self.project_key, "seat_key": self.seat_key}
+
+
+@dataclass(frozen=True, slots=True)
+class InboxCorrespondentList:
+    """Every address the authenticated principal can open a thread to, and its own seat.
+
+    These are fewer than the registered seats, and that is the point: the send
+    command resolves a recipient by ``(tenant_id, seat_key)``, so a key two
+    seats share resolves to nobody, the reader's own seat resolves to itself,
+    and a reader with no seat row cannot send at all. Each of those is left out
+    here for the same reason the command refuses it, so a picker built on this
+    list can offer nothing the record would not accept as an address. ``sender``
+    is ``unaddressable`` exactly when this principal holds no seat row.
+    """
+
+    correspondents: tuple[InboxCorrespondent, ...]
+    sender: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "correspondents": [item.response_payload() for item in self.correspondents],
+            "sender": self.sender,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class InboxMessage:
     from_seat: str
     message_id: UUID
@@ -483,6 +515,8 @@ class _ProjectionStore(Protocol):
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList: ...
+
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None: ...
 
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None: ...
@@ -516,6 +550,11 @@ class Projections:
 
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)
+
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
+        """Read the registered seats this principal may address, never invent one."""
+
+        return self._store.list_inbox_correspondents(actor)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return self._store.read_inbox(actor, thread_id)

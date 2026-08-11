@@ -124,6 +124,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "getTicketTimeline": ("ticket timeline", False, "forbidden", None, False),
     "issueSeatCredential": ("credential seat issue", True, "forbidden", None, False),
     "acknowledgeInboxMessage": ("inbox ack", True, "allowed", None, False),
+    "listInboxCorrespondents": ("inbox correspondents", False, "forbidden", None, False),
     "listInboxThreads": ("inbox list", False, "forbidden", None, False),
     "listDreamDispatchEffects": (
         "dream-dispatch list",

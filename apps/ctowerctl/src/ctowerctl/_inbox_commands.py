@@ -59,13 +59,15 @@ def mutation_command_names() -> frozenset[str]:
 
 
 def query_command_names() -> frozenset[str]:
-    return frozenset({"inbox list", "inbox read", "inbox read-state"})
+    return frozenset({"inbox correspondents", "inbox list", "inbox read", "inbox read-state"})
 
 
 def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
     cli_name = cast(str, arguments.cli_name)
     if cli_name == "inbox list":
         return client.list_inbox_threads(unread=cast(bool, arguments.unread))
+    if cli_name == "inbox correspondents":
+        return client.list_inbox_correspondents()
     if cli_name == "inbox read":
         return client.read_inbox_thread(cast(UUID, arguments.thread_id))
     if cli_name == "inbox read-state":

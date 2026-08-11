@@ -2171,3 +2171,83 @@ Rejected alternatives:
 - Adding GitHub branches to kernel connector authority. The accepted Phase-1 seam already admits the provider.
 - Using webhooks or following provider redirects. Neither is needed for the narrow polling scope and both
   widen ingress or credential-egress exposure.
+
+## D55 — The dogfood Inbox boundary carries the compose control over the pair-grouped rail (engineering, 2026-08-11, gh#458)
+
+The operator asked how to move or reopen a conversation in ctower (2026-08-10) and the answer was that they
+cannot: `/inbox` renders threads and replies inside them, but nothing on the surface starts one. Threads
+existed only where intake or the notification mirror had already made them, so a registered seat the
+operator had never been written to — the director, registered by #389 — was unreachable from the product.
+The compose control is the third control on the same separate `ctower-ui` boundary, over the already
+authored pair-grouped notification rail (#383). This entry extends D41/D44/D45's permission to
+`POST /v1/inbox/notifications`, admits exactly one new read operation, and supersedes only the four clauses
+named below. D41's authority model, D42's one-suite rule, D22, D23, D31, CT-I1-005 and CT-I2-005 are
+otherwise unchanged, and every product browser route, authentication surface and Playwright suite remains
+reserved for I2.4.
+
+1. **A chosen recipient, from a closed world the server owns.** This supersedes D44 clause 1's
+   recipient sentence, for the compose control only. A thread that does not exist yet has no route to bind
+   and no recipient-scoped projection to read a correspondent back from, so the recipient is chosen rather
+   than derived. What keeps that from being a claimed identity is where the choices come from: the browser
+   may name only a seat the server itself listed, the list is re-read server-side at submit time and the
+   submitted seat is checked against it before any command is made, and the API then resolves the seat and
+   derives the sender from the bearer it validates. The browser still receives no bearer, session, CSRF
+   token, credential, actor, project, scope, custody, or authorization claim, and the request body is
+   exactly `{"text","to"}`. There is no sender field and no thread field, because neither was ever this
+   browser's to choose.
+2. **One new read operation, and it is a read.** This supersedes D44 clause 6's "no new contract" only.
+   `GET /v1/inbox/correspondents` returns the addresses the reader can open a thread to, through the
+   authored contract and both generated clients, with the CLI name `inbox correspondents`. Those are
+   fewer than the `project_seats` rows, and deliberately: the send command resolves a recipient by
+   `(tenant_id, seat_key)` while the registry only makes a seat key unique per project, so a key two
+   seats share is not an address (the command refuses it as ambiguous), the reader's own seat is not an
+   address (refused as self), and a reader holding no seat row has no address to send from at all
+   (refused as unaddressable). The read leaves out each one for the same reason the command refuses it,
+   so the picker and the command cannot disagree in any registry state the schema permits: every address
+   the picker offers is one the record can accept, and an address it does not list is refused by the
+   record's own stable name rather than creating an identity. It grants no new command, role, capability
+   flag, product route, or deployment promise.
+3. **The thread is the record's answer, not the caller's.** The compose rides the pair-grouped rail, so the
+   server derives one thread per unordered seat pair. Composing twice to one seat continues one
+   conversation, and a compose to a seat the notification mirror has already opened a thread with lands in
+   that thread. The standard send path mints a thread identity per threadless send, which for a compose
+   control would scatter one correspondent's conversation across as many threads as the operator pressed
+   the button; that is why this control does not use it.
+4. **Three answers, three renderings — D45 clause 1, applied to a thread.** An accepted answer draws the
+   message row, marked `just sent`, links it to the thread the record derived, and clears both fields. A
+   non-accepted answer draws no row and names no thread: the typed words and the picked seat stay where
+   they are, the line under the box says the server has not confirmed the message, and the button offers
+   `Retry` under the identity the first attempt minted. A terminal problem document renders its own
+   validated human `detail` and hands the words and the seat back. An empty list disables the control and
+   names which emptiness it is — nobody addressable to write to, or no seat of this principal's own to
+   write from — rather than inviting a compose it cannot honor or blaming the wrong side for it.
+5. **Copy names three paths.** This supersedes D44 clause 3's provenance sentence only: the shared Inbox
+   provenance line now names the server-authorized compose, send *and* promotion paths. The `New ticket`
+   rail affordance remains visibly disabled and still names only its own unavailable capture path.
+6. **Still exactly one activated suite.** `dogfood-inbox-controls` now proves three controls on this
+   boundary; it drives the compose box from the browser at each of the three widths for all three answers,
+   against the local stub record source only. No second suite is registered, no other suite changes status,
+   and `browser-e2e` stays deferred to `CT-I2-005`.
+
+Rejected alternatives:
+
+- Free-typing a seat key. The operator would be composing to an identity the surface cannot vouch for, and
+  every mistake would arrive as a server refusal after the message was written. A dropdown over the
+  record's own list is the same authority story with none of that cost.
+- Listing every registered seat row and letting the command refuse the ones it cannot resolve. Two seats
+  legally sharing one key would then be offered as a choice that always terminates in
+  `inbox-recipient-ambiguous`, after the operator had written the message — a dead path dressed as a live
+  one. Widening the command's address instead, so it accepted a project-qualified recipient, was also
+  rejected: it changes an authored, shipped command's wire contract and its CLI for a state the read can
+  simply decline to offer.
+- Posting to `POST /v1/inbox/messages` with a null thread. It is the authored path for a threadless send and
+  it works, but it mints a fresh thread identity every time, so the operator's second message to the
+  director would open a second conversation with them.
+- Redirecting to the new thread on acceptance. The thread projection is folded from events after the
+  command commits, so the redirect would frequently land on a thread the read cannot answer for yet — a
+  surface reporting "unavailable" about a message it had just accepted.
+- Deriving the picker from Mission Control's `personas/` directory, which this surface already reads for
+  seat display names. Those are the fleet's names for seats, not the record's registered principals; a
+  picker built on them would offer addresses the record has never held.
+- Filtering the listed seats down to the ones this principal already has threads with. That is the set the
+  compose control exists to escape.

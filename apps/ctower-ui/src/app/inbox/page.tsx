@@ -7,6 +7,7 @@ import { SOURCE_LABELS, recordAdapter } from "@/read/adapter";
 import { shortId, stampText } from "@/read/elapsed";
 import type {
   InboxCorrespondent,
+  InboxCorrespondents,
   InboxProjection,
   InboxThread,
   InboxThreadSummary,
@@ -14,7 +15,8 @@ import type {
 } from "@/read/interface";
 import { Count } from "@/surfaces/Count";
 import { readParam } from "@/surfaces/screenParams";
-import { promoteThreadAction, sendMessageAction } from "./actions";
+import { composeThreadAction, promoteThreadAction, sendMessageAction } from "./actions";
+import { ComposeThread } from "@/surfaces/inbox/ComposeThread";
 import { PromoteThread } from "@/surfaces/inbox/PromoteThread";
 import { SendMessage } from "@/surfaces/inbox/SendMessage";
 import { ThreadMessage } from "@/surfaces/inbox/ThreadMessage";
@@ -58,7 +60,13 @@ function ThreadRow({ thread }: { readonly thread: InboxThreadSummary }): ReactEl
   );
 }
 
-function InboxList({ inbox }: { readonly inbox: InboxProjection }): ReactElement {
+function InboxList({
+  inbox,
+  correspondents,
+}: {
+  readonly inbox: InboxProjection;
+  readonly correspondents: Reading<InboxCorrespondents>;
+}): ReactElement {
   return (
     <>
       <Chrome section="Inbox" />
@@ -76,6 +84,10 @@ function InboxList({ inbox }: { readonly inbox: InboxProjection }): ReactElement
             <span className="name">{inbox.recipient}</span>
             <span className="how">recipient-scoped inbox projection</span>
           </div>
+
+          <Resolved brief reading={correspondents} subject="the seats you can write to">
+            {(value) => <ComposeThread action={composeThreadAction} correspondents={value} />}
+          </Resolved>
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
@@ -243,10 +255,13 @@ export default async function InboxPage({
       </Resolved>
     );
   }
-  const inbox = await recordAdapter.inbox();
+  const [inbox, correspondents] = await Promise.all([
+    recordAdapter.inbox(),
+    recordAdapter.inboxCorrespondents(),
+  ]);
   return (
     <Resolved reading={inbox} frame={(declared) => <InboxListFrame declared={declared} />}>
-      {(value) => <InboxList inbox={value} />}
+      {(value) => <InboxList correspondents={correspondents} inbox={value} />}
     </Resolved>
   );
 }

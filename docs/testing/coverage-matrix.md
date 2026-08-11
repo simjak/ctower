@@ -3,7 +3,8 @@
 This page is the evidence-backed retroactive sweep required by
 [issue #438](https://github.com/simjak/ctower/issues/438) and operator Decision 11 (2026-08-10): every
 feature must name unit, integration, and end-to-end coverage. It reports the repository at commit
-`2b56c41`; it does not expand product scope or override `SPEC.md`.
+`ed257d6`, where every selector named below exists and was run; this page's own rebinding to that
+commit is the only change after it. It does not expand product scope or override `SPEC.md`.
 
 ## What the three layers mean
 
@@ -24,6 +25,7 @@ each missing cell has one issue.
 | Shipped feature | Unit | Integration | E2E driving the real tower |
 |---|---|---|---|
 | Chat send-box | **PRESENT** (`repository-policy`): `tests/repository/test_inbox_send_ui.py::InboxSendTransportTests::test_the_command_carries_only_text_thread_and_a_server_read_recipient`; `tests/repository/test_inbox_send_ui.py::InboxSendDurabilityTests::test_a_non_accepted_answer_is_not_read_as_a_sent_message` | **PRESENT** (`dogfood-inbox-controls`): `tests/dogfood/test_inbox_controls_render.py::InboxSurfaceRenderTests::test_a_typed_message_appears_in_the_thread_without_a_reload`; `tests/dogfood/test_inbox_controls_render.py::InboxSurfaceRenderTests::test_a_non_accepted_answer_is_never_rendered_as_a_sent_message` | **GAP [#440](https://github.com/simjak/ctower/issues/440).** The browser tests use a stub Record source and explicitly never address a running ctower instance. |
+| Chat compose (new thread) | **PRESENT** (`repository-policy`): `tests/repository/test_inbox_compose_ui.py::InboxComposeTransportTests::test_the_command_carries_only_the_message_and_a_server_listed_seat`; `tests/repository/test_inbox_compose_ui.py::InboxComposeTransportTests::test_a_seat_the_record_does_not_list_reaches_no_boundary_at_all`; `tests/repository/test_inbox_compose_ui.py::InboxComposeDurabilityTests::test_a_non_accepted_answer_is_not_read_as_a_started_thread` | **PRESENT** (`dogfood-inbox-controls`): `tests/dogfood/test_inbox_controls_render.py::InboxComposeRenderTests::test_composing_starts_the_thread_in_the_same_document`; `tests/dogfood/test_inbox_controls_render.py::InboxComposeRenderTests::test_composing_twice_never_opens_a_second_thread`; and (`native-inbox-acceptance`, real PostgreSQL) `tests/acceptance/increment-1/test_inbox_compose.py::test_the_addressable_seats_are_the_ones_a_new_thread_can_be_opened_to`; `tests/acceptance/increment-1/test_inbox_compose.py::test_the_offered_addresses_are_exactly_the_ones_the_command_accepts`; `tests/acceptance/increment-1/test_inbox_compose.py::test_composing_twice_to_one_seat_stays_one_pair_grouped_thread` | **GAP [#458](https://github.com/simjak/ctower/issues/458).** The browser tests use a stub Record source and the real-PostgreSQL tests use an in-process API; neither addresses a running ctower instance. The operator round trip #458 defines — compose to `director`, the message reaches that session, the reply mirrors back — is the E2E, and its delivery half is not built yet. |
 | Terminal read | **PRESENT** (`repository-policy`): `tests/repository/test_inspection_grammar.py::InspectionGrammarCoverageTests::test_tmux_capture_is_bounded_and_never_writes_to_a_pane`; `tests/repository/test_surface_semantics.py::ChatStreamTests::test_status_lines_do_not_become_turns` | **GAP [#441](https://github.com/simjak/ctower/issues/441).** No test joins the production adapter and render path to a real tmux pane. | **GAP [#442](https://github.com/simjak/ctower/issues/442).** No running-instance flow opens a live crew pane and observes its output. |
 | Routines | **PRESENT** (`runtime-routine-module`): `tests/modules/runtime/test_schedule.py::test_catch_up_is_bounded_and_keeps_the_latest_due_fire` | **PRESENT** (`operations-acceptance`): `tests/acceptance/increment-1/test_operations.py::test_routine_due_transaction_has_canonical_lineage_and_acceptance_gated_job` | **GAP [#443](https://github.com/simjak/ctower/issues/443).** No installed scheduler/control-worker test observes a real occurrence and outcome. |
 | Dream pipeline | **PRESENT** (`dream-dispatch-contracts`): `tests/contracts/runtime/test_dream_dispatch_contract.py::test_four_nightly_dream_packs_carry_the_exact_effect_facts` | **PRESENT** (`dream-dispatch-acceptance`): `tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_nightly_dream_dispatch_stage_walk` | **GAP [#444](https://github.com/simjak/ctower/issues/444).** No installed worker emits, binds, consumes, and records custody for a real due dream effect. |
@@ -40,25 +42,28 @@ each missing cell has one issue.
 
 ## Live audit evidence
 
-The selectors above were run together on `2b56c41` with Python 3.14.3, Node 24.16.0, pnpm 10.20.0,
-PostgreSQL test containers, and the frozen Node dependency graph. The clean run collected 29 tests and
-reported `29 passed, 0 skipped` in 36.50 seconds. The one warning was Starlette's existing `httpx`
-deprecation warning and did not change a verdict.
+The selectors above were run together on `ed257d6` with Python 3.14.3, Node 24.16.0, pnpm 10.20.0,
+PostgreSQL test containers, and the frozen Node dependency graph. The clean run collected 37 tests and
+reported `37 passed, 0 skipped` — 9 subtests included — in 56.67 seconds. The one warning was Starlette's
+existing `httpx` deprecation warning and did not change a verdict.
 
-The browser selectors initially failed closed because the frozen Node dependencies had not been installed.
-After `pnpm install --frozen-lockfile --ignore-scripts`, the same selectors passed; the complete 29-selector
-set was then rerun cleanly. No failed or skipped selector is recorded as `PRESENT`.
+The browser selectors fail closed unless the frozen Node dependencies are installed, so
+`pnpm install --frozen-lockfile --ignore-scripts` is a precondition of the run rather than part of it. No
+failed or skipped selector is recorded as `PRESENT`.
 
 The expected-suite manifest independently reports `browser-e2e` as deferred to `CT-I2-005`, and the real
-test tree contains no feature E2E tests meeting the running-instance bar. That is why all 14 E2E cells are
+test tree contains no feature E2E tests meeting the running-instance bar. That is why all 15 E2E cells are
 gaps even though several real-PostgreSQL acceptance tests and one stub-backed browser suite exist.
 
 ## Gap priority
 
 Issues [#440](https://github.com/simjak/ctower/issues/440) through
-[#456](https://github.com/simjak/ctower/issues/456) are one-to-one with the 17 missing cells. Daily operator
+[#456](https://github.com/simjak/ctower/issues/456), plus [#458](https://github.com/simjak/ctower/issues/458)
+for the compose round trip, are one-to-one with the 18 missing cells. Daily operator
 surfaces and communication paths carry `priority-p1`: chat send, terminal read, dream output, Request
-capture, Rulings, digest, briefs, notification mirror, promotion, portfolio, and Inbox send. Routine,
+capture, Rulings, digest, briefs, notification mirror, promotion, portfolio, and Inbox send. #458 is the
+compose gap and is labelled `enhancement` rather than `tech-debt`, because it is the operator's own
+undelivered round trip rather than a retroactively found hole; it ranks with the p1 surfaces. Routine,
 GitLab-provider, and generic connector E2E remain explicit gaps but rank below the controls the operator
 touches directly each day.
 

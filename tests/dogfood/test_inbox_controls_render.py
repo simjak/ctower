@@ -1,34 +1,38 @@
 """What the dogfood Inbox surface renders and does, read out of a real browser.
 
-Three of this boundary's claims are only true in a running browser.
+Several of this boundary's claims are only true in a running browser.
 
 The copy D41 clause 3 governs is not a fact about any one file. It is composed
 at render time from a frame component, a rail constant and a screen, so a test
 that greps those sources can pass while the page an operator looks at still
 carries a retired claim.
 
-The send box's claim is stronger still: a message typed into it appears in the
-thread *without a reload*. That is a statement about one document's lifetime,
-and no source file can carry it. D44 therefore permits this suite — and only
-this suite, and only for the send control — to submit the box from the browser.
-It stays a dogfood claim: the browser posts to this server's own Server Action,
-receives no credential, and never addresses a running instance.
+The two write boxes' claims are stronger still: a message typed into one appears
+— in the thread, or as the conversation it just started — *without a reload*.
+That is a statement about one document's lifetime, and no source file can carry
+it. D44 and D55 therefore permit this suite, and only this suite, to submit the
+send and compose boxes from the browser. It stays a dogfood claim: the browser
+posts to this server's own Server Action, receives no credential, and never
+addresses a running instance.
 
-The third is the same claim's other half: a message the record has *not*
-accepted must not appear as one. A `202`/`durability_pending` answer carries the
-same identity, position and timestamp an accepted answer does, so only a
-rendered page can show whether the surface drew a row anyway, kept the sender's
-words, and retried under the identity the first attempt minted.
+The other half of each claim is the same statement inverted: a message the
+record has *not* accepted must not appear as one. A `202`/`durability_pending`
+answer carries the same identity, position and timestamp an accepted answer
+does, so only a rendered page can show whether the surface drew a row anyway,
+kept the sender's words, and retried under the identity the first attempt
+minted.
 
-This suite builds the separate dogfood server, serves it on an ephemeral
-loopback port against a stub record source on another one, and asserts on what
-headless Chromium reports back at the three widths the design bar names.
+The apparatus — the stub record source, the built and served surface, the
+browser driver — is `_inbox_stub`. One build and one browser serve every
+assertion below, so the drive happens once for the module rather than once per
+class.
 
 The promotion form is still never submitted here: its transport is proved
-against the real module in ``tests/repository/test_inbox_promotion_ui``, and the
-send transport is proved the same way in ``test_inbox_send_ui``.
+against the real module in ``tests/repository/test_inbox_promotion_ui``, the
+send transport the same way in ``test_inbox_send_ui``, and the compose
+transport in ``test_inbox_compose_ui``.
 
-This is the one suite the D41/D42/D44 dogfood exception activates. It is
+This is the one suite the D41/D42/D44/D55 dogfood exception activates. It is
 deliberately outside ``tests/repository`` so the warm ``just check`` gate never
 pays for a production build and a browser; the release gate runs it through the
 expected-suite manifest.
@@ -36,56 +40,25 @@ expected-suite manifest.
 
 from __future__ import annotations
 
-import http.client
-import json
-import os
-import shutil
-import signal
-import socket
-import subprocess
 import tempfile
-import threading
-import time
 import unittest
-from collections.abc import Iterator
-from contextlib import ExitStack, closing, contextmanager, suppress
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
+
+if TYPE_CHECKING:
+    from dogfood import _inbox_stub as stub
+else:
+    from tests.dogfood import _inbox_stub as stub
 
 __all__ = ()
 
-_ROOT = Path(__file__).resolve().parents[2]
-_SURFACE = _ROOT / "apps/ctower-ui"
-_NEXT = _SURFACE / "node_modules/.bin/next"
-_DRIVER = Path(__file__).with_name("inbox_render_driver.ts")
-
-_BUILD_TIMEOUT_SECONDS = 600
-_DRIVE_TIMEOUT_SECONDS = 300
-_READY_TIMEOUT_SECONDS = 120
-_READY_POLL_SECONDS = 0.25
-_STOP_GRACE_SECONDS = 10
-_OK = 200
-_CREATED = 201
-_PENDING_DURABILITY = 202
-_UNPROCESSABLE = 422
-_NOT_FOUND = 404
-
-_WIDTHS = (375, 768, 1440)
-_INSTANCE_LABEL = "render-probe"
-_CREDENTIAL = "loopback-render-probe"
-_THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000600"
-_REFUSED_THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000610"
-_UNCONFIRMED_THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000620"
-_SELF_SEAT = "designer"
-_OTHER_SEAT = "reviewer"
-_STRANGER_SEAT = "unseated-agent"
-_UNDURABLE_SEAT = "commander"
-_PREVIEW = "The reviewer asked for the rendered surface, not the source text."
+_WIDTHS = stub.WIDTHS
 _RETIRED_CLAIM = "no mutation path exists on this surface"
-_SCOPED_FOOT = "server-authorized Inbox send and promotion paths · browser holds no write authority"
+_SCOPED_FOOT = (
+    "server-authorized Inbox compose, send and promotion paths · browser holds no write authority"
+)
 _NEW_TICKET_VERDICT = "read-only v1 · disabled"
-_REFUSAL_DETAIL = "The authenticated principal has no addressable project seat."
 _UNCONFIRMED_SENTENCE = (
     "The server has not confirmed this message, so it is not sent yet. "
     "Press Retry to send the same message again."
@@ -93,341 +66,50 @@ _UNCONFIRMED_SENTENCE = (
 # what the line under the box reads, chip included; the chip's own stylesheet
 # upper-cases it on screen
 _UNCONFIRMED_NOTICE = f"not confirmed {_UNCONFIRMED_SENTENCE}"
+_UNCONFIRMED_COMPOSE_SENTENCE = (
+    "The server has not confirmed this message, so the thread is not started yet. "
+    "Press Retry to send the same message again."
+)
+_UNCONFIRMED_COMPOSE_NOTICE = f"not confirmed {_UNCONFIRMED_COMPOSE_SENTENCE}"
 _SEND_FIELDS = ("text", "thread_id", "to")
+_COMPOSE_FIELDS = ("text", "to")
 
 
-def _thread(thread_id: str, other: str) -> dict[str, Any]:
-    return {
-        "thread_id": thread_id,
-        "participants": [_SELF_SEAT, other],
-        "messages": [
-            {
-                "message_id": "018f0d5e-7b9a-7c01-8000-000000000601",
-                "position": 1,
-                "from": other,
-                "to": _SELF_SEAT,
-                "text": _PREVIEW,
-                "sent_at": "2026-08-08T12:00:00Z",
-            }
-        ],
-        "read_through_position": 1,
-        "promoted_ticket_id": None,
-    }
-
-
-def _summary(thread_id: str, other: str) -> dict[str, Any]:
-    return {
-        "thread_id": thread_id,
-        "other_agent": other,
-        "last_message_preview": _PREVIEW,
-        "last_message_at": "2026-08-08T12:00:00Z",
-        "unread_count": 2,
-        "promoted_ticket_id": None,
-    }
-
-
-def _answer(payload: dict[str, Any], position: int, durability: str) -> dict[str, Any]:
-    """One send result, in the authored shape both durability states share."""
-    return {
-        "command_id": f"018f0d5e-7b9a-7c01-8000-0000000008{position:02d}",
-        "durability_state": durability,
-        "event_ids": [f"018f0d5e-7b9a-7c01-8000-0000000009{position:02d}"],
-        "from": _SELF_SEAT,
-        "message_id": f"018f0d5e-7b9a-7c01-8000-0000000007{position:02d}",
-        "position": position,
-        "sent_at": "2026-08-09T03:05:00Z",
-        "thread_id": str(payload["thread_id"]),
-        "thread_version": position + 1,
-        "to": str(payload["to"]),
-    }
-
-
-_BOARD: dict[str, Any] = {
-    "cards": [],
-    "health": "CURRENT",
-    "projection_watermark": 0,
-    "source_watermark": 0,
-}
-
-_REFUSAL: dict[str, Any] = {
-    "code": "inbox-sender-unaddressable",
-    "detail": _REFUSAL_DETAIL,
-    "status": _UNPROCESSABLE,
-    "title": "Inbox command refused",
-    "type": "https://ctower.invalid/problems/inbox-sender-unaddressable",
-}
-
-
-class _Record:
-    """The stub record source's state, folded the way the real one folds.
-
-    The thread read is a *projection*: the real one is folded from events after
-    the command commits, so the message a send has just accepted is briefly
-    absent from it. A stub that answered instantly would make this suite prove
-    something the product does not do, so a sent message is held out of the
-    thread read until one read has gone by — the smallest fold latency that is
-    still latency.
-    """
+class _Drive:
+    """One build, one browser, one report — shared by every class below."""
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._threads = {
-            _THREAD_ID: _thread(_THREAD_ID, _OTHER_SEAT),
-            _REFUSED_THREAD_ID: _thread(_REFUSED_THREAD_ID, _STRANGER_SEAT),
-            _UNCONFIRMED_THREAD_ID: _thread(_UNCONFIRMED_THREAD_ID, _UNDURABLE_SEAT),
-        }
-        self._unfolded: list[tuple[str, dict[str, Any]]] = []
-        self.commands: list[dict[str, Any]] = []
+        self.stack = ExitStack()
+        self.record = stub.Record()
+        self.captures: list[dict[str, Any]] = []
+        self.drives: list[dict[str, Any]] = []
+        self.composes: list[dict[str, Any]] = []
+        self.thread_source = ""
 
-    def projection(self) -> dict[str, Any]:
-        return {
-            "recipient": _SELF_SEAT,
-            "threads": [
-                _summary(_THREAD_ID, _OTHER_SEAT),
-                _summary(_REFUSED_THREAD_ID, _STRANGER_SEAT),
-                _summary(_UNCONFIRMED_THREAD_ID, _UNDURABLE_SEAT),
-            ],
-            "total_unread": 6,
-            "unread_only": False,
-        }
-
-    def thread(self, thread_id: str) -> dict[str, Any] | None:
-        with self._lock:
-            found = self._threads.get(thread_id)
-            answer = (
-                None if found is None else cast("dict[str, Any]", json.loads(json.dumps(found)))
-            )
-            self._fold()
-            return answer
-
-    def _fold(self) -> None:
-        """Move everything accepted since the last read into the projection."""
-        for thread_id, message in self._unfolded:
-            cast("list[dict[str, Any]]", self._threads[thread_id]["messages"]).append(message)
-        self._unfolded.clear()
-
-    def refuse(self, payload: dict[str, Any], key: str | None) -> None:
-        with self._lock:
-            self.commands.append({"payload": payload, "idempotency_key": key})
-
-    def append(self, payload: dict[str, Any], key: str | None) -> dict[str, Any]:
-        """Record one send exactly as the authored command answers it."""
-        with self._lock:
-            self.commands.append({"payload": payload, "idempotency_key": key})
-            thread_id = str(payload["thread_id"])
-            thread = self._threads[thread_id]
-            position = (
-                len(cast("list[dict[str, Any]]", thread["messages"])) + len(self._unfolded) + 1
-            )
-            accepted = {
-                "message_id": f"018f0d5e-7b9a-7c01-8000-0000000007{position:02d}",
-                "position": position,
-                "from": _SELF_SEAT,
-                "to": str(payload["to"]),
-                "text": str(payload["text"]),
-                "sent_at": "2026-08-09T03:05:00Z",
-            }
-            self._unfolded.append((thread_id, accepted))
-            return _answer(payload, position, "accepted")
-
-    def undurable(self, payload: dict[str, Any], key: str | None) -> dict[str, Any]:
-        """Answer the way the record answers without its off-host acknowledgement.
-
-        The command committed here, but the durable acknowledgement acceptance
-        requires did not, so the answer is the same authored envelope carrying
-        the state it is really in. Nothing is folded into the thread read: this
-        message is not a fact anyone has promised to keep, and a replay under
-        the same key gets the same non-accepted answer back.
-        """
-        with self._lock:
-            self.commands.append({"payload": payload, "idempotency_key": key})
-            thread = self._threads[str(payload["thread_id"])]
-            position = len(cast("list[dict[str, Any]]", thread["messages"])) + 1
-            return _answer(payload, position, "durability_pending")
-
-
-class _RecordStub(BaseHTTPRequestHandler):
-    """The read paths this screen asks for, the one command it sends, nothing else."""
-
-    protocol_version = "HTTP/1.1"
-    record: ClassVar[_Record]
-
-    def do_GET(self) -> None:
-        path = self.path.split("?", 1)[0]
-        if path == "/v1/inbox/threads":
-            self._answer(_OK, self.record.projection())
-        elif path.startswith("/v1/inbox/threads/"):
-            thread = self.record.thread(path.rsplit("/", 1)[-1])
-            if thread is None:
-                self._answer(_NOT_FOUND, {"detail": "the stub record source holds no such thread"})
-            else:
-                self._answer(_OK, thread)
-        elif path == "/v1/board":
-            self._answer(_OK, _BOARD)
-        else:
-            self._answer(_NOT_FOUND, {"detail": f"the stub record source holds no {path}"})
-
-    def do_POST(self) -> None:
-        if self.path.split("?", 1)[0] != "/v1/inbox/messages":
-            self._answer(_NOT_FOUND, {"detail": "the stub record source accepts no such command"})
-            return
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = cast("dict[str, Any]", json.loads(self.rfile.read(length)))
-        key = self.headers.get("Idempotency-Key")
-        thread_id = str(payload.get("thread_id"))
-        if thread_id == _REFUSED_THREAD_ID:
-            self.record.refuse(payload, key)
-            self._answer(_UNPROCESSABLE, _REFUSAL, content_type="application/problem+json")
-            return
-        if thread_id == _UNCONFIRMED_THREAD_ID:
-            self._answer(_PENDING_DURABILITY, self.record.undurable(payload, key))
-            return
-        self._answer(_CREATED, self.record.append(payload, key))
-
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - inherited signature
-        """Keep the suite's output the driver's report, not an access log."""
-
-    def _answer(
-        self, status: int, document: dict[str, Any], *, content_type: str = "application/json"
-    ) -> None:
-        body = json.dumps(document).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-
-def _free_port() -> int:
-    with closing(socket.socket()) as probe:
-        probe.bind(("127.0.0.1", 0))
-        return cast("int", probe.getsockname()[1])
-
-
-def _executable(path: Path, install: str) -> str:
-    """A declared tool, or a named failure — never a quiet pass."""
-    if not path.is_file():
-        raise RuntimeError(f"{path} is missing; run {install}")
-    return str(path)
-
-
-@contextmanager
-def _record_stub(record: _Record) -> Iterator[str]:
-    """The stub record source, on its own ephemeral loopback port."""
-    _RecordStub.record = record
-    server = ThreadingHTTPServer(("127.0.0.1", 0), _RecordStub)
-    worker = threading.Thread(target=server.serve_forever, daemon=True)
-    worker.start()
-    try:
-        yield f"http://127.0.0.1:{server.server_port:d}"
-    finally:
-        server.shutdown()
-        server.server_close()
-        worker.join(timeout=_STOP_GRACE_SECONDS)
-
-
-@contextmanager
-def _dogfood_server(record_base_url: str) -> Iterator[int]:
-    """Build the separate dogfood server and serve it on an ephemeral port."""
-    next_binary = _executable(_NEXT, "pnpm install --frozen-lockfile")
-    environment = {
-        **os.environ,
-        "CTOWER_UI_API_BASE_URL": record_base_url,
-        "CTOWER_UI_API_TOKEN": _CREDENTIAL,
-        "CTOWER_UI_INSTANCE_LABEL": _INSTANCE_LABEL,
-        "CTOWER_UI_INSTANCE_POSTURE": "SHADOW_ONLY_CP3_D_NOT_PROVEN",
-        "NODE_ENV": "production",
-    }
-    subprocess.run(  # noqa: S603 - a declared binary from the checkout, no shell, no caller argv
-        (next_binary, "build"),
-        cwd=_SURFACE,
-        env=environment,
-        timeout=_BUILD_TIMEOUT_SECONDS,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    port = _free_port()
-    served = subprocess.Popen(  # noqa: S603 - the same declared binary, held open as the server
-        (next_binary, "start", "--port", str(port), "--hostname", "127.0.0.1"),
-        cwd=_SURFACE,
-        env=environment,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    try:
-        _await_ready(served, port)
-        yield port
-    finally:
-        with suppress(ProcessLookupError):
-            os.killpg(served.pid, signal.SIGTERM)
+    def open(self) -> None:
         try:
-            served.wait(timeout=_STOP_GRACE_SECONDS)
-        except subprocess.TimeoutExpired:
-            with suppress(ProcessLookupError):
-                os.killpg(served.pid, signal.SIGKILL)
-            served.wait(timeout=_STOP_GRACE_SECONDS)
+            source = self.stack.enter_context(stub.record_stub(self.record))
+            port = self.stack.enter_context(stub.dogfood_server(source))
+            shots = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
+            self.thread_source = stub.route_body(port, f"/inbox?thread={stub.THREAD_ID}") or ""
+            report = stub.drive_surface(port, shots)
+            self.captures = cast("list[dict[str, Any]]", report["captures"])
+            self.drives = cast("list[dict[str, Any]]", report["drives"])
+            self.composes = cast("list[dict[str, Any]]", report["composes"])
+        except BaseException:
+            self.stack.close()
+            raise
 
 
-def _await_ready(served: subprocess.Popen[bytes], port: int) -> None:
-    """Poll the served route under a finite deadline; a dead server fails now."""
-    deadline = time.monotonic() + _READY_TIMEOUT_SECONDS
-    while time.monotonic() < deadline:
-        if served.poll() is not None:
-            raise RuntimeError(f"the dogfood server exited with {served.returncode:d} before ready")
-        if _served(port, "/inbox") is not None:
-            return
-        time.sleep(_READY_POLL_SECONDS)
-    raise RuntimeError(
-        f"the dogfood server did not serve /inbox within {_READY_TIMEOUT_SECONDS:d}s"
-    )
+_DRIVE = _Drive()
 
 
-def _served(port: int, route: str) -> str | None:
-    """The bytes one route answered with, or `None` when it did not answer."""
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=_READY_POLL_SECONDS * 8)
-    try:
-        connection.request("GET", route)
-        response = connection.getresponse()
-        body = response.read().decode("utf-8", errors="replace")
-    except (OSError, http.client.HTTPException):
-        return None
-    else:
-        return body if response.status == _OK else None
-    finally:
-        connection.close()
+def setUpModule() -> None:
+    _DRIVE.open()
 
 
-def _drive(port: int, screenshots: Path) -> dict[str, Any]:
-    node = shutil.which("node")
-    if node is None:
-        # not a skip: this is a required suite, and a verification host without
-        # the toolchain it declares is a failure, not a reason to pass quietly
-        raise RuntimeError("node is not on PATH; the dogfood surface cannot be driven")
-    try:
-        completed = subprocess.run(  # noqa: S603 - a resolved interpreter and a checked-in driver
-            (
-                node,
-                "--no-warnings",
-                str(_DRIVER),
-                f"http://127.0.0.1:{port:d}",
-                _THREAD_ID,
-                _REFUSED_THREAD_ID,
-                _UNCONFIRMED_THREAD_ID,
-                str(screenshots),
-            ),
-            cwd=_ROOT,
-            timeout=_DRIVE_TIMEOUT_SECONDS,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError as failed:
-        # what the browser could not find is the whole diagnosis; an exit status
-        # on its own sends the next reader back to run it by hand
-        raise RuntimeError(f"the render driver failed:\n{failed.stderr}") from failed
-    return cast("dict[str, Any]", json.loads(completed.stdout))
+def tearDownModule() -> None:
+    _DRIVE.stack.close()
 
 
 class InboxSurfaceRenderTests(unittest.TestCase):
@@ -435,29 +117,16 @@ class InboxSurfaceRenderTests(unittest.TestCase):
 
     captures: ClassVar[list[dict[str, Any]]] = []
     drives: ClassVar[list[dict[str, Any]]] = []
-    record: ClassVar[_Record]
+    record: ClassVar[stub.Record]
     thread_source: ClassVar[str] = ""
-    _stack: ClassVar[ExitStack]
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls._stack = ExitStack()
-        try:
-            cls.record = _Record()
-            stub = cls._stack.enter_context(_record_stub(cls.record))
-            port = cls._stack.enter_context(_dogfood_server(stub))
-            screenshots = Path(cls._stack.enter_context(tempfile.TemporaryDirectory()))
-            cls.thread_source = _served(port, f"/inbox?thread={_THREAD_ID}") or ""
-            report = _drive(port, screenshots)
-            cls.captures = cast("list[dict[str, Any]]", report["captures"])
-            cls.drives = cast("list[dict[str, Any]]", report["drives"])
-        except BaseException:
-            cls._stack.close()
-            raise
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls._stack.close()
+    def setUp(self) -> None:
+        # one module-level build and browser answer every class here; binding
+        # the report per test keeps each assertion on that one session
+        type(self).captures = _DRIVE.captures
+        type(self).drives = _DRIVE.drives
+        type(self).record = _DRIVE.record
+        type(self).thread_source = _DRIVE.thread_source
 
     def test_every_width_and_route_rendered(self) -> None:
         self.assertEqual(
@@ -485,16 +154,16 @@ class InboxSurfaceRenderTests(unittest.TestCase):
     def test_the_surface_rendered_the_recorded_threads_and_both_controls(self) -> None:
         for capture in self.captures:
             with self.subTest(route=capture["route"], width=capture["width"]):
-                self.assertIn(_PREVIEW, capture["visible"])
-                self.assertIn(f"ctower · {_INSTANCE_LABEL} instance", capture["foot"])
+                self.assertIn(stub.PREVIEW, capture["visible"])
+                self.assertIn(f"ctower · {stub.INSTANCE_LABEL} instance", capture["foot"])
                 if capture["route"] == "thread":
                     self.assertIn("Promote thread", capture["visible"])
                     self.assertIn("Create a new ticket from this thread", capture["visible"])
                     # the design system upper-cases this label, so the assertion
                     # is on the words a reader actually sees
-                    self.assertIn(f"SEND TO {_OTHER_SEAT.upper()}", capture["visible"])
+                    self.assertIn(f"SEND TO {stub.OTHER_SEAT.upper()}", capture["visible"])
                     self.assertIn(
-                        f"as {_SELF_SEAT} · the server authorizes and records every message",
+                        f"as {stub.SELF_SEAT} · the server authorizes and records every message",
                         capture["visible"],
                     )
 
@@ -562,7 +231,7 @@ class InboxSurfaceRenderTests(unittest.TestCase):
             command["idempotency_key"]
             for command in self.record.commands
             if str(cast("dict[str, Any]", command["payload"])["thread_id"])
-            == _UNCONFIRMED_THREAD_ID
+            == stub.UNCONFIRMED_THREAD_ID
         ]
         self.assertEqual(len(keys), len(_WIDTHS) * 2)
         self.assertEqual(len(set(keys)), len(_WIDTHS))
@@ -580,7 +249,9 @@ class InboxSurfaceRenderTests(unittest.TestCase):
             payload = cast("dict[str, Any]", command["payload"])
             with self.subTest(text=payload.get("text")):
                 self.assertEqual(tuple(sorted(payload)), _SEND_FIELDS)
-                self.assertIn(payload["to"], (_OTHER_SEAT, _STRANGER_SEAT, _UNDURABLE_SEAT))
+                self.assertIn(
+                    payload["to"], (stub.OTHER_SEAT, stub.STRANGER_SEAT, stub.UNDURABLE_SEAT)
+                )
                 self.assertRegex(cast("str", command["idempotency_key"]), r"^[0-9a-f-]{36}$")
 
     def test_a_refused_send_renders_the_servers_own_sentence(self) -> None:
@@ -588,7 +259,7 @@ class InboxSurfaceRenderTests(unittest.TestCase):
         self.assertEqual([drive["width"] for drive in refusals], list(_WIDTHS))
         for drive in refusals:
             with self.subTest(width=drive["width"]):
-                self.assertEqual(drive["refusal"], _REFUSAL_DETAIL)
+                self.assertEqual(drive["refusal"], stub.REFUSAL_DETAIL)
                 self.assertNotIn(drive["typed"], drive["messages"])
                 self.assertNotIn(drive["typed"], drive["messagesReloaded"])
                 self.assertTrue(drive["sameDocument"])
@@ -599,9 +270,135 @@ class InboxSurfaceRenderTests(unittest.TestCase):
 
     def test_the_served_document_carries_no_credential(self) -> None:
         """D41 clause 1: the browser receives no bearer, in markup or in props."""
-        self.assertIn(_THREAD_ID, self.thread_source)
-        self.assertNotIn(_CREDENTIAL, self.thread_source)
+        self.assertIn(stub.THREAD_ID, self.thread_source)
+        self.assertNotIn(stub.CREDENTIAL, self.thread_source)
         self.assertNotIn("Bearer", self.thread_source)
+
+
+class InboxComposeRenderTests(unittest.TestCase):
+    """What the compose box put on the screen, and what it refused to put there."""
+
+    composes: ClassVar[list[dict[str, Any]]] = []
+    record: ClassVar[stub.Record]
+
+    def setUp(self) -> None:
+        type(self).composes = _DRIVE.composes
+        type(self).record = _DRIVE.record
+
+    def test_the_compose_picker_offers_the_records_own_closed_world(self) -> None:
+        """The dropdown rule, in a browser: the seats are the record's, verbatim.
+
+        Every seat the record listed is offered and nothing else is, so the
+        operator cannot type an address at all — the only way to name one is to
+        pick one the server itself answered with.
+        """
+        for compose in self.composes:
+            with self.subTest(width=compose["width"], outcome=compose["outcome"]):
+                self.assertEqual(compose["seats"], list(stub.ADDRESSABLE))
+                self.assertIn(stub.COMPOSE_SEAT, compose["seats"])
+
+    def test_composing_starts_the_thread_in_the_same_document(self) -> None:
+        """The claim the compose box exists to make, made in a browser.
+
+        The seat picked here had no thread with this principal at all, so the
+        row that appears can only have come from the command's own answer — the
+        thread projection has nothing to give yet. The stamp says the document
+        never reloaded, and the panel names the thread the record derived.
+        """
+        started = [item for item in self.composes if item["outcome"] == "started"]
+        self.assertEqual([item["width"] for item in started], list(_WIDTHS))
+        for compose in started:
+            with self.subTest(width=compose["width"]):
+                self.assertEqual(compose["composed"], [compose["typed"]])
+                self.assertTrue(compose["sameDocument"])
+                self.assertEqual(compose["fieldAfter"], "")
+                self.assertEqual(compose["seatAfter"], "")
+                self.assertEqual(compose["button"], "Send")
+                self.assertEqual(compose["refusal"], "")
+                self.assertEqual(compose["notice"], "")
+                # the row is the compose panel's own; the list did not have it
+                self.assertNotIn(compose["typed"], compose["listed"])
+                self.assertIn(f"thread={stub.COMPOSED_THREAD_ID}", compose["opened"])
+
+    def test_the_started_thread_is_readable_and_joins_the_list(self) -> None:
+        """What the panel drew and what the record holds end up the same thing.
+
+        The row in the panel came from the command's answer; the thread and the
+        list come from the projection. The whole idiom is only honest if those
+        two agree once the projection has folded — so the thread is re-read in
+        a fresh document, and the Inbox list gains the conversation that was
+        not there before.
+        """
+        seeded = 3
+        for compose in (item for item in self.composes if item["outcome"] == "started"):
+            with self.subTest(width=compose["width"]):
+                self.assertIn(compose["typed"], compose["threadMessages"])
+                self.assertEqual(compose["threadMessages"].count(compose["typed"]), 1)
+                self.assertEqual(len(compose["listedReloaded"]), seeded + 1)
+
+    def test_composing_twice_never_opens_a_second_thread(self) -> None:
+        """One correspondent, one conversation — the pair-grouped guarantee.
+
+        Each width composes to the same seat, and every one of them lands in
+        the thread the first opened. A control that minted a thread per send
+        would scatter one correspondent's conversation across three.
+        """
+        opened = {item["opened"] for item in self.composes if item["outcome"] == "started"}
+        self.assertEqual(len(opened), 1)
+        last = [item for item in self.composes if item["outcome"] == "started"][-1]
+        self.assertEqual(len(last["threadMessages"]), len(_WIDTHS))
+
+    def test_a_compose_the_record_has_not_confirmed_starts_no_thread(self) -> None:
+        """`202`/`durability_pending` is the record saying it has not accepted.
+
+        Its answer carries a thread identity, a message identity and a position,
+        so a surface reading the envelope instead of the discriminator would
+        tell the operator they have a conversation nobody promised to keep.
+        Here no row is drawn, the words and the picked seat both survive, and
+        the box says so.
+        """
+        held = [item for item in self.composes if item["outcome"] == "unconfirmed"]
+        self.assertEqual([item["width"] for item in held], list(_WIDTHS))
+        for compose in held:
+            with self.subTest(width=compose["width"]):
+                self.assertEqual(compose["composed"], [])
+                self.assertEqual(compose["opened"], "")
+                self.assertEqual(compose["notice"], _UNCONFIRMED_COMPOSE_NOTICE)
+                self.assertEqual(compose["refusal"], "")
+                self.assertEqual(compose["fieldAfter"], compose["typed"])
+                self.assertEqual(compose["seatAfter"], stub.UNDURABLE_SEAT)
+                self.assertEqual(compose["button"], "Retry")
+                self.assertTrue(compose["sameDocument"])
+                self.assertNotIn(compose["typed"], compose["listedReloaded"])
+
+    def test_a_refused_compose_renders_the_servers_own_sentence(self) -> None:
+        refusals = [item for item in self.composes if item["outcome"] == "refused"]
+        self.assertEqual([item["width"] for item in refusals], list(_WIDTHS))
+        for compose in refusals:
+            with self.subTest(width=compose["width"]):
+                self.assertEqual(compose["refusal"], stub.REFUSAL_DETAIL)
+                self.assertEqual(compose["composed"], [])
+                self.assertEqual(compose["notice"], "")
+                # the words and the seat survive the refusal
+                self.assertEqual(compose["fieldAfter"], compose["typed"])
+                self.assertEqual(compose["seatAfter"], stub.STRANGER_SEAT)
+                # a refused command has no identity to replay: this is a fresh send
+                self.assertEqual(compose["button"], "Send")
+                self.assertNotIn(compose["typed"], compose["listedReloaded"])
+
+    def test_the_compose_command_carried_a_listed_seat_and_no_claimed_identity(self) -> None:
+        composes = self.record.composes
+        # one accepted, one refused and one unconfirmed compose, at each width
+        self.assertEqual(len(composes), len(_WIDTHS) * 3)
+        keys = [command["idempotency_key"] for command in composes]
+        self.assertEqual(len(set(keys)), len(composes))
+        for command in composes:
+            payload = cast("dict[str, Any]", command["payload"])
+            with self.subTest(text=payload.get("text")):
+                # no sender, and no thread: the server derives both
+                self.assertEqual(tuple(sorted(payload)), _COMPOSE_FIELDS)
+                self.assertIn(payload["to"], stub.ADDRESSABLE)
+                self.assertRegex(cast("str", command["idempotency_key"]), r"^[0-9a-f-]{36}$")
 
 
 if __name__ == "__main__":

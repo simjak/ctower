@@ -1,11 +1,33 @@
 # ctower-ui dogfood Inbox controls
 
 `apps/ctower-ui` is a local shadow-instance dogfood server, not the `ctower-web` product and not a
-supported browser UI. [D41, D42, D44 and D45](https://github.com/simjak/ctower/blob/main/DECISIONS.md)
-permit it to present two existing Inbox commands, and activate one verification suite for them, while
+supported browser UI. [D41, D42, D44, D45 and D55](https://github.com/simjak/ctower/blob/main/DECISIONS.md)
+permit it to present three existing Inbox commands, and activate one verification suite for them, while
 `CT-I2-005` remains the first product-browser checkpoint.
 
 ## What the controls do
+
+**Compose.** At the top of the Inbox list, the compose box starts a conversation with a seat you have no
+thread with yet. It asks the existing protected `POST /v1/inbox/notifications` operation, and it submits
+the message and which seat it is for, and nothing else:
+
+- the seats on offer are the ones the server itself listed, read from `GET /v1/inbox/correspondents` — you
+  pick one, you cannot type one, and a seat that is not on the list is refused before any command is made;
+- that list is what the command accepts, not every seat that exists: a seat key two seats share is
+  addressed to nobody and is offered by neither, your own seat is not on it, and a principal holding no
+  seat of its own is offered nothing at all, because it has no address to write from;
+- the sender is never sent — the API derives it from the bearer it validates;
+- the thread is not chosen by anyone. The server derives one per pair of seats, so writing to the same seat
+  again continues that one conversation instead of opening another, and a compose to a seat the notify
+  mirror already opened a thread with lands in that thread.
+
+An **accepted** compose draws the message it just sent, marked `just sent`, as a row you can click to open
+the conversation — without a reload, and before the thread list has folded it. A **`202` /
+`durability_pending`** answer starts nothing: no row is drawn and no thread is named, your words and your
+picked seat both stay where they are, and the button offers `Retry` under the same command identity. A
+**refusal** renders the API's own human sentence and hands back both. If the list comes back empty the
+control is disabled and says which emptiness it is — nobody addressable to write to, or no seat of this
+server's own to write from — rather than inviting a message it cannot deliver or blaming the wrong side.
 
 **Send.** At the foot of an Inbox thread, the send box asks the existing protected
 `POST /v1/inbox/messages` operation to append one message to that thread. The browser submits the message
@@ -37,9 +59,9 @@ browser command path, which is deferred to `CT-I2-005`.
 `POST /v1/inbox/threads/{thread_id}/promotion` operation to either create one P2 ticket from the immutable
 thread head, or link one in-scope ticket selected by its ID.
 
-Neither control sends an actor, project, scope, custody, or authorization fact. The browser has no API
-bearer, session credential, or direct network client; a Server Action holds the development-server bearer,
-and the API authenticates and authorizes each operation as usual.
+No control sends an actor, project, scope, custody, or authorization fact. The browser has no API bearer,
+session credential, or direct network client; a Server Action holds the development-server bearer, and the
+API authenticates and authorizes each operation as usual.
 
 ## Retry and refusal behavior
 
@@ -69,16 +91,26 @@ loopback port against a local stub record source, and reads the Inbox surface ou
 and proves the stamp survived — which is the only way to show that the message appeared without a reload. On
 a thread the stub answers `202` for, the same three widths prove the other half: no message row is drawn,
 the draft is still in the box, the unconfirmed sentence is on screen, and pressing the box again reaches the
-stub under the same command identity. It never submits the promotion form from a browser, never addresses a
-running instance, and never holds a credential.
+stub under the same command identity.
+
+The compose box is driven the same way, at the same three widths, for all three answers. It proves that the
+picker offers exactly the seats the stub record listed; that composing to a seat with no thread draws the
+message in the same document and links the thread the record derived; that the thread and the Inbox list
+then carry that conversation once the projection has folded it; that every width lands in the one
+pair-grouped thread rather than three; and that a `202` and a refusal each start nothing while keeping the
+draft and the picked seat.
+
+It never submits the promotion form from a browser, never addresses a running instance, and never holds a
+credential.
 
 ## Boundaries that remain
 
 - This does not activate a product route, product-browser session/CSRF design, or the product Playwright
   suite: `browser-e2e` stays deferred to `CT-I2-005`, and no browser evidence here counts toward it.
 - This does not change the `ctower-web` React/Vite product decision or `CT-I2-005` sequencing.
-- This does not grant browser authority or create a new mutation endpoint; both controls call commands the
-  contract already authored.
+- This does not grant browser authority or create a new mutation endpoint; all three controls call commands
+  the contract already authored. The one operation D55 adds, `GET /v1/inbox/correspondents`, is a read of
+  the addresses the send path already resolves — narrower than the seat registry, never wider.
 - This is limited to low-value, reconstructible shadow dogfood. It is not a deployment or support promise.
 
 See the [HTTP API reference](http-api.md#inbox), [CLI reference](cli.md#inbox), and the canonical
