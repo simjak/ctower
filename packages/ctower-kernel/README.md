@@ -17,6 +17,10 @@ lineage; four idempotent nightly dream effects whose consumption derives lane, c
 effort, and tier from immutable substrate bindings and links the output digest to Routine custody; one
 operator-authenticated, closed-registry ceremony that appends the canonical event and creates that immutable
 binding exactly once;
+five immutable fleet-beat revisions whose queued occurrences emit digest-verified full prompts for the
+fixed DIRECTOR session; corrected digests serially replace only the tenant's active trigger while prior
+revision/effect facts remain immutable; plus operator-only routine/effect reads that grant no delivery or
+consumption authority;
 independently attributable health; and a project-scoped typed event feed whose exact kind set is
 derived from the authoritative event catalog's `project_feed` column, reusing the same `event_links`
 subject join `ticket_audit` already proves rather than a second query shape.
@@ -39,8 +43,9 @@ Its default policy remains `pending_only`. The approved persistent E2 shadow run
 `development_offhost_ack`; its ordinary bounded finalizer uses the same exact named-standby evidence as the
 verifier fixture while health remains `development_offhost_ack_cp3_d_not_proven`. It does not establish an
 external failure domain or CP3-D. Projections can replace only disposable Board rows/cursors and
-cannot mutate authority. Runtime materializes only the three authored fixed-operation jobs; it does not
-dispatch them. The neutral Object port is shared by injected Proof and Catalog capabilities; Proof retains
+cannot mutate authority. Runtime materializes authored fixed-operation jobs and the approved dream/beat
+effects; it does not execute external dream work or inject fleet prompts. The neutral Object port is shared
+by injected Proof and Catalog capabilities; Proof retains
 digest-bound inline/external object metadata, safe backfill, and durable erasure tombstones without owning
 the generic protocol. Record owns immutable backup/anchor/inventory/restore evidence and exact
 installation/report enablement policy. Review dispatch binds the emitted author model family and derives the

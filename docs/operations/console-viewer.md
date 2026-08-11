@@ -10,7 +10,7 @@ provide the contextual browser UI.
 
 You need:
 
-- the repository candidate with migrations through `0063_console_view_grants.sql`;
+- the repository candidate with migrations through `0065_console_view_grants.sql`;
 - PostgreSQL with the cluster migration applied by a role allowed to create `console_output_reader`;
 - an existing CT-I1-013 human identity provider and secure browser session;
 - one current non-Commander assignment and open recorded work session;

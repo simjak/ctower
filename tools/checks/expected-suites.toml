@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-019"
+active_phase = "CT-I1-020"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -26,6 +26,7 @@ phase_order = [
   "CT-I1-017",
   "CT-I1-018",
   "CT-I1-019",
+  "CT-I1-020",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -93,8 +94,8 @@ timeout_seconds = 120
 
 [[suite]]
 id = "console-phase1-contracts"
-owner = "CT-I1-019"
-phase = "CT-I1-019"
+owner = "CT-I1-020"
+phase = "CT-I1-020"
 status = "required"
 path = "tests/contracts/console"
 patterns = ["test_*.py"]
@@ -153,8 +154,8 @@ timeout_seconds = 300
 
 [[suite]]
 id = "console-phase1-module"
-owner = "CT-I1-019"
-phase = "CT-I1-019"
+owner = "CT-I1-020"
+phase = "CT-I1-020"
 status = "required"
 path = "tests/modules/console"
 patterns = ["test_*.py"]
@@ -163,8 +164,8 @@ timeout_seconds = 300
 
 [[suite]]
 id = "console-phase1-acceptance"
-owner = "CT-I1-019"
-phase = "CT-I1-019"
+owner = "CT-I1-020"
+phase = "CT-I1-020"
 status = "required"
 path = "tests/acceptance/increment-1"
 patterns = ["test_console_view_grants.py", "test_console_view_grant_races.py"]
@@ -872,6 +873,54 @@ command = [
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_morning_digest.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "fleet-beat-contracts"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/contracts/runtime"
+patterns = ["test_beat_dispatch_contract.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/contracts/runtime/test_beat_dispatch_contract.py",
+  "-q",
+]
+timeout_seconds = 120
+
+[[suite]]
+id = "fleet-beat-schedule"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/modules/runtime"
+patterns = ["test_schedule.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/modules/runtime/test_schedule.py",
+  "-q",
+]
+timeout_seconds = 120
+
+[[suite]]
+id = "fleet-beat-acceptance"
+owner = "CT-I1-019"
+phase = "CT-I1-019"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_beat_dispatch_effect.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_beat_dispatch_effect.py",
   "-q",
 ]
 timeout_seconds = 900

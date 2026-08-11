@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0063_console_view_grants.sql",
-    "schema_sha256": "sha256:da6d4921e51dc1c1f2bfe979672ae8413e4f8dc76d5cec967bfde40b18a02ae5",
+    "through": "0065_console_view_grants.sql",
+    "schema_sha256": "sha256:4c5235992fa02a0d6cf90fdf9e48f523761f471f48cf9286a76953aead0f2a92",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:0e8f4f6e96bdcfdb8893747eded6b8eb1121ee52181d66f8e62cd0f8bd1b33b8"
+    "schema_object_sum256": "sum256:6d72f4a75a4852cff2751d35bfabaf56b5dceea487aa3dac1107971d098513f5"
   },
   "migrations": [
     {
@@ -577,8 +577,26 @@
       "backup_checkpoint": "Before applying to a nonempty installation, capture Request, Request blocker, Ruling, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; existing Rulings receive a null Request relation."
     },
     {
-      "path": "0062_console_output_reader_role.sql",
-      "sha256": "sha256:74df1ef0e7bd06810f54e1d6aeca2de8f758d95414697fbb2447f6868972d5c2",
+      "path": "0062_beat_dispatch_effect.sql",
+      "sha256": "sha256:6c15d0e8c2fef574575a9ef1165cd73e7d198fc2513ce78c6c83729f8b521c2b",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_routines",
+      "rollback_or_forward_compensation": "Preserve every immutable fleet-beat revision, occurrence, full-prompt effect, schedule decision, command result, event, and outbox row; append a reviewed successor revision or forward compensation and never edit or delete an accepted beat fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture routine revision, trigger, occurrence, operation-job, command-result, event, outbox, and dream-effect counts grouped by tenant plus a verified database backup; verify all preexisting schedule and handler shapes are unchanged after the forward transition."
+    },
+    {
+      "path": "0063_routine_revision_activation.sql",
+      "sha256": "sha256:5d88a63052a7ec4136d305f44380313273a0f202f46fd9475bcee298e52b906d",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_corrected_beat_revision_replaces_only_the_active_trigger",
+      "rollback_or_forward_compensation": "Preserve every immutable Routine revision, occurrence, effect, command result, event, and outbox row; append a reviewed forward compensation for active-trigger selection and never edit or delete an accepted revision or effect.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, trigger, occurrence, effect, command-result, event, and outbox counts grouped by tenant and routine reference plus a verified database backup; prove only superseded active triggers are retired when a corrected revision registers."
+    },
+    {
+      "path": "0064_console_output_reader_role.sql",
+      "sha256": "sha256:422533c2228b5af1d51e1a42deecb55175726c5f21330b4e800572523c13b4ab",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
@@ -587,8 +605,8 @@
       "backup_checkpoint": "Before role reconciliation on a nonempty cluster, capture the console_output_reader attributes, memberships, sessions, owned objects, and grants plus a verified cluster-role backup; the new role starts NOLOGIN and NOINHERIT."
     },
     {
-      "path": "0063_console_view_grants.sql",
-      "sha256": "sha256:7dcda4e0e2a9a92c43429463b8a0a2ed7192cbc1fb60a142f67822978356bdf0",
+      "path": "0065_console_view_grants.sql",
+      "sha256": "sha256:f6664cf571bb6a3bed73fce9b003b69b39a334996425884d2b4c5868a48ae411",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_console_view_grants.py::test_console_view_grant_lifecycle_is_append_only_encrypted_and_fenced",

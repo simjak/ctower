@@ -73,15 +73,17 @@ _EXPECTED_MIGRATION_PATHS = [
     "0059_request_authority.sql",
     "0060_rulings_ledger.sql",
     "0061_request_decision_briefs.sql",
-    "0062_console_output_reader_role.sql",
-    "0063_console_view_grants.sql",
+    "0062_beat_dispatch_effect.sql",
+    "0063_routine_revision_activation.sql",
+    "0064_console_output_reader_role.sql",
+    "0065_console_view_grants.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0063_console_view_grants.sql",
-    "schema_sha256": ("sha256:da6d4921e51dc1c1f2bfe979672ae8413e4f8dc76d5cec967bfde40b18a02ae5"),
+    "through": "0065_console_view_grants.sql",
+    "schema_sha256": ("sha256:4c5235992fa02a0d6cf90fdf9e48f523761f471f48cf9286a76953aead0f2a92"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:0e8f4f6e96bdcfdb8893747eded6b8eb1121ee52181d66f8e62cd0f8bd1b33b8"
+        "sum256:6d72f4a75a4852cff2751d35bfabaf56b5dceea487aa3dac1107971d098513f5"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

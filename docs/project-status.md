@@ -34,7 +34,7 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 
 Public API + protected CLI precede I1 source-of-truth cutover. Product browser implementation, browser
 evidence, and browser E2E first activate at CT-I2-005 / I2.4. The separate `ctower-ui` Inbox dogfood
-controls are the narrow D41/D44 exception. CT-I1-019 is a second narrow server-only exception for the
+controls are the narrow D41/D44 exception. CT-I1-020 is a second narrow server-only exception for the
 authenticated private Console proof; it does not implement the product browser surface.
 
 I1.7B will implement reviewed source selection/import/reconciliation and the permanent legacy fence.

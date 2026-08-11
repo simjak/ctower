@@ -2109,6 +2109,15 @@
       ]
     },
     {
+      "path": "contracts/runtime/beat-dispatch-effect.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
       "path": "contracts/runtime/routine-v2.schema.json",
       "references": [
         "SPEC#event-driven-default-and-routine-revisions",
@@ -2117,7 +2126,39 @@
       ]
     },
     {
+      "path": "contracts/runtime/routine-v3.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-28",
+        "INV-76",
+        "AC-DUR-07",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-28",
+        "INV-76",
+        "AC-DUR-07",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
       "references": [
         "SPEC#persistence-authority",
         "SPEC#event-driven-default-and-routine-revisions",
@@ -2225,7 +2266,7 @@
       ]
     },
     {
-      "path": "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
+      "path": "packages/ctower-kernel/migrations/0064_console_output_reader_role.sql",
       "references": [
         "SPEC#contextual-console-viewer-server-foundation",
         "INV-92",
@@ -2233,7 +2274,7 @@
       ]
     },
     {
-      "path": "packages/ctower-kernel/migrations/0063_console_view_grants.sql",
+      "path": "packages/ctower-kernel/migrations/0065_console_view_grants.sql",
       "references": [
         "SPEC#contextual-console-viewer-server-foundation",
         "INV-91",
@@ -2274,6 +2315,46 @@
     },
     {
       "path": "packs/routines/ctower.dream.manibo/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.beat.bhloop/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.beat.digest/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.beat.health/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.beat.migration/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.beat.sprint/v1.yaml",
       "references": [
         "SPEC#event-driven-default-and-routine-revisions",
         "INV-76",

@@ -44,7 +44,7 @@ their typed Request executions, then Ticket proof links. Generated API/client an
 partial and unknown sources explicitly. Delivery reuses Mission Control's existing notification rail; this
 candidate adds no store, scheduler, identity, adapter, Slack/Hermes path, or director-cron change.
 
-The contextual Console viewer server foundation is a tested CT-I1-019 candidate. It joins one operator
+The contextual Console viewer server foundation is a tested CT-I1-020 candidate. It joins one operator
 allowance to current Record facts and live registered tmux identity, issues one short-lived exact human
 `ConsoleViewGrant`, and streams cursor-addressed encrypted output through a bounded SSE reader. The browser
 boundary reuses the existing human session and adds exact Origin and CSRF enforcement; the runtime boundary
@@ -224,8 +224,11 @@ audit; two-party native Inbox threads with ordered messages, per-recipient unrea
 thread-to-ticket links visible from Board cards, including atomic public promotion that either creates a P2
 ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
-caller-observed token counts; seven fixed Routine revisions (three I1 maintenance revisions plus four
-nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet); an accepted-only,
+caller-observed token counts; twelve fixed Routine revisions (three I1 maintenance revisions, four
+nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
+revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
+full-prompt effects target the external DIRECTOR delivery ledger; corrected digests replace only the
+tenant's active trigger and preserve prior revision/effect history); an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
@@ -998,7 +1001,7 @@ I1: L0 contracts/repository gates
      -> CT-I1-016 immutable Agreements ledger
      -> CT-I1-017 Request-derived decision briefs closed by linked Rulings
      -> CT-I1-018 native morning digest + existing-rail delivery
-     -> CT-I1-019 contextual Console viewer server foundation
+     -> CT-I1-020 contextual Console viewer server foundation
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof

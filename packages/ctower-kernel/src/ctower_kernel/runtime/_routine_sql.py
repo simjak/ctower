@@ -31,6 +31,10 @@ from ctower_kernel.runtime import (
     ScheduleKind,
     SchedulerScan,
 )
+from ctower_kernel.runtime._beat_dispatch_sql import insert_effect as _insert_beat_dispatch
+from ctower_kernel.runtime._beat_dispatch_sql import register_spec as _register_beat_spec
+from ctower_kernel.runtime._routine_ids import stable_uuid7 as _stable_uuid7
+from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
 
 __all__: tuple[str, ...] = ()
 _MAX_DUE_PER_SCAN = 400
@@ -49,14 +53,21 @@ def register(
         connection.execute("SET ROLE ctower_svc")
         now = _database_now(connection)
         _control_worker_principal(connection, tenant_id, now)
+        locked_tenant = connection.execute(
+            "SELECT tenant_id FROM tenants WHERE tenant_id = %s FOR UPDATE",
+            (tenant_id,),
+        ).fetchone()
+        if locked_tenant is None:
+            raise ValueError("Routine tenant does not exist")
         initial_fire = first_fire_at or revision.next_fire_after(now)
         connection.execute(
             """
             INSERT INTO routine_revisions (
                 revision_digest, routine_ref, schedule_kind, timezone, local_time,
+                schedule_minutes, schedule_hours,
                 dst_policy, concurrency, catch_up, catch_up_cap, timeout_seconds,
                 handler_kind, component_digests, registered_at
-            ) VALUES (%s, %s, %s, %s, %s, 'wall_clock_once', %s, %s, %s, %s, %s, %s,
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'wall_clock_once', %s, %s, %s, %s, %s, %s,
                 transaction_timestamp())
             ON CONFLICT (revision_digest) DO NOTHING
             """,
@@ -66,6 +77,8 @@ def register(
                 revision.schedule_kind.value,
                 revision.timezone,
                 revision.local_time,
+                list(revision.minute_marks) or None,
+                list(revision.hour_marks) if revision.hour_marks is not None else None,
                 revision.concurrency.value,
                 revision.catch_up.value,
                 revision.catch_up_cap,
@@ -75,21 +88,37 @@ def register(
             ),
         )
         _register_dream_spec(connection, revision)
+        _register_beat_spec(connection, revision)
         stored = connection.execute(
             """
-            SELECT revision.*, spec.scope_kind, spec.project_key, spec.skill_path,
-                spec.primary_model_ref, spec.primary_reasoning_effort,
-                spec.fallback_model_ref, spec.fallback_reasoning_effort,
-                spec.minimum_model_tier, spec.excluded_model_families
+            SELECT revision.*, dream.scope_kind, dream.project_key, dream.skill_path,
+                dream.primary_model_ref, dream.primary_reasoning_effort,
+                dream.fallback_model_ref, dream.fallback_reasoning_effort,
+                dream.minimum_model_tier, dream.excluded_model_families,
+                beat.beat_key, beat.prompt_source, beat.prompt_sha256,
+                beat.prompt, beat.target_session
             FROM routine_revisions AS revision
-            LEFT JOIN routine_dream_dispatch_specs AS spec
-              ON spec.revision_digest = revision.revision_digest
+            LEFT JOIN routine_dream_dispatch_specs AS dream
+              ON dream.revision_digest = revision.revision_digest
+            LEFT JOIN routine_beat_dispatch_specs AS beat
+              ON beat.revision_digest = revision.revision_digest
             WHERE revision.revision_digest = %s
             """,
             (_digest(revision.revision_digest),),
         ).fetchone()
         if stored is None or _revision(stored) != revision:
             raise ValueError("Routine revision digest conflicts with stored content")
+        connection.execute(
+            """
+            DELETE FROM routine_triggers AS trigger
+            USING routine_revisions AS registered
+            WHERE trigger.tenant_id = %s
+              AND trigger.revision_digest = registered.revision_digest
+              AND registered.routine_ref = %s
+              AND registered.revision_digest <> %s
+            """,
+            (tenant_id, revision.routine_ref, _digest(revision.revision_digest)),
+        )
         connection.execute(
             """
             INSERT INTO routine_triggers (
@@ -115,15 +144,19 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         actor_principal_id = _control_worker_principal(connection, tenant_id, now)
         rows = connection.execute(
             """
-            SELECT trigger.next_fire_at, revision.*, spec.scope_kind, spec.project_key,
-                spec.skill_path, spec.primary_model_ref, spec.primary_reasoning_effort,
-                spec.fallback_model_ref, spec.fallback_reasoning_effort,
-                spec.minimum_model_tier, spec.excluded_model_families
+            SELECT trigger.next_fire_at, revision.*, dream.scope_kind, dream.project_key,
+                dream.skill_path, dream.primary_model_ref, dream.primary_reasoning_effort,
+                dream.fallback_model_ref, dream.fallback_reasoning_effort,
+                dream.minimum_model_tier, dream.excluded_model_families,
+                beat.beat_key, beat.prompt_source, beat.prompt_sha256,
+                beat.prompt, beat.target_session
             FROM routine_triggers AS trigger
             JOIN routine_revisions AS revision
               ON revision.revision_digest = trigger.revision_digest
-            LEFT JOIN routine_dream_dispatch_specs AS spec
-              ON spec.revision_digest = revision.revision_digest
+            LEFT JOIN routine_dream_dispatch_specs AS dream
+              ON dream.revision_digest = revision.revision_digest
+            LEFT JOIN routine_beat_dispatch_specs AS beat
+              ON beat.revision_digest = revision.revision_digest
             WHERE trigger.tenant_id = %s AND trigger.next_fire_at <= %s
             ORDER BY trigger.next_fire_at, revision.revision_digest
             FOR UPDATE OF trigger
@@ -133,11 +166,12 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         occurrences: list[RoutineOccurrence] = []
         jobs: list[FixedOperationJob] = []
         dream_dispatches: list[DreamDispatchEffect] = []
+        beat_dispatches: list[BeatDispatchEffect] = []
         for row in rows:
             revision = _revision(row)
             plans, next_fire = _plans(connection, tenant_id, revision, row, now)
             for plan in plans:
-                occurrence, job, dream_dispatch = _persist_plan(
+                occurrence, job, dream_dispatch, beat_dispatch = _persist_plan(
                     connection,
                     tenant_id,
                     actor_principal_id,
@@ -151,6 +185,8 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                     jobs.append(job)
                 if dream_dispatch is not None:
                     dream_dispatches.append(dream_dispatch)
+                if beat_dispatch is not None:
+                    beat_dispatches.append(beat_dispatch)
             connection.execute(
                 """
                 UPDATE routine_triggers SET next_fire_at = %s, updated_at = %s
@@ -160,7 +196,13 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
             )
         watermark = _scheduler_watermark(connection, tenant_id, now)
     return SchedulerScan(
-        tenant_id, watermark, now, tuple(occurrences), tuple(jobs), tuple(dream_dispatches)
+        tenant_id=tenant_id,
+        scan_watermark=watermark,
+        observed_at=now,
+        occurrences=tuple(occurrences),
+        jobs=tuple(jobs),
+        dream_dispatches=tuple(dream_dispatches),
+        beat_dispatches=tuple(beat_dispatches),
     )
 
 
@@ -203,7 +245,12 @@ def _persist_plan(
     revision: RoutineRevision,
     plan: OccurrencePlan,
     now: datetime,
-) -> tuple[RoutineOccurrence | None, FixedOperationJob | None, DreamDispatchEffect | None]:
+) -> tuple[
+    RoutineOccurrence | None,
+    FixedOperationJob | None,
+    DreamDispatchEffect | None,
+    BeatDispatchEffect | None,
+]:
     occurrence_id, command_id, event_id, outbox_id, job_id = _occurrence_ids(
         tenant_id, revision, plan
     )
@@ -212,7 +259,7 @@ def _persist_plan(
     transaction = RecordTransaction(connection)
     existing = transaction.reserve(actor_principal_id, command_id, request_digest)
     if existing is not None:
-        return None, None, None
+        return None, None, None, None
     event = _occurrence_event(
         tenant_id,
         actor_principal_id,
@@ -235,8 +282,9 @@ def _persist_plan(
     dream_dispatch = _insert_dream_dispatch(
         connection, tenant_id, occurrence_id, revision, plan, now
     )
+    beat_dispatch = _insert_beat_dispatch(connection, tenant_id, occurrence_id, revision, plan, now)
     occurrence = _routine_occurrence(tenant_id, occurrence_id, revision, plan, job_id)
-    return occurrence, job, dream_dispatch
+    return occurrence, job, dream_dispatch, beat_dispatch
 
 
 def _register_dream_spec(
@@ -657,6 +705,15 @@ def _revision(row: dict[str, object]) -> RoutineRevision:
             minimum_model_tier=str(row["minimum_model_tier"]),
             excluded_model_families=tuple(cast(list[str], row["excluded_model_families"])),
         )
+    beat_dispatch = None
+    if row.get("beat_key") is not None:
+        beat_dispatch = BeatDispatchSpec(
+            beat_key=str(row["beat_key"]),
+            prompt_source=str(row["prompt_source"]),
+            prompt_sha256="sha256:" + bytes(cast(bytes, row["prompt_sha256"])).hex(),
+            prompt=str(row["prompt"]),
+            target_session=str(row["target_session"]),
+        )
     return RoutineRevision(
         routine_ref=str(row["routine_ref"]),
         revision_digest="sha256:" + bytes(cast(bytes, row["revision_digest"])).hex(),
@@ -673,6 +730,13 @@ def _revision(row: dict[str, object]) -> RoutineRevision:
             for item in cast(list[object], row["component_digests"])
         ),
         dream_dispatch=dream_dispatch,
+        minute_marks=tuple(cast(list[int] | None, row["schedule_minutes"]) or ()),
+        hour_marks=(
+            tuple(cast(list[int], row["schedule_hours"]))
+            if row["schedule_hours"] is not None
+            else None
+        ),
+        beat_dispatch=beat_dispatch,
     )
 
 
@@ -686,15 +750,3 @@ def _database_now(connection: psycopg.Connection[dict[str, object]]) -> datetime
 
 def _digest(value: str) -> bytes:
     return bytes.fromhex(value.removeprefix("sha256:"))
-
-
-def _stable_uuid7(now: datetime, *identity: bytes) -> UUID:
-    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
-    digest = hashlib.sha256(b"\x00".join(identity)).digest()
-    random_bits = int.from_bytes(digest[:10], "big") & ((1 << 74) - 1)
-    value = milliseconds << 80
-    value |= 0x7 << 76
-    value |= ((random_bits >> 62) & 0xFFF) << 64
-    value |= 0b10 << 62
-    value |= random_bits & ((1 << 62) - 1)
-    return UUID(int=value)

@@ -1,3 +1,4 @@
+-- Console Phase 1 follows the fleet-beat migrations accepted on current main.
 ALTER TABLE human_sessions
     ADD COLUMN csrf_digest bytea CHECK (
         csrf_digest IS NULL OR octet_length(csrf_digest) = 32

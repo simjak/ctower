@@ -1,3 +1,4 @@
+-- Console Phase 1 follows the fleet-beat migrations accepted on current main.
 DO $$
 DECLARE
     reader_role oid;
@@ -72,4 +73,13 @@ $$;
 
 GRANT console_output_reader TO ctower_admin;
 GRANT USAGE, CREATE ON SCHEMA public TO console_output_reader;
+DO $$
+BEGIN
+    IF to_regprocedure(
+        'public.recover_console_output_object(uuid,timestamp with time zone)'
+    ) IS NOT NULL THEN
+        REVOKE CREATE ON SCHEMA public FROM console_output_reader;
+    END IF;
+END
+$$;
 REVOKE console_output_reader FROM ctower_svc, ctower_runtime;

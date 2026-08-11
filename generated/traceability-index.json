@@ -126,32 +126,32 @@
     "AC-CON-01": [
       "contracts/domain/console/console-session-allow.schema.json",
       "contracts/domain/console/console-view-grant.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-CON-02": [
       "contracts/domain/console/console-view-grant.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-CON-03": [
       "contracts/domain/console/console-stream-event.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-CON-04": [
       "contracts/domain/console/console-stream-event.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-CON-05": [
-      "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0064_console_output_reader_role.sql",
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-CON-06": [
       "contracts/domain/console/console-session-allow.schema.json",
       "contracts/domain/console/console-stream-event.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-CON-07": [
       "contracts/domain/console/console-session-allow.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "AC-DIG-01": [
       "contracts/http/openapi.yaml"
@@ -240,6 +240,8 @@
       "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -383,10 +385,12 @@
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
     ],
     "AC-OPS-13": [
+      "contracts/runtime/beat-dispatch-effect.schema.json",
       "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/operation-job.schema.json",
       "contracts/runtime/routine-occurrence.schema.json",
       "contracts/runtime/routine-v2.schema.json",
+      "contracts/runtime/routine-v3.schema.json",
       "contracts/runtime/routine-vectors.json",
       "contracts/runtime/routine.schema.json",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
@@ -394,6 +398,13 @@
       "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packs/routines/ctower.beat.bhloop/v1.yaml",
+      "packs/routines/ctower.beat.digest/v1.yaml",
+      "packs/routines/ctower.beat.health/v1.yaml",
+      "packs/routines/ctower.beat.migration/v1.yaml",
+      "packs/routines/ctower.beat.sprint/v1.yaml",
       "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "packs/routines/ctower.dream.ctower/v1.yaml",
       "packs/routines/ctower.dream.fleet/v1.yaml",
@@ -403,13 +414,16 @@
       "packs/routines/ctower.i1.synthetic-four-stage/v1.yaml"
     ],
     "AC-OPS-14": [
+      "contracts/runtime/beat-dispatch-effect.schema.json",
       "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/operation-job.schema.json",
       "contracts/runtime/routine-vectors.json",
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
       "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
-      "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql"
+      "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql"
     ],
     "AC-OPS-15": [
       "contracts/operations/health.schema.json"
@@ -878,7 +892,9 @@
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
       "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
-      "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql"
+      "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql"
     ],
     "INV-31": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
@@ -1157,11 +1173,20 @@
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "INV-76": [
+      "contracts/runtime/beat-dispatch-effect.schema.json",
       "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/routine-v2.schema.json",
+      "contracts/runtime/routine-v3.schema.json",
       "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packs/routines/ctower.beat.bhloop/v1.yaml",
+      "packs/routines/ctower.beat.digest/v1.yaml",
+      "packs/routines/ctower.beat.health/v1.yaml",
+      "packs/routines/ctower.beat.migration/v1.yaml",
+      "packs/routines/ctower.beat.sprint/v1.yaml",
       "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "packs/routines/ctower.dream.ctower/v1.yaml",
       "packs/routines/ctower.dream.fleet/v1.yaml",
@@ -1215,16 +1240,16 @@
     "INV-91": [
       "contracts/domain/console/console-session-allow.schema.json",
       "contracts/domain/console/console-view-grant.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "INV-92": [
       "contracts/domain/console/console-stream-event.schema.json",
-      "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0064_console_output_reader_role.sql",
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "INV-93": [
       "contracts/domain/console/console-session-allow.schema.json",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "SPEC#accepted-first-class-operator-request-contract": [
       "contracts/domain/migration/request-batch-proof.schema.json",
@@ -1318,24 +1343,33 @@
       "contracts/domain/console/console-session-allow.schema.json",
       "contracts/domain/console/console-stream-event.schema.json",
       "contracts/domain/console/console-view-grant.schema.json",
-      "packages/ctower-kernel/migrations/0062_console_output_reader_role.sql",
-      "packages/ctower-kernel/migrations/0063_console_view_grants.sql"
+      "packages/ctower-kernel/migrations/0064_console_output_reader_role.sql",
+      "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ],
     "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
       "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json"
     ],
     "SPEC#event-driven-default-and-routine-revisions": [
+      "contracts/runtime/beat-dispatch-effect.schema.json",
       "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/operation-job.schema.json",
       "contracts/runtime/routine-occurrence.schema.json",
       "contracts/runtime/routine-v2.schema.json",
+      "contracts/runtime/routine-v3.schema.json",
       "contracts/runtime/routine-vectors.json",
       "contracts/runtime/routine.schema.json",
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
       "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packs/routines/ctower.beat.bhloop/v1.yaml",
+      "packs/routines/ctower.beat.digest/v1.yaml",
+      "packs/routines/ctower.beat.health/v1.yaml",
+      "packs/routines/ctower.beat.migration/v1.yaml",
+      "packs/routines/ctower.beat.sprint/v1.yaml",
       "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "packs/routines/ctower.dream.ctower/v1.yaml",
       "packs/routines/ctower.dream.fleet/v1.yaml",
@@ -1460,7 +1494,9 @@
       "packages/ctower-kernel/migrations/0055_connector_framework.sql",
       "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql",
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
-      "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql"
+      "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

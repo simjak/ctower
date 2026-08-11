@@ -110,10 +110,12 @@
     "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json": "contracts/operations/expected-source-inventory.schema.json",
     "https://ctower.dev/contracts/operations/health.schema.json": "contracts/operations/health.schema.json",
     "https://ctower.dev/contracts/operations/restore-report.schema.json": "contracts/operations/restore-report.schema.json",
+    "https://ctower.dev/contracts/runtime/beat-dispatch-effect.schema.json": "contracts/runtime/beat-dispatch-effect.schema.json",
     "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json": "contracts/runtime/dream-dispatch-effect.schema.json",
     "https://ctower.dev/contracts/runtime/operation-job.schema.json": "contracts/runtime/operation-job.schema.json",
     "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json": "contracts/runtime/routine-occurrence.schema.json",
     "https://ctower.dev/contracts/runtime/routine-v2.schema.json": "contracts/runtime/routine-v2.schema.json",
+    "https://ctower.dev/contracts/runtime/routine-v3.schema.json": "contracts/runtime/routine-v3.schema.json",
     "https://ctower.dev/contracts/runtime/routine.schema.json": "contracts/runtime/routine.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json": "contracts/evidence/evidence-manifest-v2.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json": "contracts/evidence/evidence-manifest.schema.json",
@@ -15231,6 +15233,75 @@
       "title": "Isolated restore verification report",
       "type": "object"
     },
+    "contracts/runtime/beat-dispatch-effect.schema.json": {
+      "$id": "https://ctower.dev/contracts/runtime/beat-dispatch-effect.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "beat_key": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "effect_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "emitted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "occurrence_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "prompt": {
+          "maxLength": 16384,
+          "minLength": 1,
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "prompt_source": {
+          "pattern": "^state/beats/[a-z][a-z0-9._-]*\\.txt$",
+          "type": "string"
+        },
+        "revision_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "routine_ref": {
+          "pattern": "^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "scheduled_for": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "target_session": {
+          "enum": [
+            "commander",
+            "mc-commander-manibo"
+          ]
+        }
+      },
+      "required": [
+        "effect_id",
+        "occurrence_id",
+        "routine_ref",
+        "revision_digest",
+        "scheduled_for",
+        "beat_key",
+        "prompt_source",
+        "prompt_sha256",
+        "prompt",
+        "target_session",
+        "emitted_at"
+      ],
+      "title": "BeatDispatchEffect",
+      "type": "object"
+    },
     "contracts/runtime/dream-dispatch-effect.schema.json": {
       "$defs": {
         "consumption": {
@@ -15783,6 +15854,164 @@
         "dream_dispatch"
       ],
       "title": "DreamRoutineRevision",
+      "type": "object"
+    },
+    "contracts/runtime/routine-v3.schema.json": {
+      "$defs": {
+        "beatDispatch": {
+          "additionalProperties": false,
+          "properties": {
+            "beat_key": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "prompt": {
+              "maxLength": 16384,
+              "minLength": 1,
+              "type": "string"
+            },
+            "prompt_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "prompt_source": {
+              "pattern": "^state/beats/[a-z][a-z0-9._-]*\\.txt$",
+              "type": "string"
+            },
+            "target_session": {
+              "enum": [
+                "commander",
+                "mc-commander-manibo"
+              ]
+            }
+          },
+          "required": [
+            "beat_key",
+            "prompt_source",
+            "prompt_sha256",
+            "prompt",
+            "target_session"
+          ],
+          "type": "object"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "schedule": {
+          "additionalProperties": false,
+          "properties": {
+            "hours": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "items": {
+                    "maximum": 23,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                }
+              ]
+            },
+            "kind": {
+              "const": "minute_hour_set"
+            },
+            "minutes": {
+              "items": {
+                "maximum": 59,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "timezone": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "timezone",
+            "minutes",
+            "hours"
+          ],
+          "type": "object"
+        },
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/runtime/routine-v3.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "beat_dispatch": {
+          "$ref": "#/$defs/beatDispatch"
+        },
+        "catch_up": {
+          "const": "skip_missed"
+        },
+        "catch_up_cap": {
+          "const": 1
+        },
+        "component_digests": {
+          "items": {
+            "$ref": "#/$defs/digest"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "concurrency": {
+          "const": "always_enqueue_bounded"
+        },
+        "dst_policy": {
+          "const": "wall_clock_once"
+        },
+        "handler_kind": {
+          "const": "beat_dispatch"
+        },
+        "revision_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "routine_ref": {
+          "pattern": "^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "schema_id": {
+          "const": "ctower.routine/v3"
+        },
+        "timeout_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_id",
+        "routine_ref",
+        "revision_digest",
+        "schedule",
+        "dst_policy",
+        "concurrency",
+        "catch_up",
+        "catch_up_cap",
+        "timeout_seconds",
+        "handler_kind",
+        "component_digests",
+        "beat_dispatch"
+      ],
+      "title": "FleetBeatRoutineRevision",
       "type": "object"
     },
     "contracts/runtime/routine.schema.json": {
@@ -17133,6 +17362,11 @@
       "sha256": "sha256:a7cadf4b123e1cf76a4079b964c094099bc4b35b9ad1c4cc69ec098f1e85c78e"
     },
     {
+      "id": "https://ctower.dev/contracts/runtime/beat-dispatch-effect.schema.json",
+      "path": "contracts/runtime/beat-dispatch-effect.schema.json",
+      "sha256": "sha256:142614ef8c39b9d8ddff72bc985b88da9a1e5e48cdd6937f6ece12c8d46d26f2"
+    },
+    {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",
       "path": "contracts/runtime/dream-dispatch-effect.schema.json",
       "sha256": "sha256:07c8f49c19c9c12134cef1734a5f55cb5d5634cb8b93182cefc190cef98b2eeb"
@@ -17151,6 +17385,11 @@
       "id": "https://ctower.dev/contracts/runtime/routine-v2.schema.json",
       "path": "contracts/runtime/routine-v2.schema.json",
       "sha256": "sha256:6a2a5c58294304788776e398793c695a63dd5b896f467e6462506fe9cd930b0c"
+    },
+    {
+      "id": "https://ctower.dev/contracts/runtime/routine-v3.schema.json",
+      "path": "contracts/runtime/routine-v3.schema.json",
+      "sha256": "sha256:35728256dceb4f5425a436a6f69bc44fa3aee3447cf32fd84c12859130d6b8a9"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/routine.schema.json",

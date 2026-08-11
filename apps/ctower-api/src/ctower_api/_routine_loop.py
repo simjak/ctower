@@ -19,6 +19,7 @@ from ctower_kernel.runtime import (
     ScheduleKind,
     SchedulerScan,
 )
+from ctower_kernel.runtime.beats import BeatDispatchSpec
 
 __all__: tuple[str, ...] = ()
 
@@ -30,6 +31,11 @@ _PACK_PATHS = (
     "routines/ctower.dream.ctower/v1.yaml",
     "routines/ctower.dream.bh-loop/v1.yaml",
     "routines/ctower.dream.fleet/v1.yaml",
+    "routines/ctower.beat.health/v1.yaml",
+    "routines/ctower.beat.migration/v1.yaml",
+    "routines/ctower.beat.bhloop/v1.yaml",
+    "routines/ctower.beat.sprint/v1.yaml",
+    "routines/ctower.beat.digest/v1.yaml",
 )
 _TOP_LEVEL_KEYS_V1 = frozenset(
     {
@@ -47,10 +53,13 @@ _TOP_LEVEL_KEYS_V1 = frozenset(
     }
 )
 _TOP_LEVEL_KEYS_V2 = _TOP_LEVEL_KEYS_V1 | {"dream_dispatch"}
+_TOP_LEVEL_KEYS_V3 = _TOP_LEVEL_KEYS_V1 | {"beat_dispatch"}
 _SCHEDULE_KEYS = frozenset({"kind", "timezone", "local_time"})
+_BEAT_SCHEDULE_KEYS = frozenset({"kind", "timezone", "minutes", "hours"})
 _DREAM_KEYS = frozenset({"scope_kind", "project_key", "skill_path", "model_requirement"})
 _MODEL_KEYS = frozenset({"primary", "fallback", "minimum_tier", "excluded_families"})
 _MODEL_SELECTION_KEYS = frozenset({"model_ref", "reasoning_effort"})
+_BEAT_KEYS = frozenset({"beat_key", "prompt_source", "prompt_sha256", "prompt", "target_session"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +79,7 @@ class RoutineLoop:
 
 
 def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
-    """Load only the seven authored packs and reject every untyped field."""
+    """Load only the twelve authored packs and reject every untyped field."""
 
     revisions = tuple(_load_revision(pack_root / relative) for relative in _PACK_PATHS)
     references = {revision.routine_ref for revision in revisions}
@@ -82,24 +91,34 @@ def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
         "ctower.dream.ctower@1",
         "ctower.dream.bh-loop@1",
         "ctower.dream.fleet@1",
+        "ctower.beat.health@1",
+        "ctower.beat.migration@1",
+        "ctower.beat.bhloop@1",
+        "ctower.beat.sprint@1",
+        "ctower.beat.digest@1",
     }
     if references != expected:
-        raise ValueError("Routine packs do not declare the exact I1 revision set")
+        raise ValueError("Routine packs do not declare the exact authored revision set")
     return revisions
 
 
 def _load_revision(path: Path) -> RoutineRevision:
     raw: object = json.loads(path.read_text(encoding="utf-8"))
     pack = _mapping(raw, "Routine pack")
-    schema_id = pack.get("schema_id")
-    expected_keys = _TOP_LEVEL_KEYS_V2 if schema_id == "ctower.routine/v2" else _TOP_LEVEL_KEYS_V1
+    schema_id = _string(pack.get("schema_id"), "schema_id")
+    expected_keys = {
+        "ctower.routine/v1": _TOP_LEVEL_KEYS_V1,
+        "ctower.routine/v2": _TOP_LEVEL_KEYS_V2,
+        "ctower.routine/v3": _TOP_LEVEL_KEYS_V3,
+    }.get(schema_id, _TOP_LEVEL_KEYS_V1)
     if frozenset(pack) != expected_keys:
         raise ValueError(f"Routine pack has unknown or missing fields: {path}")
     schedule = _mapping(pack["schedule"], "Routine schedule")
-    if frozenset(schedule) != _SCHEDULE_KEYS:
+    schedule_keys = _BEAT_SCHEDULE_KEYS if schema_id == "ctower.routine/v3" else _SCHEDULE_KEYS
+    if frozenset(schedule) != schedule_keys:
         raise ValueError(f"Routine schedule has unknown or missing fields: {path}")
     if (
-        schema_id not in {"ctower.routine/v1", "ctower.routine/v2"}
+        schema_id not in {"ctower.routine/v1", "ctower.routine/v2", "ctower.routine/v3"}
         or pack["dst_policy"] != "wall_clock_once"
     ):
         raise ValueError(f"Routine pack declares an unsupported contract or DST policy: {path}")
@@ -108,10 +127,13 @@ def _load_revision(path: Path) -> RoutineRevision:
     computed_digest = "sha256:" + hashlib.sha256(_canonical_bytes(authored)).hexdigest()
     if declared_digest != computed_digest:
         raise ValueError(f"Routine revision digest does not match authored content: {path}")
-    local_time = _local_time(schedule["local_time"])
+    local_time = _local_time(schedule.get("local_time"))
     dream_dispatch = _dream_dispatch(pack.get("dream_dispatch"))
+    beat_dispatch = _beat_dispatch(pack.get("beat_dispatch"))
     if (schema_id == "ctower.routine/v2") != (dream_dispatch is not None):
         raise ValueError(f"Routine contract version and effect facts do not match: {path}")
+    if (schema_id == "ctower.routine/v3") != (beat_dispatch is not None):
+        raise ValueError(f"Routine contract version and beat facts do not match: {path}")
     return RoutineRevision(
         routine_ref=_string(pack["routine_ref"], "routine_ref"),
         revision_digest=declared_digest,
@@ -125,6 +147,24 @@ def _load_revision(path: Path) -> RoutineRevision:
         timeout_seconds=_integer(pack["timeout_seconds"], "timeout_seconds"),
         component_digests=_strings(pack["component_digests"], "component_digests"),
         dream_dispatch=dream_dispatch,
+        minute_marks=_integers(schedule.get("minutes"), "schedule.minutes"),
+        hour_marks=_optional_integers(schedule.get("hours"), "schedule.hours"),
+        beat_dispatch=beat_dispatch,
+    )
+
+
+def _beat_dispatch(value: object) -> BeatDispatchSpec | None:
+    if value is None:
+        return None
+    effect = _mapping(value, "beat_dispatch")
+    if frozenset(effect) != _BEAT_KEYS:
+        raise ValueError("beat_dispatch has unknown or missing fields")
+    return BeatDispatchSpec(
+        beat_key=_string(effect["beat_key"], "beat_key"),
+        prompt_source=_string(effect["prompt_source"], "prompt_source"),
+        prompt_sha256=_string(effect["prompt_sha256"], "prompt_sha256"),
+        prompt=_string(effect["prompt"], "prompt"),
+        target_session=_string(effect["target_session"], "target_session"),
     )
 
 
@@ -198,6 +238,20 @@ def _strings(value: object, field: str) -> tuple[str, ...]:
     if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
         raise ValueError(f"{field} must be an array of strings")
     return tuple(cast(list[str], value))
+
+
+def _integers(value: object, field: str) -> tuple[int, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list) or any(type(item) is not int for item in value):
+        raise ValueError(f"{field} must be an array of integers")
+    return tuple(cast(list[int], value))
+
+
+def _optional_integers(value: object, field: str) -> tuple[int, ...] | None:
+    if value is None:
+        return None
+    return _integers(value, field)
 
 
 def _local_time(value: object) -> time | None:

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import cast
 
+from ._beat_inventory import BEAT_OPERATION_METADATA
 from ._ruling_inventory import RULING_OPERATION_METADATA, RULING_PROBLEM_CODES
 
 ROOT, MAX_IMPORT_ITEMS = Path(__file__).parents[3], 64
@@ -66,13 +67,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         None,
         False,
     ),
-    "consumeDreamDispatchEffect": (
-        "dream-dispatch consume",
-        True,
-        "allowed",
-        None,
-        False,
-    ),
+    "consumeDreamDispatchEffect": ("dream-dispatch consume", True, "allowed", None, False),
     "commitCtowerProjectDevelopmentEpoch": (
         "migration ctower-project commit-development-epoch",
         False,
@@ -136,6 +131,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         None,
         False,
     ),
+    **BEAT_OPERATION_METADATA,
     "listKnowledgeDocuments": ("knowledge list", False, "forbidden", None, False),
     "listVisibleConsoleSessions": (None, False, "forbidden", None, False),
     "listTicketAssignments": ("ticket assignments", False, "forbidden", None, False),
