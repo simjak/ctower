@@ -130,16 +130,16 @@ def test_output_reader_role_adoption_refuses_every_unsafe_preexisting_shape() ->
         ROOT / "packages/ctower-kernel/migrations/0065_console_view_grants.sql"
     ).read_text(encoding="utf-8")
     assert "ALTER FUNCTION recover_console_output_object(uuid, timestamptz)" in database_migration
-    assert "GRANT CREATE ON SCHEMA" not in database_migration
+    grant = "GRANT CREATE ON SCHEMA public TO console_output_reader"
+    transfer = "ALTER FUNCTION recover_console_output_object(uuid, timestamptz)"
+    revoke = "REVOKE CREATE ON SCHEMA public FROM console_output_reader"
+    assert database_migration.index(grant) < database_migration.index(transfer)
+    assert database_migration.index(transfer) < database_migration.index(revoke)
     setup = (ROOT / "packages/ctower-kernel/src/ctower_kernel/record/_setup_sql.py").read_text(
         encoding="utf-8"
     )
-    assert "_console_reader_ownership_transfer_pending" in setup
-    grant = 'connection.execute("GRANT CREATE ON SCHEMA public TO console_output_reader")'
-    apply = "pending = apply_database_migrations("
-    revoke = 'connection.execute("REVOKE CREATE ON SCHEMA public FROM console_output_reader")'
-    assert setup.index(grant) < setup.index(apply) < setup.index(revoke)
-    assert "_set_console_reader_schema_create" not in setup
+    assert "_console_reader_ownership_transfer_pending" not in setup
+    assert "GRANT CREATE ON SCHEMA public TO console_output_reader" not in setup
 
     assert "advances_source_position boolean NOT NULL" in database_migration
 

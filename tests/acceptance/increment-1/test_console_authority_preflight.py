@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import hashlib
-import time
 from collections.abc import Generator
-from concurrent.futures import Future, ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from threading import Event
-from typing import Any, Literal, cast
+from typing import Literal, cast
 from uuid import uuid4
 
 import psycopg
@@ -45,68 +43,6 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
 _WAIT_SECONDS = 5
-_INSERT_BARRIERS = {
-    "grant": (
-        437_021,
-        """
-        CREATE FUNCTION console_test_block_grant_insert() RETURNS trigger
-        LANGUAGE plpgsql AS $function$
-        BEGIN
-            PERFORM pg_advisory_xact_lock(437021);
-            RETURN NEW;
-        END
-        $function$;
-        CREATE TRIGGER console_test_block_grant_insert
-        BEFORE INSERT ON console_view_grants
-        FOR EACH ROW EXECUTE FUNCTION console_test_block_grant_insert();
-        """,
-    ),
-    "open": (
-        437_022,
-        """
-        CREATE FUNCTION console_test_block_open_insert() RETURNS trigger
-        LANGUAGE plpgsql AS $function$
-        BEGIN
-            PERFORM pg_advisory_xact_lock(437022);
-            RETURN NEW;
-        END
-        $function$;
-        CREATE TRIGGER console_test_block_open_insert
-        BEFORE INSERT ON console_stream_opens
-        FOR EACH ROW EXECUTE FUNCTION console_test_block_open_insert();
-        """,
-    ),
-    "output": (
-        437_023,
-        """
-        CREATE FUNCTION console_test_block_output_insert() RETURNS trigger
-        LANGUAGE plpgsql AS $function$
-        BEGIN
-            PERFORM pg_advisory_xact_lock(437023);
-            RETURN NEW;
-        END
-        $function$;
-        CREATE TRIGGER console_test_block_output_insert
-        BEFORE INSERT ON console_output_objects
-        FOR EACH ROW EXECUTE FUNCTION console_test_block_output_insert();
-        """,
-    ),
-    "access": (
-        437_024,
-        """
-        CREATE FUNCTION console_test_block_access_insert() RETURNS trigger
-        LANGUAGE plpgsql AS $function$
-        BEGIN
-            PERFORM pg_advisory_xact_lock(437024);
-            RETURN NEW;
-        END
-        $function$;
-        CREATE TRIGGER console_test_block_access_insert
-        BEFORE INSERT ON console_output_access_facts
-        FOR EACH ROW EXECUTE FUNCTION console_test_block_access_insert();
-        """,
-    ),
-}
 
 
 class _BarrierAdapter(Adapter):
@@ -427,140 +363,6 @@ def test_human_session_expiry_during_inspection_refuses_grant(
     assert _fact_counts(tenant)[0] == 0
 
 
-def test_grant_insert_serializes_a_concurrent_global_disable(
-    tenant: TenantFixture,
-) -> None:
-    now = datetime.now(UTC)
-    viewer, _adapter, operator, browser, allowance, _ref = _barrier_setup(tenant, now)
-    key, blocker = _install_insert_barrier(tenant, "grant")
-    try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            grant_future = executor.submit(viewer.mint_grant, browser, allowance.allowance_id)
-            _wait_for_insert_barrier(tenant, key)
-            mutation_future = executor.submit(
-                viewer.set_global_switch,
-                operator,
-                ConsoleGlobalSwitchCommand(enabled=True, reason="grant persist barrier"),
-            )
-            mutation_blocked = _future_remained_blocked(mutation_future)
-            blocker.execute("SELECT pg_advisory_unlock(%s)", (key,))
-            granted = grant_future.result(timeout=_WAIT_SECONDS)
-            assert mutation_future.result(timeout=_WAIT_SECONDS) is None
-    finally:
-        blocker.close()
-
-    assert mutation_blocked
-    assert isinstance(granted, ConsoleViewGrant)
-    refused = viewer.mint_grant(browser, allowance.allowance_id, renewal=True)
-    assert isinstance(refused, RecordProblem)
-    assert refused.code == "console-globally-disabled"
-
-
-def test_stream_open_insert_serializes_a_concurrent_human_revocation(
-    tenant: TenantFixture,
-) -> None:
-    now = datetime.now(UTC)
-    viewer, _adapter, _operator, browser, allowance, _ref = _barrier_setup(tenant, now)
-    assert browser.human_session_id is not None
-    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
-    key, blocker = _install_insert_barrier(tenant, "open")
-    try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            open_future = executor.submit(
-                viewer.open_stream,
-                browser,
-                allowance.allowance_id,
-                last_event_id=None,
-            )
-            _wait_for_insert_barrier(tenant, key)
-            mutation_future = executor.submit(
-                execute_service_fact,
-                tenant,
-                """
-                INSERT INTO human_session_revocations (
-                    session_id, tenant_id, reason, revoked_at
-                ) VALUES (%s, %s, 'open persist barrier', %s)
-                """,
-                (browser.human_session_id, tenant.tenant_id, now),
-            )
-            mutation_blocked = _future_remained_blocked(mutation_future)
-            blocker.execute("SELECT pg_advisory_unlock(%s)", (key,))
-            opened = open_future.result(timeout=_WAIT_SECONDS)
-            mutation_future.result(timeout=_WAIT_SECONDS)
-    finally:
-        blocker.close()
-
-    assert mutation_blocked
-    assert isinstance(opened, ConsoleEventStream)
-    closed = next(opened.events)
-    assert b'"code":"reauthentication_required"' in closed
-
-
-def test_output_insert_serializes_a_concurrent_global_disable(
-    tenant: TenantFixture,
-) -> None:
-    now = datetime.now(UTC)
-    viewer, _adapter, operator, browser, allowance, _ref = _barrier_setup(tenant, now)
-    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
-    opened = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
-    assert isinstance(opened, ConsoleEventStream)
-    key, blocker = _install_insert_barrier(tenant, "output")
-    try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            output_future = executor.submit(next, opened.events)
-            _wait_for_insert_barrier(tenant, key)
-            mutation_future = executor.submit(
-                viewer.set_global_switch,
-                operator,
-                ConsoleGlobalSwitchCommand(enabled=True, reason="output persist barrier"),
-            )
-            mutation_blocked = _future_remained_blocked(mutation_future)
-            blocker.execute("SELECT pg_advisory_unlock(%s)", (key,))
-            closed = output_future.result(timeout=_WAIT_SECONDS)
-            assert mutation_future.result(timeout=_WAIT_SECONDS) is None
-    finally:
-        blocker.close()
-
-    assert mutation_blocked
-    assert b'"code":"globally_disabled"' in closed
-    with pytest.raises(StopIteration):
-        next(opened.events)
-    assert _fact_counts(tenant)[2:] == (1, 0)
-
-
-def test_access_insert_serializes_a_concurrent_global_disable(
-    tenant: TenantFixture,
-) -> None:
-    now = datetime.now(UTC)
-    viewer, _adapter, operator, browser, allowance, _ref = _barrier_setup(tenant, now)
-    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
-    opened = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
-    assert isinstance(opened, ConsoleEventStream)
-    key, blocker = _install_insert_barrier(tenant, "access")
-    try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            access_future = executor.submit(next, opened.events)
-            _wait_for_insert_barrier(tenant, key)
-            mutation_future = executor.submit(
-                viewer.set_global_switch,
-                operator,
-                ConsoleGlobalSwitchCommand(enabled=True, reason="access persist barrier"),
-            )
-            mutation_blocked = _future_remained_blocked(mutation_future)
-            blocker.execute("SELECT pg_advisory_unlock(%s)", (key,))
-            first_event = access_future.result(timeout=_WAIT_SECONDS)
-            assert mutation_future.result(timeout=_WAIT_SECONDS) is None
-    finally:
-        blocker.close()
-
-    assert mutation_blocked
-    if b"event: chunk" in first_event:
-        assert b'"code":"globally_disabled"' in next(opened.events)
-    else:
-        assert b'"code":"globally_disabled"' in first_event
-    assert _fact_counts(tenant)[2:] == (1, 1)
-
-
 def _barrier_setup(
     tenant: TenantFixture, now: datetime
 ) -> tuple[
@@ -684,43 +486,6 @@ def _fact_counts(tenant: TenantFixture) -> tuple[int, int, int, int]:
         ).fetchone()
     assert row is not None
     return cast(tuple[int, int, int, int], row)
-
-
-def _install_insert_barrier(
-    tenant: TenantFixture, kind: Literal["grant", "open", "output", "access"]
-) -> tuple[int, psycopg.Connection[tuple[object, ...]]]:
-    key, statement = _INSERT_BARRIERS[kind]
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        connection.execute(statement)
-    blocker = psycopg.connect(tenant.database.admin_dsn, autocommit=True)
-    blocker.execute("SELECT pg_advisory_lock(%s)", (key,))
-    return key, blocker
-
-
-def _wait_for_insert_barrier(tenant: TenantFixture, key: int) -> None:
-    deadline = time.monotonic() + _WAIT_SECONDS
-    while time.monotonic() < deadline:
-        with psycopg.connect(tenant.database.admin_dsn) as connection:
-            row = connection.execute(
-                """
-                SELECT 1 FROM pg_locks
-                WHERE locktype = 'advisory' AND NOT granted AND objid = %s
-                  AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
-                """,
-                (key,),
-            ).fetchone()
-        if row is not None:
-            return
-        time.sleep(0.01)
-    raise AssertionError("timed out waiting for the database insert barrier")
-
-
-def _future_remained_blocked(future: Future[Any]) -> bool:
-    try:
-        future.result(timeout=0.2)
-    except FutureTimeoutError:
-        return True
-    return False
 
 
 def _viewer(tenant: TenantFixture, adapter: Adapter, now: datetime) -> ConsoleViewer:

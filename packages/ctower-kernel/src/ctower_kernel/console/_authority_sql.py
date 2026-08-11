@@ -33,6 +33,17 @@ def allowance_lock(
     )
 
 
+def tenant_authority_lock(
+    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID
+) -> None:
+    """Serialize Console-owned append-only authority changes for one tenant."""
+
+    connection.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+        (f"console-authority:{tenant_id}",),
+    )
+
+
 def lock_authority_anchors(
     connection: psycopg.Connection[dict[str, object]], actor: Actor, allowance_id: UUID
 ) -> bool:
@@ -40,6 +51,7 @@ def lock_authority_anchors(
 
     if actor.human_binding_id is None or actor.human_session_id is None:
         return False
+    tenant_authority_lock(connection, actor.tenant_id)
     row = connection.execute(
         "SELECT lock_console_authority_anchors(%s, %s, %s, %s, %s) AS locked",
         (

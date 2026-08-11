@@ -80,7 +80,7 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0065_console_view_grants.sql",
-    "schema_sha256": ("sha256:f4045f0b63325a9180d548fcaaddee46fb3e337a24f7ec3cc17edef2c924a9cf"),
+    "schema_sha256": ("sha256:0ceed55272ecbb2f5a624a28e66816c50d1ff5a224025bc785468bb00a52b05a"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:546ac002f20bd7858804707aa943232826080d9b497b88fcf9c31d405d666edf"

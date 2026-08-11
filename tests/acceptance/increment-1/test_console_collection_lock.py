@@ -8,7 +8,7 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime
-from threading import Barrier, Lock
+from threading import Barrier, Event, Lock
 from typing import cast
 from uuid import UUID
 
@@ -167,6 +167,63 @@ def test_parallel_renew_before_use_forms_one_linear_latest_grant_chain(
         ).fetchone()
     assert claimed == {"grant_id": chain[2]["grant_id"]}
     cast(Generator[bytes, None, None], stream.events).close()
+
+
+def test_adapter_gap_is_committed_before_its_event_is_delivered(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, adapter, _operator, browser, allowance = console_setup(tenant, now)
+    adapter.gap_reason = "source-truncated"
+    adapter.gap_cursor = 41
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(stream, ConsoleEventStream)
+
+    gap = next(stream.events)
+
+    assert b'"reason":"source_truncated"' in gap
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            "SELECT source_cursor, reason FROM console_output_gap_facts WHERE allowance_id = %s",
+            (allowance.allowance_id,),
+        ).fetchone()
+    assert row == (41, "source_truncated")
+    cast(Generator[bytes, None, None], stream.events).close()
+
+
+def test_quiet_adapter_wait_releases_its_collection_transaction(
+    tenant: TenantFixture,
+) -> None:
+    now = datetime.now(UTC)
+    viewer, _authority, adapter, _operator, browser, allowance = console_setup(tenant, now)
+    adapter.payload = b""
+    entered = Event()
+    release = Event()
+
+    def wait_for_poll(_seconds: float) -> None:
+        entered.set()
+        assert release.wait(5)
+
+    viewer._sleeper = wait_for_poll
+    assert isinstance(viewer.mint_grant(browser, allowance.allowance_id), ConsoleViewGrant)
+    stream = viewer.open_stream(browser, allowance.allowance_id, last_event_id=None)
+    assert isinstance(stream, ConsoleEventStream)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        event_future = executor.submit(next, stream.events)
+        assert entered.wait(5)
+        with psycopg.connect(tenant.database.admin_dsn) as connection:
+            row = connection.execute(
+                "SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"console-collection:{tenant.tenant_id}:{allowance.allowance_id}",),
+            ).fetchone()
+        stream.request_client_disconnected()
+        release.set()
+        closed = event_future.result(timeout=5)
+
+    assert row == (True,)
+    assert b'"code":"client_disconnected"' in closed
 
 
 def test_replay_overflow_does_not_regress_the_live_collection_source_head(

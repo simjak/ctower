@@ -170,6 +170,7 @@ phase = "CT-I1-021"
 status = "required"
 path = "tests/acceptance/increment-1"
 patterns = [
+  "test_console_authority_atomicity.py",
   "test_console_authority_preflight.py",
   "test_console_collection_lock.py",
   "test_console_reader_role_adoption.py",
@@ -181,6 +182,7 @@ command = [
   "{python}",
   "-m",
   "pytest",
+  "tests/acceptance/increment-1/test_console_authority_atomicity.py",
   "tests/acceptance/increment-1/test_console_authority_preflight.py",
   "tests/acceptance/increment-1/test_console_collection_lock.py",
   "tests/acceptance/increment-1/test_console_reader_role_adoption.py",

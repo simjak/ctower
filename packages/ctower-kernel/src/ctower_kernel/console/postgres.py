@@ -31,6 +31,9 @@ from ctower_kernel.console._authority_sql import session_join_row as _session_jo
 from ctower_kernel.console._authority_sql import (
     stream_authority_row as _stream_authority_row,
 )
+from ctower_kernel.console._authority_sql import (
+    tenant_authority_lock as _tenant_authority_lock,
+)
 from ctower_kernel.console._grant_sql import (
     _grant_facts_row,
     _insert_grant,
@@ -230,6 +233,7 @@ class PostgresConsoleAuthority:
         """Atomically recheck authority, decide, and persist one grant."""
 
         with _authority_connection(self._dsn) as connection:
+            _tenant_authority_lock(connection, actor.tenant_id)
             _allowance_lock(connection, actor.tenant_id, allowance_id)
             if not _lock_authority_anchors(connection, actor, allowance_id):
                 return _problem(
@@ -267,6 +271,7 @@ class PostgresConsoleAuthority:
         self, actor: Actor, allowance_id: UUID | None, code: str, *, now: datetime
     ) -> None:
         with _authority_connection(self._dsn) as connection:
+            _tenant_authority_lock(connection, actor.tenant_id)
             connection.execute(
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
                 (f"console-denial:{actor.tenant_id}:{actor.principal_id}",),
@@ -342,6 +347,7 @@ class PostgresConsoleAuthority:
                 "console-revocation-refused", "Console revocation requires operator authority."
             )
         with _authority_connection(self._dsn) as connection:
+            _tenant_authority_lock(connection, actor.tenant_id)
             _allowance_lock(connection, actor.tenant_id, command.allowance_id)
             row = connection.execute(
                 "SELECT 1 FROM console_session_allows WHERE allowance_id = %s AND tenant_id = %s",
@@ -383,6 +389,7 @@ class PostgresConsoleAuthority:
                 "Console kill-switch changes require operator authority.",
             )
         with _authority_connection(self._dsn) as connection:
+            _tenant_authority_lock(connection, actor.tenant_id)
             connection.execute(
                 """
                 INSERT INTO console_global_kill_switch_facts (
@@ -423,6 +430,7 @@ class PostgresConsoleAuthority:
             )
         with _authority_connection(self._dsn) as connection:
             if stream_id is not None:
+                _tenant_authority_lock(connection, actor.tenant_id)
                 _allowance_lock(connection, actor.tenant_id, allowance_id)
                 connection.execute(
                     "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",

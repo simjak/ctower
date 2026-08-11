@@ -651,16 +651,18 @@ At discovery, mint, renewal, stream open, and each stream poll, the control plan
 asks the registered Adapter for the live `@project` and incarnation. Each read validates the current
 registration and live identity before and after reading from a no-follow descriptor, so replacement bytes
 cannot reach custody. Any replacement fences the old reference rather than rebinding a familiar tmux name.
-Grant, stream-open, output, and custody-access persistence also lock the exact tenant, Actor, human
-binding/session, target, assignment, work session, and allowance anchors in one fixed database order
-through commit. An overlapping revocation or authority change therefore completes either before the final
-recheck or after the persisted decision, never between them.
+Grant, stream-open, output, and custody-access persistence serialize Console-owned append-only authority
+changes on one tenant-scoped advisory lock, then lock the exact assignment, work session, Actor/target,
+human binding/session, and allowance rows in the database order shared with canonical Work changes. Those
+locks remain through commit, so an overlapping authority change completes before the final recheck or after
+the persisted decision, never between them and without an inverse tenant-to-assignment lock cycle.
 
 The browser never receives a database credential, Adapter credential, or grant token in a URL. Its existing
 secure human-session cookie and the exact CSRF proof identify the Actor; one configured private HTTPS Origin
 is admitted. Grant state remains server-side and one stream claim consumes it. A bounded ASGI producer keeps
 authority polling independent from a blocked network send, discards only still-unsent chunks when its 256 KiB
-decoded cap is crossed, and commits a typed gap and close. Every chunk is committed as
+decoded cap is crossed, and commits a typed gap and close. Output and gap facts commit before their event is
+returned, while a quiet poll releases its connection and collection lock before waiting. Every chunk is committed as
 encrypted RESTRICTED content before broadcast, and only the dedicated output-reader connection can select
 and decrypt it after appending the access fact. The service role can write ciphertext and read metadata, but
 cannot retrieve content or wrapped keys through its ordinary connection.

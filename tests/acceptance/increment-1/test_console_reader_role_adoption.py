@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Literal, NoReturn, cast
+from dataclasses import replace
+from typing import cast
 
 import psycopg
 import pytest
@@ -236,11 +237,9 @@ def test_console_output_reader_adoption_refuses_shared_database_ownership(
     provision_database_roles(tenant.database.admin_dsn)
 
 
-@pytest.mark.parametrize("failure_stage", ["after-grant", "after-schema-work"])
-def test_console_reader_temporary_create_rolls_back_at_every_failure_boundary(
+def test_console_reader_temporary_create_rolls_back_with_ownership_transfer(
     database: DatabaseFixture,
     monkeypatch: pytest.MonkeyPatch,
-    failure_stage: Literal["after-grant", "after-schema-work"],
 ) -> None:
     provision_database_roles(database.admin_dsn)
     apply_namespace = apply_migrations.__globals__
@@ -260,16 +259,28 @@ def test_console_reader_temporary_create_rolls_back_at_every_failure_boundary(
         connection: psycopg.Connection[tuple[object, ...]],
         migrations: tuple[MigrationScript, ...],
         baseline: MigrationBaseline,
-    ) -> NoReturn:
-        if failure_stage == "after-schema-work":
-            original(connection, migrations, baseline)
-        assert connection.execute(
-            "SELECT has_schema_privilege('console_output_reader', 'public', 'CREATE')"
-        ).fetchone() == (True,)
-        raise RuntimeError("injected ownership-transfer interruption")
+    ) -> object:
+        interrupted = tuple(
+            replace(
+                migration,
+                content=migration.content.replace(
+                    "GRANT CREATE ON SCHEMA public TO console_output_reader;",
+                    """
+                    GRANT CREATE ON SCHEMA public TO console_output_reader;
+                    DO $$ BEGIN
+                        RAISE EXCEPTION 'injected ownership-transfer interruption';
+                    END $$;
+                    """,
+                ),
+            )
+            if migration.migration_id == "0065_console_view_grants.sql"
+            else migration
+            for migration in migrations
+        )
+        return original(connection, interrupted, baseline)
 
     monkeypatch.setitem(apply_namespace, "apply_database_migrations", interrupt)
-    with pytest.raises(RuntimeError, match="ownership-transfer interruption"):
+    with pytest.raises(MigrationExecutionError, match="0065_console_view_grants"):
         apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     with psycopg.connect(database.admin_dsn) as connection:
         assert connection.execute(

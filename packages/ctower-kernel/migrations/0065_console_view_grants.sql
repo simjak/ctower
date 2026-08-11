@@ -255,8 +255,10 @@ BEGIN
     WHERE access.access_id = p_access_id;
 END
 $function$;
+GRANT CREATE ON SCHEMA public TO console_output_reader;
 ALTER FUNCTION recover_console_output_object(uuid, timestamptz)
     OWNER TO console_output_reader;
+REVOKE CREATE ON SCHEMA public FROM console_output_reader;
 REVOKE ALL ON FUNCTION recover_console_output_object(uuid, timestamptz)
     FROM PUBLIC, ctower_svc, ctower_projection;
 GRANT EXECUTE ON FUNCTION recover_console_output_object(uuid, timestamptz) TO ctower_svc;
@@ -294,8 +296,9 @@ DECLARE
     v_assignment_interval_sequence integer;
     v_recorded_work_session_id uuid;
 BEGIN
-    PERFORM tenant_id FROM public.tenants
-    WHERE tenant_id = p_tenant_id FOR UPDATE;
+    PERFORM pg_catalog.pg_advisory_xact_lock(
+        pg_catalog.hashtextextended('console-authority:' || p_tenant_id::text, 0)
+    );
 
     SELECT allowance.seat_principal_id,
         allowance.assignment_ticket_id,
@@ -311,6 +314,13 @@ BEGIN
         RETURN false;
     END IF;
 
+    PERFORM ticket_id FROM public.assignment_intervals
+    WHERE ticket_id = v_assignment_ticket_id
+      AND assignment_kind = v_assignment_kind
+      AND interval_sequence = v_assignment_interval_sequence
+    FOR UPDATE;
+    PERFORM session_id FROM public.ticket_work_sessions
+    WHERE session_id = v_recorded_work_session_id AND tenant_id = p_tenant_id FOR UPDATE;
     PERFORM principal_id FROM public.principals
     WHERE tenant_id = p_tenant_id
       AND principal_id IN (p_actor_principal_id, v_target_principal_id)
@@ -319,13 +329,6 @@ BEGIN
     WHERE binding_id = p_human_binding_id AND tenant_id = p_tenant_id FOR UPDATE;
     PERFORM session_id FROM public.human_sessions
     WHERE session_id = p_human_session_id AND tenant_id = p_tenant_id FOR UPDATE;
-    PERFORM ticket_id FROM public.assignment_intervals
-    WHERE ticket_id = v_assignment_ticket_id
-      AND assignment_kind = v_assignment_kind
-      AND interval_sequence = v_assignment_interval_sequence
-    FOR UPDATE;
-    PERFORM session_id FROM public.ticket_work_sessions
-    WHERE session_id = v_recorded_work_session_id AND tenant_id = p_tenant_id FOR UPDATE;
     PERFORM allowance_id FROM public.console_session_allows
     WHERE allowance_id = p_allowance_id AND tenant_id = p_tenant_id FOR UPDATE;
     RETURN true;

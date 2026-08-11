@@ -482,34 +482,17 @@ def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
     database_migrations = tuple(m for m in loaded.scripts if m.scope == "database")
     with _migration_control_sql.migration_control(role_admin_dsn) as control:
         _reconcile_database_roles_locked(role_admin_dsn)
-        transfer_pending = _console_reader_ownership_transfer_pending(role_admin_dsn)
         with psycopg.connect(migrator_dsn) as connection:
             connection.execute("SET ROLE ctower_admin")
-            if transfer_pending:
-                connection.execute("GRANT CREATE ON SCHEMA public TO console_output_reader")
             pending = apply_database_migrations(
                 connection,
                 database_migrations,
                 loaded.baseline,
             )
-            if transfer_pending:
-                connection.execute("REVOKE CREATE ON SCHEMA public FROM console_output_reader")
         # Database migrations can create role-governed functions and grants.
         # Close that boundary before attesting; failure leaves no ledger.
         _reconcile_database_roles_locked(role_admin_dsn)
         record_database_migrations(control, pending, loaded.baseline)
-
-
-def _console_reader_ownership_transfer_pending(admin_dsn: str) -> bool:
-    with psycopg.connect(admin_dsn) as connection:
-        row = connection.execute(
-            """
-            SELECT to_regprocedure(
-                'public.recover_console_output_object(uuid,timestamp with time zone)'
-            ) IS NULL
-            """
-        ).fetchone()
-    return row == (True,)
 
 
 def provision_bootstrap(

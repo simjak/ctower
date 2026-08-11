@@ -71,6 +71,9 @@ class _StreamState:
     gap_required: bool = False
 
 
+type _AdapterReadResult = tuple[bool, bytes | None, bool]
+
+
 class _SlowConsumerError(Exception):
     """Private transport-to-kernel signal for one proven pending-byte overflow."""
 
@@ -279,9 +282,11 @@ class ConsoleViewer:
             return True
         if replay:
             return (yield from self._replay_outputs(lease, ref, state, replay))
-        return (
-            yield from self._read_adapter(lease, ref, state, transport_requests=transport_requests)
-        )
+        terminal, event, should_wait = self._read_adapter(lease, ref, state)
+        yield from _optional_event(event)
+        if should_wait:
+            self._sleep_to_next_authority_check(lease, transport_requests)
+        return terminal
 
     def _active_close_reason(
         self, lease: ConsoleStreamLease, ref: ConsoleSessionRef
@@ -404,14 +409,12 @@ class ConsoleViewer:
         lease: ConsoleStreamLease,
         ref: ConsoleSessionRef,
         state: _StreamState,
-        *,
-        transport_requests: _TransportRequests,
-    ) -> Generator[bytes, None, bool]:
+    ) -> _AdapterReadResult:
         with self._output_store.collection_lock(
             lease.grant.allowance_id, lease.grant.tenant_id
         ) as connection:
             if self._refresh_source_position(lease, state):
-                return False
+                return False, None, False
             batch = self._adapter.read(
                 ref,
                 after_cursor=state.source_cursor,
@@ -420,7 +423,7 @@ class ConsoleViewer:
             close_reason = self._post_read_close_reason(connection, lease, ref, batch)
             if close_reason is not None:
                 state.close_code = close_reason
-                return True
+                return True, None, False
             batch = cast(ConsoleOutputBatch, batch)
             if batch.gap:
                 reason = _gap_reason(batch.gap_reason)
@@ -438,11 +441,9 @@ class ConsoleViewer:
                 state.gap_required = True
                 state.durable_cursor = gap_cursor
                 state.source_cursor = batch.source_cursor
-                yield _gap(gap_cursor, reason, event_id=gap_cursor)
-                return False
+                return False, _gap(gap_cursor, reason, event_id=gap_cursor), False
             if not batch.payload:
-                self._sleep_to_next_authority_check(lease, transport_requests)
-                return False
+                return False, None, True
             if (
                 state.window.admit_delivery(len(batch.payload), at=self._clock())
                 is StreamDisposition.RATE_LIMITED
@@ -459,11 +460,10 @@ class ConsoleViewer:
                     advances_source_position=False,
                     now=self._clock(),
                 )
-                yield _gap(gap_cursor, "rate_limited", event_id=gap_cursor)
-                return True
+                return True, _gap(gap_cursor, "rate_limited", event_id=gap_cursor), False
             self._persist_batch(connection, lease, batch, source_generation=state.source_generation)
             state.source_cursor = batch.source_cursor
-        return False
+        return False, None, False
 
     def _post_read_close_reason(
         self,
