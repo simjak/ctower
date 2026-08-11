@@ -1,13 +1,13 @@
 {
   "name": "@ctower/workspace",
   "private": true,
-  "version": "0.27.0",
+  "version": "0.28.0",
   "packageManager": "pnpm@10.20.0+sha512-z5mYIiFi3YWGTQqBAueJLnukzq3rv1ox+cL85I384xepxTufZGTR75BCy6LgKuAqn3wUOitDjNk8kYQPAZK53Q==",
   "engines": {
     "node": ">=24 <25"
   },
   "scripts": {
-    "format:check": "prettier --check apps/ctower-ui/src apps/ctower-ui/next.config.ts apps/ctower-ui/package.json apps/ctower-ui/tsconfig.json apps/ctower-web/src tests/repository/selector_fixtures.ts tests/repository/inspection_fixtures.ts tests/repository/surface_fixtures.ts tests/repository/declared_source_fixtures.ts tests/repository/inbox_projection_fixtures.ts tests/repository/portfolio_fixtures.ts tests/repository/inbox_promotion_fixtures.ts tests/repository/inbox_send_fixtures.ts tests/dogfood/inbox_render_driver.ts apps/ctower-web/package.json apps/ctower-web/tsconfig.json tsconfig.base.json eslint.config.mjs prettier.config.mjs playwright.config.ts",
+    "format:check": "prettier --check apps/ctower-ui/src apps/ctower-ui/next.config.ts apps/ctower-ui/package.json apps/ctower-ui/tsconfig.json apps/ctower-web/src tests/repository/selector_fixtures.ts tests/repository/inspection_fixtures.ts tests/repository/surface_fixtures.ts tests/repository/declared_source_fixtures.ts tests/repository/inbox_projection_fixtures.ts tests/repository/portfolio_fixtures.ts tests/repository/inbox_promotion_fixtures.ts tests/repository/inbox_send_fixtures.ts tests/repository/inbox_compose_fixtures.ts tests/dogfood/inbox_render_driver.ts apps/ctower-web/package.json apps/ctower-web/tsconfig.json tsconfig.base.json eslint.config.mjs prettier.config.mjs playwright.config.ts",
     "lint": "eslint apps/ctower-ui/src apps/ctower-ui/next.config.ts apps/ctower-web/src playwright.config.ts",
     "typecheck": "pnpm --filter @ctower/ui typecheck && pnpm --filter @ctower/web typecheck && pnpm --filter @ctower/client typecheck",
     "test:e2e": "python3 -B -m tools.checks.playwright"

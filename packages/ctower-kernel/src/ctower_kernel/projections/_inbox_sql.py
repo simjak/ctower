@@ -15,6 +15,8 @@ from ctower_kernel.projections.inbox import (
     InboxReadState,
 )
 from ctower_kernel.projections.interface import (
+    InboxCorrespondent,
+    InboxCorrespondentList,
     InboxMessage,
     InboxThread,
     InboxThreadList,
@@ -24,6 +26,10 @@ from ctower_kernel.record import Actor
 from ctower_kernel.record.events import EventKind
 
 __all__: tuple[str, ...] = ()
+
+#: What the projection names a principal that holds no seat row: it can neither
+#: receive a message nor address one, so it is an identity without an address.
+_UNADDRESSABLE = "unaddressable"
 
 
 def apply_message(
@@ -93,6 +99,48 @@ def list_threads(dsn: str, actor: Actor, *, unread: bool) -> InboxThreadList:
         threads=summaries,
         total_unread=sum(item.unread_count for item in summaries),
         unread_only=unread,
+    )
+
+
+def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
+    """Read the addresses this principal can open a thread to, and only those.
+
+    The seats are the persisted ones, not a catalog of names a fleet might use,
+    and they are narrowed to exactly what the send command accepts as an
+    address. That command resolves a recipient by ``(tenant_id, seat_key)``
+    while the registry only makes a seat key unique per project, so three legal
+    registry states have no address in them at all: a key two seats share, which
+    refuses as ambiguous; the reader's own seat, which refuses as self; and a
+    reader holding no seat, which cannot address anybody. Each is absent here,
+    because an address the command will not accept is not an address, and a
+    picker that offered one would be inviting a refusal.
+    """
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        seat_key = _seat_key(connection, actor)
+        rows: list[dict[str, object]] = []
+        if seat_key != _UNADDRESSABLE:
+            rows = connection.execute(
+                """
+                SELECT project_key, seat_key FROM project_seats AS seat
+                WHERE tenant_id = %s AND principal_id <> %s
+                  AND NOT EXISTS (
+                      SELECT 1 FROM project_seats AS sharing
+                      WHERE sharing.tenant_id = seat.tenant_id
+                        AND sharing.seat_key = seat.seat_key
+                        AND sharing.principal_id <> seat.principal_id
+                  )
+                ORDER BY seat_key
+                """,
+                (actor.tenant_id, actor.principal_id),
+            ).fetchall()
+    return InboxCorrespondentList(
+        correspondents=tuple(
+            InboxCorrespondent(project_key=str(row["project_key"]), seat_key=str(row["seat_key"]))
+            for row in rows
+        ),
+        sender=seat_key,
     )
 
 
@@ -285,7 +333,7 @@ def _seat_key(connection: psycopg.Connection[dict[str, object]], actor: Actor) -
         "SELECT seat_key FROM project_seats WHERE tenant_id = %s AND principal_id = %s",
         (actor.tenant_id, actor.principal_id),
     ).fetchone()
-    return str(row["seat_key"]) if row is not None else "unaddressable"
+    return str(row["seat_key"]) if row is not None else _UNADDRESSABLE
 
 
 def _summary(row: dict[str, object]) -> InboxThreadSummary:

@@ -9,7 +9,7 @@ operator dogfood surface over the running shadow instance, ordered by the operat
 |        |                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Is     | A Next.js server that reads the shadow instance's existing read API and renders the approved screen set.                                                                                                                              |
-| Is     | Two Inbox controls that ask existing server-authoritative operations: a send box over `POST /v1/inbox/messages`, and a promote control over `POST /v1/inbox/threads/{thread_id}/promotion`.                                            |
+| Is     | Three Inbox controls that ask existing server-authoritative operations: a compose box over `POST /v1/inbox/notifications`, a send box over `POST /v1/inbox/messages`, and a promote control over `POST /v1/inbox/threads/{thread_id}/promotion`. |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
 
@@ -48,14 +48,16 @@ future deployment wants it hidden, `frame/RecordFoot.tsx` is the one place to ch
 ### Bounded server requests (O10)
 
 `src/read/bounded.ts` is the only module in `apps/` that names `fetch`. Every record read and the
-two Inbox commands go through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
+three Inbox commands go through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
 elapsed deadline, full-jittered exponential backoff capped and clamped to the remaining deadline, a
 typed transient/permanent predicate with no catch-all branch, and a typed `ReadExhausted` outcome
 that preserves the attempt count, elapsed time and last classified failure and is counted and
 written once to stderr. Each command supplies one `Idempotency-Key` before any attempt and reuses it
-unchanged for retries. `src/mutate/command.ts` holds what both commands share — the headers, the
+unchanged for retries. `src/mutate/command.ts` holds what all three commands share — the headers, the
 strict response readers, and the one validated refusal sentence. `src/mutate/inboxPromotion.ts`
-accepts only the thread and an optional target-ticket identifier. `src/mutate/inboxSend.ts` accepts
+accepts only the thread and an optional target-ticket identifier. `src/mutate/inboxCompose.ts` accepts
+only the message and one of the addresses the server itself listed, re-reads that list before making
+any command, and names no thread at all — the server derives one per seat pair. `src/mutate/inboxSend.ts` accepts
 only the thread, the message text and the answer the box last received, and reads the recipient back
 from the server's own recipient-scoped projection rather than taking one from a form: a recipient is an
 identity, and this surface asserts none. Neither sends a claimed actor, scope, custody, or authorization
@@ -81,8 +83,9 @@ bounds, or when an application value-imports the generated client's single-shot 
 `Reading<T>` — `present`, `absent` (with the work item that will land the source), or
 `unavailable`. `src/read/httpRecordAdapter.ts` implements it against `/v1/board`,
 `/v1/tickets/{id}`, `/v1/tickets/{id}/audit`, and the recipient-scoped inbox projection
-(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). The Inbox actions use the already-authored
-`POST /v1/inbox/messages` and `POST /v1/inbox/threads/{thread_id}/promotion` paths.
+(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`, `GET /v1/inbox/correspondents`). The Inbox actions
+use the already-authored `POST /v1/inbox/notifications`, `POST /v1/inbox/messages` and
+`POST /v1/inbox/threads/{thread_id}/promotion` paths.
 `src/read/adapter.ts` binds the one that is active.
 
 Two board reads are declared, not one. `board` joins every card to the ticket read behind it, so a
@@ -99,7 +102,7 @@ and no screen knows a URL.
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`)                                                                                    | a typed feed, through `adapter.ts` alone                                       |
 | Portfolio           | ctower read API (`/v1/board` once per configured project, `/v1/inbox/threads`)                                                                 | the same typed feed, through `adapter.ts` alone                                |
-| Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`)                                                                                | —                                                                              |
+| Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`, `/v1/inbox/correspondents`)                                                    | —                                                                              |
 | Heartbeats          | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers`                                                                  | a native cadence registry                                                      |
 | Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
 | Workspace · Feed    | tmux `list-sessions` / `list-panes` / `capture-pane -p -J`                                                                                     | recorded session facts                                                         |
@@ -224,7 +227,10 @@ place where the convenient number and the true one differ.
   project-seat registry and names a principal with no seat row `unaddressable`. This surface's
   credential is one today, so its unread total is `0` for an address that cannot receive. The tile
   reads `—`, the panel says so in a sentence, and the per-project split is not drawn at all — a row
-  of zeroes there would put back exactly the reading the dash removes.
+  of zeroes there would put back exactly the reading the dash removes. The same fact decides the
+  Inbox compose box: a principal with no seat has no address to send *from* either, so the record
+  offers it nobody and the box draws itself switched off with that reason rather than a picker whose
+  every choice would be refused.
 - **A thread belongs to a project only where a card says so.** Attribution is the board card's own
   `inbox_thread_ids` and nothing else; mail on threads no card links is counted apart, so the
   per-project numbers plus the unlinked number equal the projection's own total.
@@ -268,8 +274,10 @@ Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
 ### Controls still unavailable in v1
 
-The Inbox send box and promote control are live and ask existing authenticated server operations; the
-steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
+The Inbox compose box, send box and promote control are live and ask existing authenticated server
+operations — though the compose box can only offer what the record can deliver to, so under a
+credential holding no project seat it draws itself switched off and says so (see `unaddressable`
+above). The steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
 render as visibly disabled affordances — a real `disabled` control, the shared
 `read-only v1 · disabled` chip, and the reason printed on the control itself, never as a page
 banner, never in a hover alone, and never as a dead-looking control. `New ticket` names what the
@@ -290,7 +298,7 @@ apps/ctower-ui/serve-development.sh          # builds nothing; serves the built 
 The script resolves the operator credential from the Secret Service reference the instance
 already uses and exports it for the life of the Node process. It is never written to a file,
 never passed as an argument, and never reaches the browser. The server uses it for reads and for the
-two Inbox commands; the API remains the sole authority for identity and scope.
+three Inbox commands; the API remains the sole authority for identity and scope.
 
 | Variable                      | Default                        | Meaning                                                         |
 | ----------------------------- | ------------------------------ | --------------------------------------------------------------- |

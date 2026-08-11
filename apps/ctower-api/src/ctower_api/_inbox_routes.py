@@ -29,6 +29,7 @@ from ctower_client.models import (
     InboxSendRequest,
 )
 from ctower_client.models import InboxAcknowledgeResult as HttpInboxAcknowledgeResult
+from ctower_client.models import InboxCorrespondentList as HttpInboxCorrespondentList
 from ctower_client.models import InboxPromotionResult as HttpInboxPromotionResult
 from ctower_client.models import InboxSendResult as HttpInboxSendResult
 from ctower_client.models import InboxThread as HttpInboxThread
@@ -61,6 +62,7 @@ def install_inbox_routes(
     _install_acknowledge_route(app, access, record, inbox, recorder)
     _install_promotion_route(app, access, record, inbox, recorder)
     _install_list_route(app, access, projections, recorder)
+    _install_correspondents_route(app, access, projections, recorder)
     _install_read_state_route(app, access, projections, recorder)
     _install_read_route(app, access, projections, recorder)
 
@@ -258,6 +260,26 @@ def _install_list_route(
             return problem_response(actor)
         result = projections.list_inbox(actor, unread=unread)
         boundary = HttpInboxThreadList.model_validate_json(encoded(result.response_payload()))
+        return JSONResponse(content=boundary.model_dump(mode="json", by_alias=True))
+
+
+def _install_correspondents_route(
+    app: FastAPI,
+    access: Access,
+    projections: Projections,
+    recorder: TelemetryRecorder,
+) -> None:
+    @app.get("/v1/inbox/correspondents")
+    def list_correspondents(request: Request) -> JSONResponse:
+        actor = authenticate(
+            access, recorder, request, required_scope=UnscopedAuthentication.ALLOWED
+        )
+        if isinstance(actor, RecordProblem):
+            return problem_response(actor)
+        result = projections.list_inbox_correspondents(actor)
+        boundary = HttpInboxCorrespondentList.model_validate_json(
+            encoded(result.response_payload())
+        )
         return JSONResponse(content=boundary.model_dump(mode="json", by_alias=True))
 
 

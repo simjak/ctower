@@ -276,11 +276,14 @@ changing anything.
 | `inbox ack` | `<message_id>` | required: `--state {delivered,read}`; optional: `--command-id` |
 | `inbox promote` | `<thread_id>` | optional: `--command-id`, `--ticket <ticket_id>` |
 | `inbox list` | — | `--unread` |
+| `inbox correspondents` | — | — |
 | `inbox read` | `<thread_id>` | — |
 | `inbox read-state` | `<thread_id>` | — |
 
 `send` starts a two-party thread when `--thread` is omitted. On an existing thread, `--to` must name the
-other participant. `send`, `ack`, and `promote` are protected, spoolable mutations; an exact command replay
+other participant. `correspondents` lists the addresses this principal may open a thread to: the registered project seats,
+less its own, less any seat key a second seat also holds, and none at all when this principal holds no
+seat — exactly what `send` and `notify` accept as `--to`, so anything it omits they refuse by name. `send`, `ack`, and `promote` are protected, spoolable mutations; an exact command replay
 returns its original result, while reusing the command ID with different input is refused as
 `idempotency-conflict`.
 

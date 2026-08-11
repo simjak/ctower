@@ -36,6 +36,8 @@ import type {
   BoardEntry,
   BoardSnapshot,
   InboxCorrespondent,
+  InboxCorrespondentChoice,
+  InboxCorrespondents,
   InboxProjection,
   InboxPromotionPicker,
   InboxThread,
@@ -453,6 +455,33 @@ export async function loadInboxCorrespondent(threadId: string): Promise<InboxCor
   return { sender: projection.recipient, recipient: summary.otherAgent };
 }
 
+function toCorrespondentChoice(value: unknown): InboxCorrespondentChoice {
+  const row = asRecord(value, "inbox.correspondents[]");
+  return {
+    seatKey: asString(row.seat_key, "inbox.correspondents[].seat_key"),
+    projectKey: asString(row.project_key, "inbox.correspondents[].project_key"),
+  };
+}
+
+/**
+ * The seats a new thread may be opened to, exactly as the record lists them.
+ *
+ * Nothing here filters, sorts or supplements that list. A picker that added a
+ * name the record does not hold would offer an address the command refuses, and
+ * one that dropped a name the record does hold would hide a correspondent the
+ * operator is entitled to write to — either way the surface would be answering
+ * a question only the record can answer.
+ */
+export async function loadInboxCorrespondents(): Promise<InboxCorrespondents> {
+  const row = asRecord(await read("/v1/inbox/correspondents"), "inbox.correspondents");
+  return {
+    sender: asString(row.sender, "inbox.correspondents.sender"),
+    choices: asArray(row.correspondents, "inbox.correspondents.correspondents").map(
+      toCorrespondentChoice
+    ),
+  };
+}
+
 /**
  * The target picker uses the same project-scoped Board record as the Board
  * screen. A failed read remains visible to the user, while creating a ticket
@@ -496,6 +525,8 @@ export const httpRecordAdapter: RecordApiReads = {
     await reading(async () => await loadInboxThread(threadId)),
   inboxCorrespondent: async (threadId: string): Promise<Reading<InboxCorrespondent>> =>
     await reading(async () => await loadInboxCorrespondent(threadId)),
+  inboxCorrespondents: async (): Promise<Reading<InboxCorrespondents>> =>
+    await reading(loadInboxCorrespondents),
   inboxPromotionPicker: loadInboxPromotionPicker,
   workSessions: (): Promise<Reading<never>> =>
     Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),

@@ -31,6 +31,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "ruling list",
         "inbox send",
         "inbox ack",
+        "inbox correspondents",
         "inbox list",
         "inbox notify",
         "inbox promote",

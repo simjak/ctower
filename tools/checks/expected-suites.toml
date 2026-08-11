@@ -601,12 +601,13 @@ owner = "CT-I1-007"
 phase = "CT-I1-007"
 status = "required"
 path = "tests/acceptance/increment-1"
-patterns = ["test_inbox.py"]
+patterns = ["test_inbox.py", "test_inbox_compose.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_inbox.py",
+  "tests/acceptance/increment-1/test_inbox_compose.py",
   "-q",
 ]
 timeout_seconds = 900

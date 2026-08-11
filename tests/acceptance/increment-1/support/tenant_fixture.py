@@ -29,6 +29,7 @@ __all__ = [
     "create_first_tenant",
     "create_second_tenant",
     "provision_credential",
+    "provision_seat",
 ]
 
 HTTP_PENDING = 202
@@ -200,6 +201,42 @@ def provision_credential(dsn: str, tenant_id: UUID, principal_id: UUID, credenti
                 datetime.now(UTC),
             ),
         )
+
+
+def provision_seat(
+    tenant: TenantFixture,
+    seat_key: str,
+    *,
+    project_key: str = "ctower",
+) -> tuple[UUID, str]:
+    """Register one addressable project seat, the way the operator flow does.
+
+    A seat is a persisted identity, not a name a test may assert: every inbox
+    path resolves a recipient out of ``project_seats``, so a test that wants a
+    correspondent has to register one here first.
+    """
+
+    principal_id, credential = uuid4(), secrets.token_urlsafe(32)
+    now = datetime.now(UTC)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO principals (
+                principal_id, tenant_id, kind, display_name, disabled, created_at
+            ) VALUES (%s, %s, 'commander', %s, false, %s)
+            """,
+            (principal_id, tenant.tenant_id, f"Inbox {project_key} {seat_key}", now),
+        )
+        connection.execute(
+            """
+            INSERT INTO project_seats (
+                principal_id, tenant_id, project_key, seat_key, granted_by, granted_at
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (principal_id, tenant.tenant_id, project_key, seat_key, tenant.operator_id, now),
+        )
+    provision_credential(tenant.database.admin_dsn, tenant.tenant_id, principal_id, credential)
+    return principal_id, credential
 
 
 def _uuid7(now: datetime) -> UUID:

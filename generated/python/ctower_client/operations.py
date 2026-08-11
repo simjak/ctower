@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:6f51126a86cdccfefa723b2bf9560473653bfc8966af8d3fe3921ad055cd5122
+Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
 """
 
 from __future__ import annotations
@@ -630,6 +630,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "listInboxCorrespondents": OperationSpec(
+            operation_id="listInboxCorrespondents",
+            client_method="list_inbox_correspondents",
+            method="GET",
+            path="/v1/inbox/correspondents",
+            request_model=None,
+            response_model=_models.InboxCorrespondentList,
+            cli_names=('inbox correspondents',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "listInboxThreads": OperationSpec(
             operation_id="listInboxThreads",
             client_method="list_inbox_threads",
@@ -1244,6 +1257,7 @@ CLI_OPERATIONS = MappingProxyType(
         "beat-dispatch list": OPERATIONS["listBeatDispatchEffects"],
         "beat-dispatch routines": OPERATIONS["listBeatRoutines"],
         "dream-dispatch list": OPERATIONS["listDreamDispatchEffects"],
+        "inbox correspondents": OPERATIONS["listInboxCorrespondents"],
         "inbox list": OPERATIONS["listInboxThreads"],
         "knowledge list": OPERATIONS["listKnowledgeDocuments"],
         "project events": OPERATIONS["listProjectEvents"],

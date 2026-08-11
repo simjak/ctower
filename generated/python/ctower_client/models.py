@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:6f51126a86cdccfefa723b2bf9560473653bfc8966af8d3fe3921ad055cd5122
+Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
 """
 
 from __future__ import annotations
@@ -130,6 +130,8 @@ __all__ = [
     "HumanWaitingWaiting",
     "InboxAcknowledgeRequest",
     "InboxAcknowledgeResult",
+    "InboxCorrespondent",
+    "InboxCorrespondentList",
     "InboxMessage",
     "InboxMessageReadState",
     "InboxNotificationRequest",
@@ -1052,6 +1054,11 @@ class HumanWaitingWaiting(_BoundaryModel):
 
 class InboxAcknowledgeRequest(_BoundaryModel):
     state: Literal["delivered", "read"]
+
+
+class InboxCorrespondent(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
 
 
 class InboxMessage(_BoundaryModel):
@@ -2094,6 +2101,11 @@ class InboxAcknowledgeResult(_BoundaryModel):
     state: Literal["delivered", "read"]
     thread_id: UUID
     thread_version: Annotated[int, Field(ge=3, le=9007199254740991)]
+
+
+class InboxCorrespondentList(_BoundaryModel):
+    correspondents: tuple[InboxCorrespondent, ...]
+    sender: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
 
 
 class InboxPromotionResult(_BoundaryModel):
