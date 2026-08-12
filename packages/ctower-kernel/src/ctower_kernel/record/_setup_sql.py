@@ -26,6 +26,7 @@ from ctower_kernel.record._durability_probe_role_sql import (
 )
 from ctower_kernel.record._migration_ledger_sql import (
     MigrationAdoptionError,
+    MigrationAdvanceTransition,
     MigrationBaseline,
     MigrationExecutionError,
     MigrationPreconditionError,
@@ -34,6 +35,7 @@ from ctower_kernel.record._migration_ledger_sql import (
     _migration_execution_error,
     apply_database_migrations,
     record_database_migrations,
+    upgrade_migration_ledger,
 )
 from ctower_kernel.record._recovery_role_shape_sql import (
     RecoveryRoleConfigurationError,
@@ -189,13 +191,56 @@ class _AdoptionBaseline(BaseModel):
         return value
 
 
+class _LedgerAdvanceTransition(BaseModel):
+    """One exact cluster-created schema state eligible to advance a ledger."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    recorded_through: str
+    recorded_schema_sha256: str
+    cluster_through: str
+    cluster_sha256: str
+    postgres_major: Literal[17]
+    result_schema_sha256: str
+    schema_object_sum256: str
+    pending_database_from: str
+    pending_database_through: str
+
+    @field_validator(
+        "recorded_through",
+        "cluster_through",
+        "pending_database_from",
+        "pending_database_through",
+    )
+    @classmethod
+    def _valid_migration_path(cls, value: str) -> str:
+        if not re.fullmatch(r"[0-9]{4}_[a-z0-9_]+\.sql", value):
+            raise ValueError("ledger advance transition must name numbered SQL filenames")
+        return value
+
+    @field_validator("recorded_schema_sha256", "cluster_sha256", "result_schema_sha256")
+    @classmethod
+    def _valid_transition_sha256(cls, value: str) -> str:
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+            raise ValueError("ledger advance transition must have lowercase SHA-256 digests")
+        return value
+
+    @field_validator("schema_object_sum256")
+    @classmethod
+    def _valid_transition_object_sum256(cls, value: str) -> str:
+        if not re.fullmatch(r"sum256:[0-9a-f]{64}", value):
+            raise ValueError("ledger advance transition must have one lowercase object sum")
+        return value
+
+
 class _MigrationManifest(BaseModel):
     """The one strict ordered migration declaration."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    schema_id: Literal["ctower.migrations/v3"] = Field(alias="schema")
+    schema_id: Literal["ctower.migrations/v4"] = Field(alias="schema")
     adoption_baseline: _AdoptionBaseline
+    ledger_advance_transitions: tuple[_LedgerAdvanceTransition, ...]
     migrations: tuple[_MigrationDeclaration, ...]
 
     @model_validator(mode="after")
@@ -206,7 +251,77 @@ class _MigrationManifest(BaseModel):
         database_paths = tuple(entry.path for entry in self.migrations if entry.scope == "database")
         if not database_paths or self.adoption_baseline.through != database_paths[-1]:
             raise ValueError("adoption baseline must name the final database migration")
+        _validate_transition_declarations(
+            self.migrations,
+            database_paths,
+            self.ledger_advance_transitions,
+        )
         return self
+
+
+def _validate_transition_declarations(
+    migrations: tuple[_MigrationDeclaration, ...],
+    database_paths: tuple[str, ...],
+    transitions: tuple[_LedgerAdvanceTransition, ...],
+) -> None:
+    transition_clusters = tuple(transition.cluster_through for transition in transitions)
+    if transition_clusters != tuple(sorted(set(transition_clusters))):
+        raise ValueError("ledger advance transitions must be unique and ordered")
+    post_ledger_clusters = {
+        entry.path
+        for entry in migrations
+        if entry.scope == "cluster" and entry.path > "0036_migration_ledger_role.sql"
+    }
+    if set(transition_clusters) != post_ledger_clusters:
+        raise ValueError(
+            "every post-ledger cluster migration requires one exact advance transition"
+        )
+    entries = {entry.path: entry for entry in migrations}
+    for transition in transitions:
+        _validate_transition_declaration(transition, entries, database_paths)
+
+
+def _validate_transition_declaration(
+    transition: _LedgerAdvanceTransition,
+    entries: dict[str, _MigrationDeclaration],
+    database_paths: tuple[str, ...],
+) -> None:
+    _, cluster = _validate_transition_endpoints(
+        entries.get(transition.recorded_through),
+        entries.get(transition.cluster_through),
+    )
+    if not hmac.compare_digest(cluster.sha256, transition.cluster_sha256):
+        raise ValueError("ledger transition cluster checksum differs from its migration")
+    _validate_transition_pending_prefix(transition, database_paths)
+    if not (
+        transition.recorded_through < transition.cluster_through < transition.pending_database_from
+    ):
+        raise ValueError("ledger transition is not ordered between database migrations")
+
+
+def _validate_transition_endpoints(
+    recorded: _MigrationDeclaration | None,
+    cluster: _MigrationDeclaration | None,
+) -> tuple[_MigrationDeclaration, _MigrationDeclaration]:
+    if recorded is None or recorded.scope != "database":
+        raise ValueError("ledger transition must start from a database migration")
+    if cluster is None or cluster.scope != "cluster":
+        raise ValueError("ledger transition must bind one cluster migration")
+    return recorded, cluster
+
+
+def _validate_transition_pending_prefix(
+    transition: _LedgerAdvanceTransition,
+    database_paths: tuple[str, ...],
+) -> None:
+    try:
+        recorded_index = database_paths.index(transition.recorded_through)
+        pending_through_index = database_paths.index(transition.pending_database_through)
+    except ValueError as error:
+        raise ValueError("ledger transition names an unknown database migration") from error
+    pending_prefix = database_paths[recorded_index + 1 : pending_through_index + 1]
+    if not pending_prefix or pending_prefix[0] != transition.pending_database_from:
+        raise ValueError("ledger transition does not bind one contiguous pending prefix")
 
 
 def _migration_resources() -> Traversable:
@@ -224,6 +339,7 @@ def _migration_resources() -> Traversable:
 class _LoadedMigrations:
     scripts: tuple[MigrationScript, ...]
     baseline: MigrationBaseline
+    ledger_advance_transitions: tuple[MigrationAdvanceTransition, ...] = ()
 
 
 def _load_migrations() -> _LoadedMigrations:
@@ -257,11 +373,40 @@ def _load_migrations() -> _LoadedMigrations:
             baseline.semantic_checks,
             baseline.schema_object_sum256,
         ),
+        tuple(
+            MigrationAdvanceTransition(
+                transition.recorded_through,
+                transition.recorded_schema_sha256,
+                transition.cluster_through,
+                transition.cluster_sha256,
+                transition.postgres_major,
+                transition.result_schema_sha256,
+                transition.schema_object_sum256,
+                transition.pending_database_from,
+                transition.pending_database_through,
+            )
+            for transition in manifest.ledger_advance_transitions
+        ),
     )
 
 
 def _migration_scripts(scope: Literal["cluster", "database"]) -> tuple[MigrationScript, ...]:
     return tuple(script for script in _load_migrations().scripts if script.scope == scope)
+
+
+def _validate_loaded_transition_bindings(loaded: _LoadedMigrations) -> None:
+    scripts = {script.migration_id: script for script in loaded.scripts}
+    for transition in loaded.ledger_advance_transitions:
+        cluster = scripts.get(transition.cluster_through)
+        if (
+            cluster is None
+            or cluster.scope != "cluster"
+            or not hmac.compare_digest(cluster.sha256, transition.cluster_sha256)
+        ):
+            raise MigrationStateError(
+                "ledger-transition-declaration-mismatch",
+                f"cluster checksum differs for {transition.cluster_through}",
+            )
 
 
 def provision_database_roles(admin_dsn: str) -> None:
@@ -479,8 +624,10 @@ def _projection_membership_rejections(
 def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
     """Serialize role reconciliation, application, attestation, and recording."""
     loaded = _load_migrations()
+    _validate_loaded_transition_bindings(loaded)
     database_migrations = tuple(m for m in loaded.scripts if m.scope == "database")
     with _migration_control_sql.migration_control(role_admin_dsn) as control:
+        upgrade_migration_ledger(control, database_migrations, loaded.baseline)
         _reconcile_database_roles_locked(role_admin_dsn)
         with psycopg.connect(migrator_dsn) as connection:
             connection.execute("SET ROLE ctower_admin")
@@ -488,6 +635,7 @@ def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
                 connection,
                 database_migrations,
                 loaded.baseline,
+                loaded.ledger_advance_transitions,
             )
         # Database migrations can create role-governed functions and grants.
         # Close that boundary before attesting; failure leaves no ledger.
