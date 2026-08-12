@@ -2366,7 +2366,10 @@ the same registry, ledger, and operator answer read.
    not that artifact and may not stand in for it. Two probe generations failed here in opposite directions on the same
    night — one inferred `alive` from a usage endpoint while real calls were refused, the other called real models against
    pooled copies the seats do not use and reported `capped` while the live credential answered. A reading whose target
-   cannot be proven to be the seat's artifact is typed `unproven`; automatic model restore and every drill gate refuse to
+   cannot be proven to be the seat's artifact is typed `unproven`; attribution binds identically — the triple a
+   result is published under derives from the measured artifact's own proven identity, never from a separate
+   marker (measuring the right artifact and filing it under the marker's account is the fourth-review
+   construction this clause refuses); automatic model restore and every drill gate refuse to
    act on it, because a confident wrong reading is worse than an honest absent one.
 
 2. **Capacity is per harness × per account × per model.** The unit of exhaustion is a (harness,
