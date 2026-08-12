@@ -145,7 +145,7 @@ def _execute(
     if operation is None:
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
-    if namespace.area in {"credential", "dream-lane"}:
+    if _uses_credential_executor(namespace, operation):
         return _execute_online_credential(base_url, credential, namespace, operation)
     if namespace.area == "migration" and (operation.mutation or operation.refusal_only):
         return _execute_online_migration(base_url, credential, namespace, operation)
@@ -156,6 +156,10 @@ def _execute(
     with CtowerClient(base_url, credential=credential) as client:
         query_result = _execute_query(namespace, client)
         return query_result, _query_exit_code(query_result)
+
+
+def _uses_credential_executor(arguments: argparse.Namespace, operation: OperationSpec) -> bool:
+    return operation.mutation and arguments.area in {"beat-dispatch", "credential", "dream-lane"}
 
 
 def _query_exit_code(result: BaseModel) -> ExitCode:
@@ -273,7 +277,9 @@ def _execute_online_credential(
         raise ValueError("usage: operator commands require forbidden spool metadata")
     with CtowerClient(base_url, credential=credential) as client:
         result = (
-            _dream_lane_commands.execute_online(arguments, client)
+            _beat_dispatch_commands.execute_online(arguments, client)
+            if arguments.area == "beat-dispatch"
+            else _dream_lane_commands.execute_online(arguments, client)
             if arguments.area == "dream-lane"
             else _credential_commands.execute_online(arguments, client)
         )

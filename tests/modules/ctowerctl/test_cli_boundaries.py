@@ -6,17 +6,22 @@ import hashlib
 import io
 import json
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import pytest
 
+from ctower_client import CtowerClient
 from ctower_client.models import (
     AppendFindingRequest,
     ApplyLabelRequest,
     AssignmentChangeRequest,
+    BeatRoutineRetirementReceipt,
     ChangeReferenceRequest,
     CustodyTransferRequest,
+    DurabilityState,
     EvidenceRequest,
     FindingDispositionRequest,
     FreezeCriteriaRequest,
@@ -27,70 +32,24 @@ from ctower_client.models import (
     VerdictRequest,
     WorkflowStartRequest,
 )
-from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
-from ctowerctl import _credential_commands, _ruling_commands, _workflow_commands, main
+from ctower_client.operations import CLI_OPERATIONS
+from ctowerctl import (
+    _beat_dispatch_commands,
+    _credential_commands,
+    _workflow_commands,
+    main,
+)
 from ctowerctl._attention_commands import build_mutation as build_attention_mutation
-from ctowerctl._attention_commands import mutation_command_names as attention_mutations
-from ctowerctl._beat_dispatch_commands import query_command_names as beat_dispatch_queries
 from ctowerctl._company_commands import (
     load_bundle,
 )
-from ctowerctl._company_commands import (
-    mutation_command_names as company_mutations,
-)
-from ctowerctl._company_commands import (
-    query_command_names as company_queries,
-)
-from ctowerctl._digest_commands import query_command_names as digest_queries
-from ctowerctl._dream_dispatch_commands import (
-    mutation_command_names as dream_dispatch_mutations,
-)
-from ctowerctl._dream_dispatch_commands import query_command_names as dream_dispatch_queries
-from ctowerctl._dream_lane_commands import mutation_command_names as dream_lane_mutations
 from ctowerctl._inbox_commands import build_mutation as build_inbox_mutation
-from ctowerctl._inbox_commands import mutation_command_names as inbox_mutations
-from ctowerctl._inbox_commands import query_command_names as inbox_queries
-from ctowerctl._intake_commands import mutation_command_names as intake_mutations
-from ctowerctl._knowledge_commands import mutation_command_names as knowledge_mutations
-from ctowerctl._knowledge_commands import query_command_names as knowledge_queries
-from ctowerctl._migration_commands import (
-    mutation_command_names as migration_mutations,
-)
-from ctowerctl._migration_commands import (
-    query_command_names as migration_queries,
-)
-from ctowerctl._migration_commands import (
-    refusal_command_names as migration_refusals,
-)
-from ctowerctl._ops_commands import (
-    mutation_command_names as ops_mutations,
-)
-from ctowerctl._ops_commands import (
-    query_command_names as ops_queries,
-)
 from ctowerctl._parser import authored_command_names, parse_arguments
-from ctowerctl._request_commands import mutation_command_names as request_mutations
-from ctowerctl._request_commands import query_command_names as request_queries
-from ctowerctl._session_commands import (
-    mutation_command_names as session_mutations,
-)
-from ctowerctl._session_commands import (
-    query_command_names as session_queries,
-)
-from ctowerctl._synthetic_commands import (
-    mutation_command_names as synthetic_mutations,
-)
-from ctowerctl._synthetic_commands import (
-    query_command_names as synthetic_queries,
-)
 from ctowerctl._ticket_commands import (
     build_mutation,
 )
-from ctowerctl._ticket_commands import (
-    mutation_command_names as ticket_mutations,
-)
-from ctowerctl._ticket_commands import (
-    query_command_names as ticket_queries,
+from modules.ctowerctl.command_inventory import (
+    assert_explicit_handlers_cover_generated_operations,
 )
 
 __all__: tuple[str, ...] = ()
@@ -110,67 +69,49 @@ def test_parser_exposes_every_authored_name_without_operation_dispatch() -> None
 
 
 def test_explicit_handlers_cover_every_generated_operation_class() -> None:
-    mutations = (
-        ticket_mutations()
-        | company_mutations()
-        | ops_mutations()
-        | synthetic_mutations()
-        | migration_mutations()
-        | intake_mutations()
-        | inbox_mutations()
-        | knowledge_mutations()
-        | _credential_commands.mutation_command_names()
-        | session_mutations()
-        | attention_mutations()
-        | dream_dispatch_mutations()
-        | dream_lane_mutations()
-        | (request_mutations() | _ruling_commands.mutation_command_names())
-    )
-    queries = (
-        ticket_queries()
-        | company_queries()
-        | ops_queries()
-        | synthetic_queries()
-        | migration_queries()
-        | inbox_queries()
-        | knowledge_queries()
-        | session_queries()
-        | dream_dispatch_queries()
-        | beat_dispatch_queries()
-        | (digest_queries() | request_queries() | _ruling_commands.query_command_names())
-    )
-    refusals = migration_refusals()
-    expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}
-    expected_queries = {
-        name
-        for name, operation in CLI_OPERATIONS.items()
-        if not operation.mutation and not operation.refusal_only
-    }
-    expected_refusals = {
-        name for name, operation in CLI_OPERATIONS.items() if operation.refusal_only
-    }
-    forbidden = {
-        name
-        for name, operation in CLI_OPERATIONS.items()
-        if operation.mutation and operation.spool_policy is SpoolPolicy.FORBIDDEN
-    }
+    assert_explicit_handlers_cover_generated_operations()
 
-    assert mutations == expected_mutations - {"bootstrap first-tenant"}
-    assert queries == expected_queries
-    assert refusals == expected_refusals
-    assert forbidden == {
-        "bootstrap first-tenant",
-        "credential seat issue",
-        "credential seat revoke",
-        "dream-lane bind",
-        "migration ctower-project inventory",
-        "migration ctower-project export",
-        "migration ctower-project plan",
-        "migration ctower-project import",
-        "migration ctower-project reconcile",
-        "migration ctower-project correction append",
-        "migration ctower-project fence observe",
-    }
+
+def test_beat_dispatch_retire_uses_generated_online_operator_call() -> None:
+    command_id = uuid4()
+    routine_ref = "ctower.beat.migration@1"
+    arguments = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "beat-dispatch",
+            "retire",
+            routine_ref,
+            "--command-id",
+            str(command_id),
+        ]
+    )
+    client = _BeatRetireClient()
+
+    result = _beat_dispatch_commands.execute_online(arguments, cast(CtowerClient, client))
+
+    assert result is client.result
+    assert client.calls == [(routine_ref, command_id)]
+
+
+class _BeatRetireClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, object]] = []
+        self.result = BeatRoutineRetirementReceipt(
+            command_id=uuid4(),
+            retirement_id=uuid4(),
+            event_id=uuid4(),
+            routine_ref="ctower.beat.migration@1",
+            revision_digest="sha256:" + "0" * 64,
+            retired_at=datetime.now(UTC),
+            durability_state=DurabilityState.DURABILITY_PENDING,
+        )
+
+    def retire_beat_routine(
+        self, routine_ref: str, *, command_id: object
+    ) -> BeatRoutineRetirementReceipt:
+        self.calls.append((routine_ref, command_id))
+        return self.result
 
 
 def test_inbox_notify_builds_the_strict_generated_request() -> None:

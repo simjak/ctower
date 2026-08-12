@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
+Authored contract digest: sha256:3a985fad6955dbecd5cc3edb85dcbf361cff67bba3ae4859b08c282b57b3ce44
 """
 
 from __future__ import annotations
@@ -1020,6 +1020,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "retireBeatRoutine": OperationSpec(
+            operation_id="retireBeatRoutine",
+            client_method="retire_beat_routine",
+            method="POST",
+            path="/v1/runtime/beat-routines/{routine_ref}/retire",
+            request_model=None,
+            response_model=_models.BeatRoutineRetirementReceipt,
+            cli_names=('beat-dispatch retire',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='operator',
+            refusal_only=False,
+        ),
         "revokeConsoleSession": OperationSpec(
             operation_id="revokeConsoleSession",
             client_method="revoke_console_session",
@@ -1285,6 +1298,7 @@ CLI_OPERATIONS = MappingProxyType(
         "request ticket relate": OPERATIONS["relateRequestTicket"],
         "migration ctower-project fence observe": OPERATIONS["reportCtowerProjectFenceObservation"],
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
+        "beat-dispatch retire": OPERATIONS["retireBeatRoutine"],
         "credential seat revoke": OPERATIONS["revokeSeatCredential"],
         "synthetic run": OPERATIONS["runSyntheticWorkflow"],
         "inbox send": OPERATIONS["sendInboxMessage"],

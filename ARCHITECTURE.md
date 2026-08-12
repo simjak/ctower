@@ -228,7 +228,9 @@ caller-observed token counts; twelve fixed Routine revisions (three I1 maintenan
 nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
 revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
 full-prompt effects target the external DIRECTOR delivery ledger; corrected digests replace only the
-tenant's active trigger and preserve prior revision/effect history); an accepted-only,
+tenant's active trigger and preserve prior revision/effect history; an operator may terminally retire one
+exact versioned beat through an append-only retirement/event/command/outbox transaction that removes only
+its active trigger); an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
@@ -816,6 +818,16 @@ and `next_fire_at` commit together before acceptance-gated dispatch. Nonexistent
 skips and repeated times use the earlier offset. One logical scheduler owns Routine truth; there is no OS cron process per agent or
 Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
 are independent and make health `STATE UNKNOWN` when stale.
+
+Fleet-beat retirement is deliberately narrower than Routine lifecycle management. The authenticated actor's
+persisted operator authority is verified before retirement or target state is queried. The transaction
+locks the tenant against registration and scan, appends one immutable `routine.retired` fact with canonical
+command/event/outbox lineage, and deletes only the selected active trigger. Registration treats the
+versioned reference as terminal afterward. A database trigger independently refuses every later trigger
+insert or update whose tenant/reference has a retirement fact, so rolling back to a pre-retirement binary
+cannot resurrect the beat. Unknown and foreign-only references share one non-enumerating refusal; no
+Commander authority, generic Routine retirement, or filesystem-absence authorization follows from this
+surface.
 
 Each of the four nightly dream Routines emits exactly one immutable `dream_dispatch` effect at its UTC
 boundary. The effect carries the project-or-fleet scope, `skills/dreamer/SKILL.md`, and the hard-model

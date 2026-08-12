@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
+Authored contract digest: sha256:3a985fad6955dbecd5cc3edb85dcbf361cff67bba3ae4859b08c282b57b3ce44
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ from ctower_client.models import (
     AuditPage,
     BeatDispatchEffectList,
     BeatRoutineList,
+    BeatRoutineRetirementReceipt,
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
@@ -1618,6 +1619,25 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def retire_beat_routine(
+        self,
+        routine_ref: str,
+        *,
+        command_id: UUID,
+    ) -> BeatRoutineRetirementReceipt:
+        response = self._http.post(
+            f"/v1/runtime/beat-routines/{quote(str(routine_ref), safe='')}/retire",
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: BeatRoutineRetirementReceipt, 202: BeatRoutineRetirementReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def revoke_seat_credential(

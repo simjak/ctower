@@ -76,5 +76,74 @@ def test_beat_effect_contract_is_strict_and_http_list_is_authored() -> None:
     assert "/v1/runtime/beat-routines" in paths
 
 
+def test_beat_retire_http_contract_is_strict_and_closed() -> None:
+    document = _json(ROOT / "contracts/http/openapi.yaml")
+    paths = cast(dict[str, dict[str, object]], document["paths"])
+    operation = cast(
+        dict[str, object],
+        paths["/v1/runtime/beat-routines/{routine_ref}/retire"]["post"],
+    )
+    assert {
+        key: operation[key]
+        for key in (
+            "operationId",
+            "x-ctower-cli",
+            "x-ctower-mutation",
+            "x-ctower-principal",
+            "x-ctower-spool",
+        )
+    } == {
+        "operationId": "retireBeatRoutine",
+        "x-ctower-cli": "beat-dispatch retire",
+        "x-ctower-mutation": True,
+        "x-ctower-principal": "operator",
+        "x-ctower-spool": "forbidden",
+    }
+    assert "requestBody" not in operation
+    assert operation["parameters"] == [
+        {
+            "name": "routine_ref",
+            "in": "path",
+            "required": True,
+            "schema": {
+                "type": "string",
+                "pattern": r"^ctower\.beat\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+            },
+        },
+        {"$ref": "#/components/parameters/IdempotencyKey"},
+    ]
+    responses = cast(dict[str, dict[str, object]], operation["responses"])
+    assert set(responses) == {"200", "202", "401", "403", "404", "409", "422"}
+    for status in ("200", "202"):
+        content = cast(dict[str, object], responses[status]["content"])
+        assert content == {
+            "application/json": {
+                "schema": {"$ref": "#/components/schemas/BeatRoutineRetirementReceipt"}
+            }
+        }
+
+    components = cast(dict[str, object], document["components"])
+    schemas = cast(dict[str, dict[str, object]], components["schemas"])
+    receipt = schemas["BeatRoutineRetirementReceipt"]
+    assert receipt["additionalProperties"] is False
+    assert receipt["required"] == [
+        "command_id",
+        "retirement_id",
+        "event_id",
+        "routine_ref",
+        "revision_digest",
+        "retired_at",
+        "durability_state",
+    ]
+    problem = schemas["Problem"]
+    problem_properties = cast(dict[str, dict[str, object]], problem["properties"])
+    problem_codes = cast(list[str], problem_properties["code"]["enum"])
+    assert {
+        "beat-routine-already-retired",
+        "beat-routine-not-found",
+        "beat-routine-retire-forbidden",
+    } <= set(problem_codes)
+
+
 def _json(path: Path) -> dict[str, object]:
     return cast(dict[str, object], json.loads(path.read_text(encoding="utf-8")))

@@ -194,6 +194,7 @@
       "finalizeCtowerProjectImportRun",
       "getCtowerProjectImportRun",
       "appendCtowerProjectImportCorrection",
+      "retireBeatRoutine",
       "prepareCtowerProjectCutover:refusal_only",
       "commitCtowerProjectDevelopmentEpoch:refusal_only"
     ],

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import cast
 
-from ._beat_inventory import BEAT_OPERATION_METADATA
+from ._beat_inventory import BEAT_OPERATION_METADATA, BEAT_PROBLEM_CODES
 from ._ruling_inventory import RULING_OPERATION_METADATA, RULING_PROBLEM_CODES
 
 ROOT, MAX_IMPORT_ITEMS = Path(__file__).parents[3], 64
@@ -241,6 +241,7 @@ _EXPECTED_PROBLEM_CODES = {
     "auth-provider-unverifiable",
     "auth-role-denied",
     "auth-session-invalid",
+    *BEAT_PROBLEM_CODES,
     "bootstrap-consumed",
     "bootstrap-expired",
     "bootstrap-nonempty",
@@ -474,6 +475,7 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         "mintConsoleViewGrant",
         "renewConsoleViewGrant",
         "reportCtowerProjectFenceObservation",
+        "retireBeatRoutine",
         "revokeSeatCredential",
         "revokeConsoleSession",
         "setConsoleKillSwitch",

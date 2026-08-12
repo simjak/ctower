@@ -29,6 +29,12 @@ kernel copies executing-lane facts from substrate bindings. The same OpenAPI aut
 online-only operator `dream-lane bind` ceremony, its closed model selection, immutable binding receipt, and
 typed authorization/conflict refusals.
 
+The same authored HTTP authority exposes one beat-only terminal retirement operation. Its path is restricted
+to versioned `ctower.beat.*@N` references, it has no request body, and its strict receipt names the command,
+retirement, event, retired revision, retirement time, and durability state. The event envelope admits the
+matching append-only `routine.retired` payload; generated Python and TypeScript clients carry the identical
+online-only operator operation and three typed refusals.
+
 The GitLab Issue integration contracts under `domain/integrations/` define the strict normalized provider
 issue, durable cursor, proof-gated close command, and delivery receipt. The published reference-only
 `ctower.integration/v1` component remains unchanged; `integration-v2.schema.json` publishes the incompatible

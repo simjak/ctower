@@ -30,11 +30,17 @@ emits that same full prompt with the occurrence. Mission Control delivery theref
 text changes after registration. A corrected digest serially replaces only the tenant's active trigger;
 older revisions, occurrences, and effects remain immutable history.
 
+An operator can terminally retire one exact versioned fleet beat. Ctower appends a retirement fact and its
+canonical command, event, and outbox lineage, removes only that beat's active trigger, and preserves every
+revision, occurrence, effect, and unrelated trigger. Later registration ticks do not reactivate it, and a
+database guard also blocks trigger inserts from an older application binary after rollback.
+
 ## How to use routines
 
-There is no general routine editor today. Operators inspect the registered fleet subset with
-`beat-dispatch routines`, list pending immutable effects with `beat-dispatch list`, and use the exact dream
-commands for dream effects. Both beat reads are operator-only. Ctower records the schedule and effect; the
+There is no general routine editor or general retirement surface today. Operators inspect the registered
+fleet subset with `beat-dispatch routines`, list pending immutable effects with `beat-dispatch list`, retire
+one exact versioned beat with `beat-dispatch retire`, and use the exact dream commands for dream effects.
+All three beat commands are operator-only. Ctower records the schedule and effect; the
 external Mission Control consumer owns DIRECTOR-session injection and its append-only delivery ledger.
 
 New users should treat routines as scheduled system work, not as tickets they can edit from the Board. If a
