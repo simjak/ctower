@@ -249,6 +249,7 @@ def test_console_reader_temporary_create_rolls_back_with_ownership_transfer(
                 psycopg.Connection[tuple[object, ...]],
                 tuple[MigrationScript, ...],
                 MigrationBaseline,
+                tuple[object, ...],
             ],
             object,
         ],
@@ -259,6 +260,7 @@ def test_console_reader_temporary_create_rolls_back_with_ownership_transfer(
         connection: psycopg.Connection[tuple[object, ...]],
         migrations: tuple[MigrationScript, ...],
         baseline: MigrationBaseline,
+        ledger_advance_transitions: tuple[object, ...],
     ) -> object:
         interrupted = tuple(
             replace(
@@ -277,7 +279,7 @@ def test_console_reader_temporary_create_rolls_back_with_ownership_transfer(
             else migration
             for migration in migrations
         )
-        return original(connection, interrupted, baseline)
+        return original(connection, interrupted, baseline, ledger_advance_transitions)
 
     monkeypatch.setitem(apply_namespace, "apply_database_migrations", interrupt)
     with pytest.raises(MigrationExecutionError, match="0065_console_view_grants"):
