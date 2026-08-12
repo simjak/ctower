@@ -32,6 +32,7 @@ from ctower_kernel.runtime._dream_dispatch_sql import (
 from ctower_kernel.runtime._dream_dispatch_sql import (
     list_dream_dispatches as _list_dream_dispatches,
 )
+from ctower_kernel.runtime._retirement_sql import retire_beat_routine as _retire_beat_routine
 from ctower_kernel.runtime._routine_sql import register as _register
 from ctower_kernel.runtime._routine_sql import scan as _scan
 from ctower_kernel.runtime._routine_sql import tenant_ids as _tenant_ids
@@ -41,6 +42,10 @@ from ctower_kernel.runtime._synthetic_sql import start_synthetic as _start_synth
 from ctower_kernel.runtime._synthetic_sql import synthetic_run as _synthetic_run
 from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatRoutine
 from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
+from ctower_kernel.runtime.retirement import (
+    BeatRoutineRetireCommand,
+    BeatRoutineRetirementReceipt,
+)
 
 __all__ = ["PostgresRuntime"]
 
@@ -65,6 +70,13 @@ class PostgresRuntime:
 
     def tenant_ids(self) -> tuple[UUID, ...]:
         return _tenant_ids(self._dsn)
+
+    def retire_beat_routine(
+        self,
+        actor: Actor,
+        command: BeatRoutineRetireCommand,
+    ) -> BeatRoutineRetirementReceipt | RecordProblem:
+        return _retire_beat_routine(self._dsn, actor, command)
 
     def list_dream_dispatches(self, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
         return _list_dream_dispatches(self._dsn, actor)

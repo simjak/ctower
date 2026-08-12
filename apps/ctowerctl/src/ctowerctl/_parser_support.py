@@ -43,6 +43,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "dream-dispatch list",
         "dream-dispatch consume",
         "beat-dispatch list",
+        "beat-dispatch retire",
         "beat-dispatch routines",
         "dream-lane bind",
         "ticket capture",

@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import cast
 
+__all__: tuple[str, ...] = ()
+
 ROOT = Path(__file__).parents[3]
 MIGRATIONS = ROOT / "packages/ctower-kernel/migrations"
 LIVE_EVIDENCE_FUNCTIONS = 2
@@ -77,13 +79,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0063_routine_revision_activation.sql",
     "0064_console_output_reader_role.sql",
     "0065_console_view_grants.sql",
+    "0066_beat_routine_retirement.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0065_console_view_grants.sql",
-    "schema_sha256": ("sha256:0ceed55272ecbb2f5a624a28e66816c50d1ff5a224025bc785468bb00a52b05a"),
+    "through": "0066_beat_routine_retirement.sql",
+    "schema_sha256": ("sha256:da7b6db4d7eb3f0acafe9395d8b76c90886dfcbb5bd4455f07f19c2a7278ee45"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:546ac002f20bd7858804707aa943232826080d9b497b88fcf9c31d405d666edf"
+        "sum256:486b5ca6a4abcae26d71b54d91ab18da4ec7bbe2a1e03799bd132d4424477104"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {
@@ -124,6 +127,25 @@ def test_project_key_migration_backfills_then_removes_its_default() -> None:
     remove_default = "ALTER COLUMN project_key DROP DEFAULT"
 
     assert migration.index(add_with_backfill_default) < migration.index(remove_default)
+
+
+def test_beat_routine_retirement_migration_guards_history_and_old_binary_inserts() -> None:
+    migration = (MIGRATIONS / "0066_beat_routine_retirement.sql").read_text(encoding="utf-8")
+
+    assert "CREATE TABLE routine_retirements" in migration
+    assert "routine_ref ~ '^ctower\\.beat\\." in migration
+    assert "CREATE TRIGGER routine_retirements_immutable" in migration
+    assert "BEFORE UPDATE OR DELETE ON routine_retirements" in migration
+    assert "CREATE FUNCTION prevent_retired_routine_trigger()" in migration
+    assert "BEFORE INSERT OR UPDATE ON routine_triggers" in migration
+    assert "RETURN NULL" in migration
+    assert "GRANT INSERT, SELECT ON routine_retirements TO ctower_svc" in migration
+    assert "GRANT UPDATE" not in "\n".join(
+        line for line in migration.splitlines() if "routine_retirements" in line
+    )
+    assert "GRANT DELETE" not in "\n".join(
+        line for line in migration.splitlines() if "routine_retirements" in line
+    )
 
 
 def test_every_migration_declares_compatibility_forward_compensation_and_backup() -> None:

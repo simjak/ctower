@@ -50,6 +50,12 @@ effects. Both are online-only operator reads: they do not queue, mutate server c
 schedule/prompt/target labels. Mission Control's sibling beat consumer performs ledger-deduplicated tmux
 delivery while a beat-specific lane-binding ceremony remains unapproved.
 
+`beat-dispatch retire <routine_ref> --command-id <uuid>` is the online-only operator mutation for one exact
+versioned fleet beat. It reads the credential only from stdin, sends no request body, never enters the local
+spool, and prints the generated immutable retirement receipt. A replay with the same body/key returns that
+same receipt; later keys refuse as `beat-routine-already-retired`, unknown and foreign-only references as
+`beat-routine-not-found`, and every non-operator as `beat-routine-retire-forbidden` before target disclosure.
+
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted
 criteria to the sole installed gate policy. Evidence add accepts literal content or a bounded content file,

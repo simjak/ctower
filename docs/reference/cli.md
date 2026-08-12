@@ -441,6 +441,25 @@ Run the live ceremony only as the operator, using the exact command shape below:
 ctl --as operator dream-lane bind --lane <ref> --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
 ```
 
+## Beat dispatch
+
+| Command | Positional | Flags |
+|---|---|---|
+| `beat-dispatch list` | — | — |
+| `beat-dispatch routines` | — | — |
+| `beat-dispatch retire` | `<routine_ref>` | required: `--command-id` |
+
+The two reads are online-only and operator-only. `routines` lists active registered fleet beats and `list`
+returns their immutable full-prompt effects.
+
+`retire` is an online-only, never-spooled operator mutation. Its positional value must be an exact
+versioned `ctower.beat.*@N` reference; it accepts no tenant, actor, schedule, prompt, digest, target, or
+request-file flag. Authority is the normal bounded stdin credential. Exact replay returns the same receipt.
+A later command for the same reference refuses as `beat-routine-already-retired`; unknown and foreign-only
+references refuse as `beat-routine-not-found`; a non-operator refuses as
+`beat-routine-retire-forbidden` before target disclosure. Retirement is terminal: later worker registration
+and an old binary after rollback cannot restore the active trigger.
+
 ## Migration (ctower-project)
 
 All eleven commands are authenticated and online-only. They are **not** spoolable.

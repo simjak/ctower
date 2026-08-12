@@ -64,6 +64,11 @@ corrected digest replaces only the tenant's active trigger, so this read remains
 revision/effect facts remain immutable. Each effect carries the full digest-verified prompt baked into the revision and the fixed `commander` target; the
 API neither injects tmux input nor accepts a delivery claim. Server-side delivery custody remains absent
 until a separately authorized lane-binding ceremony exists.
+`POST /v1/runtime/beat-routines/{routine_ref}/retire` is the one beat mutation. It accepts an exact
+versioned fleet-beat path and idempotency key but no body, verifies persisted operator authority before
+target disclosure, and returns the immutable retirement receipt. Its transaction preserves history and
+removes only the active trigger; the database guard prevents registration by an older binary from restoring
+that trigger. The surface does not extend to other Routine families or Commander authority.
 The artifact contains a closed first-party connector registry whose only admitted implementation is the real
 GitLab v4 HTTP Adapter for the narrow GitLab Issue co-source. A strict Catalog v2 payload becomes an
 immutable runtime binding plus an unresolved secret-reference name; deployment supplies the resolved token

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
+// Authored contract digest: sha256:3a985fad6955dbecd5cc3edb85dcbf361cff67bba3ae4859b08c282b57b3ce44
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -390,6 +390,11 @@ export type ResolveCloseWorkflowInput = Readonly<{
   readonly body: Models.ResolveCloseRequest;
 }>;
 
+export type RetireBeatRoutineInput = Readonly<{
+  readonly "routineRef": string;
+  readonly "IdempotencyKey": string;
+}>;
+
 export type RevokeSeatCredentialInput = Readonly<{
   readonly "credentialId": string;
   readonly "IdempotencyKey": string;
@@ -524,6 +529,7 @@ export type OperationInputs = Readonly<{
   readonly "relateRequestTicket": RelateRequestTicketInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
+  readonly "retireBeatRoutine": RetireBeatRoutineInput;
   readonly "revokeSeatCredential": RevokeSeatCredentialInput;
   readonly "runSyntheticWorkflow": RunSyntheticWorkflowInput;
   readonly "sendInboxMessage": SendInboxMessageInput;
@@ -610,6 +616,7 @@ export type OperationResults = Readonly<{
   readonly "relateRequestTicket": Models.RequestChangeResult;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
+  readonly "retireBeatRoutine": Models.BeatRoutineRetirementReceipt;
   readonly "revokeSeatCredential": Models.SeatCredentialReceipt;
   readonly "runSyntheticWorkflow": Models.SyntheticRunReceipt;
   readonly "sendInboxMessage": Models.InboxSendResult;
@@ -1072,6 +1079,12 @@ export class CtowerClient {
     input: ResolveCloseWorkflowInput,
   ): Promise<Models.WorkflowReceipt> {
     return this.execute("resolveCloseWorkflow", input);
+  }
+
+  public async retireBeatRoutine(
+    input: RetireBeatRoutineInput,
+  ): Promise<Models.BeatRoutineRetirementReceipt> {
+    return this.execute("retireBeatRoutine", input);
   }
 
   public async revokeSeatCredential(

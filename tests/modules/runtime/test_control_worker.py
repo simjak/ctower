@@ -33,7 +33,7 @@ from ctower_kernel.projections.interface import (
     InboxThread,
     InboxThreadList,
 )
-from ctower_kernel.record import Actor, DurabilityFinalizationBatch, DurabilityHealth
+from ctower_kernel.record import Actor, DurabilityFinalizationBatch, DurabilityHealth, RecordProblem
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
     FixedOperationCompletion,
@@ -42,6 +42,10 @@ from ctower_kernel.runtime import (
     Routine,
     RoutineRevision,
     SchedulerScan,
+)
+from ctower_kernel.runtime.retirement import (
+    BeatRoutineRetireCommand,
+    BeatRoutineRetirementReceipt,
 )
 
 __all__: tuple[str, ...] = ()
@@ -75,6 +79,11 @@ class _RoutineStore:
     def scan(self, tenant_id: UUID) -> SchedulerScan:
         self.scans += 1
         return SchedulerScan(tenant_id, self.scans, datetime.now(UTC), (), ())
+
+    def retire_beat_routine(
+        self, actor: Actor, command: BeatRoutineRetireCommand
+    ) -> BeatRoutineRetirementReceipt | RecordProblem:
+        raise NotImplementedError
 
 
 class _ProjectionStore:

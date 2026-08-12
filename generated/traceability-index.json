@@ -242,6 +242,7 @@
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -393,6 +394,9 @@
       "packages/ctower-kernel/migrations/0022_restore_inventory.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
     ],
+    "AC-OPS-07": [
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql"
+    ],
     "AC-OPS-13": [
       "contracts/runtime/beat-dispatch-effect.schema.json",
       "contracts/runtime/dream-dispatch-effect.schema.json",
@@ -409,6 +413,7 @@
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
       "packs/routines/ctower.beat.bhloop/v1.yaml",
       "packs/routines/ctower.beat.digest/v1.yaml",
       "packs/routines/ctower.beat.health/v1.yaml",
@@ -903,7 +908,8 @@
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
-      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql"
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql"
     ],
     "INV-31": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
@@ -1192,6 +1198,7 @@
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
       "packs/routines/ctower.beat.bhloop/v1.yaml",
       "packs/routines/ctower.beat.digest/v1.yaml",
       "packs/routines/ctower.beat.health/v1.yaml",
@@ -1375,6 +1382,7 @@
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
       "packs/routines/ctower.beat.bhloop/v1.yaml",
       "packs/routines/ctower.beat.digest/v1.yaml",
       "packs/routines/ctower.beat.health/v1.yaml",
@@ -1506,7 +1514,8 @@
       "packages/ctower-kernel/migrations/0057_dream_lane_binding_surface.sql",
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
-      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql"
+      "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

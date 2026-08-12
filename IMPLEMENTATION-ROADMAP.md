@@ -464,14 +464,22 @@ tenant's active trigger; prior revisions, occurrences, and effects remain histor
 queued occurrences transactionally emit that same prompt for the fixed DIRECTOR target. Operator-only
 reads list the five registered revisions, their next fires, and emitted effects.
 
+The completed CT-I1-019 surface also lets the authenticated operator terminally retire one exact
+`ctower.beat.*@N` reference. Retirement is an append-only fact plus canonical command/event/outbox lineage;
+it removes only the active trigger and preserves every revision, occurrence, effect, and unrelated trigger.
+Registration and scans serialize on the tenant, and a database-level guard blocks old-binary trigger inserts
+after rollback. The surface does not authorize Commander retirement, generic Routine retirement, or
+filesystem absence as an authority signal.
+
 A sibling Mission Control consumer polls at one-minute cadence, claims each occurrence in an append-only
 ledger before injection, records one delivered result, and marks a later replay with zero reinjections. It
 refuses an interrupted ambiguous claim rather than risking a duplicate. Ctower receives no consumption
 claim until a separate authenticated beat-lane ceremony is approved. The director retires the five fallback
 crontab entries only after the live health round trip is confirmed.
 
-**Exit:** AC-OPS-13 and the CT-I1-019 contract, schedule, PostgreSQL, API/CLI, and consumer suites pass; the
-shadow serve lists exactly five active beat revisions after corrected-revision registration; one health occurrence carries the exact full
+**Exit:** AC-OPS-13 and the CT-I1-019 contract, schedule, PostgreSQL, API/CLI, retirement, and consumer suites
+pass; before retirement the shadow serve lists exactly five active beat revisions after corrected-revision
+registration; one health occurrence carries the exact full
 prompt through the consumer into DIRECTOR; a replay records zero injection; the retired-cron proof, timezone
 schedule proof, fallback recommendation, same-candidate docs, full release gate, and Director receipt
 confirmation are recorded.

@@ -11,9 +11,13 @@ from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
+from ctower_kernel.runtime.retirement import (
+    BeatRoutineRetireCommand,
+    BeatRoutineRetirementReceipt,
+)
 
 if TYPE_CHECKING:
-    from ctower_kernel.record import RecordProblem
+    from ctower_kernel.record import Actor, RecordProblem
 
 __all__ = [
     "CatchUpPolicy",
@@ -348,6 +352,10 @@ class _RoutineStore(Protocol):
 
     def tenant_ids(self) -> tuple[UUID, ...]: ...
 
+    def retire_beat_routine(
+        self, actor: Actor, command: BeatRoutineRetireCommand
+    ) -> BeatRoutineRetirementReceipt | RecordProblem: ...
+
 
 class _FixedOperationStore(Protocol):
     def start_synthetic(
@@ -420,6 +428,13 @@ class Routine:
 
     def tenant_ids(self) -> tuple[UUID, ...]:
         return self._store.tenant_ids()
+
+    def retire_beat_routine(
+        self,
+        actor: Actor,
+        command: BeatRoutineRetireCommand,
+    ) -> BeatRoutineRetirementReceipt | RecordProblem:
+        return self._store.retire_beat_routine(actor, command)
 
 
 @dataclass(frozen=True, slots=True)

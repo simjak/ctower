@@ -33,6 +33,7 @@ from ctower_kernel.runtime import (
 )
 from ctower_kernel.runtime._beat_dispatch_sql import insert_effect as _insert_beat_dispatch
 from ctower_kernel.runtime._beat_dispatch_sql import register_spec as _register_beat_spec
+from ctower_kernel.runtime._retirement_guard import lock_routine_tenant, routine_is_retired
 from ctower_kernel.runtime._routine_ids import stable_uuid7 as _stable_uuid7
 from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
 
@@ -53,12 +54,9 @@ def register(
         connection.execute("SET ROLE ctower_svc")
         now = _database_now(connection)
         _control_worker_principal(connection, tenant_id, now)
-        locked_tenant = connection.execute(
-            "SELECT tenant_id FROM tenants WHERE tenant_id = %s FOR UPDATE",
-            (tenant_id,),
-        ).fetchone()
-        if locked_tenant is None:
-            raise ValueError("Routine tenant does not exist")
+        lock_routine_tenant(connection, tenant_id)
+        if routine_is_retired(connection, tenant_id, revision.routine_ref):
+            return
         initial_fire = first_fire_at or revision.next_fire_after(now)
         connection.execute(
             """
@@ -142,6 +140,7 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         connection.execute("SET ROLE ctower_svc")
         now = _database_now(connection)
         actor_principal_id = _control_worker_principal(connection, tenant_id, now)
+        lock_routine_tenant(connection, tenant_id)
         rows = connection.execute(
             """
             SELECT trigger.next_fire_at, revision.*, dream.scope_kind, dream.project_key,
