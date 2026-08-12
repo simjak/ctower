@@ -89,6 +89,27 @@ _EXPECTED_ADOPTION_BASELINE = {
         "sum256:486b5ca6a4abcae26d71b54d91ab18da4ec7bbe2a1e03799bd132d4424477104"
     ),
 }
+_EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [
+    {
+        "recorded_through": "0063_routine_revision_activation.sql",
+        "recorded_schema_sha256": (
+            "sha256:cc7fffb7ce2f4fd55d3f5ed8746e42e8b6679847fc47de40d51262a9dad5423c"
+        ),
+        "cluster_through": "0064_console_output_reader_role.sql",
+        "cluster_sha256": (
+            "sha256:2475da971e7d4771ad7763970faa6a4fa318eee93a12461df94b7eaca296d93f"
+        ),
+        "postgres_major": 17,
+        "result_schema_sha256": (
+            "sha256:a0aad539aed6b65580daf16ac047856ef48fcbd72b82c396220e44ebe1a85d03"
+        ),
+        "schema_object_sum256": (
+            "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644"
+        ),
+        "pending_database_from": "0065_console_view_grants.sql",
+        "pending_database_through": "0066_beat_routine_retirement.sql",
+    }
+]
 _DURABILITY_RECOVERY_CONTRACT = {
     "pre_migration_backup": {
         "isolated_recovery": True,
@@ -111,14 +132,37 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     entries = cast(list[dict[str, str]], manifest["migrations"])
     names = [entry["path"] for entry in entries]
 
-    assert set(manifest) == {"adoption_baseline", "migrations", "schema"}
-    assert manifest["schema"] == "ctower.migrations/v3"
+    assert set(manifest) == {
+        "adoption_baseline",
+        "ledger_advance_transitions",
+        "migrations",
+        "schema",
+    }
+    assert manifest["schema"] == "ctower.migrations/v4"
     assert manifest["adoption_baseline"] == _EXPECTED_ADOPTION_BASELINE
+    assert manifest["ledger_advance_transitions"] == _EXPECTED_LEDGER_ADVANCE_TRANSITIONS
     assert names == sorted(names)
     assert names == _EXPECTED_MIGRATION_PATHS
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
+
+
+def test_every_post_ledger_cluster_migration_has_one_exact_advance_transition() -> None:
+    manifest = json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
+    entries = cast(list[dict[str, object]], manifest["migrations"])
+    transitions = cast(list[dict[str, object]], manifest["ledger_advance_transitions"])
+
+    post_ledger_cluster_paths = {
+        entry["path"]
+        for entry in entries
+        if entry.get("scope", "database") == "cluster"
+        and cast(str, entry["path"]) > "0036_migration_ledger_role.sql"
+    }
+    transitioned_cluster_paths = [transition["cluster_through"] for transition in transitions]
+
+    assert len(transitioned_cluster_paths) == len(set(transitioned_cluster_paths))
+    assert set(transitioned_cluster_paths) == post_ledger_cluster_paths
 
 
 def test_project_key_migration_backfills_then_removes_its_default() -> None:

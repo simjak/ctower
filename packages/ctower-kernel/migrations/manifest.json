@@ -1,11 +1,24 @@
 {
-  "schema": "ctower.migrations/v3",
+  "schema": "ctower.migrations/v4",
   "adoption_baseline": {
     "through": "0066_beat_routine_retirement.sql",
     "schema_sha256": "sha256:da7b6db4d7eb3f0acafe9395d8b76c90886dfcbb5bd4455f07f19c2a7278ee45",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:486b5ca6a4abcae26d71b54d91ab18da4ec7bbe2a1e03799bd132d4424477104"
   },
+  "ledger_advance_transitions": [
+    {
+      "recorded_through": "0063_routine_revision_activation.sql",
+      "recorded_schema_sha256": "sha256:cc7fffb7ce2f4fd55d3f5ed8746e42e8b6679847fc47de40d51262a9dad5423c",
+      "cluster_through": "0064_console_output_reader_role.sql",
+      "cluster_sha256": "sha256:2475da971e7d4771ad7763970faa6a4fa318eee93a12461df94b7eaca296d93f",
+      "postgres_major": 17,
+      "result_schema_sha256": "sha256:a0aad539aed6b65580daf16ac047856ef48fcbd72b82c396220e44ebe1a85d03",
+      "schema_object_sum256": "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644",
+      "pending_database_from": "0065_console_view_grants.sql",
+      "pending_database_through": "0066_beat_routine_retirement.sql"
+    }
+  ],
   "migrations": [
     {
       "path": "0001_roles.sql",

@@ -6,13 +6,52 @@ import hashlib
 import hmac
 import json
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Literal, cast
 
 import psycopg
 
+from ctower_kernel.record._migration_ledger_history_sql import (
+    AppliedMigrationRow as _AppliedMigrationRow,
+)
+from ctower_kernel.record._migration_ledger_history_sql import baseline_index as _baseline_index
+from ctower_kernel.record._migration_ledger_history_sql import record_migration as _record_migration
+from ctower_kernel.record._migration_ledger_history_sql import (
+    validated_applied_prefix as _validated_applied_prefix,
+)
+from ctower_kernel.record._migration_ledger_history_sql import (
+    validated_applied_prefix_version as _validated_applied_prefix_version,
+)
+from ctower_kernel.record._migration_ledger_models import (
+    MigrationAdoptionError,
+    MigrationAdvanceTransition,
+    MigrationBaseline,
+    MigrationExecutionError,
+    MigrationPreconditionError,
+    MigrationScript,
+    MigrationStateError,
+)
+from ctower_kernel.record._migration_ledger_shape_sql import (
+    close_ledger_privileges as _close_ledger_privileges,
+)
+from ctower_kernel.record._migration_ledger_shape_sql import (
+    create_ledger as _create_ledger,
+)
+from ctower_kernel.record._migration_ledger_shape_sql import (
+    ledger_exists as _ledger_exists,
+)
+from ctower_kernel.record._migration_ledger_shape_sql import (
+    ledger_has_server_version as _ledger_has_server_version,
+)
+from ctower_kernel.record._migration_ledger_shape_sql import (
+    validate_ledger_shape as _validate_ledger_shape,
+)
+from ctower_kernel.record._migration_ledger_shape_sql import (
+    validate_legacy_ledger_shape as _validate_legacy_ledger_shape,
+)
+
 __all__ = [
     "MigrationAdoptionError",
+    "MigrationAdvanceTransition",
     "MigrationBaseline",
     "MigrationExecutionError",
     "MigrationPreconditionError",
@@ -20,6 +59,7 @@ __all__ = [
     "MigrationStateError",
     "apply_database_migrations",
     "record_database_migrations",
+    "upgrade_migration_ledger",
 ]
 
 _LEDGER = "ctower_schema_migrations"
@@ -68,27 +108,6 @@ _PRE_ATTSTATTARGET_COLUMN_QUERY_RAW = _PRE_ATTSTATTARGET_COLUMN_QUERY_TEMPLATE.r
 
 
 @dataclass(frozen=True, slots=True)
-class MigrationScript:
-    """One checksum-verified authored database migration."""
-
-    migration_id: str
-    sha256: str
-    scope: Literal["cluster", "database"]
-    content: str
-
-
-@dataclass(frozen=True, slots=True)
-class MigrationBaseline:
-    """One exact supported pre-ledger schema state."""
-
-    through: str
-    schema_sha256: str
-    semantic_checks: Literal["ctower.pre-ledger/v1"]
-    # Diagnostic only: canonical schema_sha256 remains the acceptance authority.
-    schema_object_sum256: str
-
-
-@dataclass(frozen=True, slots=True)
 class _PendingMigration:
     migration: MigrationScript
     application_kind: Literal["applied", "baseline"]
@@ -109,31 +128,11 @@ class _SemanticCheck:
     query: str
 
 
-class MigrationStateError(ValueError):
-    """The migration ledger is malformed or contradicts the authored history."""
-
-    def __init__(self, code: str, detail: str) -> None:
-        self.code = code
-        self.detail = detail
-        super().__init__(f"{code}: {detail}")
-
-
-class MigrationAdoptionError(MigrationStateError):
-    """A pre-ledger database cannot prove the exact supported baseline."""
-
-
-class MigrationPreconditionError(MigrationStateError):
-    """A ledgered database fails an invariant the pending set requires."""
-
-
-class MigrationExecutionError(MigrationStateError):
-    """Authored migration SQL failed behind a bounded data-safe error."""
-
-
 def apply_database_migrations(
     connection: psycopg.Connection[tuple[object, ...]],
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
+    ledger_advance_transitions: tuple[MigrationAdvanceTransition, ...] = (),
 ) -> tuple[_PendingMigration, ...]:
     """Validate and advance schema; return rows for the narrow ledger authority.
 
@@ -153,7 +152,13 @@ def apply_database_migrations(
         applied_count = 0
     pending: list[_PendingMigration] = []
     if applied:
-        _validate_recorded_application_state(connection, applied, baseline)
+        _validate_recorded_application_state(
+            connection,
+            applied,
+            migrations,
+            baseline,
+            ledger_advance_transitions,
+        )
         _validate_ledgered_advance(connection, applied, migrations, baseline)
     elif _has_preledger_objects(connection):
         baseline_index = _validate_preledger_database(connection, migrations, baseline)
@@ -213,6 +218,52 @@ def record_database_migrations(
     _close_ledger_privileges(connection)
 
 
+def upgrade_migration_ledger(
+    connection: psycopg.Connection[tuple[object, ...]],
+    migrations: tuple[MigrationScript, ...],
+    baseline: MigrationBaseline,
+) -> None:
+    """Upgrade the one exact historical ledger shape before schema validation.
+
+    The caller owns the session-scoped migration lock. Committing here publishes
+    the private ledger shape while retaining that lock for the complete operation.
+    """
+
+    if not _ledger_exists(connection):
+        connection.commit()
+        return
+    connection.execute(f"SET ROLE {_LEDGER_ROLE}")
+    try:
+        if _ledger_has_server_version(connection):
+            _validate_ledger_shape(connection)
+            _validated_applied_prefix(connection, migrations, baseline)
+        else:
+            _validate_legacy_ledger_shape(connection)
+            _validated_applied_prefix_version(
+                connection,
+                migrations,
+                baseline,
+                versioned=False,
+            )
+            connection.execute(
+                """
+                ALTER TABLE ctower_schema_migrations
+                ADD COLUMN applied_server_version_num integer
+                    CHECK (
+                        applied_server_version_num IS NULL
+                        OR applied_server_version_num > 0
+                    )
+                """
+            )
+            _validate_ledger_shape(connection)
+        _close_ledger_privileges(connection)
+        connection.execute("RESET ROLE")
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+
+
 def _validate_preledger_database(
     connection: psycopg.Connection[tuple[object, ...]],
     migrations: tuple[MigrationScript, ...],
@@ -249,7 +300,7 @@ def _validate_preledger_database(
 
 def _validate_ledgered_advance(
     connection: psycopg.Connection[tuple[object, ...]],
-    applied: list[tuple[str, str, str, str, datetime]],
+    applied: list[_AppliedMigrationRow],
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
 ) -> None:
@@ -287,11 +338,19 @@ def _validate_executed_invariants(
 
 def _validate_recorded_application_state(
     connection: psycopg.Connection[tuple[object, ...]],
-    applied: list[tuple[str, str, str, str, datetime]],
+    applied: list[_AppliedMigrationRow],
+    migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
+    ledger_advance_transitions: tuple[MigrationAdvanceTransition, ...],
 ) -> None:
+    _validate_declared_transition_origin(applied, migrations, ledger_advance_transitions)
     mismatch = _recorded_state_matches(connection, applied[-1][0], applied[-1][3])
-    if mismatch is not None:
+    if mismatch is not None and not _matches_ledger_advance_transition(
+        connection,
+        applied,
+        migrations,
+        ledger_advance_transitions,
+    ):
         raise MigrationStateError("ledger-schema-mismatch", mismatch)
     if applied[-1][0] == baseline.through and not hmac.compare_digest(
         applied[-1][3],
@@ -300,6 +359,31 @@ def _validate_recorded_application_state(
         raise MigrationStateError(
             "ledger-attestation-mismatch",
             f"recorded schema does not match the authored baseline for {baseline.through}",
+        )
+
+
+def _validate_declared_transition_origin(
+    applied: list[_AppliedMigrationRow],
+    migrations: tuple[MigrationScript, ...],
+    transitions: tuple[MigrationAdvanceTransition, ...],
+) -> None:
+    recorded = applied[-1]
+    pending_ids = tuple(migration.migration_id for migration in migrations[len(applied) :])
+    candidates = tuple(
+        transition
+        for transition in transitions
+        if pending_ids
+        and recorded[0] == transition.recorded_through
+        and pending_ids[0] == transition.pending_database_from
+        and transition.pending_database_through in pending_ids
+    )
+    if candidates and not any(
+        hmac.compare_digest(recorded[3], transition.recorded_schema_sha256)
+        for transition in candidates
+    ):
+        raise MigrationStateError(
+            "ledger-schema-mismatch",
+            f"recorded schema is not the declared transition origin for {recorded[0]}",
         )
 
 
@@ -325,24 +409,6 @@ def _migration_execution_error(
             "inspect access-controlled PostgreSQL diagnostics"
         ),
     )
-
-
-def _baseline_index(
-    migrations: tuple[MigrationScript, ...],
-    baseline: MigrationBaseline,
-) -> int:
-    for index, migration in enumerate(migrations):
-        if migration.migration_id == baseline.through:
-            return index
-    raise MigrationStateError(
-        "baseline-manifest-mismatch",
-        f"baseline migration is not a database migration: {baseline.through}",
-    )
-
-
-def _ledger_exists(connection: psycopg.Connection[tuple[object, ...]]) -> bool:
-    row = connection.execute("SELECT to_regclass('public.ctower_schema_migrations')").fetchone()
-    return row is not None and row[0] is not None
 
 
 def _has_preledger_objects(connection: psycopg.Connection[tuple[object, ...]]) -> bool:
@@ -373,211 +439,57 @@ def _has_preledger_objects(connection: psycopg.Connection[tuple[object, ...]]) -
     return row is not None and row[0] is True
 
 
-def _create_ledger(connection: psycopg.Connection[tuple[object, ...]]) -> None:
-    connection.execute(
-        """
-        CREATE TABLE ctower_schema_migrations (
-            migration_id text PRIMARY KEY
-                CHECK (migration_id ~ '^[0-9]{4}_[a-z0-9_]+[.]sql$'),
-            sha256 text NOT NULL
-                CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
-            application_kind text NOT NULL
-                CHECK (application_kind IN ('applied', 'baseline')),
-            result_schema_sha256 text NOT NULL
-                CHECK (result_schema_sha256 ~ '^sha256:[0-9a-f]{64}$'),
-            applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
-        )
-        """
-    )
-    _close_ledger_privileges(connection)
-    _validate_ledger_shape(connection)
+def _matches_ledger_advance_transition(
+    connection: psycopg.Connection[tuple[object, ...]],
+    applied: list[_AppliedMigrationRow],
+    migrations: tuple[MigrationScript, ...],
+    transitions: tuple[MigrationAdvanceTransition, ...],
+) -> bool:
+    """Accept only an authored exact canonical state between migration scopes."""
 
-
-def _validate_ledger_shape(connection: psycopg.Connection[tuple[object, ...]]) -> None:
-    relation = connection.execute(
-        """
-        SELECT class.relkind, pg_get_userbyid(class.relowner)
-        FROM pg_class AS class
-        JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
-        WHERE namespace.nspname = 'public' AND class.relname = %s
-        """,
-        (_LEDGER,),
+    pending_ids = tuple(migration.migration_id for migration in migrations[len(applied) :])
+    if not pending_ids:
+        return False
+    server_row = connection.execute(
+        "SELECT current_setting('server_version_num')::integer"
     ).fetchone()
-    columns = connection.execute(
-        """
-        SELECT attribute.attname, format_type(attribute.atttypid, attribute.atttypmod),
-               attribute.attnotnull,
-               COALESCE(pg_get_expr(default_value.adbin, default_value.adrelid), '')
-        FROM pg_attribute AS attribute
-        JOIN pg_class AS class ON class.oid = attribute.attrelid
-        JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
-        LEFT JOIN pg_attrdef AS default_value
-          ON default_value.adrelid = attribute.attrelid
-         AND default_value.adnum = attribute.attnum
-        WHERE namespace.nspname = 'public' AND class.relname = %s
-          AND attribute.attnum > 0 AND NOT attribute.attisdropped
-        ORDER BY attribute.attnum
-        """,
-        (_LEDGER,),
-    ).fetchall()
-    expected = [
-        ("migration_id", "text", True, ""),
-        ("sha256", "text", True, ""),
-        ("application_kind", "text", True, ""),
-        ("result_schema_sha256", "text", True, ""),
-        ("applied_at", "timestamp with time zone", True, "clock_timestamp()"),
-    ]
-    if relation != ("r", _LEDGER_ROLE) or columns != expected:
-        raise MigrationStateError(
-            "ledger-shape-mismatch",
-            "ctower_schema_migrations is not the exact owned ledger table",
+    if server_row is None:
+        return False
+    postgres_major = cast(int, server_row[0]) // 10_000
+    live_records = _schema_records(connection, canonical=True)
+    live_fingerprint = _schema_fingerprint(live_records)
+    live_object_sum = f"sum256:{_schema_object_sum(live_records):064x}"
+    return any(
+        _transition_matches(
+            transition,
+            recorded=applied[-1],
+            pending_ids=pending_ids,
+            postgres_major=postgres_major,
+            live_fingerprint=live_fingerprint,
+            live_object_sum=live_object_sum,
         )
-    constraints = connection.execute(
-        """
-        SELECT constraint_row.conname, constraint_row.contype,
-               pg_get_constraintdef(constraint_row.oid, true)
-        FROM pg_constraint AS constraint_row
-        JOIN pg_class AS class ON class.oid = constraint_row.conrelid
-        JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
-        WHERE namespace.nspname = 'public' AND class.relname = %s
-        ORDER BY constraint_row.conname
-        """,
-        (_LEDGER,),
-    ).fetchall()
-    # Rendered canonically, for the reason in _rendered_schema_queries: the raw deparse of an
-    # untouched constraint can change across a dump/restore, and the ledger's own table is as
-    # exposed to that as any measured one.
-    expected_constraints = [
-        (
-            "ctower_schema_migrations_application_kind_check",
-            "c",
-            "CHECK (application_kind = ANY (ARRAY['applied'::text, 'baseline'::text]))",
-        ),
-        (
-            "ctower_schema_migrations_migration_id_check",
-            "c",
-            "CHECK (migration_id ~ '^[0-9]{4}_[a-z0-9_]+[.]sql$'::text)",
-        ),
-        ("ctower_schema_migrations_pkey", "p", "PRIMARY KEY (migration_id)"),
-        (
-            "ctower_schema_migrations_result_schema_sha256_check",
-            "c",
-            "CHECK (result_schema_sha256 ~ '^sha256:[0-9a-f]{64}$'::text)",
-        ),
-        (
-            "ctower_schema_migrations_sha256_check",
-            "c",
-            "CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'::text)",
-        ),
-    ]
-    nonowner_access = connection.execute(
-        """
-        SELECT pg_get_userbyid(entry.grantee), entry.privilege_type, entry.is_grantable
-        FROM pg_class AS class
-        JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
-        CROSS JOIN LATERAL aclexplode(COALESCE(
-            class.relacl, acldefault('r', class.relowner)
-        )) AS entry
-        WHERE namespace.nspname = 'public' AND class.relname = %s
-          AND entry.grantee <> class.relowner
-        ORDER BY 1, 2, 3
-        """,
-        (_LEDGER,),
-    ).fetchall()
-    if constraints != expected_constraints or nonowner_access != [
-        ("ctower_admin", "SELECT", False)
-    ]:
-        raise MigrationStateError(
-            "ledger-shape-mismatch",
-            "ctower_schema_migrations constraints or privileges differ",
-        )
-
-
-def _validated_applied_prefix(
-    connection: psycopg.Connection[tuple[object, ...]],
-    migrations: tuple[MigrationScript, ...],
-    baseline: MigrationBaseline,
-) -> list[tuple[str, str, str, str, datetime]]:
-    rows = cast(
-        list[tuple[str, str, str, str, datetime]],
-        connection.execute(
-            """
-            SELECT migration_id, sha256, application_kind,
-                   result_schema_sha256, applied_at
-            FROM ctower_schema_migrations
-            ORDER BY migration_id
-            """
-        ).fetchall(),
+        for transition in transitions
     )
-    expected_ids = [migration.migration_id for migration in migrations[: len(rows)]]
-    actual_ids = [row[0] for row in rows]
-    if actual_ids != expected_ids:
-        raise MigrationStateError(
-            "ledger-history-mismatch",
-            "ledger rows are not one contiguous authored migration prefix",
-        )
-    for row, migration in zip(rows, migrations, strict=False):
-        if not hmac.compare_digest(row[1], migration.sha256):
-            raise MigrationStateError(
-                "ledger-checksum-mismatch",
-                f"recorded checksum differs for {migration.migration_id}",
-            )
-    _validate_baseline_rows(rows, migrations, baseline)
-    return rows
 
 
-def _validate_baseline_rows(
-    rows: list[tuple[str, str, str, str, datetime]],
-    migrations: tuple[MigrationScript, ...],
-    baseline: MigrationBaseline,
-) -> None:
-    baseline_index = _baseline_index(migrations, baseline)
-    baseline_ids = [row[0] for row in rows if row[2] == "baseline"]
-    if baseline_ids and baseline_ids != [
-        migration.migration_id for migration in migrations[: baseline_index + 1]
-    ]:
-        raise MigrationStateError(
-            "ledger-baseline-mismatch",
-            "baseline rows must be the complete declared pre-ledger history",
-        )
-    if any(row[2] not in {"applied", "baseline"} for row in rows):
-        raise MigrationStateError(
-            "ledger-application-kind-mismatch",
-            "ledger contains an unknown application kind",
-        )
-
-
-def _record_migration(
-    connection: psycopg.Connection[tuple[object, ...]],
-    migration: MigrationScript,
+def _transition_matches(
+    transition: MigrationAdvanceTransition,
     *,
-    application_kind: Literal["applied", "baseline"],
-    result_schema_sha256: str,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO ctower_schema_migrations (
-            migration_id, sha256, application_kind, result_schema_sha256, applied_at
-        ) VALUES (%s, %s, %s, %s, clock_timestamp())
-        """,
-        (
-            migration.migration_id,
-            migration.sha256,
-            application_kind,
-            result_schema_sha256,
-        ),
+    recorded: _AppliedMigrationRow,
+    pending_ids: tuple[str, ...],
+    postgres_major: int,
+    live_fingerprint: str,
+    live_object_sum: str,
+) -> bool:
+    return (
+        recorded[0] == transition.recorded_through
+        and hmac.compare_digest(recorded[3], transition.recorded_schema_sha256)
+        and pending_ids[0] == transition.pending_database_from
+        and transition.pending_database_through in pending_ids
+        and postgres_major == transition.postgres_major
+        and hmac.compare_digest(live_fingerprint, transition.result_schema_sha256)
+        and hmac.compare_digest(live_object_sum, transition.schema_object_sum256)
     )
-
-
-def _close_ledger_privileges(connection: psycopg.Connection[tuple[object, ...]]) -> None:
-    connection.execute(
-        """
-        REVOKE ALL ON ctower_schema_migrations
-        FROM PUBLIC, ctower_admin, ctower_svc, ctower_projection, ctower_runtime,
-             ctower_projection_runtime
-        """
-    )
-    connection.execute("GRANT SELECT ON ctower_schema_migrations TO ctower_admin")
 
 
 def _schema_records(
