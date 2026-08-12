@@ -29,5 +29,5 @@ SecretStorage==3.5.0
 setuptools==83.0.0
 types-jsonschema==4.26.0.20260518
 uv==0.12.1
-uvicorn==0.52.0
+uvicorn==0.52.1
 wheel==0.47.0
