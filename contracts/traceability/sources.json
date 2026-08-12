@@ -2358,7 +2358,7 @@
       ]
     },
     {
-      "path": "packs/routines/ctower.beat.migration/v1.yaml",
+      "path": "packs/routines/ctower.beat.director-drive/v1.yaml",
       "references": [
         "SPEC#event-driven-default-and-routine-revisions",
         "INV-76",

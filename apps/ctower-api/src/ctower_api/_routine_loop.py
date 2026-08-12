@@ -32,10 +32,26 @@ _PACK_PATHS = (
     "routines/ctower.dream.bh-loop/v1.yaml",
     "routines/ctower.dream.fleet/v1.yaml",
     "routines/ctower.beat.health/v1.yaml",
-    "routines/ctower.beat.migration/v1.yaml",
+    "routines/ctower.beat.director-drive/v1.yaml",
     "routines/ctower.beat.bhloop/v1.yaml",
     "routines/ctower.beat.sprint/v1.yaml",
     "routines/ctower.beat.digest/v1.yaml",
+)
+_EXPECTED_ROUTINE_REFS = frozenset(
+    {
+        "ctower.i1.synthetic-four-stage@1",
+        "ctower.i1.daily-backup@1",
+        "ctower.i1.record-anchor@1",
+        "ctower.dream.manibo@1",
+        "ctower.dream.ctower@1",
+        "ctower.dream.bh-loop@1",
+        "ctower.dream.fleet@1",
+        "ctower.beat.health@1",
+        "ctower.beat.director-drive@1",
+        "ctower.beat.bhloop@1",
+        "ctower.beat.sprint@1",
+        "ctower.beat.digest@1",
+    }
 )
 _TOP_LEVEL_KEYS_V1 = frozenset(
     {
@@ -83,22 +99,13 @@ def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
 
     revisions = tuple(_load_revision(pack_root / relative) for relative in _PACK_PATHS)
     references = {revision.routine_ref for revision in revisions}
-    expected = {
-        "ctower.i1.synthetic-four-stage@1",
-        "ctower.i1.daily-backup@1",
-        "ctower.i1.record-anchor@1",
-        "ctower.dream.manibo@1",
-        "ctower.dream.ctower@1",
-        "ctower.dream.bh-loop@1",
-        "ctower.dream.fleet@1",
-        "ctower.beat.health@1",
-        "ctower.beat.migration@1",
-        "ctower.beat.bhloop@1",
-        "ctower.beat.sprint@1",
-        "ctower.beat.digest@1",
-    }
-    if references != expected:
-        raise ValueError("Routine packs do not declare the exact authored revision set")
+    if references != _EXPECTED_ROUTINE_REFS:
+        unexpected = ", ".join(sorted(references - _EXPECTED_ROUTINE_REFS)) or "none"
+        missing = ", ".join(sorted(_EXPECTED_ROUTINE_REFS - references)) or "none"
+        raise ValueError(
+            "Routine packs do not declare the exact authored revision set: "
+            f"unexpected={unexpected}; missing={missing}"
+        )
     return revisions
 
 
