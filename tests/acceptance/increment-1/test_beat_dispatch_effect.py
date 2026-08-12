@@ -163,8 +163,8 @@ def test_operator_retires_active_beat_append_only_and_future_ticks_do_not_reacti
     tenant: TenantFixture,
 ) -> None:
     beats = beat_revisions()
-    target = beats["migration"]
-    unrelated = beats["health"]
+    target = beats["health"]
+    unrelated = beats["director-drive"]
     store = PostgresRuntime(tenant.database.runtime_dsn)
     runtime = Routine(store)
     due = due_mark(target)
@@ -211,8 +211,8 @@ def test_beat_retirement_replay_and_refusal_matrix(
     second_tenant: TenantFixture,
 ) -> None:
     beats = beat_revisions()
-    target = beats["migration"]
-    foreign = beats["health"]
+    target = beats["health"]
+    foreign = beats["director-drive"]
     store = PostgresRuntime(tenant.database.runtime_dsn)
     future = datetime.now(UTC) + timedelta(days=1)
     Routine(store).register(tenant.tenant_id, target, first_fire_at=future)
@@ -240,7 +240,7 @@ def test_beat_retirement_replay_and_refusal_matrix(
     foreign_only = retire(store, operator, uuid4(), foreign.routine_ref)
     assert isinstance(foreign_only, RecordProblem)
     assert (foreign_only.status, foreign_only.code) == (404, "beat-routine-not-found")
-    unknown_ref = "ctower.beat.director-drive@1"
+    unknown_ref = "ctower.beat.unknown@1"
     unknown = retire(store, operator, uuid4(), unknown_ref)
     assert isinstance(unknown, RecordProblem)
     assert (unknown.status, unknown.code) == (404, "beat-routine-not-found")

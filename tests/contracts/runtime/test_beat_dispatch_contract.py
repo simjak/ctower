@@ -13,7 +13,7 @@ ROOT = Path(__file__).parents[3]
 
 EXPECTED = {
     "health": ({14, 34, 54}, None),
-    "migration": ({4, 19, 34, 49}, None),
+    "director-drive": ({4, 34}, None),
     "bhloop": ({9, 24, 39, 54}, None),
     "sprint": ({23}, {2, 8, 14, 20}),
     "digest": ({12}, {7}),
@@ -22,14 +22,14 @@ EXPECTED_PROMPT_DIGESTS = {
     "bhloop": "sha256:df64756b3616875f0b764f5662fcc27e4c29a4e13f00cfb54d94fbef8e9b6f5c",
     "digest": "sha256:fcf425433a5d4d75274ba1c631e3f6acdf24997388510b5406014601fc6a9775",
     "health": "sha256:eeb374713e45be8d0f5b1fdad7438e06698ccce0444d86f4496f3395b849aa22",
-    "migration": "sha256:a533640c4f206f3afd3fcb5bd9b1e0abc8c4b2495bc02cd13437739cd1400f6d",
+    "director-drive": "sha256:f2fcdf0589b945a89a6d29e404f33b1221f4e55c3987c1cf550212f258e3fe1c",
     "sprint": "sha256:a0fd8e11dbd81634d66025298bc60868c3cc5967bd3fc9e821fd53cb444ec963",
 }
 EXPECTED_TIMEZONES = {
     "bhloop": "UTC",
     "digest": "Europe/Vilnius",
     "health": "UTC",
-    "migration": "UTC",
+    "director-drive": "UTC",
     "sprint": "Europe/Vilnius",
 }
 
@@ -55,11 +55,15 @@ def test_five_fleet_beat_packs_pin_exact_prompts_and_schedules() -> None:
         }
         dispatch = cast(dict[str, object], pack["beat_dispatch"])
         prompt_bytes = cast(str, dispatch["prompt"]).encode()
+        if beat_key == "director-drive":
+            assert prompt_bytes.endswith(b"\n")
+        else:
+            assert not prompt_bytes.endswith(b"\n")
         assert dispatch == {
             "beat_key": beat_key,
             "prompt_source": f"state/beats/{beat_key}.txt",
             "prompt_sha256": f"sha256:{hashlib.sha256(prompt_bytes).hexdigest()}",
-            "prompt": prompt_bytes.decode().rstrip("\n"),
+            "prompt": prompt_bytes.decode(),
             "target_session": "commander",
         }
         assert dispatch["prompt_sha256"] == EXPECTED_PROMPT_DIGESTS[beat_key]

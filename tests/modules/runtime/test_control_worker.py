@@ -277,7 +277,7 @@ def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
             "ctower.dream.bh-loop@1",
             "ctower.dream.fleet@1",
             "ctower.beat.health@1",
-            "ctower.beat.migration@1",
+            "ctower.beat.director-drive@1",
             "ctower.beat.bhloop@1",
             "ctower.beat.sprint@1",
             "ctower.beat.digest@1",
