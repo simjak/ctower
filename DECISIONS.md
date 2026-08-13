@@ -2559,3 +2559,73 @@ surfaces and transport content); similarity-based seven-day deduplication (can e
 as a director-owned report or adding a second cadence (creates competing projections and schedules); or making
 documentation a follow-up (violates the accepted landing boundary). Specifying CT-I1-025 activates nothing;
 implementation waits on its dependencies and ordinary activation.
+## D61 — Dream-cycle session mining uses a bounded, redacted map-reduce funnel (product, 2026-08-13, operator order R2956)
+
+The operator ordered the dream cycle to read every crew member's sessions across every harness and expose
+decision reasoning, flaws, repeated rediscovery, missing procedure knowledge, and documentation gaps. The
+dream synthesis model cannot also hold Requests, Tickets, and all raw sessions. This decision extends D16's
+durable Routine boundary, preserves D33's distinction between a recorded work-session fact and a harness
+transcript, and keeps D59's dream maintenance proposal-only against Request authority. The durable product
+destination is CT-I1-026 with acceptance family AC-MINE-01..07.
+
+1. **MAP reads one session; it never accumulates the corpus.** One routed small reader handles one eligible
+   Claude, Codex, or Hermes crew session and emits one strict `SessionDigest`. The fixed rubric records
+   decisions with reasoning, flaws and dead ends, rediscovery of fleet-known facts, procedure-knowledge
+   gaps, and documentation gaps. Every claim is paraphrased and carries only an opaque typed evidence
+   pointer to the source session and bounded event/range coordinates.
+2. **Three real readers share one narrow contract.** Runner-side Claude `~/.claude/projects` JSONL, Codex
+   rollout, and Hermes log Adapters implement one small extractor Interface and pass one conformance suite.
+   Harness-specific filesystem and parsing rules stop at that Interface; they never enter kernel authority,
+   authored product behavior, or the digest schema.
+3. **Redaction happens before the first model or process boundary.** The local reader deterministically
+   removes credential material before MAP input is submitted. Raw transcript text, raw credential text,
+   local paths, and transcript excerpts enter no model request, digest, reducer input, Pattern Card, ledger,
+   ordinary evidence, log, or telemetry. REDUCE therefore cannot see anything the reader did not sanitize,
+   and pointers remain resolvable only by an authorized reader with access to the host source.
+4. **REDUCE is complete over one bounded batch; DREAM receives judgment inputs only.** Each digest is at
+   most 500 tokens under its pinned tokenizer. One routed strong REDUCE model receives every accepted digest
+   in the night's batch and no more than 30,000 digest tokens, then clusters them into strict Pattern Cards
+   carrying stable identity, occurrence counts, scope, and evidence pointers. Overflow is a visible deferred
+   suffix, never truncation or a second hidden summary. DREAM receives only Pattern Cards plus separately
+   authorized Request and Ticket projections; it never receives a raw transcript, session message, local
+   transcript path, or Session Digest.
+5. **Repeated discovery becomes a durable measurement.** The trusted Knowledge Module owns an append-only
+   pattern ledger behind one small public Interface. Each stable pattern records first seen, last seen,
+   lifetime count, per-night occurrence count, source watermark, and any linked skill/document cure. A zero
+   after a cure is recorded only for a complete relevant nightly batch; partial coverage is `unknown`, never
+   a fabricated zero. Prior occurrences and rejected/superseded clustering remain inspectable.
+6. **Incremental means accepted cursors, not remembered filenames.** One server-accepted cursor per harness
+   binds source ordering, extractor revision, accepted sanitized digest or typed parse skip, and Routine
+   occurrence. Restart and replay cannot duplicate a session. Each night reads only the unprocessed suffix;
+   a bounded overflow advances through the accepted prefix and leaves the deferred suffix eligible for the
+   next occurrence, so historical growth alone cannot increase nightly reads or model cost.
+7. **Parse failure is counted and never guessed.** Malformed, unreadable, or unsupported input records an
+   opaque source pointer, extractor revision, typed reason, and skip count; it advances that exact source
+   position without inventing a digest or pattern and makes coverage `partial`. A later versioned reprocess
+   appends its result beside the failure. Silence, a missing harness root, or an empty parser result never
+   claims a complete empty night.
+8. **Ctower owns typed truth; the runner owns host access and execution.** Authored contracts define digests,
+   parse failures, Pattern Cards, reducer batches/receipts, cursors, and completeness. Knowledge owns ledger
+   truth, Runtime owns occurrence/effect/consume custody, and Projections owns authorization-safe reads. The
+   runner has no Record-tier credential: it reads local sources, redacts, runs MAP/REDUCE, and submits only
+   strict generated-client payloads through authenticated control-plane APIs. Secrets remain references.
+9. **The existing dream rail is revised, not bypassed.** Successor `ctower.dream.*` Routine revisions pin the
+   existing strict model-requirement shape for MAP, REDUCE, and DREAM and change both closed inventories and
+   their exact-count tests together. Accepted `@1` packs are never edited. The verified live dead-consumer
+   alarm is a build precondition; no mining occurrence may claim a working rail when its consumer is stale.
+10. **One projection may serve the seven-day report; delivery remains separate.** R2951 may combine the same
+    authorization-safe date-range Pattern Card projection with the project-management Request/Ticket
+    projection, including counts, pointers, watermarks, and `complete|partial|unknown`. It receives neither
+    transcripts nor Session Digests and creates no second ledger, reducer, or schedule. Outside-reader
+    documentation lives at `docs/concepts/session-mining.md` and ships with every build PR. The accepted
+    order is to land and build R2954's project-management item before R2956 because DREAM consumes that
+    projection and both builds touch the closed Routine inventory.
+
+Rejected alternatives: feeding all sessions to the synthesis model (its context is already shared with
+Requests and Tickets); sending raw transcripts or post-hoc redaction to REDUCE (secrets have already crossed
+the boundary); one extractor with harness branches (a catch-all reader that cannot pass per-harness
+conformance); scanning all history nightly (cost grows with age); deriving cure success from silence
+(unknown masquerades as zero); storing transcript bytes in ctower to make pointers convenient (the control
+plane becomes a secret-bearing session archive); or letting DREAM mutate Requests/Tickets (violates D59's
+operator authority). Specifying CT-I1-026 activates no reader, model call, schedule, ledger, or runtime
+behavior; implementation waits on its dependencies and ordinary activation.
