@@ -2706,3 +2706,77 @@ reads or model-reconstructed worklists (crosses the Record boundary and loses de
 documentation after the build chain (leaves the first consumer without a truthful outside-reader contract).
 Specifying CT-I1-027..029 activates no event, clock, read, feed, consumer, schedule, documentation page, or
 runtime behavior; implementation waits on each item's dependencies and ordinary activation.
+
+## D63 — The tool and knowledge catalog is one public engine over private, revision-pinned company content (product, 2026-08-13, operator order R2967)
+
+The operator ordered a reusable tool and knowledge catalog that can serve a whole company or one Project
+without publishing a company's actual tools, skills, personas, or operating instructions. This extends
+D12's one deep Catalog and secret-free CompanyBundle, D16's exact Routine revision discipline, D31's
+existing attributable Actors, and D37's immutable published contract shapes. The durable destination is
+CT-I1-030 with acceptance family AC-CAT-01..08.
+
+1. **The public repository owns the engine, never tenant content.** Authored contracts, engine code,
+   explicitly public first-party packs, synthetic examples, and generic fixtures may be public. Actual
+   tenant tool, skill, persona, instruction, credential, and inventory content remains in private
+   per-company storage. Repository admission injects a marked tenant artifact and refuses it by the stable
+   name tenant-catalog-content-in-public-repository; a generic secret or generated-file check cannot
+   substitute for that proof.
+2. **There is still one Catalog and one bundle path.** Tool, skill, persona, goal, and Project resources are
+   ordinary VersionedComponent categories behind the existing Catalog Interface. CompanyBundle remains the
+   only validate, plan, apply, export, and future-active-bundle path. No category gains a second catalog,
+   revision ledger, active pointer, scope store, permission service, or package-per-kind engine.
+3. **COMPANY and PROJECT are scopes, not products.** COMPANY is the existing tenant scope with no Project
+   key and may be resolved across that tenant's authorized Project contexts. PROJECT carries one exact
+   Project key and cannot cross it. Existing Goal and Project components and exact bundle assignments
+   express the hierarchy; neither scope creates a second aggregate or top-level product surface.
+4. **Publication and consumption are append-only and exactly pinned.** Published payloads are immutable.
+   Normative shape changes publish a new authored schema version under D37; content changes append a new
+   component revision and digest. Supersession, deprecation, revocation, rollback, and active-pointer
+   movement affect future resolution only. Every read, index result, materialization, invocation, and result
+   identifies exact kind, key, revision, and content digest, matching the standing Routine discipline.
+5. **Existing principals and scopes remain exhaustive.** Operator-only CompanyBundle apply publishes either
+   scope; Commanders may author or propose but cannot apply. Existing human role bindings may read COMPANY
+   entries only through an authorized Project context and PROJECT entries only for a bound Project; viewers
+   remain read-only. Project-seat credentials gain no Catalog browse or administration surface, and a
+   current runner job receives only an exact already-authorized pin. Visibility never grants invocation.
+   A new principal, authority store, bearer format, or free-standing Catalog scope requires a separately
+   accepted Seam decision.
+6. **Invocation is a typed Runtime command, not Catalog authority.** The control plane binds the Actor,
+   tenant and Project, exact component pin, named operation, strict input digest, idempotency identity,
+   policy, job, lease, and fencing context before dispatch. Only the runner materializes and executes through
+   the existing Runtime and CommandGuard boundary, then returns a strict result through generated APIs.
+   Runner completion cannot itself advance Workflow, satisfy Evidence, or grant an effect, and runner,
+   provider, web, CLI, and generated clients never connect to Record-tier persistence.
+7. **Private-source synchronization advances accepted cursors.** Each source and scope has one monotonic
+   accepted cursor binding source ordering and watermark, reader and mapping revisions, occurrence, and each
+   staged entry or typed skip. A bounded accepted prefix may advance while a visible deferred suffix remains
+   eligible. Restart, replay, equal timestamps, and duplicate discovery create no duplicate revision;
+   partial, unknown, stale, unauthorized, or conflicting input cannot claim complete-empty truth or move an
+   active pointer. External payloads are strict, and secrets are references only.
+8. **One directory import seam covers migration.** A bounded directory importer maps tool, skill, and
+   persona trees to exact scope, kind, key, schema, revision, digest, and provenance. Dry-run emits a
+   canonical per-item create/reuse/supersede/refuse report, totals, and source watermark; apply uses the
+   ordinary staged Catalog and sync path. Identical re-import creates no revision, changed content proposes
+   one new revision, and ambiguous or missing mappings refuse without partial publication. Migrating,
+   naming, counting, or preserving quirks from any real tenant inventory is outside CT-I1-030.
+9. **Outside developers get one complete documentation path in the build.** The concept home is
+   docs/concepts/catalog.md, the first-use path is linked from docs/quickstart.md, and normative schemas,
+   scopes, permissions, synchronization, invocation, refusals, and import behavior live at
+   docs/reference/catalog.md. Navigation and every affected API, CLI, runner, and security reference update
+   in the same candidate. Public pages contain no internal request or ticket identifiers, crew or seat
+   labels, private paths or links, operational jargon, or private inventory facts; same-head scanning and an
+   outside-reader walkthrough block landing.
+10. **The catalog build is independent of the project-management chain.** CT-I1-030 depends directly on the
+    existing CompanyBundle/API/CLI, Project authority, and human Actor boundaries in CT-I1-004, CT-I1-009,
+    and CT-I1-013. It consumes none of CT-I1-024..029. Exercised arbitrary invocation still waits for the
+    standing Runtime/CommandGuard prerequisite; publication alone never claims an execution path.
+
+Rejected alternatives: publishing tenant catalogs or realistic tenant inventories in the engine repository
+(breaks the engine/content boundary); parallel company and Project catalogs (duplicates D12 authority);
+mutable entries or floating latest resolution (rewrites consumed truth); Catalog visibility as an execution
+grant or a new Catalog principal/scope (bypasses D31 and existing Project authorization); control-plane or
+Record-tier execution (crosses the runner boundary); source polling without accepted cursor truth (duplicates
+or skips content); an importer that writes around CompanyBundle/Catalog staging (creates a migration authority);
+or internal documentation and follow-up public docs (leaves the first outside developer without a truthful
+contract). Specifying CT-I1-030 publishes, indexes, synchronizes, imports, materializes, or executes nothing;
+implementation waits on its dependencies and ordinary activation.
