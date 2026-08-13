@@ -2629,3 +2629,80 @@ conformance); scanning all history nightly (cost grows with age); deriving cure 
 plane becomes a secret-bearing session archive); or letting DREAM mutate Requests/Tickets (violates D59's
 operator authority). Specifying CT-I1-026 activates no reader, model call, schedule, ledger, or runtime
 behavior; implementation waits on its dependencies and ordinary activation.
+
+## D62 — Ticket movement, typed stall clocks, and Commander beats derive from one durable transition stream (product, 2026-08-13, operator order R2964; build order R2959)
+
+The operator ordered one trustworthy account of whether work is moving, where it is waiting, and what each
+Commander must carry into the next beat. The answer must reuse Ticket transition truth instead of creating a
+second status ledger, must compose with D59's proposal discipline and D60's project-management views, and must
+remain available to D61's bounded dream cycle without sending Ticket records through a model. The durable
+destinations are CT-I1-027, CT-I1-028, and CT-I1-029 with acceptance families AC-MOVE-01..05,
+AC-STALL-01..04, and AC-BEAT-01..04.
+
+1. **Movement is the accepted transition fact, not a second timeline.** The existing `workflow.changed`
+   transition branch appends exactly one canonical movement fact in the same transaction as each accepted
+   stage transition. It identifies the Ticket, prior and resulting stage, existing Actor envelope, server
+   occurrence position, and stable transition-evaluation/evidence-manifest pointer. Exact replay returns the
+   original result without another movement; pending or refused transitions create none.
+2. **Movement and waiting records are deliberately event-specific.** They link to a Ticket by stable identity
+   and carry only the facts needed to explain that movement or wait episode; neither embeds an exhaustive
+   Ticket snapshot. Later Ticket attributes can therefore remain orthogonal to these records. This decision
+   does not name, design, or activate any such attribute.
+3. **One authorized stream has three bounded projections.** A project-authorized cursor read over the existing
+   project event-feed boundary is the source for the generated API and protected CLI, a prior-Europe/Vilnius-
+   civil-day digest projection, and Atom 1.0. The I1 API/CLI is the review surface; later browser rendering is
+   contextual within the existing five product surfaces, never a sixth route. The digest carries counts grouped
+   by Project and exact from/to stage plus an authorization-preserving pointer and watermark, not event rows or
+   Ticket text. Atom uses stable entry identities, server timestamps, authorized links, deterministic paging,
+   and `application/atom+xml`; it accepts only the existing direct-API Bearer/project-seat credential resolved
+   to the existing Actor and project grant. There is no anonymous feed, query credential, feed-token principal,
+   or Ticket-text payload.
+4. **A wait is an append-only typed episode.** A Ticket may enter `review`, `operator-decision`, `external`, or
+   `blocked-by-ticket` waiting. The opening fact records server `waiting_since`, accountable owner, and a stable
+   source pointer. Rechecks and resolution append facts; they never rewrite elapsed history. Repeated evaluation
+   of the same source state emits no duplicate episode or breach.
+5. **The first stall floors are explicit and conservative.** Review breaches after 24 hours; operator decision
+   after 48 hours and then reuses D50's decision brief; external waiting after seven days; and
+   `blocked-by-ticket` after 24 hours without movement by the named blocking Ticket, with immediate reevaluation
+   whenever that Ticket moves. The 24-hour internal-dependency floor catches a full unattended workday without
+   treating every short dependency wait as a stall.
+6. **Breaches batch into existing reads; they do not page by default.** The owning Commander's next existing
+   beat and D60 project-management digest aging receive breached episodes. No new Routine, cadence, or immediate
+   notification is added. Ordinary waiting does not itself derive Attention or `human-waiting`; those remain
+   separate typed states with their own authority.
+7. **Uncertainty remains visible.** Missing, stale, unreadable, unauthorized, or conflicting owner, source,
+   dependency, movement, or clock input derives typed `unknown`, is surfaced beside breached stalls, and can
+   never be rendered as calm, complete, or absent.
+8. **The Commander worklist is a complete generated read.** One authenticated projection returns the current
+   nonterminal Tickets owned by the existing Commander/custodian, grouped by pinned stage, plus breached or
+   unknown stall clocks and movement since the last accepted beat watermark. Completeness is stated per source.
+   Every beat reads the full current owned-ticket set; the watermark limits only the movement delta and never
+   Ticket membership.
+9. **Mission Control consumes through the control plane.** The D52 sibling consumer starts every applicable
+   Commander beat by calling the generated authenticated API. It imports no kernel or Record-tier client and
+   receives no Record credential. Context compaction, restart, model substitution, or harness substitution cannot
+   drop an owned Ticket because the worklist is re-read from ctower at each beat.
+10. **A failed preflight cannot become a clean prompt.** Unavailable, stale, gapped, unauthorized, conflicting,
+    partial, or unknown worklist input yields a typed failed/partial/unknown preflight. The consumer neither
+    injects a contextless clean beat nor claims an empty list, advances the accepted watermark, or suppresses the
+    missing scope. This adds no schedule, preserves D52/D53's existing Routine and revision custody, and does not
+    claim D52's separately authorized server-side lane-binding ceremony.
+11. **Builds land in dependency order and share one documentation home.** Under R2959 the candidates fully land
+    in order CT-I1-024, CT-I1-027, CT-I1-025, CT-I1-028, CT-I1-029, CT-I1-026. CT-I1-027 creates
+    `docs/concepts/ticket-movement.md` with Movement feed, Stall clocks, and Commander beat worklist sections;
+    the latter two are marked planned until their builds, and each later candidate updates the same page and all
+    affected API, CLI, digest, Routine, and Mission Control references in the same head. Movement is the smallest
+    full-close read and lands before project management; project management then establishes the digest/beat home
+    required by stall clocks; the Commander worklist follows both sources; and session mining remains last so
+    context analysis cannot become a substitute for durable Ticket drive.
+
+Rejected alternatives: a mutable Ticket-status mirror or second movement ledger (diverges from transition
+truth); one event per downstream presentation (duplicates custody); embedding Ticket rows or text in digests or
+Atom (turns transport into an authorization leak); anonymous or special feed credentials (adds a principal and
+secret lifecycle); mutable `waiting_since`, polling-only blocked-ticket clocks, or a generic waiting boolean
+(erases causality and uncertainty); automatic Attention or a new alert cadence for every wait (collapses separate
+operator states); a beat cursor that defines Ticket membership (drops quiet work); Mission Control database
+reads or model-reconstructed worklists (crosses the Record boundary and loses deterministic completeness); or
+documentation after the build chain (leaves the first consumer without a truthful outside-reader contract).
+Specifying CT-I1-027..029 activates no event, clock, read, feed, consumer, schedule, documentation page, or
+runtime behavior; implementation waits on each item's dependencies and ordinary activation.
