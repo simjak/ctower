@@ -2416,3 +2416,60 @@ what this replaces); storing credential values to simplify rotation (violates th
 references invariant); permanent fallback-model substitution (silent capability drift the operator
 never chose). Specifying CT-I1-023 activates nothing; implementation waits on its dependencies, and
 R2931 drains into ctower through the R2927 intake path when it lands.
+
+## D59 — Request maintenance proposals are separate facts; only the operator turns one into a Request command (product, 2026-08-13, operator order R2947)
+
+The nightly dream-cycle maintenance now knows how to inspect the operator's Request ledger, but it may
+only propose: a wrong automatic merge can silently erase an order, inferred delivery can falsely close
+one, and an asserted supersession can hide the words that distinguish two asks. Mission Control owns
+that ledger today. After CT-I1-015 makes ctower the sole Request authority, the durable destination is
+the tower feature specced as CT-I1-024 with acceptance family AC-PROP-01..07.
+
+1. **A proposal is a fact separate from every Request it concerns.** Each Request-maintenance proposal
+   has its own stable identity and append-only lifecycle. Creating, ranking, reading, confirming, or
+   rejecting the proposal never edits, deletes, aliases away, or substitutes for a target Request fact.
+   The proposal queue is a projection of proposal facts, not writable Request state.
+2. **Evidence and attribution travel with the proposal.** Every proposal records its existing proposer
+   Actor/seat identity, source watermark, target Request identity and expected version, and at least one
+   typed stable evidence pointer. A completed-but-open proposal points to the shipped evidence it relies
+   on and never treats semantic resemblance as proof of delivery. A supersession proposal carries both
+   Request identities and quotes both exact Request texts so the claimed replacement is visible rather
+   than asserted.
+3. **Similarity may propose; it never merges.** Similarity can create an open duplicate candidate, but
+   no score, model output, Routine, projector, or proposer may execute the duplicate disposition. Any
+   proposed or confirmed operation that would discard, overwrite, or cease preserving either order's
+   stable identity or exact text is refused by name.
+4. **Confirmation is operator-only and the mutation remains its own command.** The authenticated existing
+   operator may confirm one exact open proposal. That act records the proposal decision and causes one
+   ordinary Request command with its own command/result identity, idempotency key, expected version,
+   authority check, and evidence gate. The Request changes only if that command is accepted; a refusal
+   leaves it unchanged and visible instead of treating confirmation as proof that mutation succeeded.
+   Proposers, Commanders, project seats, Routines, digest readers, and browser sessions without current
+   operator authority cannot confirm.
+5. **Rejection is a recorded disposition, never deletion.** Rejecting a proposal appends the operator,
+   time, and optional reason, derives `REJECTED`, and leaves the proposal, its evidence, and every target
+   Request queryable. Confirmed and rejected proposals cannot return to `OPEN` or be reused against a
+   later Request version.
+6. **Ambiguity stays open and says why.** Conflicting or incomplete evidence, an uncertain duplicate,
+   unclear supersession, a stale target version, or an unprovable completion leaves the proposal `OPEN`
+   with one typed ambiguity reason. No fallback guesses a Request disposition, closure, replacement, or
+   rank fact from silence.
+7. **The review order is deterministic; the digest remains small.** Remaining open Requests are ranked
+   for the operator's top-20 kill-or-keep pass by current week-goal relevance, then older age, then
+   operator-gated before fleet-owned work, with stable Request identity as the final tie-breaker. The
+   morning digest receives only proposal counts plus an authorization-preserving pointer to that exact
+   top-20 view and source watermark. It never embeds the proposal or Request list.
+8. **Authority precedes presentation.** CT-I1-024 owns the proposal facts, projection, generated API, and
+   protected CLI review/confirm/reject commands after CT-I1-015 and CT-I1-018. Its single confirmation
+   action is the command contract that the later CT-I2-011 Request surface may render as one click after
+   CT-I2-005. This decision adds no product browser implementation, schedule, principal, ingress, egress,
+   adapter, or Mission Control writer change.
+
+Rejected alternatives: annotating Requests with mutable proposal fields (a proposal would silently become
+authority); automatic merge or closure (similarity and inferred delivery cannot safely destroy an order);
+deleting rejected proposals (erases the operator's decision and the evidence that informed it); sending the
+top 20 through the digest (duplicates a review surface and leaks list content into transport); or waiting
+for I2 before recording proposals (forces the maintenance writer to retain a second ledger after Request
+authority moves). Specifying CT-I1-024 activates nothing; implementation waits on its stated dependencies
+and ordinary activation, and the current dream-cycle skill remains proposal-only against Mission Control
+until that authority changes.
