@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0066_beat_routine_retirement.sql",
-    "schema_sha256": "sha256:da7b6db4d7eb3f0acafe9395d8b76c90886dfcbb5bd4455f07f19c2a7278ee45",
+    "through": "0067_request_maintenance_proposals.sql",
+    "schema_sha256": "sha256:a469179f2e1f13cae2ab11325d1b764188e626124be3a0c0bc29079c2a7527a4",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:486b5ca6a4abcae26d71b54d91ab18da4ec7bbe2a1e03799bd132d4424477104"
+    "schema_object_sum256": "sum256:b38c6aa1eaef75e0a4904976b1656bde423d36bea1797022e875c4338ae6ab70"
   },
   "ledger_advance_transitions": [
     {
@@ -16,7 +16,7 @@
       "result_schema_sha256": "sha256:a0aad539aed6b65580daf16ac047856ef48fcbd72b82c396220e44ebe1a85d03",
       "schema_object_sum256": "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644",
       "pending_database_from": "0065_console_view_grants.sql",
-      "pending_database_through": "0066_beat_routine_retirement.sql"
+      "pending_database_through": "0067_request_maintenance_proposals.sql"
     }
   ],
   "migrations": [
@@ -634,6 +634,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_retirement_linearizes_against_register_scan_and_rollback_insert",
       "rollback_or_forward_compensation": "Preserve every immutable retirement, Routine revision, occurrence, effect, canonical event, command result, and outbox row; keep the database anti-resurrection guard in place across an old-binary rollback and append reviewed forward compensation rather than deleting or reactivating a retired reference.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine retirement, revision, trigger, occurrence, effect, command-result, event, and outbox counts grouped by tenant and versioned routine reference plus a verified database backup; prove the only removed mutable row is the retired reference's active trigger."
+    },
+    {
+      "path": "0067_request_maintenance_proposals.sql",
+      "sha256": "sha256:9147312c434e7766bba0964ef4921a54c3f3fdb65a509cf1b07e32f324e1799f",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/work/test_request_proposals.py::test_fresh_apply_installs_separate_append_only_proposal_facts",
+      "rollback_or_forward_compensation": "Preserve every immutable proposal, evidence pointer, terminal decision, canonical event, command result, outbox row, and ordinary Request command result; append reviewed forward compensation and never edit, delete, reopen, merge, or reuse an accepted proposal fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture Request, proposal, proposal-evidence, proposal-decision, event, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; all three proposal tables start empty."
     }
   ]
 }

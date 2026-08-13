@@ -13,6 +13,7 @@ ideas explain how ctower keeps work and proof together.
 |---|---|
 | The permanent record for one promised result | [Tickets](tickets.md) |
 | Captured operator intent and outcome accountability | [Requests](requests.md) |
+| Safe review of suggested Request maintenance | [Request-maintenance proposals](request-maintenance-proposals.md) |
 | Dated, byte-exact operator agreements and corrections | [Rulings](rulings.md) |
 | Daily decisions, Rulings, executions, and proof | [Morning digest](morning-digest.md) |
 | The steps that work follows | [Stages](stages.md) |

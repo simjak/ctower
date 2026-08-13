@@ -30,8 +30,13 @@ from ctower_kernel.projections.morning_digest import (
     UnreachedScope,
     project_morning_digest,
 )
+from ctower_kernel.projections.request_proposals import ProposalSummaryInput
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.work.request_proposals import (
+    RequestMaintenanceProposalList,
+    RequestProposals,
+)
 from ctower_kernel.work.requests import RequestList, RequestRow, Requests
 from ctower_kernel.work.rulings import RulingList, Rulings
 
@@ -46,11 +51,13 @@ class _MorningDigestRoutes:
         access: Access,
         requests: Requests,
         rulings: Rulings,
+        proposals: RequestProposals | None,
         recorder: TelemetryRecorder,
     ) -> None:
         self._access = access
         self._requests = requests
         self._rulings = rulings
+        self._proposals = proposals
         self._recorder = recorder
 
     async def get(self, request: Request, date: str | None = None) -> JSONResponse:
@@ -82,6 +89,7 @@ class _MorningDigestRoutes:
         digest = project_morning_digest(
             _request_source_reading(self._requests, actor, telemetry, observed_at),
             _ruling_source_reading(self._rulings, actor, telemetry, observed_at),
+            _proposal_source_reading(self._proposals, actor, observed_at),
             digest_date=digest_date,
             observed_at=observed_at,
         )
@@ -119,6 +127,26 @@ def _ruling_source_reading(
             observed_at=observed_at,
         )
     return _ruling_reading(outcome, observed_at)
+
+
+def _proposal_source_reading(
+    proposals: RequestProposals | None,
+    actor: Actor,
+    observed_at: dt.datetime,
+) -> SourceReading[ProposalSummaryInput]:
+    if proposals is None:
+        return SourceReading.unknown(
+            UnreachedScope("request-proposals", "proposal-source-not-composed"),
+            observed_at=observed_at,
+        )
+    try:
+        outcome = proposals.list(actor)
+    except PsycopgError:
+        return SourceReading.unknown(
+            UnreachedScope("request-proposals", "proposal-source-unavailable"),
+            observed_at=observed_at,
+        )
+    return _proposal_reading(outcome, observed_at)
 
 
 def _request_reading(
@@ -190,6 +218,31 @@ def _ruling_reading(
     )
 
 
+def _proposal_reading(
+    outcome: RequestMaintenanceProposalList | RecordProblem,
+    observed_at: dt.datetime,
+) -> SourceReading[ProposalSummaryInput]:
+    if isinstance(outcome, RecordProblem):
+        return SourceReading.unknown(
+            UnreachedScope("request-proposals", outcome.code), observed_at=observed_at
+        )
+    rows = tuple(ProposalSummaryInput(row.kind, row.state) for row in outcome.rows)
+    unreached = tuple(
+        UnreachedScope(project, "proposal-project-unanswered")
+        for project in outcome.unanswered_projects
+    )
+    if unreached:
+        return SourceReading.partial(
+            rows,
+            watermark=outcome.watermark,
+            observed_at=outcome.observed_at,
+            unreached=unreached,
+        )
+    return SourceReading.complete(
+        rows, watermark=outcome.watermark, observed_at=outcome.observed_at
+    )
+
+
 def _decision_brief(row: RequestRow) -> DecisionBriefFact | None:
     brief = row.decision_brief
     if brief is None:
@@ -212,12 +265,14 @@ def install_morning_digest_routes(
     access: Access,
     requests: Requests,
     rulings: Rulings,
+    proposals: RequestProposals | None,
     recorder: TelemetryRecorder,
 ) -> None:
     routes = _MorningDigestRoutes(
         access,
         requests,
         rulings,
+        proposals,
         recorder,
     )
     app.add_api_route("/v1/digests/morning", routes.get, methods=["GET"])

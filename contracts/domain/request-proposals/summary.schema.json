@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/summary.schema.json",
+  "title": "RequestMaintenanceProposalSummary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["by_kind", "by_state", "pointer", "source_state", "unreached_scopes", "watermark"],
+  "properties": {
+    "by_kind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed_but_open", "duplicate", "keep", "kill", "supersession"],
+      "properties": {
+        "duplicate": {"type": ["integer", "null"], "minimum": 0},
+        "completed_but_open": {"type": ["integer", "null"], "minimum": 0},
+        "supersession": {"type": ["integer", "null"], "minimum": 0},
+        "kill": {"type": ["integer", "null"], "minimum": 0},
+        "keep": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "by_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["CONFIRMED", "OPEN", "REJECTED"],
+      "properties": {
+        "OPEN": {"type": ["integer", "null"], "minimum": 0},
+        "CONFIRMED": {"type": ["integer", "null"], "minimum": 0},
+        "REJECTED": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "pointer": {"type": "string", "const": "/v1/request-maintenance/review"},
+    "watermark": {"type": ["integer", "null"], "minimum": 0},
+    "source_state": {"type": "string", "enum": ["complete", "partial", "unavailable"]},
+    "unreached_scopes": {"type": "array", "items": {"type": "string"}}
+  }
+}

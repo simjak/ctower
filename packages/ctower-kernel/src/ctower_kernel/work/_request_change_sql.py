@@ -293,7 +293,7 @@ def _authority_decision(
 ) -> tuple[bool, str]:
     commander = exact_commander or human_commander
     if isinstance(command, RequestTriage):
-        return commander, "request-triage-forbidden"
+        return operator or commander, "request-triage-forbidden"
     if isinstance(command, RequestPriority):
         return operator or commander, "request-transition-forbidden"
     if isinstance(command, RequestOwner):

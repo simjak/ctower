@@ -6,6 +6,7 @@ questions in a fixed order:
 1. Which recorded Requests still need an operator decision?
 2. Which Rulings were recorded during the prior civil day, and what Request execution followed?
 3. Which related Tickets expose the current proof timeline?
+4. How many Request-maintenance proposals need review, and where is the authorized top-20 view?
 
 The digest does not persist an answer. It folds accepted Request and Ruling reads at their named
 watermarks, derives a stable artifact key, and hashes the canonical content. Repeating the read therefore
@@ -44,3 +45,9 @@ The operator-only [CLI command](../reference/cli.md#morning-digest) and
 delivery and scheduling stay outside ctower: Mission Control sends the rendered text through its existing
 durable-first notification rail. Only the director may switch or retire the interim schedule. This feature
 adds no Slack/Hermes path.
+
+The Request-maintenance section deliberately contains only counts by kind/state, one review pointer, its
+watermark, and source completeness. No proposal or Request identity, text, row, or evidence enters the
+digest. If the proposal source is partial or unavailable, its counts render as `UNKNOWN`, never measured
+zero; an unavailable source also has no claimed watermark. See
+[Request-maintenance proposals](request-maintenance-proposals.md).

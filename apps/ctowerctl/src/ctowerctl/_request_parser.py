@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from uuid import UUID
 
-from ctower_client.models import Priority
+from ctower_client.models import (
+    Priority,
+    RequestMaintenanceProposalKind,
+    RequestMaintenanceProposalState,
+)
 from ctowerctl._parser_support import _command_id, _Parser, _version
 
 __all__: tuple[str, ...] = ()
@@ -38,7 +43,37 @@ def request_parser(parser: argparse.ArgumentParser) -> None:
     )
     triage.add_argument("--reason")
     triage.add_argument("--canonical-request-id", type=UUID)
+    _proposal_parsers(actions)
     _fact_parsers(actions)
+
+
+def _proposal_parsers(actions: argparse._SubParsersAction[_Parser]) -> None:
+    proposals = actions.add_parser("proposal").add_subparsers(
+        dest="proposal_action", required=True, parser_class=_Parser
+    )
+    append = proposals.add_parser("append")
+    append.set_defaults(cli_name="request proposal append")
+    _command_id(append)
+    append.add_argument("--input", dest="input_file", required=True, type=Path)
+    listed = proposals.add_parser("list")
+    listed.set_defaults(cli_name="request proposal list")
+    listed.add_argument("--proposal-id", type=UUID)
+    listed.add_argument("--project-key")
+    listed.add_argument("--kind", choices=tuple(RequestMaintenanceProposalKind))
+    listed.add_argument("--state", choices=tuple(RequestMaintenanceProposalState))
+    review = proposals.add_parser("review")
+    review.set_defaults(cli_name="request proposal review")
+    confirm = proposals.add_parser("confirm")
+    confirm.set_defaults(cli_name="request proposal confirm")
+    confirm.add_argument("proposal_id", type=UUID)
+    _command_id(confirm)
+    confirm.add_argument("--expected-version", required=True, type=int, choices=(1,))
+    reject = proposals.add_parser("reject")
+    reject.set_defaults(cli_name="request proposal reject")
+    reject.add_argument("proposal_id", type=UUID)
+    _command_id(reject)
+    reject.add_argument("--expected-version", required=True, type=int, choices=(1,))
+    reject.add_argument("--reason")
 
 
 def _fact_parsers(actions: argparse._SubParsersAction[_Parser]) -> None:

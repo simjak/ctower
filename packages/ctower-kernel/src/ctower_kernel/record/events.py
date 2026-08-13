@@ -61,6 +61,10 @@ from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
 from ctower_kernel.record.request_events import _validate_identity as _validate_request_identity
+from ctower_kernel.record.request_proposal_events import RequestProposalChangedPayload
+from ctower_kernel.record.request_proposal_events import (
+    _validate_identity as _validate_request_proposal_identity,
+)
 from ctower_kernel.record.routine_events import (
     RoutineRetiredPayload,
     validate_routine_retirement_identity,
@@ -277,6 +281,7 @@ type EventPayload = (
     | AttentionFindingAppendedPayload
     | AttentionFindingDispositionRecordedPayload
     | RequestChangedPayload
+    | RequestProposalChangedPayload
     | RulingRecordedPayload
 )
 
@@ -486,6 +491,11 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             "request",
             _API_OR_IMPORT,
         ),
+        EventCatalogEntry(
+            EventKind.REQUEST_PROPOSAL_CHANGED,
+            RequestProposalChangedPayload,
+            "request-proposal",
+        ),
         EventCatalogEntry(EventKind.RULING_RECORDED, RulingRecordedPayload, "ruling"),
     )
 }
@@ -582,6 +592,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_inbox_identity(event.payload, event.aggregate_id)
     _validate_knowledge_identity(event.payload, event.aggregate_id)
     _validate_request_identity(event.payload, event.aggregate_id)
+    _validate_request_proposal_identity(event.payload, event.aggregate_id)
     _validate_ruling_identity(event.payload, event.aggregate_id)
     _validate_seat_credential_identity(event)
     _validate_session_identity(event)

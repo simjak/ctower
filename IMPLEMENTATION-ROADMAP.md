@@ -452,6 +452,21 @@ transcripts agree; one real notification delivery ID records rail-1 success and 
 same-candidate docs and independent review pass; and source/identity/egress/scheduler inventories show no
 new boundary or director-cron mutation.
 
+### I1.12a — Request-maintenance proposal queue
+
+**Stable work:** `CT-I1-024`.
+
+After Request authority and the native digest, append immutable duplicate/completed/supersession/kill/keep
+proposal identities with exact Request quotes, source watermark, proposer attribution, and typed evidence.
+Keep proposal lifecycle separate from Request state. The authenticated existing operator alone confirms or
+rejects; confirmation invokes one separately identified ordinary Request command and records its exact
+outcome. Rank the operator review deterministically at a fixed top 20 using active Catalog Goal relations,
+recorded operator-decision need, age, and stable identity. Add only counts and its pointer to the digest.
+
+**Exit:** AC-PROP-01..07, the designated real-PostgreSQL proof command, generated API/CLI parity,
+fresh-apply migration fingerprints, same-candidate outside-reader docs, and independent review pass. No
+Routine, schedule, product UI, principal, ingress, egress, adapter, or Mission Control writer is added.
+
 ### I1.13 — Fleet beats as fixed Routines
 
 **Stable work:** `CT-I1-019`.

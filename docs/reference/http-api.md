@@ -42,7 +42,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 199 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 218 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
@@ -136,6 +136,21 @@ accepted decision blocker is active includes the complete record-derived `decisi
 reopens and an inactive latest marker returns `null`. The list declares no caller input for brief text,
 choices, recommendation, or safe default.
 
+### Request-maintenance proposals
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/request-maintenance/proposals` | `appendRequestMaintenanceProposal` | `request proposal append` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `GET` | `/v1/request-maintenance/proposals` | `listRequestMaintenanceProposals` | `request proposal list` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `GET` | `/v1/request-maintenance/review` | `getRequestMaintenanceReview` | `request proposal review` | query | forbidden | `200`, `401`, `403`, `422` |
+| `POST` | `/v1/request-maintenance/proposals/{proposal_id}/confirm` | `confirmRequestMaintenanceProposal` | `request proposal confirm` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/request-maintenance/proposals/{proposal_id}/reject` | `rejectRequestMaintenanceProposal` | `request proposal reject` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+
+Append derives proposer identity and validates the source watermark, exact Request quotes, stable evidence,
+and Project scope. List returns accepted immutable proposal and decision facts. Review is operator-only and
+returns at most 20 deterministic rows. Confirm and reject are terminal; confirm records a separate ordinary
+Request command/result and never disguises a refused target command as success.
+
 ### Rulings
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
@@ -160,7 +175,8 @@ Projects plus the Record watermark; pending facts are absent.
 
 The optional `date` query is an ISO calendar date. Omission selects the current Europe/Vilnius date. The
 operator-only result has one artifact key and content digest, Request and Ruling watermarks, and the ordered
-open-decision, prior-day-Ruling, and Ticket-proof sections. Each section distinguishes a measured zero from
+open-decision, prior-day-Ruling, Ticket-proof, and Request-maintenance summary sections. The proposal
+summary exposes counts, pointer, source state, and watermark only. Each section distinguishes a measured zero from
 an unknown total and names every unreached scope. The read stores nothing and does not deliver or schedule a
 notification. See the [morning digest concept](../concepts/morning-digest.md).
 

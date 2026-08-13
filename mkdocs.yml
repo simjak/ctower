@@ -38,6 +38,7 @@ nav:
       - concepts/index.md
       - The whole picture in one map: concepts/map.md
       - Requests: concepts/requests.md
+      - Request-maintenance proposals: concepts/request-maintenance-proposals.md
       - Rulings and agreements: concepts/rulings.md
       - Morning digest: concepts/morning-digest.md
       - Tickets: concepts/tickets.md

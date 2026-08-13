@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/review.schema.json",
+  "title": "RequestMaintenanceReview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observed_at", "partial", "pointer", "rows", "unanswered_sources", "watermark"],
+  "properties": {
+    "rows": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["created_at", "goal_relevance", "operator_decision_required", "proposal_id", "request_id"],
+        "properties": {
+          "proposal_id": {"type": "string", "format": "uuid"},
+          "request_id": {"type": "string", "format": "uuid"},
+          "goal_relevance": {"type": "string", "enum": ["relevant", "not-relevant", "unknown"]},
+          "operator_decision_required": {"type": "boolean"},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "watermark": {"type": "integer", "minimum": 0},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "partial": {"type": "boolean"},
+    "unanswered_sources": {"type": "array", "items": {"type": "string"}},
+    "pointer": {"type": "string", "const": "/v1/request-maintenance/review"}
+  }
+}

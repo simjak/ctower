@@ -27,6 +27,10 @@ Durable decisions remain in the owning kernel Modules; the API never connects ar
 The Request routes are the same thin composition: capture and six expected-version fact commands delegate
 to Work, while list is accepted-only and read-only. Payloads cannot claim Actor, owner, source, number, or
 state, and no ordinary Request import route exists.
+The separately composed Request-maintenance routes delegate immutable append/list/terminal decisions to
+Work and compose Requests plus the active Catalog only for the operator's deterministic top-20 review.
+They add no target-mutation shortcut; confirmation records an ordinary separately identified Request
+command.
 The operator-only morning-digest route independently reads the injected Request and Ruling authorities and
 passes their typed outcomes to the pure kernel fold. A source refusal becomes a named unknown scope in the
 successful artifact; authentication, role, and malformed-date failures remain transport problems. The route
