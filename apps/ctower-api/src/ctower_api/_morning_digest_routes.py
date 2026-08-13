@@ -89,7 +89,7 @@ class _MorningDigestRoutes:
         digest = project_morning_digest(
             _request_source_reading(self._requests, actor, telemetry, observed_at),
             _ruling_source_reading(self._rulings, actor, telemetry, observed_at),
-            _proposal_source_reading(self._proposals, actor, observed_at),
+            _proposal_source_reading(self._proposals, actor, telemetry, observed_at),
             digest_date=digest_date,
             observed_at=observed_at,
         )
@@ -132,6 +132,7 @@ def _ruling_source_reading(
 def _proposal_source_reading(
     proposals: RequestProposals | None,
     actor: Actor,
+    telemetry: TelemetryContext,
     observed_at: dt.datetime,
 ) -> SourceReading[ProposalSummaryInput]:
     if proposals is None:
@@ -140,7 +141,7 @@ def _proposal_source_reading(
             observed_at=observed_at,
         )
     try:
-        outcome = proposals.list(actor)
+        outcome = proposals.list(actor, telemetry=telemetry)
     except PsycopgError:
         return SourceReading.unknown(
             UnreachedScope("request-proposals", "proposal-source-unavailable"),

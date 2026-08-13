@@ -299,7 +299,9 @@ def application(
         workflow=workflow,
         work=work,
         requests=Requests(PostgresRequests(runtime_dsn), telemetry=recorder),
-        request_proposals=RequestProposals(PostgresRequestProposals(runtime_dsn)),
+        request_proposals=RequestProposals(
+            PostgresRequestProposals(runtime_dsn), telemetry=recorder
+        ),
         rulings=Rulings(PostgresRulings(runtime_dsn), telemetry=recorder),
         catalog=catalog if catalog_backed else None,
         projections=(

@@ -64,11 +64,13 @@ not impersonate a Commander, mint a principal, or bypass normal Request policy.
 ## Reviewing the top 20
 
 The operator-only review contains at most one row for each Request targeted by an open proposal. It ranks
-those Requests by active Catalog Goal relation, recorded open operator-decision requirement, older Request
-creation time, then stable Request UUID. Multiple proposals cannot duplicate a Request in the view; if
+the remaining open Requests by active Catalog Goal relation, older Request creation time, recorded open
+operator-decision requirement, then stable Request UUID. Multiple proposals cannot duplicate a Request in the view; if
 their Request source facts conflict, the stable smallest proposal identity is retained as the pointer and
-the view is marked partial. Missing or conflicting Goal/Project Catalog facts likewise stay `unknown` and
-mark the view partial. The fixed limit is 20; callers cannot supply a relevance score or flag.
+the view is marked partial. A completed Request is excluded; an unreadable target state is omitted and named
+as an unanswered source instead of becoming actionable. Missing or conflicting Goal/Project Catalog facts
+likewise stay `unknown` and mark the view partial. The fixed limit is 20; callers cannot supply a relevance
+score or flag.
 
 The morning digest embeds only counts by kind and terminal state, the review pointer, source watermark,
 and named incomplete scopes. Partial or unavailable sources expose `UNKNOWN` counts rather than false

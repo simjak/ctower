@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID
 
@@ -64,14 +64,14 @@ def test_review_is_deterministic_and_fixed_at_twenty() -> None:
     assert first.partial is True
 
 
-def test_review_orders_approved_goal_operator_age_and_stable_identity_keys() -> None:
+def test_review_orders_goal_age_operator_gate_and_stable_identity_keys() -> None:
     now = datetime(2026, 8, 13, tzinfo=UTC)
     facts = (
-        (4, "unknown", True),
-        (3, "not-relevant", True),
-        (2, "relevant", False),
-        (5, "relevant", True),
-        (1, "relevant", True),
+        (4, "unknown", True, 0),
+        (3, "not-relevant", True, 0),
+        (2, "relevant", False, 2),
+        (5, "relevant", False, 1),
+        (1, "relevant", True, 1),
     )
     inputs = tuple(
         ProposalReviewInput(
@@ -79,15 +79,15 @@ def test_review_orders_approved_goal_operator_age_and_stable_identity_keys() -> 
             proposal_id=UUID(int=100 + identity),
             goal_relevance=relevance,
             operator_decision_required=required,
-            created_at=now,
+            created_at=now - timedelta(days=age_days),
         )
-        for identity, relevance, required in facts
+        for identity, relevance, required, age_days in facts
     )
 
     review = derive_request_maintenance_review(inputs, watermark=55)
 
     assert tuple(row.request_id for row in review.rows) == tuple(
-        UUID(int=value) for value in (1, 5, 2, 3, 4)
+        UUID(int=value) for value in (2, 1, 5, 3, 4)
     )
     assert review.partial is True
     assert review.unanswered_sources == ("goal-relevance",)

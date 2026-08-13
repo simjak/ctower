@@ -14,7 +14,7 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, credential
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.record.prohibited_data import prohibited_data_refusal
 from ctower_kernel.record.transaction import recover_ambiguous_commit
-from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.work._request_proposal_append_sql import append_request_proposal
 from ctower_kernel.work._request_proposal_decision_sql import (
     confirm_request_proposal,
@@ -117,9 +117,11 @@ class RequestProposals:
         store: _RequestProposalStore,
         *,
         clock: Callable[[], datetime] | None = None,
+        telemetry: Telemetry | None = None,
     ) -> None:
         self._store = store
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._telemetry = telemetry or NoopTelemetry()
 
     def append(
         self,
@@ -147,6 +149,7 @@ class RequestProposals:
         project_key: str | None = None,
         kind: str | None = None,
         state: str | None = None,
+        telemetry: TelemetryContext,
     ) -> RequestMaintenanceProposalList | RecordProblem:
         if project_key is not None and _PROJECT.fullmatch(project_key) is None:
             return _problem("proposal-project-invalid", "Proposal Project is invalid", 422)
@@ -154,7 +157,7 @@ class RequestProposals:
             return _problem("proposal-kind-invalid", "Proposal kind is invalid", 422)
         if state is not None and state not in {"OPEN", "CONFIRMED", "REJECTED"}:
             return _problem("proposal-state-invalid", "Proposal state is invalid", 422)
-        return self._store.list(
+        outcome = self._store.list(
             actor,
             proposal_id=proposal_id,
             project_key=project_key,
@@ -162,6 +165,13 @@ class RequestProposals:
             state=state,
             now=self._clock(),
         )
+        self._telemetry.emit(
+            "work.request-proposal.list",
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "read",
+        )
+        return outcome
 
     def confirm(
         self,

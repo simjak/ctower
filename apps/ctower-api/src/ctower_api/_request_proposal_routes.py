@@ -129,7 +129,7 @@ class _RequestProposalRoutes:
         authenticated = self._authenticated(request)
         if isinstance(authenticated, JSONResponse):
             return authenticated
-        actor, _ = authenticated
+        actor, telemetry = authenticated
         try:
             parsed_id = None if proposal_id is None else uuid_value(proposal_id)
         except ValueError:
@@ -140,6 +140,7 @@ class _RequestProposalRoutes:
             project_key=project_key,
             kind=kind,
             state=state,
+            telemetry=telemetry,
         )
         if isinstance(outcome, RecordProblem):
             return problem_response(outcome)
@@ -152,29 +153,32 @@ class _RequestProposalRoutes:
         actor, telemetry = authenticated
         if actor.kind is not PrincipalKind.OPERATOR:
             return problem_response(_operator_problem())
-        proposals = self._proposals.list(actor)
+        proposals = self._proposals.list(actor, telemetry=telemetry)
         if isinstance(proposals, RecordProblem):
             return problem_response(proposals)
         requests = self._requests.list(actor, telemetry=telemetry)
         request_rows, request_watermark, unanswered = _request_reading(requests)
         relevance, catalog_unanswered = _goal_relevance(self._catalog, actor)
-        inputs = tuple(
-            ProposalReviewInput(
-                request_id=row.target_request_id,
-                proposal_id=row.proposal_id,
-                goal_relevance=relevance.get(row.project_key, "unknown"),
-                operator_decision_required=_operator_required(
-                    request_rows.get(row.target_request_id)
-                ),
-                created_at=(
-                    request_rows[row.target_request_id].created_at
-                    if row.target_request_id in request_rows
-                    else row.created_at
-                ),
+        inputs: list[ProposalReviewInput] = []
+        unreadable_targets: set[str] = set()
+        for row in proposals.rows:
+            if row.state != "OPEN":
+                continue
+            target = request_rows.get(row.target_request_id)
+            if target is None or target.unknown_reason is not None:
+                unreadable_targets.add(f"request-state-unreadable:{row.target_request_id}")
+                continue
+            if target.state == "DONE":
+                continue
+            inputs.append(
+                ProposalReviewInput(
+                    request_id=row.target_request_id,
+                    proposal_id=row.proposal_id,
+                    goal_relevance=relevance.get(row.project_key, "unknown"),
+                    operator_decision_required=_operator_required(target),
+                    created_at=target.created_at,
+                )
             )
-            for row in proposals.rows
-            if row.state == "OPEN"
-        )
         review = derive_request_maintenance_review(
             inputs,
             watermark=max(proposals.watermark, request_watermark),
@@ -182,6 +186,7 @@ class _RequestProposalRoutes:
                 sorted(
                     set(unanswered)
                     | set(catalog_unanswered)
+                    | unreadable_targets
                     | {f"proposal-project:{key}" for key in proposals.unanswered_projects}
                 )
             ),

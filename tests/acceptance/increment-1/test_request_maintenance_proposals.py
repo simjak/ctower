@@ -13,6 +13,11 @@ import pytest
 from fastapi.testclient import TestClient
 from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
+from support.request_proposals import (
+    assert_done_and_unread_targets_are_not_actionable,
+    evidence_payload,
+    policy_fields,
+)
 from support.server import application
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
@@ -250,7 +255,7 @@ def test_completed_proposal_requires_current_closed_required_ticket_evidence(
         incomplete_payload = _append_payload(
             current, also_required, kind="completed-but-open", expected_version=5
         )
-        incomplete_payload["evidence"] = _evidence_payload(shipped)
+        incomplete_payload["evidence"] = evidence_payload(shipped)
         incomplete = client.post(
             "/v1/request-maintenance/proposals",
             headers=_mutation_headers(tenant.commander_credential),
@@ -261,7 +266,7 @@ def test_completed_proposal_requires_current_closed_required_ticket_evidence(
         complete_payload = _append_payload(
             current, also_required, kind="completed-but-open", expected_version=5
         )
-        complete_payload["evidence"] = _evidence_payload(shipped, also_required)
+        complete_payload["evidence"] = evidence_payload(shipped, also_required)
         proven = client.post(
             "/v1/request-maintenance/proposals",
             headers=_mutation_headers(tenant.commander_credential),
@@ -333,6 +338,13 @@ def test_existing_operator_path_can_directly_triage_a_request(tenant: TenantFixt
 
     assert triaged.status_code == HTTP_PENDING
     assert triaged.json()["operation"] == "triage"
+
+
+def test_review_excludes_done_requests_and_keeps_unread_target_state_partial(
+    tenant: TenantFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert_done_and_unread_targets_are_not_actionable(tenant, monkeypatch)
 
 
 def _capture(
@@ -497,7 +509,7 @@ def _proof_ticket(client: TestClient, tenant: TenantFixture, label: str) -> UUID
         json={
             "workflow_ref": graph.reference,
             "workflow_digest": graph.digest,
-            **_policy_digests(),
+            **policy_fields(ROOT),
         },
     )
     assert started.status_code == HTTP_PENDING, started.json()
@@ -536,26 +548,6 @@ def _relate_required_ticket(
     assert relation.status_code == HTTP_PENDING, relation.json()
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     _close_ticket(tenant, UUID(str(evidence["ticket_id"])))
-
-
-def _evidence_payload(*items: dict[str, object]) -> list[dict[str, object]]:
-    return [
-        {key: value for key, value in item.items() if not key.startswith("_")} for item in items
-    ]
-
-
-def _policy_digests() -> dict[str, str]:
-    result: dict[str, str] = {}
-    policy_names = (
-        ("execution", "execution"),
-        ("gates", "gate"),
-        ("evidence", "evidence"),
-    )
-    for directory, name in policy_names:
-        path = ROOT / f"packs/policies/{directory}/trust-spine-four-stage-v1.yaml"
-        result[f"{name}_policy_ref"] = f"ctower.trust-spine-four-stage.{directory}@1"
-        result[f"{name}_policy_digest"] = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-    return result
 
 
 def _append_payload(

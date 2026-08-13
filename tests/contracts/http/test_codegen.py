@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -198,6 +199,14 @@ def test_generated_operation_registry_is_the_exact_authored_replay_allowlist() -
 
     assert len(actual) == _EXPECTED_OPERATION_COUNT
     assert actual == expected
+
+
+def test_http_reference_operation_count_matches_the_authored_contract_inventory() -> None:
+    reference = (ROOT / "docs/reference/http-api.md").read_text(encoding="utf-8")
+    match = re.search(r"declares \*\*(\d+) operations\*\*", reference)
+
+    assert match is not None
+    assert int(match.group(1)) == _EXPECTED_OPERATION_COUNT
 
 
 def test_generated_runtime_contracts_validate_offline_and_are_defensive() -> None:

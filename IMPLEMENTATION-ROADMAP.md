@@ -461,7 +461,8 @@ proposal identities with exact Request quotes, source watermark, proposer attrib
 Keep proposal lifecycle separate from Request state. The authenticated existing operator alone confirms or
 rejects; confirmation invokes one separately identified ordinary Request command and records its exact
 outcome. Rank the operator review deterministically at a fixed top 20 using active Catalog Goal relations,
-recorded operator-decision need, age, and stable identity. Add only counts and its pointer to the digest.
+older Request age, recorded operator-decision need, and stable identity. Add only counts and its pointer to
+the digest.
 
 **Exit:** AC-PROP-01..07, the designated real-PostgreSQL proof command, generated API/CLI parity,
 fresh-apply migration fingerprints, same-candidate outside-reader docs, and independent review pass. No

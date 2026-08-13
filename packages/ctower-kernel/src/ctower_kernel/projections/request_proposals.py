@@ -129,8 +129,8 @@ def derive_request_maintenance_review(
         deduplicated,
         key=lambda item: (
             _RELEVANCE_RANK[item.goal_relevance],
-            not item.operator_decision_required,
             item.created_at,
+            not item.operator_decision_required,
             item.request_id,
         ),
     )
