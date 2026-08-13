@@ -2473,3 +2473,89 @@ for I2 before recording proposals (forces the maintenance writer to retain a sec
 authority moves). Specifying CT-I1-024 activates nothing; implementation waits on its stated dependencies
 and ordinary activation, and the current dream-cycle skill remains proposal-only against Mission Control
 until that authority changes.
+
+## D60 — Project management is one recorded plan-before-dispatch system over Requests and Tickets (product, 2026-08-13, operator orders R2951/R2954/R2955; interim sections R2952/R2953)
+
+The operator ordered a robust project-management system because feature, Request, and Ticket work without a
+daily think-and-plan pass had become chaotic, and asked that every morning assume they remember none of their
+prior asks. The system composes R2902's D46/CT-I1-015 Request authority with the existing Ticket authority
+and D59's proposal queue; it does not replace their identities, lifecycle facts, or command authorities.
+
+1. **A feature is planned through the existing Request-to-Ticket composition, not a third work aggregate.**
+   The Request plan records the intended feature outcome, while every fulfillment Ticket has its own execution
+   plan and remains the authority for execution. A Request that is not a software feature uses the same shape.
+   One feature label, title, model response, or similarity result can neither create a second Feature authority
+   nor substitute for the Request and Ticket plans.
+2. **Planning is a recorded gate before dispatch, without slowing capture.** Request capture remains the first
+   durable act. A newly captured Request derives `planning_stage=PLANNED` and `dispatched=false`; `PLANNED`
+   names the queue stage and does not claim that a plan is complete.
+   A current plan revision binds the subject identity and expected version, outcome, constraints and non-goals,
+   decomposition/dependencies, acceptance/proof obligations, accountable owner, next action, author/source,
+   and revision digest. Every Request and every Ticket needs its own current revision; a subject or dependency
+   change invalidates the affected revision. No priority, Routine occurrence, prose, model output, silence, or
+   parent plan makes an unplanned subject dispatchable.
+3. **The morning stack is a deterministic proposal from recorded facts.** For one Europe/Vilnius civil date,
+   the projection reads the current recorded week goal and authorized accepted record facts for every current
+   actionable Request and Ticket, including untriaged Request captures, plus open proposals at named
+   watermarks. It orders candidates by recorded current-week-goal relation first,
+   operator action required before ordinary work, explicit `P0` then `P1` then `P2`, older continuous
+   actionable time, and finally typed stable identity. Proposal candidates use their target Request's recorded
+   goal relation and priority. Authoritative absence of a relation means false; an unread or conflicting fact
+   is unknown. A model may suggest plan prose but supplies no membership, relevance, priority, or rank authority.
+4. **Only the existing operator confirms or re-ranks one exact stack, in one line.** The protected CLI exposes
+   `ctowerctl project-management confirm --date <date> --artifact-key <key> --digest <sha256> --watermark <ref>`
+   and `ctowerctl project-management rerank --date <date> --artifact-key <key> --digest <sha256> --watermark
+   <ref> --order <typed-stable-ref,...>`. Re-rank accepts exactly one permutation of the proposed identities;
+   it cannot insert, drop, or replace work. Each accepted action is one idempotent recorded planning command
+   and result bound to that date, artifact, digest, watermarks, actor, and resulting order. Commander, seat,
+   proposer, Routine, digest reader, stale source, changed-body replay, or later-version replay changes nothing.
+   Confirmation derives `planning_stage=CONFIRMED` for only the matching current plan revisions while
+   `dispatched=false` remains until a later ordinary dispatch; it does not impersonate a dispatcher, confirm a
+   D59 proposal, or claim that work ran.
+5. **The zero-memory reminder inlines conclusions and points to bulky evidence.** Its exact rolling 24-hour
+   window inlines one self-contained line for each operator-originated Request — identified by recorded
+   requester/source provenance, regardless of capturing seat — created or changed in the window and each typed
+   state change on a Ticket linked to such a Request or currently requiring operator action.
+   Each line carries stable identity and Project, the remembered ask or intended outcome, exact change and
+   current state, accountable owner, blocker, and next action. Raw comments, logs, evidence bodies, repeated
+   timeline events, and proposal or Request review lists remain counts plus authorization-preserving pointers
+   at the same watermarks; D59's proposal list is never embedded. The same projection exposes R2951's seven
+   preceding Europe/Vilnius civil dates grouped by Project, with one row per stable Ticket and each current
+   typed resolution. Requests group only under an accepted duplicate/canonical relation or an identical stable
+   source identity, preserving every member identity and exact text plus occurrence count and current
+   resolution. Similarity and open proposals remain review facts and never deduplicate rows.
+6. **Incomplete knowledge stays visible and cannot be confirmed.** Missing, conflicting, stale, unauthorized,
+   or unread week-goal, Request, Ticket, proposal, duplicate-relation, resolution, watermark, or plan input
+   yields typed `partial|unknown`, names the affected scope and reason, and prevents confirmation and dispatch
+   eligibility for the artifact. A bounded reminder says exactly what it omitted and points to the complete
+   typed view. Silence never becomes an empty list, guessed order, guessed duplicate, guessed resolution, or
+   success.
+7. **One fixed Routine carries all three views; the director owns the cutover.** The build adds exactly
+   `packs/routines/ctower.beat.project-management/v1.yaml` as `ctower.beat.project-management@1`, at the
+   already ordered 07:47 Europe/Vilnius post-dream-cycle cadence, and registers it in both `_PACK_PATHS` and
+   `_EXPECTED_ROUTINE_REFS` under D52/D53's closed-world custody. It reads and delivers the recorded artifact
+   but cannot confirm, re-rank, or dispatch. After one live verified ctower delivery, the director removes
+   exactly `LAST 24 HOURS — REQUESTS + TICKET UPDATES` (R2952), `TODAY'S PRIORITY STACK` (R2953), and
+   `PAST 7 DAYS — DEDUPLICATED REQUESTS + TICKETS WITH RESOLUTIONS BY PROJECT` (R2951). Ctower owns these as
+   three windows of one projection and one beat, avoiding a second report authority or schedule. The director
+   retains unrelated open-decision, execution, proof-close, and dream-analysis content and owns verified
+   switch and retirement.
+8. **Outside-reader documentation is part of every build candidate.** The public home is
+   `docs/concepts/project-management.md`, linked from `mkdocs.yml`. Under D32 and operator order R2955, every
+   implementation PR updates that page and every affected CLI, API, Request, Ticket, digest, Routine, and
+   shipped-coverage reference in the same candidate; a generated inventory alone is not documentation proof.
+9. **The boundary stays narrow.** CT-I1-025 owns strict authored contracts, kernel facts/folds, generated API,
+   protected CLI, and the one registered Routine. Browser presentation remains behind CT-I2-005; no product UI,
+   new principal, public ingress, transport, egress, or Record-tier client outside the kernel is authorized.
+   R2956 is explicitly excluded: session-corpus ingestion, dream-session analysis, reasoning-pattern mining,
+   procedure or context-memory extraction, and knowledge-store authority remain in the separately banked
+   knowledge-base/dream family.
+
+Rejected alternatives: a separate Feature aggregate (duplicates Request intent and Ticket execution); treating
+`PLANNED` as proof that a plan exists (permits capture to bypass thought); model-ranked or prose-ranked work
+(creates unrecorded priority authority); allowing confirmation to dispatch (collapses operator planning into an
+execution side effect); embedding proposal lists, logs, or evidence in the reminder (duplicates bounded review
+surfaces and transport content); similarity-based seven-day deduplication (can erase an order); retaining R2951
+as a director-owned report or adding a second cadence (creates competing projections and schedules); or making
+documentation a follow-up (violates the accepted landing boundary). Specifying CT-I1-025 activates nothing;
+implementation waits on its dependencies and ordinary activation.
