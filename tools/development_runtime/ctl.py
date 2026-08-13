@@ -32,8 +32,14 @@ def main() -> NoReturn:
     reference = (
         config.operator_secret_ref if known.identity == "operator" else config.commander_secret_ref
     )
+    ceremony_principal = ["--as", known.identity] if remaining[:2] == ["dream-lane", "bind"] else []
     code = ctowerctl_main(
-        ["--base-url", f"http://{config.api_host}:{config.api_port}", *remaining],
+        [
+            "--base-url",
+            f"http://{config.api_host}:{config.api_port}",
+            *ceremony_principal,
+            *remaining,
+        ],
         stdin=io.StringIO(load_secret(reference) + "\n"),
     )
     raise SystemExit(code)
