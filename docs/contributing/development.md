@@ -6,12 +6,11 @@ outputs.
 
 ## Before changing code or contracts
 
-1. Read the relevant section of the canonical
-   [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md).
-2. Check the append-only [decision log](https://github.com/simjak/ctower/blob/main/DECISIONS.md).
-3. Identify the owning Module and its permitted dependency edges in `tools/checks/policy.toml`.
-4. Confirm that the change belongs to the current implementation increment.
-5. Define failure, restart, authorization, idempotency, and evidence behavior before adding a happy path.
+1. Read the [architecture atlas](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md) and the
+   repository constitution.
+2. Identify the owning Module and its permitted dependency edges in `tools/checks/policy.toml`.
+3. Confirm that the capability is current on the [availability page](../start-here/availability.md).
+4. Define failure, restart, authorization, idempotency, and evidence behavior before adding a happy path.
 
 Do not introduce a public extension interface for a single fake implementation. A Seam is earned only when
 two real, independently useful adapters need the same contract.
@@ -20,10 +19,10 @@ two real, independently useful adapters need the same contract.
 
 | Content | Authoritative home |
 |---|---|
-| Human-visible system semantics and acceptance criteria | `SPEC.md` |
-| Historical decisions and supersessions | `DECISIONS.md` |
+| Human-visible system semantics and acceptance criteria | The canonical record named by the repository constitution |
+| Historical decisions and supersessions | The append-only record named by the repository constitution |
 | Compact derived architecture views | `ARCHITECTURE.md` |
-| Checkpoint and dogfooding sequence | `IMPLEMENTATION-ROADMAP.md` |
+| Development sequence | The sole roadmap named by the repository constitution |
 | Cross-process schemas | `contracts/` |
 | Concrete workflow and policy versions | `packs/` |
 | Generated clients, models, and indexes | `generated/` |
@@ -46,8 +45,8 @@ dependencies are compiled with hashes in `requirements/verify.txt`; JavaScript d
 `pnpm-lock.yaml`; remote pre-commit hooks use immutable commits; and CI checksum-verifies Node, pnpm, `just`,
 Actionlint, and Gitleaks before use. Install the Python verification environment with
 `python -m pip install --require-hashes -r requirements/verify.txt` and JavaScript dependencies with
-`pnpm install --frozen-lockfile --ignore-scripts`. Do not add `.python-version` or `uv.lock`: D6 still leaves
-the product runtime unresolved, and these verification-host locks do not supersede that decision.
+`pnpm install --frozen-lockfile --ignore-scripts`. Do not add `.python-version` or `uv.lock`: the product
+runtime remains unresolved, and these verification-host locks do not select one.
 
 `just check` includes Actionlint, strict documentation, generated traceability, a scan of exactly the intended
 Git tree, tests, types, formatting, and repository policy. `just verify` additionally executes every currently

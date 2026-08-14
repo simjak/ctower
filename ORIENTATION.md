@@ -2,17 +2,17 @@
 
 Refreshed `2026-08-08T07:09:19+02:00` by nightly dream
 `019fdf19-3900-7a98-8a3f-cd0c7378a6e9`. Read this first, then follow the authority order in
-[README.md](README.md): [SPEC.md](SPEC.md) is normative; decisions are append-only history; the
+[README.md](README.md): [the specification](docs/internal/SPEC.md) is normative; decisions are append-only history; the
 architecture atlas and roadmap are derived aids.
 
 ## The ten files that matter first
 
 | Order | File | Why it matters |
 |---:|---|---|
-| 1 | [SPEC.md](SPEC.md) | Current product, architecture, workflow, acceptance, and build contract. |
-| 2 | [DECISIONS.md](DECISIONS.md) | Accepted append-only decisions; supersede rather than rewrite. |
+| 1 | [docs/internal/SPEC.md](docs/internal/SPEC.md) | Current product, architecture, workflow, acceptance, and build contract. |
+| 2 | [docs/internal/DECISIONS.md](docs/internal/DECISIONS.md) | Accepted append-only decisions; supersede rather than rewrite. |
 | 3 | [ARCHITECTURE.md](ARCHITECTURE.md) | Terminal-safe map of the current system; it must not outrun the spec. |
-| 4 | [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) | Sequencing proposal only; it activates no work. |
+| 4 | [docs/internal/IMPLEMENTATION-ROADMAP.md](docs/internal/IMPLEMENTATION-ROADMAP.md) | Sequencing proposal only; it activates no work. |
 | 5 | [README.md](README.md) | Honest front door, supported paths, and current product boundary. |
 | 6 | [contracts/http/openapi.yaml](contracts/http/openapi.yaml) | Authored HTTP source; generated clients derive from it. |
 | 7 | [`_dream_dispatch_sql.py`](packages/ctower-kernel/src/ctower_kernel/runtime/_dream_dispatch_sql.py) | Persisted project/fleet authority for the newly shipped dream effects. |

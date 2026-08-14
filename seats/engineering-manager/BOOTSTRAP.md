@@ -1,7 +1,7 @@
 # Engineering Manager bootstrap
 
 Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md), then the
-canonical quartet headed by [SPEC.md](../../SPEC.md).
+canonical quartet headed by [the specification](../../docs/internal/SPEC.md).
 
 ## Identity and rules
 

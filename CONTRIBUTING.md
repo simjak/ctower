@@ -6,12 +6,12 @@ are all valuable.
 
 ## Before you start
 
-- Read the [project status](https://simjak.github.io/ctower/project-status/) and confirm the capability exists
-  before reporting runtime behavior.
+- Read [current availability](https://simjak.github.io/ctower/start-here/availability/) and confirm the
+  capability exists before reporting runtime behavior.
 - Search existing issues and pull requests.
 - Discuss large domain, architecture, persistence, security-boundary, or public-interface changes before
   implementation.
-- Read the canonical [`SPEC.md`](SPEC.md), [`DECISIONS.md`](DECISIONS.md), and relevant
+- Read the [architecture atlas](ARCHITECTURE.md) and relevant
   [coding standards](docs/contributing/CODING_STANDARDS.md).
 
 ## Development workflow

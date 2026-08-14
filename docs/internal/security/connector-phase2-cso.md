@@ -6,7 +6,7 @@ PHASE-2 ACTIVATION ARE STILL REQUIRED.**
 **MODEL: gpt-5.6-sol · reasoning effort: max**
 
 Reviewed on 2026-08-09 for the exact GitHub connector candidate in
-[`docs/specs/connectors.md`](../specs/connectors.md), blob
+[`docs/internal/specs/connectors.md`](../specs/connectors.md), blob
 `c5e022cebe331c80984578f479e260236326173a`, at `origin/main`
 `eac2a1d718451c5cd5f200f99e89cf2681bb8feb`. The proven Phase-1 base is merge
 `dabbaa1857524d8d1b82dc9b785f8904f8415901` from PR

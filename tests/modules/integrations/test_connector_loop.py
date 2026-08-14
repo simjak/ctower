@@ -121,7 +121,7 @@ def _resource(*, key: str, digest: str, payload: dict[str, JsonValue]) -> dict[s
             "provenance": [
                 {
                     "kind": "reviewed-contract",
-                    "source": "docs/specs/connectors.md#cx-01",
+                    "source": "docs/internal/specs/connectors.md#cx-01",
                     "digest": "sha256:" + "c" * 64,
                 }
             ],

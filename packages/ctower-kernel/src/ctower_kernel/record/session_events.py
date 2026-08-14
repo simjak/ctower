@@ -1,7 +1,7 @@
 """Strict recorded-work-session payloads and the one authored session state machine.
 
 A work session is a bounded stretch of accountable work on one ticket. It is a Record
-fact, not a vendor handle: [INV-15](../../../../../SPEC.md) keeps process, tmux, and
+fact, not a vendor handle: [INV-15](../../../../../docs/internal/SPEC.md) keeps process, tmux, and
 provider session identifiers as optional metadata, so nothing here accepts one. The
 session identity is a durable ctower UUID, and every field below is authored, bounded,
 and free of credential, PHI, or personal content by contract.

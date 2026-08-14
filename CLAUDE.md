@@ -1,7 +1,7 @@
 # ctower engineering constitution
 
-Read `SPEC.md`, `DECISIONS.md`, `ARCHITECTURE.md`, `IMPLEMENTATION-ROADMAP.md`, and the nearest
-boundary README before changing this repository.
+Read `docs/internal/SPEC.md`, `docs/internal/DECISIONS.md`, `ARCHITECTURE.md`,
+`docs/internal/IMPLEMENTATION-ROADMAP.md`, and the nearest boundary README before changing this repository.
 
 ## Engineering principles
 
@@ -25,12 +25,13 @@ boundary README before changing this repository.
 
 ## Canonical sources
 
-- `SPEC.md` is the current product, architecture, workflow, acceptance, and build contract.
-- `DECISIONS.md` is append-only history. Never rewrite an accepted decision; supersede it with a new entry.
+- `docs/internal/SPEC.md` is the current product, architecture, workflow, acceptance, and build contract.
+- `docs/internal/DECISIONS.md` is append-only history. Never rewrite an accepted decision; supersede it with a new entry.
 - `ARCHITECTURE.md` is the single derived terminal-safe atlas. It may explain but never override or extend
-  `SPEC.md`; repair it immediately when the two diverge.
-- `IMPLEMENTATION-ROADMAP.md` is the single non-normative sequencing proposal. It does not approve scope,
-  activate backlog items, or authorize implementation; `SPEC.md` remains authoritative.
+  `docs/internal/SPEC.md`; repair it immediately when the two diverge.
+- `docs/internal/IMPLEMENTATION-ROADMAP.md` is the single non-normative sequencing proposal. It does not
+  approve scope, activate backlog items, or authorize implementation; `docs/internal/SPEC.md` remains
+  authoritative.
 - Do not create another architecture/diagram file, competing roadmap, or ticket-state mirror.
 
 ## Hard boundaries

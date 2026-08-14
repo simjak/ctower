@@ -1,6 +1,6 @@
 """Fail-closed discovery of the browser boundary's crossings and its honesty rules.
 
-`docs/CODING_STANDARDS.md` (O10) forbids single-shot network requests, loopback
+The repository coding standard forbids single-shot network requests, loopback
 services included, and requires coverage to be derived from repository
 structure rather than from a hand-maintained endpoint list. These tests build
 the denominator by scanning every authored and generated TypeScript module for

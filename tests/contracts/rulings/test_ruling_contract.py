@@ -63,7 +63,7 @@ def test_ruling_cso_trigger_records_no_new_boundary_and_no_new_principal() -> No
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     schemes = cast(dict[str, object], document["components"])["securitySchemes"]
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
-    decision = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
+    decision = (ROOT / "docs/internal/DECISIONS.md").read_text(encoding="utf-8")
 
     assert cast(dict[str, object], schemes)["bearerAuth"] == {
         "type": "http",

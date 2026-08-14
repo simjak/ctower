@@ -127,7 +127,8 @@ class TraceabilityTests(unittest.TestCase):
     def _write_fixture(self, root: Path, artifacts: list[dict[str, object]]) -> None:
         (root / "contracts/traceability").mkdir(parents=True)
         (root / "contracts/example.json").write_text("{}\n", encoding="utf-8")
-        (root / "SPEC.md").write_text(
+        (root / "docs/internal").mkdir(parents=True)
+        (root / "docs/internal/SPEC.md").write_text(
             "## Review rounds\n\n1. **INV-43 — Plan.**\n\n"
             '| <a id="ac-wf-22"></a>AC-WF-22 | condition | evidence |\n',
             encoding="utf-8",

@@ -64,7 +64,7 @@ Durable rule → A public surface is incomplete until the same candidate carries
 contract, generated clients, CLI and HTTP references, and verification. Documentation is landing
 evidence, not post-merge cleanup.
 
-Encoding → [SPEC.md INV-74](SPEC.md#inv-74), [PR #363](https://github.com/simjak/ctower/pull/363),
+Encoding → [the specification's INV-74](docs/internal/SPEC.md#inv-74), [PR #363](https://github.com/simjak/ctower/pull/363),
 [PR #367](https://github.com/simjak/ctower/pull/367), [PR #374](https://github.com/simjak/ctower/pull/374),
 and Mission Control `state/crew-log.jsonl:6808-6832,6845-6870,6877-6888` record all three holds and
 cures.

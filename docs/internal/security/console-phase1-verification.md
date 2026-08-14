@@ -99,7 +99,7 @@ typing route or grant.
 
 ## Related material
 
-- [Console view grants](../concepts/console-viewer.md)
+- [Console view grants](../../concepts/console-viewer.md)
 - [Phase-1 operator procedure](../operations/console-viewer.md)
 - [Console Q3 typed-input verdict](console-q3-typing-cso.md)
 - [Authored Console source specification](../specs/crew-console.md)
