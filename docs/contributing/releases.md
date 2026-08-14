@@ -94,8 +94,8 @@ installed from the hash-locked `requirements/verify.txt`; JavaScript uses the fr
 lifecycle scripts disabled. Node distributions and the pnpm, `just`, Actionlint, and Gitleaks release assets
 are fetched with bounded HTTPS requests and checked against committed SHA-256 values before execution.
 
-Those versions describe the verification host only. They do not select a supported ctower Python runtime,
-create a product lock, or supersede D6. Update a binary pin only from the producer's release checksum or
+Those versions describe the verification host only. They do not select a supported ctower Python runtime or
+create a product lock. Update a binary pin only from the producer's release checksum or
 release-asset digest, update its version and digest together, and let the repository supply-chain tests prove
 the linkage. Remote GitHub Actions and pre-commit hooks remain pinned to immutable 40-character commits.
 

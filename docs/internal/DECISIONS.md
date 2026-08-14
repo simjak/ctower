@@ -1871,7 +1871,8 @@ Rejected alternatives:
 
 ## D46 — First-class operator Requests replace the ledger and its Request-facing direct-intake assumptions (locked 2026-08-09, operator R2903, gh#399)
 
-The operator accepted the shape in [`docs/specs/operator-requests.md`](docs/specs/operator-requests.md)
+The operator accepted the shape in
+[`docs/internal/specs/operator-requests.md`](specs/operator-requests.md)
 after PR #398's independent exact-candidate review and the R2903 `GO`. `SPEC.md` 1.19 incorporates that
 contract as `INV-81..87` and `AC-REQ-01..08`. This is Phase 0 governance only: it authorizes no product code,
 endpoint, allocator, import command, UI control, adapter, credential, egress, or writer epoch by itself.
@@ -2780,3 +2781,124 @@ or skips content); an importer that writes around CompanyBundle/Catalog staging 
 or internal documentation and follow-up public docs (leaves the first outside developer without a truthful
 contract). Specifying CT-I1-030 publishes, indexes, synchronizes, imports, materializes, or executes nothing;
 implementation waits on its dependencies and ordinary activation.
+
+## D64 — Workspaces are first-class records whose host materialization remains runner-side (product, 2026-08-14, operator order R2967 ticket B)
+
+The operator ordered one durable workspace model for ticket-bound worktrees, persistent Project checkouts,
+and persistent cross-Project company contexts. This extends D34's fleet-lifecycle close precedent, D62's
+canonical Ticket-transition causation, and D63's COMPANY/PROJECT exact Catalog pins without turning host
+directories, movement projections, or Catalog pointers into workspace authority. The durable destination is
+CT-I1-031 with acceptance family AC-WS-01..09.
+
+1. **The workspace record is product truth; host bytes are observations.** One append-only workspace record
+   owns UUIDv7 identity, immutable `WORKTREE|PROJECT|COMPANY` type and type-valid tenant/Project/Ticket binding,
+   normalized start-directory intent, immutable mount-set revisions, one exact reference to existing
+   credential-scope authority, aggregate version, lifecycle commands, runner receipts, and lifecycle facts.
+   The resolved directory, checkout, process, filesystem, and mounted bytes exist only on the runner. A host
+   path, process, janitor observation, branch ancestry, runner exit, or disappearance can never synthesize
+   `active`, `closed`, or safe-to-delete Record truth.
+2. **The three types have separate lifecycle contracts.** `WORKTREE` is ephemeral, bound to exactly one Ticket
+   and that Ticket's immutable Project, and created idempotently when its dispatch is accepted. `PROJECT` is
+   persistent and bound to exactly one tenant/Project checkout context. `COMPANY` is persistent and bound to
+   one tenant plus an existing cross-Project authorization context; it creates no company principal or free-
+   standing grant. A PR merge fact explicitly linked to a Ticket automatically requests close only for that
+   Ticket's bound `WORKTREE`; Ticket completion without that merge fact closes nothing, and persistent types
+   require an explicit authorized close and checkpoint-safe cleanup receipt.
+3. **Tickets carry references, never workspace snapshots.** A Ticket workspace-link fact has the strict shape
+   `{workspace_id: UUIDv7, workspace_type: WORKTREE|PROJECT|COMPANY}`. The server resolves the referenced
+   immutable record and validates tenant, type, Project/Ticket binding, and current authority before append.
+   It copies no directory, mount, credential, lifecycle, or host fact into the Ticket, and duplicate or
+   mismatched links refuse with zero mutation.
+4. **A linked PR merge requests WORKTREE close; it does not assert cleanup.** Acceptance of a PR merge fact
+   explicitly linked to the Ticket appends exactly one idempotent `workspace.close_requested` fact for every
+   current bound WORKTREE, causally linked to that merge fact. Where the same accepted command path moves the
+   Ticket, the close request and D62's canonical `workflow.changed` fact share the stable transition-
+   evaluation/causation pointer. PR merge, Ticket movement, close request, runner cleanup observation, and
+   `workspace.closed` or typed failure remain distinct attributable facts. The workspace derives `closing`
+   until an authenticated current-lease/current-fence cleanup receipt commits; branch ancestry, projection
+   state, replay, or silence cannot close it.
+5. **Mounts are immutable exact Catalog pins.** Every mount-set entry cites D63's exact scope, Project key or
+   null, kind, key, revision, and content digest. A workspace never follows `latest` or an active pointer
+   during its life. Remount is an explicit append-only request and runner result that creates a new immutable
+   mount-set revision; replay deduplicates, failure leaves the prior accepted pins authoritative, and
+   historical mount sets and receipts remain queryable.
+6. **Credential scope is a reference to existing authority only.** `CredentialScopeRef` names one exact
+   existing grant or binding as `{authority_kind, authority_id, authority_revision}` and resolves through the
+   existing Actor and Project authorization model. Every operation re-intersects it with tenant/Project,
+   Ticket or assignment, policy, current job/lease, and requested action. No workspace record, event, command,
+   fixture, document, or log may contain a credential value or create a principal, grant kind, authority
+   store, bearer format, or free-standing scope. A runner receives only the existing short-lived handle at
+   the authorized execution boundary.
+7. **Runner interaction is strict, authenticated, leased, and fenced.** The runner reads desired workspace
+   work through generated authenticated control-plane APIs, materializes/checks out/remounts/cleans only
+   inside the Runtime and CommandGuard boundary, and reports typed idempotent results through generated
+   authenticated commands. Runner, provider, web, CLI, and generated clients have no Record-tier import,
+   connection, or credential. Publication of a workspace record is never proof that a directory exists.
+8. **Unknown lifecycle state is explicit.** The fact fold distinguishes requested, active, remounting,
+   closing, closed, failed, and unknown. Missing, stale, gapped, conflicting, unauthorized, digest-mismatched,
+   unfenced, or unreadable Ticket, PR, Catalog, credential-scope, checkpoint, runner, remount, or cleanup input
+   names every affected source and reason and yields typed partial/unknown or refusal. It never derives
+   active, unchanged, clean, closed, or safe-to-delete from absence or silence; recovery resumes from durable
+   command/result identity without duplicating a lifecycle fact.
+9. **The build ships one outside-developer path.** `docs/concepts/workspaces.md` is the concept home,
+   `docs/quickstart.md` carries the first-use path, and `docs/reference/workspaces.md` owns record/reference
+   schemas, type/lifecycle tables, mounts, credential-scope references, commands, refusals, and recovery.
+   Navigation and affected Ticket, Catalog, API, CLI, runner, and security references update in the same
+   candidate. Public text contains no internal request/decision/ticket/acceptance identifiers, crew/seat
+   labels, fleet jargon, private paths or links, or private inventory facts.
+10. **Dependencies do not imply activation.** CT-I1-031 depends on CT-I1-003 for Ticket-stage authority,
+    CT-I1-009 for existing Project grants and seat credentials, CT-I1-027 for canonical accepted-transition
+    causation, and CT-I1-030 for COMPANY/PROJECT exact Catalog pins. It is independent of CT-I1-028/029.
+    Record/API lifecycle truth may land before host activation, but actual dispatch, materialization, remount,
+    cleanup, or arbitrary execution waits for the standing Runtime, runner, lease/fence, checkpoint, and
+    CommandGuard prerequisites.
+
+Rejected alternatives: treating a worktree directory or janitor as Record truth (crosses the host seam);
+embedding workspace snapshots or credentials in Tickets (duplicates authority and leaks scope); closing on
+branch ancestry, projection state, process exit, or silence (invents lifecycle truth); floating Catalog mounts
+or mutating a mount set in place (rewrites consumed inputs); a company principal, workspace grant, credential
+value, or parallel scope store (duplicates existing Access authority); a Record client in the runner
+(crosses the trust boundary); a standalone WorkspaceManager or second lifecycle store (creates shallow
+parallel authority); or internal/follow-up documentation (leaves the first outside developer without a
+truthful path). Specifying CT-I1-031 creates no workspace record, directory, checkout, mount, credential,
+runner command, cleanup, documentation page, or runtime behavior; implementation waits on its dependencies
+and ordinary activation.
+
+## D65 — Canonical engineering records live under docs/internal and never enter the public documentation site (architecture, 2026-08-14, commander-approved PR #208 refresh)
+
+The commander approved the R2711 front-door refresh only if the canonical-source relocation has explicit
+decision authority. D16 keeps one derived architecture atlas, D37 keeps published contracts immutable, and
+D63/D64 establish the hardened outside-developer documentation rule. This decision changes repository
+layout and publication boundaries only; it does not change product truth, activate behavior, or create a
+second source of authority.
+
+1. **Three canonical records have exact internal homes.** The system specification lives at
+   `docs/internal/SPEC.md`, the append-only decision history lives at `docs/internal/DECISIONS.md`, and the
+   sole non-normative sequencing proposal lives at `docs/internal/IMPLEMENTATION-ROADMAP.md`. Their existing
+   authority and precedence are unchanged.
+2. **The architecture atlas remains the one root-level exception.** `ARCHITECTURE.md` remains the sole
+   terminal-safe derived atlas required by D16. It may summarize and link to internal canon for repository
+   contributors, but it cannot override or extend the specification and no second structural or architecture
+   document may appear.
+3. **The move is atomic across every consumer.** Repository constitutions, contributor instructions,
+   traceability inputs, generated ownership policy, fixtures, tests, and exact secret-scan paths move in the
+   same candidate. The machine-owned generated manifest is regenerated from the relocated specification;
+   it is never hand-edited to conceal drift.
+4. **Public documentation is a separate outside-developer surface.** MkDocs excludes `docs/internal/**`.
+   Public navigation follows concepts -> quickstart -> reference and contains no internal request, decision,
+   ticket, acceptance, crew, or seat labels; private coordination paths or links; or internal operational
+   jargon. Internal records remain reviewable in the public repository but are not published as product
+   documentation.
+5. **Root-path citations migrate; compatibility aliases do not exist.** Current repository references use
+   the new exact paths. No duplicate root files, symlinks, redirect stubs, fallback lookup, or dual-read
+   compatibility layer preserves `SPEC.md`, `DECISIONS.md`, or `IMPLEMENTATION-ROADMAP.md` at the root.
+   Reachable-history scanning may name an old path only when the scanner must inspect historical commits;
+   that historical allowance grants no current source path.
+
+Rejected alternatives: leaving canonical records in public navigation (fails the outside-developer
+boundary); copying rather than moving them (creates two apparent authorities); adding root redirects,
+symlinks, fallback reads, or dual generated inputs (preserves obsolete paths and weakens drift detection);
+moving `ARCHITECTURE.md` or creating a second structural atlas (violates D16); or changing paths without
+changing every strict consumer in the same candidate (creates an invalid tree). This relocation changes no
+accepted requirement, identifier, contract, generated output other than exact source paths and digests, or
+implementation sequence.

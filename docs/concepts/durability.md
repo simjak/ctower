@@ -100,4 +100,4 @@ view says the same thing in its own words: the disaster-recovery checkpoint is n
 
 - [The agent operating contract](../agents/operating-contract.md) — replay rules and exit codes.
 - [Project Delivery projection](project-delivery.md) — where `durability` and `recovery` are reported.
-- [Current operational boundary](../operations/current-boundary.md) — what the deployment story is not.
+- [Self-hosting boundary](../self-hosting.md) — what the deployment story is not.

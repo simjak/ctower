@@ -5,7 +5,7 @@ enumeration of **96 values** declared in `contracts/http/openapi.yaml`. If you s
 page, the contract changed and this page is a defect. Twelve codes from the project-seat credential surface
 (`credential-*`, `seat-*`, `project-grant-required`, `project-scope-denied`) are not yet grouped below; the
 ones you are most likely to meet are described in
-[Seat credential issuance](../operations/seat-credential-issuance.md).
+[Project credential commands](../reference/cli.md#project-seat-credentials).
 
 The point of the enumeration is that a caller can branch on it. This page groups every code by **what you
 should do about it**.
@@ -171,15 +171,15 @@ recorded against different content; nothing changed.
 
 `prohibited-data-class`
 
-Intake and Evidence refuse the five classes D30 clause 3 names, before any byte, event, object, Evidence, or
-outbox row commits. The refusal carries `prohibited_classes` — one or more of `credential_material`,
+Intake and Evidence refuse five prohibited classes before any byte, event, object, Evidence, or outbox row
+commits. The refusal carries `prohibited_classes` — one or more of `credential_material`,
 `production_customer_data`, `phi_hipaa_covered`, `pii_beyond_staff_identity`, `live_incident_indicator` — and
 never echoes the offending content back to you.
 
 This one is **terminal for the item**, not for the credential: nothing was written, so there is no state to
 reconcile, and there is no flag that admits it. Carry a typed vault/credential reference instead of a secret
-value, a source-host artifact ID instead of customer content, a D11 control reference or de-identified
-control ID instead of anything clinical, a staff work handle instead of personal identity, and a
+value, a source-host artifact ID instead of customer content, a de-identified control reference instead of
+anything clinical, a staff work handle instead of personal identity, and a
 retrospective control reference instead of a live incident indicator.
 
 ### Projections and operations (2)

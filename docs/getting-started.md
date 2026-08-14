@@ -1,46 +1,54 @@
-# Exercise the development walking slice
+# Exercise the development slice
 
-This is not a product quickstart. ctower has no published/supported service installation or deployment
-path. The current walking slice is exercised by repository verification against disposable fixtures,
-including an externally installed development wheel.
+The [Quickstart](quickstart.md) is the product-oriented first use. This page places that tour inside the
+repository development loop.
 
-## Before you run it
+## Start with the disposable tour
 
-Complete [Repository setup](start-here/repository-setup.md). The full gate requires Docker Compose because
-the Increment-1 acceptance tests start a disposable PostgreSQL 17 fixture. The fixture is loopback-only,
-uses temporary storage, and is torn down by the tests; it is not a ctower Compose deployment.
+Complete [Repository setup](start-here/repository-setup.md), then run:
 
-Run the complete gate only from a clean committed candidate:
+```bash
+just quickstart
+```
+
+This proves that the current wheel, generated client, protected CLI, API, Workflow, Proof path, and
+PostgreSQL fixture work together. It leaves no runtime or database behind.
+
+## Run the warm gate
+
+While editing:
+
+```bash
+just check
+```
+
+The warm gate checks formatting, lint, types, public documentation, workflows, version mirrors, repository
+policy, authored contracts, generated drift, traceability, and the intended-tree secret scan. It does not
+need a persistent database.
+
+## Run the review gate
+
+From a clean committed candidate:
 
 ```bash
 just verify
 ```
 
-`just verify` runs the warm checks, required suites, branch coverage, generated-drift checks, history secret
-scan, and clean-tree proof. It validates the repository and its current development evidence. It does not
-install ctower, make the local database durable, create a supported tenant, or prove production recovery.
+The review gate repeats the warm checks, executes the required PostgreSQL-backed suites with branch
+coverage, checks the expected-suite inventory, scans reachable history for secrets, and proves the tree is
+still clean. A dirty tree is a refusal, not a warning.
 
-## What the development slice proves
+These commands validate the repository. They do not install ctower, create a supported tenant, expose a
+service, or prove production recovery.
 
-The tests cover a one-use first-tenant ceremony; durable ticket/comment/Work facts and custody; the
-protected Proof and four-stage Workflow fixture; a read-only Board projection; CompanyBundle
-validate/plan/apply/export; the generated-operation-backed CLI; the encrypted spool and real Linux Secret
-Service boundary; and selected idempotency, authorization, projection, health, and acknowledgement
-behaviours. See [Project status](project-status.md) for the precise boundary.
+## Inspect the exact surfaces
 
-The normal development configuration reports `pending_only`. A separate verifier-owned primary/standby
-PostgreSQL topology exercises acknowledged durability. Neither topology is a supported operational setup.
+- [CLI reference](reference/cli.md) lists the closed installed command grammar.
+- [HTTP API](reference/http-api.md) groups the authored operations and links the source contract.
+- [Protected CLI and spool](guides/protected-cli.md) explains authority input, idempotency, local custody,
+  and retry behavior.
+- [Company configuration](guides/company-bundle.md) explains validation, planning, apply, and export.
+- [Current availability](start-here/availability.md) separates development evidence from unsupported and
+  planned behavior.
 
-## Where to inspect the exact surface
-
-- [OpenAPI](https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml) is the authored HTTP
-  contract for the development slice.
-- [Protected CLI and spool](guides/protected-cli.md) defines the installed-artifact, keyring, output, and
-  recovery boundary.
-- [CompanyBundle](guides/company-bundle.md) defines the strict desired-state round trip and its exclusions.
-- [Contracts](https://github.com/simjak/ctower/tree/main/contracts) and
-  [packs](https://github.com/simjak/ctower/tree/main/packs) distinguish authored inputs from activated
-  behaviour.
-
-Do not turn test fixtures into a real-work environment. Read
-[What is deliberately unavailable](start-here/availability.md) before proposing an integration.
+Use only synthetic or reconstructible data in development fixtures and the private shadow runtime.

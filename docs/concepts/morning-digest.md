@@ -41,6 +41,5 @@ while every answered row remains visible. The text renderer says `UNKNOWN total`
 
 The operator-only [CLI command](../reference/cli.md#morning-digest) and
 [HTTP operation](../reference/http-api.md#morning-digest) expose the same strict artifact. Notification
-delivery and scheduling stay outside ctower: Mission Control sends the rendered text through its existing
-durable-first notification rail. Only the director may switch or retire the interim schedule. This feature
-adds no Slack/Hermes path.
+delivery and scheduling stay outside ctower; an external consumer may send the rendered text only after its
+ordinary durable delivery completes. This feature adds no chat-provider transport.

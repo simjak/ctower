@@ -139,7 +139,7 @@ body:
 
         ### 5 · Review — `/review`
         - [ ] Independent reviewer, **different model family than the author**
-        - [ ] Judged against `docs/CODING_STANDARDS.md`, not only for bugs
+        - [ ] Judged against `docs/contributing/CODING_STANDARDS.md`, not only for bugs
         - [ ] Deep-modules lens: nesting ≤3, no god-functions, no duplicated source of truth
         - [ ] No value validated by its name or shape where its identity should be resolved
         - [ ] Correct-but-ugly is CHANGES-REQUESTED

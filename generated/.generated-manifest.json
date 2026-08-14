@@ -7,8 +7,8 @@
       "id": "contract-traceability-index",
       "inputs": [
         {
-          "path": "SPEC.md",
-          "sha256": "sha256:a7ee08d0c63753e8c3e3da6988a29e7f80705127a3dfe22f4340d178275d4a2f"
+          "path": "docs/internal/SPEC.md",
+          "sha256": "sha256:aef0467626bf632bb8c6920fa4ebf17be22d70541b4b4a03e4eb7cf42cf64b78"
         },
         {
           "path": "contracts/traceability/sources.json",
@@ -28,7 +28,7 @@
         },
         {
           "path": "tools/checks/_impl/traceability.py",
-          "sha256": "sha256:4d63dfa7a5655d25653671c7ca78882d99137714b803c9d5f91402e997a1d0c3"
+          "sha256": "sha256:806e0699d3c1f00926cc3eda0eebfd849887f280808da4f1e931313f6a5973da"
         },
         {
           "path": "tools/checks/traceability.py",
@@ -314,11 +314,11 @@
         },
         {
           "path": "contracts/evidence/evidence-manifest-v2.schema.json",
-          "sha256": "sha256:81eb6dc99f57a3c6ddd200b42af28359757dd275641e369f7423082f959fa170"
+          "sha256": "sha256:2876e573f8d1e227557f43dfb9627956d066af47d80790e5703f79043bcff4d3"
         },
         {
           "path": "contracts/evidence/evidence-manifest.schema.json",
-          "sha256": "sha256:ee651b3bb91992e959faf23fa837d636e0a9d46e1c3d1cddd3b33be12f778872"
+          "sha256": "sha256:d6242c392af4fecaf637c9181400e7ba0ab41ba8a9d01348611bee0de0b368c1"
         },
         {
           "path": "contracts/evidence/object-manifest.schema.json",
@@ -520,7 +520,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:d864ca640a0d4fc641a29051f6c0fcf41a6b0e6cffda771d2eecfbcb9f7311a6"
+          "sha256": "sha256:41b0fb3877ef887306b5d67eadd22d9d037675fc2fdb54c3476ca3e94cdb755b"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

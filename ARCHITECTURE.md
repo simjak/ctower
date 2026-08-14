@@ -3,13 +3,14 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.24 |
-| Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-11 |
+| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.24 |
+| Decision history | [`docs/internal/DECISIONS.md`](docs/internal/DECISIONS.md) |
+| Last reviewed | 2026-08-14 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
-deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and this file is stale.
+deployment manifests. If this file and `docs/internal/SPEC.md` disagree, the specification wins and this
+file is stale.
 
 Implementation labels are strict:
 
@@ -20,6 +21,44 @@ Implementation labels are strict:
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
+
+## Product shape and structural homes
+
+ctower reduces the operator attention needed to move valuable work without making responsibility implicit.
+It turns conversations, commands, and external events into durable intent and executable work, keeps claims
+separate from proof, and preserves custody while agent processes, models, runners, and providers are replaced.
+
+The design has three responsibility layers:
+
+- the **trusted control plane** owns identity, work, policy, evidence, runtime custody, effects, and durable
+  facts;
+- the **product surfaces** present Home, Board, Ticket detail, Fleet, and Analytics through the same generated
+  command and read contracts; and
+- **Adapters and runners** observe or act on external systems and host resources, but never create canonical
+  work, lifecycle, proof, or effect truth on their own.
+
+The operator's product concepts map onto those layers as follows. These are responsibility homes, not a
+microservice decomposition or a second sequencing model.
+
+| Product concept | Structural home and boundary |
+|---|---|
+| Ticket | Work owns Request intent, separate maintenance-proposal facts, current plan revisions required before dispatch, permanent Ticket identity, movement and wait facts, and workspace links. Only an operator-confirmed ordinary Request command can apply a proposal. Workflow, Runtime, and Proof contribute linked stages, attempts, and evidence without replacing that identity. A loose `task.md` file may be an artifact, but only a Request preserves the requested outcome and only a Ticket carries executable work and proof. |
+| Board | Projections derives the cross-ticket index, maintenance proposal queue, planning stack, movement, stalls, and human-attention context from accepted facts. Board controls submit typed commands; they never patch projection state. |
+| Routines | Catalog owns immutable Routine definitions and Runtime owns occurrences, consumption, and effects. Management and fleet beats re-read complete durable worklists, including movement, breached stalls, and explicit unknowns. |
+| Agents | Catalog owns versioned profiles and the fleet registry; Runtime owns jobs, leases, liveness evidence, and recovery custody. Harness Adapters report model-and-account capacity and credential-reference completeness through one narrow contract. Self-heal has one configured respawn owner and records every claim, result, and drill. |
+| Integrations | Provider Adapters translate strict external payloads through Integrations. Effects separately grants protected actions and records receipts and reconciliation; provider success cannot advance a Ticket. |
+| Knowledge | Knowledge owns the append-only pattern ledger; Catalog owns revision-pinned tools, skills, personas, and knowledge entries through the one CompanyBundle path. Runtime coordinates bounded session mining while runner-side readers redact before submission; raw transcripts and host paths never become control-plane content. |
+| Communication | Inbox and Work retain conversations, messages, Requests, and their immutable links; Projections and the existing surfaces render them. A thread may remain a conversation until an explicit promotion creates or links executable work. |
+| Workflows | Workflow interprets immutable stage graphs and legal routes. Execution Policy narrows declared choices, Runtime performs accepted jobs, and Proof gates advancement and completion. |
+| Metrics and KPIs | Projections derives attention, throughput, quality, recovery, cost, planning, and delivery views at named watermarks. A metric is never mutation authority. |
+| Observability | Telemetry receives technical observations; Record-backed health, fleet, capacity, and consumption facts preserve attribution and time. Missing or stale evidence renders degraded or unknown, never calm. |
+| Templates | Curated starter revisions live in Catalog and travel through CompanyBundle as authoring convenience. They are not a new component kind, lifecycle, active pointer, or authority path. |
+| Organizations and projects | Access owns tenant and Project authority; Catalog owns versioned organization, goal, Project, profile, and bundle content; Work binds each Request and Ticket immutably to its Project. |
+| Access control | Access resolves human sessions, machine credentials, roles, grants, scopes, and revocation into one typed actor. Secrets remain references and every downstream Module rechecks the exact authority it needs. |
+| Editor and file explorer | A contextual workspace surface reads durable workspace records and runner observations. Work and Runtime own record lifecycle and exact Catalog-mounted inputs; only the runner materializes directories and bytes, and host state cannot assert active, closed, or safe-to-delete truth. |
+
+The [implementation roadmap](docs/internal/IMPLEMENTATION-ROADMAP.md) is the sole non-normative sequencing proposal. It
+may order work against this map, but neither this grouping nor the roadmap activates product behavior.
 
 The first-class Request aggregate now exists as a tested Phase-1 development candidate: durable capture,
 append-only semantic facts, generated API/CLI operations, accepted-only read, restore evidence, and a
@@ -356,6 +395,7 @@ plugins, or any new network boundary.
 | Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, pair-grouped notification ingestion, atomic create-or-link ticket promotion, immutable promotion links, fact-derived per-message state and unread projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Integrations | Catalog-revision-pinned bounded source cursors, immutable external issue/ticket custody links and observations, and proof-gated outbound delivery receipts; no provider credential values or lifecycle authority |
+| Knowledge | Append-only redacted pattern identities, occurrence counts, accepted source cursors, completeness, evidence pointers, and linked skill or documentation cures; no raw transcript store |
 | Work | Immutable Rulings over existing project seats, Request-linked answers, and accepted-only citation/supersession reads; first-class Requests, record-derived decision briefs, and triage/owner/priority/Ticket-relation/blocker/closure rules; permanent Tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
 | Attention | Exact policy-qualified human actions, the typed append-only findings feed and its configured kind catalog, and Needs You projection inputs |
@@ -460,7 +500,7 @@ sets are alternatives, never a union, and the requested disposition picks one: `
 ordinary set, evidence-backed `skipped` resolves the skip set in its place and is admissible only while
 the pinned predicate holds on accepted durable facts. A skipped stage therefore owes its skip proof
 instead of the work it did not do, and a `skipped` request with an unsatisfied predicate is refused rather
-than converted or assumed. `SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
+than converted or assumed. `docs/internal/SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
 
 Six slot contracts in the software-factory package carry extra bound requirements because prose replaces
 them most often: `plan.criteria`, `implement.warm-gate`, every `use-proof`/`live-use-proof`/`verification`
@@ -477,7 +517,7 @@ stage carrying the landing boundary — and reports each stage's fact separately
 `STATE_UNKNOWN` on the head revision's candidate digest. Green requires every fact; unknown is a failure.
 The set derives from the pinned graph, never from stage-key strings, so the check carries no branch
 AC-WF-25 forbids. The check is a pure reader — no authoritative write, no Evidence, no slot, no gate — and
-is never itself proof. `SPEC.md` INV-74 and AC-REL-09 are authority for this.
+is never itself proof. `docs/internal/SPEC.md` INV-74 and AC-REL-09 are authority for this.
 
 At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
 sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->
@@ -496,7 +536,7 @@ code or more than one becomes `classification_unknown` and dispatches nothing. I
 win over that unknown-classification hold, which wins over the earliest declared repair destination when
 one disposition contains multiple failures. Product defects reach plan, design, or implement only through
 distinct typed codes, and production failures cannot repair until containment, exact-environment
-verification, and typed triage are committed. `SPEC.md` contains the complete predicate-input and
+verification, and typed triage are committed. `docs/internal/SPEC.md` contains the complete predicate-input and
 stage-by-reason tables.
 
 The no-stage-name/group-name conformance proof derives its denominator rather than maintaining it. It

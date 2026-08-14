@@ -1,6 +1,6 @@
-# How to deploy and verify the Phase-1 Console viewer
+# How to deploy and verify the read-only Console viewer
 
-This procedure composes the read-only viewer on a private HTTPS origin, grants one exact current crew
+This procedure composes the read-only viewer on a private HTTPS origin, grants one exact current worker
 session, and captures evidence without copying terminal bytes or credentials into ordinary artifacts.
 
 The foundation is a pre-alpha server boundary. It is not a supported general deployment and it does not
@@ -12,8 +12,8 @@ You need:
 
 - the repository candidate with migrations through `0065_console_view_grants.sql`;
 - PostgreSQL with the cluster migration applied by a role allowed to create `console_output_reader`;
-- an existing CT-I1-013 human identity provider and secure browser session;
-- one current non-Commander assignment and open recorded work session;
+- an existing human identity provider and secure browser session;
+- one current eligible worker assignment and open recorded work session;
 - one existing tmux target with an exact `@project` option and an existing pipe-pane log;
 - an HTTPS certificate for a literal loopback or Tailscale listener;
 - one 32-byte wrapping-key value resolved in process and one `secret-service:`, `vault:`, or `kms:` reference
@@ -45,13 +45,13 @@ Do not grant the application service direct SELECT access to encrypted content o
 Read the live Project and incarnation from the same tmux socket the Adapter will use:
 
 ```bash
-tmux -L mc show-options -t mc:engineer-console-p1 -v @project
-tmux -L mc display-message -p -t mc:engineer-console-p1 '#{session_id}:#{session_created}'
+tmux -L ctower show-options -t worker-console -v @project
+tmux -L ctower display-message -p -t worker-console '#{session_id}:#{session_created}'
 ```
 
 Make the trusted current backend registry return one `ConsoleBackendRegistration` for the opaque reference,
 using that exact target, the existing output-log path, its trusted `st_dev`/`st_ino`, runtime attempt ID,
-runner ID, and positive runner epoch. Capture that identity during the trusted runtime registration ceremony,
+runner ID, and positive runner epoch. Capture that identity during the trusted runtime registration step,
 not from a browser or grant request. Inject its lookup as `registration_reader` and set `allowed_log_root` to
 the narrow directory containing the registered logs. The log must be an absolute regular-file path with no
 symlink component.
@@ -63,7 +63,7 @@ discovers, follows, persists bytes from, or silently rebinds replacements.
 
 ## 3. Compose the explicit policy and viewer
 
-Construct `ConsolePolicy` with every value present. There are no defaults. The maximum Phase-1 values are:
+Construct `ConsolePolicy` with every value present. There are no defaults. The maximum read-only values are:
 
 | Field | Maximum |
 |---|---:|
@@ -126,8 +126,8 @@ origin.
 
 ## 5. Append the allowance
 
-Use the operator bearer route `POST /v1/admin/console/sessions` with the exact current reference and the
-fixed Phase-1 values `adapter_key=tmux-v1`, `loop_kind=standard`, and
+Use the administrator bearer route `POST /v1/admin/console/sessions` with the exact current reference and the
+fixed read-only values `adapter_key=tmux-v1`, `loop_kind=standard`, and
 `sensitivity_class=restricted`. The server independently checks the current assignment/session join and live
 Adapter observation before appending the allowance.
 
@@ -171,7 +171,7 @@ Use distinct grants for each case:
   and confirm grant/open refuses with its specific runtime, runner, epoch, backend, Project, or incarnation
   fence code and reveals no output.
 - Activate `POST /v1/admin/console/kill-switch` and confirm new admission refuses and active streams close with
-  `globally_disabled`; clear it only through a later operator fact with a reason.
+  `globally_disabled`; clear it only through a later administrator fact with a reason.
 - Cause three controlled denied grant decisions in the configured five-minute window and confirm one
   append-only suspension fact retains the denial count, start, and full fifteen-minute expiry. Stop the
   probe there; do not generate additional denials during the suspension.
@@ -200,8 +200,8 @@ the listener/direct-path inventory.
 The archived digest-only record should name:
 
 - candidate commit and migration/schema manifest digests;
-- Project, crew, registered backend reference, runtime attempt, runner/epoch, and incarnation digests or
-  non-secret identifiers;
+- Project, worker engagement, registered backend reference, runtime attempt, runner/epoch, and incarnation
+  digests or non-secret identifiers;
 - allowance/grant/stream/object/access/gap/close/suspension fact IDs, plus source generation and durable
   cursor metadata;
 - output byte count and cryptographic digest, never output content;
@@ -226,6 +226,6 @@ The archived digest-only record should name:
 
 ## Related material
 
-- [Console view grants](../concepts/console-viewer.md)
-- [HTTP API reference](../reference/http-api.md#console-viewer)
-- [Phase-1 security verification](../security/console-phase1-verification.md)
+- [Console view grants](../../concepts/console-viewer.md)
+- [HTTP API reference](../../reference/http-api.md#console-viewer)
+- [Server-foundation security verification](../security/console-phase1-verification.md)

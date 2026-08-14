@@ -113,5 +113,6 @@ credential.
   the addresses the send path already resolves — narrower than the seat registry, never wider.
 - This is limited to low-value, reconstructible shadow dogfood. It is not a deployment or support promise.
 
-See the [HTTP API reference](http-api.md#inbox), [CLI reference](cli.md#inbox), and the canonical
+See the [HTTP API reference](../../reference/http-api.md#inbox),
+[CLI reference](../../reference/cli.md#inbox), and the canonical
 [specification](https://github.com/simjak/ctower/blob/main/SPEC.md).
