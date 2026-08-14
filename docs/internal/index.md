@@ -7,15 +7,15 @@
 
     It is preserved deliberately and in full. It is placed here — behind the product documentation rather
     than in front of it — because reading it first gives a misleading impression of what is available. If
-    you want to know what ctower is and how to use it, start at the [Overview](index.md) and the
-    [Quickstart](quickstart.md).
+    you want to know what ctower is and how to use it, start at the [Overview](../index.md) and the
+    [Quickstart](../quickstart.md).
 
 ## Delivery state and boundaries
 
 | Page | What it records |
 |---|---|
 | [Delivery state](project-status.md) | The capability matrix: what is a development fixture, what is verifier-only proof, what is diagnostic, planned, or unsupported |
-| [What is deliberately unavailable](start-here/availability.md) | The explicit do-not-attempt list |
+| [What is deliberately unavailable](../start-here/availability.md) | The explicit do-not-attempt list |
 | [Current operational boundary](operations/current-boundary.md) | What the checked-in Compose file is and is not |
 
 The vocabulary those pages use is deliberate:
@@ -35,10 +35,10 @@ from `IMPLEMENTATION-ROADMAP.md`. They are not product versions and they are not
 
 | Page | What it records |
 |---|---|
-| [Repository setup](start-here/repository-setup.md) | Prerequisites for the gates |
-| [Exercise the development walking slice](getting-started.md) | What the full gate does and does not prove |
+| [Repository setup](../start-here/repository-setup.md) | Prerequisites for the gates |
+| [Exercise the development walking slice](../getting-started.md) | What the full gate does and does not prove |
 | [Observability](operations/observability.md) | Health vocabulary and redaction rules |
-| [Secret handling](security/secret-handling.md) | Secret-reference discipline |
+| [Secret handling](../security/secret-handling.md) | Secret-reference discipline |
 
 ## Bounded recovery checkpoints
 
@@ -59,17 +59,17 @@ them. Where this site and a canonical source disagree, the canonical source wins
 
 | Source | Role | Mutation rule |
 |---|---|---|
-| [`SPEC.md`](https://github.com/simjak/ctower/blob/main/SPEC.md) | Current product, architecture, workflow, acceptance, and build contract | Reviewed revision; contradictions removed rather than accumulated |
-| [`DECISIONS.md`](https://github.com/simjak/ctower/blob/main/DECISIONS.md) | Operator decisions and rationale | **Append only.** An accepted decision is never rewritten, only superseded by a new entry |
+| [`SPEC.md`](SPEC.md) | Current product, architecture, workflow, acceptance, and build contract | Reviewed revision; contradictions removed rather than accumulated |
+| [`DECISIONS.md`](DECISIONS.md) | Operator decisions and rationale | **Append only.** An accepted decision is never rewritten, only superseded by a new entry |
 | [`ARCHITECTURE.md`](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md) | Derived terminal-safe atlas | Updated with `SPEC.md`; never creates requirements or a second architecture truth |
-| [`IMPLEMENTATION-ROADMAP.md`](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md) | Non-normative sequencing proposal | Does not approve scope, activate backlog items, or authorize implementation |
+| [`IMPLEMENTATION-ROADMAP.md`](IMPLEMENTATION-ROADMAP.md) | Non-normative sequencing proposal | Does not approve scope, activate backlog items, or authorize implementation |
 
 `SPEC.md` is also a code-generation input: `generated/.generated-manifest.json` records its digest, so
 editing it without regenerating fails `just check`.
 
 ## Contributing
 
-[Development guide](contributing/development.md) ·
-[Coding standards](contributing/CODING_STANDARDS.md) ·
-[Documentation policy](contributing/documentation.md) ·
-[Releases](contributing/releases.md)
+[Development guide](../contributing/development.md) ·
+[Coding standards](../contributing/CODING_STANDARDS.md) ·
+[Documentation policy](../contributing/documentation.md) ·
+[Releases](../contributing/releases.md)

@@ -22,7 +22,7 @@ primary/standby topology exercises acknowledged durability, but it is not packag
 
 Use Docker Compose only to run the documented repository acceptance tests. Do not put tenant data,
 credentials, or real work into their fixture database. For current health vocabulary and redaction rules,
-see [Observability](observability.md) and [Secret handling](../security/secret-handling.md).
+see [Observability](observability.md) and [Secret handling](../../security/secret-handling.md).
 
 CT-I1-021 also defines a verifier-owned private Console shadow proof. It may bind an exact candidate only to
 a literal loopback or Tailscale address, against disposable PostgreSQL and one registered existing tmux/log

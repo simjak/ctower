@@ -197,7 +197,7 @@ transfer is a protected operation and is separately audited.
 For one-off interactive creation, let the client create the key:
 
 ```text
-run: ticket create --priority P2 --project-key ctower --source-kind mission-control --source-ref R2257 --title …
+run: ticket create --priority P2 --project-key example --source-kind source-host --source-ref item-42 --title …
 exit 0   -> accepted. record command_id and ticket_id. done.
 exit 75  -> do not enter create again. run `spool drain` with the same origin and authority.
 ```
@@ -222,30 +222,28 @@ it is the only one where starting over with a fresh key is safe.
 
 ## Source lookup and the mirroring race
 
-The Board is the cross-ticket index. For source `mission-control / R2238`, use this exact sequence:
+The Board is the cross-ticket index. For source `source-host / item-42`, use this exact sequence:
 
 ```bash
 printf '%s\n' "${authority}" |
   ctl --base-url "${base_url}" board query \
-    ctower \
-    --source-kind mission-control --source-ref R2238
+    example \
+    --source-kind source-host --source-ref item-42
 
 # Only when cards is empty:
 printf '%s\n' "${authority}" |
   ctl --base-url "${base_url}" ticket create \
     --priority P2 \
-    --project-key ctower \
-    --source-kind mission-control \
-    --source-ref R2238 \
-    --title "Mirror R2238"
+    --project-key example \
+    --source-kind source-host \
+    --source-ref item-42 \
+    --title "Mirror source item 42"
 ```
 
 This lookup is a read capability, not a uniqueness or provenance claim. Two callers can both observe an
 empty Board projection and create separate tickets for the same source pair. A caller that needs idempotent
 mirroring must use one stable explicit command ID across its retries and must reconcile duplicates if
-independent creators race. [Issue #68](https://github.com/simjak/ctower/issues/68) tracks the source
-namespace, ownership/grant, accepted-data upgrade, and all-writer locking design required before source
-uniqueness can be enforced safely.
+independent creators race. Source-pair uniqueness is not enforced by this revision.
 
 ## Related
 

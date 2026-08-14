@@ -27,8 +27,8 @@ from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
 ROOT = Path(__file__).resolve().parents[2]
-DECISIONS = ROOT / "DECISIONS.md"
-SPEC = ROOT / "SPEC.md"
+DECISIONS = ROOT / "docs/internal/DECISIONS.md"
+SPEC = ROOT / "docs/internal/SPEC.md"
 
 _DECISION_ID = re.compile(r"^(D\d+)(?!\w)")
 _DECISION_REFERENCE = re.compile(r"\b(D\d+)\b")
@@ -112,7 +112,9 @@ def _facts(source: str) -> _MarkdownFacts:
 class DecisionCitationsResolveTests(unittest.TestCase):
     def test_every_cited_decision_is_declared(self) -> None:
         decisions = _facts(DECISIONS.read_text(encoding="utf-8"))
-        self.assertTrue(decisions.declared_decisions, "DECISIONS.md declares no decisions")
+        self.assertTrue(
+            decisions.declared_decisions, "docs/internal/DECISIONS.md declares no decisions"
+        )
         for source in (DECISIONS, SPEC):
             cited = _facts(source.read_text(encoding="utf-8")).cited_decisions
             dangling = sorted(
@@ -129,13 +131,13 @@ class DecisionCitationsResolveTests(unittest.TestCase):
         facts = _facts(SPEC.read_text(encoding="utf-8"))
         self.assertTrue(
             facts.declared_acceptance_criteria,
-            "SPEC.md anchors no acceptance criteria",
+            "docs/internal/SPEC.md anchors no acceptance criteria",
         )
         dangling = sorted(facts.cited_acceptance_criteria - facts.declared_acceptance_criteria)
         self.assertEqual(
             [],
             dangling,
-            f"SPEC.md cites acceptance criteria that are not anchored: {dangling}",
+            f"docs/internal/SPEC.md cites acceptance criteria that are not anchored: {dangling}",
         )
 
 

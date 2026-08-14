@@ -1,7 +1,7 @@
 /**
  * The one boundary-crossing chokepoint in this app (O10).
  *
- * `docs/CODING_STANDARDS.md` forbids single-shot calls across a process or
+ * The repository coding standard forbids single-shot calls across a process or
  * network boundary, loopback services included. Both crossings this app makes
  * live here — `boundedRead` for HTTP and `boundedProcess` for a child process —
  * and they share one policy. This is the only place in `apps/` that names

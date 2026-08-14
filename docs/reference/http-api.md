@@ -7,7 +7,7 @@ from the repository release version.
 !!! warning "Development contract, not a supported API"
     This surface exists so the CLI, the generated clients, and the tests share one definition. It is not a
     stable external API and there is no compatibility promise between revisions. The private-VPS E2 shadow
-    runtime serves it only on loopback for low-value reconstructible dogfood; that is not external or
+    runtime serves it only on loopback for low-value reconstructible development work; that is not external or
     production API support. See the [Quickstart](../quickstart.md).
 
 !!! info "Where this page comes from"
@@ -196,8 +196,9 @@ The Console event route refuses every query string before it evaluates stream au
 Reconnect supplies the durable cursor only through `Last-Event-ID`, bounded from zero through the maximum
 signed 64-bit value; malformed, negative, and larger values refuse before a stream claim.
 
-The three `/v1/admin/console` routes use operator bearer authentication. An allowance request carries the
-complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` Phase-1 values.
+The three `/v1/admin/console` routes use administrator bearer authentication. An allowance request carries
+the complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` read-only
+values.
 Revocation carries a 1–500-character reason. The global switch carries `enabled` and a 1–500-character
 reason. Allow is the only Console operation emitted into the ordinary protected generated client; the
 browser/SSE and empty-204 admin operations remain server-only boundaries and do not create handwritten
@@ -225,7 +226,7 @@ an SSE event because no connected client remains to receive it.
 
 Delivery and replay are each capped at 1 MiB per minute, queued pending bytes at 256 KiB, and grant/revocation
 state is polled at least every four seconds. See [Console view grants](../concepts/console-viewer.md) and the
-[operator procedure](../operations/console-viewer.md).
+[Console concept](../concepts/console-viewer.md).
 
 ### Intake
 
@@ -352,9 +353,9 @@ Project Delivery rows expose `qualifying_stage_slots[]`. Each item has `slot_key
 | `POST` | `/v1/runtime/dream-lane-bindings` | `bindDreamLane` | `dream-lane bind` | mutation | forbidden | `200`, `202`, `401`, `403`, `409`, `422` |
 
 The list is filtered by persisted authority before response materialization. Project seats receive only
-their own Project effect and never the fleet effect; operators receive all Project effects and the fleet
+their own Project effect and never the global effect; operators receive all Project effects and the global
 effect. Consumption derives scope from the stored effect before checking whether it was consumed or whether
-the caller has a qualifying lane/model binding. Foreign Project consumption and non-operator fleet
+the caller has a qualifying lane/model binding. Foreign Project consumption and unauthorized global
 consumption return `project-scope-denied` without recording an event, outbox row, or consumption.
 
 `DreamDispatchConsumeRequest` contains only `output_digest`, a lowercase SHA-256 digest. The server copies
@@ -362,9 +363,9 @@ lane, crew, harness, model, family, effort, and tier from the authenticated prin
 binding; none is accepted from the request. The `202` response uses the ordinary durability-pending and
 `Retry-After` contract.
 
-`DreamLaneBindRequest` is the operator-only, online ceremony surface. It accepts the lane and crew plus the
-closed `codex` / `gpt-5.6-sol` / `max` / `qwen3.8-max` / `hard` selection. The server resolves the
-authenticated principal from the credential, records one canonical event, and creates one immutable
+`DreamLaneBindRequest` is a reserved online administrative surface. It accepts lane, worker, harness,
+model, effort, fallback, and tier fields, but the public documentation does not publish the deployment-owned
+selection. The server resolves the authenticated principal from the credential, records one canonical event, and creates one immutable
 `runtime_dream_lane_bindings` row atomically. It never accepts a principal or model-family claim from the
 request. Non-operators receive `dream-lane-binding-operator-required`; an already-bound operator receives
 `dream-lane-already-bound`.

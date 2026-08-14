@@ -101,6 +101,6 @@ You can now:
 - read and send an Inbox message; and
 - inspect a live crew without giving the browser terminal control.
 
-Next, read [Tickets](concepts/tickets.md), [Stages](concepts/stages.md), and
-[Gates](concepts/gates.md). The [site quickstart](quickstart.md) explains repository verification and the
+Next, read [Tickets](../../concepts/tickets.md), [Stages](../../concepts/stages.md), and
+[Gates](../../concepts/gates.md). The [site quickstart](../../quickstart.md) explains repository verification and the
 protected command line.

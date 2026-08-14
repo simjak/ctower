@@ -14485,7 +14485,7 @@
       "type": "object"
     },
     "contracts/evidence/evidence-manifest-v2.schema.json": {
-      "$comment": "DECISIONS.md D37 (gh#174): /v2 publishes evidence-manifest.schema.json's first incompatible successor. It drops the manifest-level verdict_ids roster and instead binds verdict_id and candidate_digest onto each criterionDisposition row, so a row's evidence is traceable to the exact verdict and the exact candidate digest that produced it, matching evidence_policy.candidate_binding: current_digest at the row level. /v1 stays committed, unedited, and locked to its own recorded shape digest by tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline; this file is that same test's lock target for schema.const ctower.evidence-manifest/v2. title/description/$comment stay free to edit.",
+      "$comment": "docs/internal/DECISIONS.md D37 (gh#174): /v2 publishes evidence-manifest.schema.json's first incompatible successor. It drops the manifest-level verdict_ids roster and instead binds verdict_id and candidate_digest onto each criterionDisposition row, so a row's evidence is traceable to the exact verdict and the exact candidate digest that produced it, matching evidence_policy.candidate_binding: current_digest at the row level. /v1 stays committed, unedited, and locked to its own recorded shape digest by tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline; this file is that same test's lock target for schema.const ctower.evidence-manifest/v2. title/description/$comment stay free to edit.",
       "$defs": {
         "acceptanceCriterionCode": {
           "pattern": "^AC-[A-Z0-9]+-[0-9]{2}$",
@@ -14650,7 +14650,7 @@
       "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion SPEC.md declares, and each one carries exactly one typed disposition, its own verdict id, and its own candidate-digest binding. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
+      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion the canonical specification declares, and each one carries exactly one typed disposition, its own verdict id, and its own candidate-digest binding. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
       "properties": {
         "candidate_digest": {
           "$ref": "#/$defs/sha256"
@@ -14706,7 +14706,7 @@
       "type": "object"
     },
     "contracts/evidence/evidence-manifest.schema.json": {
-      "$comment": "DECISIONS.md D37 (gh#175): this v1 shape absorbed several unversioned incompatible edits during PR #171's review (artifacts->criteria, deferred_sources->deferred_capabilities->deferred_suites, criterionDisposition's required set and key patterns) before any consumer existed. Its normative shape (required/properties/$defs) is now locked to schema.const by tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline; a future incompatible change (gh#174 included) publishes a new evidence-manifest-v2.schema.json with $id/schema.const bumped to /v2, per the contracts/domain/migration/*-v2.schema.json precedent, and never edits this file's normative shape in place. title/description/$comment stay free to edit.",
+      "$comment": "docs/internal/DECISIONS.md D37 (gh#175): this v1 shape absorbed several unversioned incompatible edits during PR #171's review (artifacts->criteria, deferred_sources->deferred_capabilities->deferred_suites, criterionDisposition's required set and key patterns) before any consumer existed. Its normative shape (required/properties/$defs) is now locked to schema.const by tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline; a future incompatible change (gh#174 included) publishes a new evidence-manifest-v2.schema.json with $id/schema.const bumped to /v2, per the contracts/domain/migration/*-v2.schema.json precedent, and never edits this file's normative shape in place. title/description/$comment stay free to edit.",
       "$defs": {
         "acceptanceCriterionCode": {
           "pattern": "^AC-[A-Z0-9]+-[0-9]{2}$",
@@ -14862,7 +14862,7 @@
       "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion SPEC.md declares, and each one carries exactly one typed disposition. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
+      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion the canonical specification declares, and each one carries exactly one typed disposition. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
       "properties": {
         "candidate_digest": {
           "$ref": "#/$defs/sha256"
@@ -18529,12 +18529,12 @@
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json",
       "path": "contracts/evidence/evidence-manifest-v2.schema.json",
-      "sha256": "sha256:81eb6dc99f57a3c6ddd200b42af28359757dd275641e369f7423082f959fa170"
+      "sha256": "sha256:2876e573f8d1e227557f43dfb9627956d066af47d80790e5703f79043bcff4d3"
     },
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "path": "contracts/evidence/evidence-manifest.schema.json",
-      "sha256": "sha256:ee651b3bb91992e959faf23fa837d636e0a9d46e1c3d1cddd3b33be12f778872"
+      "sha256": "sha256:d6242c392af4fecaf637c9181400e7ba0ab41ba8a9d01348611bee0de0b368c1"
     },
     {
       "id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",

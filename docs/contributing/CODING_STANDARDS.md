@@ -47,7 +47,8 @@ Cross-tenant/access/fencing invariants, forged proof, direct untrusted record-ti
 - Ruff is the sole Python linter and formatter. Do not add competing formatter configuration.
 - Use explicit transactions and public Interfaces. Do not leak psycopg rows or FastAPI objects into domain decisions.
 
-The repository currently supports syntax from Python 3.12 through candidate 3.14, but no exact `.python-version` is allowed until the CT-L0-007 evidence/decision gate resolves D6 versus D14.
+The repository currently supports syntax from Python 3.12 through candidate 3.14. No exact
+`.python-version` is allowed until the product-runtime compatibility gate selects and records one.
 
 ## TypeScript
 
@@ -88,4 +89,12 @@ Authored Python starts at 90% branch coverage; TypeScript starts at 90% lines an
 
 `just check` is the warm gate. It includes Actionlint, formatting, lint, types, repository and contract tests, strict documentation, generated drift, and exact intended-tree secret detection. `just verify` repeats it and adds a complete reachable-history secret scan, full repository policy, branch coverage, every currently required suite, and a clean-diff proof. Both are non-mutating and invoke an installed Gitleaks binary without network access or gate-time compilation. CI invokes these commands rather than maintaining parallel rule implementations.
 
-`tools/checks/expected-suites.toml` is the only verification-scope manifest. Its active phase and ordered backlog phases determine which suites are required. A current suite that is missing, has no executable tests, is malformed, contains an unexpected skip, times out, or returns nonzero blocks verification. Commands are argv arrays executed without a shell. Public API + protected CLI precede I1 source-of-truth cutover. Product browser implementation, browser evidence, and browser E2E first activate at CT-I2-005 / I2.4. The separate `ctower-ui` Inbox dogfood controls are the narrow D41/D44 exception, and D42 as amended by D44 activates exactly one required suite for them, `dogfood-inbox-controls`, which drives that dogfood server in a headless browser on ephemeral loopback ports while `browser-e2e` stays deferred to CT-I2-005. A later suite is reported as `not_yet_required`; it is never executed, represented by an empty placeholder, or counted as passing. A backlog owner activates a suite by advancing this manifest in the same reviewed change; the stable `just verify` command does not acquire a parallel suite list.
+`tools/checks/expected-suites.toml` is the only verification-scope manifest. Its active phase and ordered
+backlog phases determine which suites are required. A current suite that is missing, has no executable
+tests, is malformed, contains an unexpected skip, times out, or returns nonzero blocks verification.
+Commands are argv arrays executed without a shell. Public API and protected CLI precede source-of-truth
+cutover. Product browser implementation, browser evidence, and browser E2E remain deferred; a separate
+development-only browser check may be required without activating the product-browser suite. A later suite
+is reported as `not_yet_required`; it is never executed, represented by an
+empty placeholder, or counted as passing. A backlog owner activates a suite by advancing this manifest in
+the same reviewed change; the stable `just verify` command does not acquire a parallel suite list.

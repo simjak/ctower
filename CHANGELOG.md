@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.30.0](https://github.com/simjak/ctower/compare/v0.29.0...v0.30.0) (2026-08-14)
+
+
+### Features
+
+* **runtime:** add terminal beat retirement ([#486](https://github.com/simjak/ctower/issues/486)) ([adb033f](https://github.com/simjak/ctower/commit/adb033fe3f3d9292c5a01dcee62bccd6cf58e5f8))
+* **runtime:** register director drive routine ([#489](https://github.com/simjak/ctower/issues/489)) ([3c626e4](https://github.com/simjak/ctower/commit/3c626e46df240dc995de70c3521869aea7b9feca))
+
+
+### Bug Fixes
+
+* **dev-runtime:** forward dream-lane ceremony identity ([#493](https://github.com/simjak/ctower/issues/493)) ([46d514a](https://github.com/simjak/ctower/commit/46d514a11b49ee47794857386883bd1d1b577f8b))
+* **migrations:** bind cluster ledger transition ([#488](https://github.com/simjak/ctower/issues/488)) ([2b9711a](https://github.com/simjak/ctower/commit/2b9711a005faae724f204405fd76979549a6b287))
+
 ## [0.29.0](https://github.com/simjak/ctower/compare/v0.28.0...v0.29.0) (2026-08-11)
 
 

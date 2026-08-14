@@ -1871,7 +1871,8 @@ Rejected alternatives:
 
 ## D46 — First-class operator Requests replace the ledger and its Request-facing direct-intake assumptions (locked 2026-08-09, operator R2903, gh#399)
 
-The operator accepted the shape in [`docs/specs/operator-requests.md`](docs/specs/operator-requests.md)
+The operator accepted the shape in
+[`docs/internal/specs/operator-requests.md`](specs/operator-requests.md)
 after PR #398's independent exact-candidate review and the R2903 `GO`. `SPEC.md` 1.19 incorporates that
 contract as `INV-81..87` and `AC-REQ-01..08`. This is Phase 0 governance only: it authorizes no product code,
 endpoint, allocator, import command, UI control, adapter, credential, egress, or writer epoch by itself.
@@ -2629,3 +2630,275 @@ conformance); scanning all history nightly (cost grows with age); deriving cure 
 plane becomes a secret-bearing session archive); or letting DREAM mutate Requests/Tickets (violates D59's
 operator authority). Specifying CT-I1-026 activates no reader, model call, schedule, ledger, or runtime
 behavior; implementation waits on its dependencies and ordinary activation.
+
+## D62 — Ticket movement, typed stall clocks, and Commander beats derive from one durable transition stream (product, 2026-08-13, operator order R2964; build order R2959)
+
+The operator ordered one trustworthy account of whether work is moving, where it is waiting, and what each
+Commander must carry into the next beat. The answer must reuse Ticket transition truth instead of creating a
+second status ledger, must compose with D59's proposal discipline and D60's project-management views, and must
+remain available to D61's bounded dream cycle without sending Ticket records through a model. The durable
+destinations are CT-I1-027, CT-I1-028, and CT-I1-029 with acceptance families AC-MOVE-01..05,
+AC-STALL-01..04, and AC-BEAT-01..04.
+
+1. **Movement is the accepted transition fact, not a second timeline.** The existing `workflow.changed`
+   transition branch appends exactly one canonical movement fact in the same transaction as each accepted
+   stage transition. It identifies the Ticket, prior and resulting stage, existing Actor envelope, server
+   occurrence position, and stable transition-evaluation/evidence-manifest pointer. Exact replay returns the
+   original result without another movement; pending or refused transitions create none.
+2. **Movement and waiting records are deliberately event-specific.** They link to a Ticket by stable identity
+   and carry only the facts needed to explain that movement or wait episode; neither embeds an exhaustive
+   Ticket snapshot. Later Ticket attributes can therefore remain orthogonal to these records. This decision
+   does not name, design, or activate any such attribute.
+3. **One authorized stream has three bounded projections.** A project-authorized cursor read over the existing
+   project event-feed boundary is the source for the generated API and protected CLI, a prior-Europe/Vilnius-
+   civil-day digest projection, and Atom 1.0. The I1 API/CLI is the review surface; later browser rendering is
+   contextual within the existing five product surfaces, never a sixth route. The digest carries counts grouped
+   by Project and exact from/to stage plus an authorization-preserving pointer and watermark, not event rows or
+   Ticket text. Atom uses stable entry identities, server timestamps, authorized links, deterministic paging,
+   and `application/atom+xml`; it accepts only the existing direct-API Bearer/project-seat credential resolved
+   to the existing Actor and project grant. There is no anonymous feed, query credential, feed-token principal,
+   or Ticket-text payload.
+4. **A wait is an append-only typed episode.** A Ticket may enter `review`, `operator-decision`, `external`, or
+   `blocked-by-ticket` waiting. The opening fact records server `waiting_since`, accountable owner, and a stable
+   source pointer. Rechecks and resolution append facts; they never rewrite elapsed history. Repeated evaluation
+   of the same source state emits no duplicate episode or breach.
+5. **The first stall floors are explicit and conservative.** Review breaches after 24 hours; operator decision
+   after 48 hours and then reuses D50's decision brief; external waiting after seven days; and
+   `blocked-by-ticket` after 24 hours without movement by the named blocking Ticket, with immediate reevaluation
+   whenever that Ticket moves. The 24-hour internal-dependency floor catches a full unattended workday without
+   treating every short dependency wait as a stall.
+6. **Breaches batch into existing reads; they do not page by default.** The owning Commander's next existing
+   beat and D60 project-management digest aging receive breached episodes. No new Routine, cadence, or immediate
+   notification is added. Ordinary waiting does not itself derive Attention or `human-waiting`; those remain
+   separate typed states with their own authority.
+7. **Uncertainty remains visible.** Missing, stale, unreadable, unauthorized, or conflicting owner, source,
+   dependency, movement, or clock input derives typed `unknown`, is surfaced beside breached stalls, and can
+   never be rendered as calm, complete, or absent.
+8. **The Commander worklist is a complete generated read.** One authenticated projection returns the current
+   nonterminal Tickets owned by the existing Commander/custodian, grouped by pinned stage, plus breached or
+   unknown stall clocks and movement since the last accepted beat watermark. Completeness is stated per source.
+   Every beat reads the full current owned-ticket set; the watermark limits only the movement delta and never
+   Ticket membership.
+9. **Mission Control consumes through the control plane.** The D52 sibling consumer starts every applicable
+   Commander beat by calling the generated authenticated API. It imports no kernel or Record-tier client and
+   receives no Record credential. Context compaction, restart, model substitution, or harness substitution cannot
+   drop an owned Ticket because the worklist is re-read from ctower at each beat.
+10. **A failed preflight cannot become a clean prompt.** Unavailable, stale, gapped, unauthorized, conflicting,
+    partial, or unknown worklist input yields a typed failed/partial/unknown preflight. The consumer neither
+    injects a contextless clean beat nor claims an empty list, advances the accepted watermark, or suppresses the
+    missing scope. This adds no schedule, preserves D52/D53's existing Routine and revision custody, and does not
+    claim D52's separately authorized server-side lane-binding ceremony.
+11. **Builds land in dependency order and share one documentation home.** Under R2959 the candidates fully land
+    in order CT-I1-024, CT-I1-027, CT-I1-025, CT-I1-028, CT-I1-029, CT-I1-026. CT-I1-027 creates
+    `docs/concepts/ticket-movement.md` with Movement feed, Stall clocks, and Commander beat worklist sections;
+    the latter two are marked planned until their builds, and each later candidate updates the same page and all
+    affected API, CLI, digest, Routine, and Mission Control references in the same head. Movement is the smallest
+    full-close read and lands before project management; project management then establishes the digest/beat home
+    required by stall clocks; the Commander worklist follows both sources; and session mining remains last so
+    context analysis cannot become a substitute for durable Ticket drive.
+
+Rejected alternatives: a mutable Ticket-status mirror or second movement ledger (diverges from transition
+truth); one event per downstream presentation (duplicates custody); embedding Ticket rows or text in digests or
+Atom (turns transport into an authorization leak); anonymous or special feed credentials (adds a principal and
+secret lifecycle); mutable `waiting_since`, polling-only blocked-ticket clocks, or a generic waiting boolean
+(erases causality and uncertainty); automatic Attention or a new alert cadence for every wait (collapses separate
+operator states); a beat cursor that defines Ticket membership (drops quiet work); Mission Control database
+reads or model-reconstructed worklists (crosses the Record boundary and loses deterministic completeness); or
+documentation after the build chain (leaves the first consumer without a truthful outside-reader contract).
+Specifying CT-I1-027..029 activates no event, clock, read, feed, consumer, schedule, documentation page, or
+runtime behavior; implementation waits on each item's dependencies and ordinary activation.
+
+## D63 — The tool and knowledge catalog is one public engine over private, revision-pinned company content (product, 2026-08-13, operator order R2967)
+
+The operator ordered a reusable tool and knowledge catalog that can serve a whole company or one Project
+without publishing a company's actual tools, skills, personas, or operating instructions. This extends
+D12's one deep Catalog and secret-free CompanyBundle, D16's exact Routine revision discipline, D31's
+existing attributable Actors, and D37's immutable published contract shapes. The durable destination is
+CT-I1-030 with acceptance family AC-CAT-01..08.
+
+1. **The public repository owns the engine, never tenant content.** Authored contracts, engine code,
+   explicitly public first-party packs, synthetic examples, and generic fixtures may be public. Actual
+   tenant tool, skill, persona, instruction, credential, and inventory content remains in private
+   per-company storage. Repository admission injects a marked tenant artifact and refuses it by the stable
+   name tenant-catalog-content-in-public-repository; a generic secret or generated-file check cannot
+   substitute for that proof.
+2. **There is still one Catalog and one bundle path.** Tool, skill, persona, goal, and Project resources are
+   ordinary VersionedComponent categories behind the existing Catalog Interface. CompanyBundle remains the
+   only validate, plan, apply, export, and future-active-bundle path. No category gains a second catalog,
+   revision ledger, active pointer, scope store, permission service, or package-per-kind engine.
+3. **COMPANY and PROJECT are scopes, not products.** COMPANY is the existing tenant scope with no Project
+   key and may be resolved across that tenant's authorized Project contexts. PROJECT carries one exact
+   Project key and cannot cross it. Existing Goal and Project components and exact bundle assignments
+   express the hierarchy; neither scope creates a second aggregate or top-level product surface.
+4. **Publication and consumption are append-only and exactly pinned.** Published payloads are immutable.
+   Normative shape changes publish a new authored schema version under D37; content changes append a new
+   component revision and digest. Supersession, deprecation, revocation, rollback, and active-pointer
+   movement affect future resolution only. Every read, index result, materialization, invocation, and result
+   identifies exact kind, key, revision, and content digest, matching the standing Routine discipline.
+5. **Existing principals and scopes remain exhaustive.** Operator-only CompanyBundle apply publishes either
+   scope; Commanders may author or propose but cannot apply. Existing human role bindings may read COMPANY
+   entries only through an authorized Project context and PROJECT entries only for a bound Project; viewers
+   remain read-only. Project-seat credentials gain no Catalog browse or administration surface, and a
+   current runner job receives only an exact already-authorized pin. Visibility never grants invocation.
+   A new principal, authority store, bearer format, or free-standing Catalog scope requires a separately
+   accepted Seam decision.
+6. **Invocation is a typed Runtime command, not Catalog authority.** The control plane binds the Actor,
+   tenant and Project, exact component pin, named operation, strict input digest, idempotency identity,
+   policy, job, lease, and fencing context before dispatch. Only the runner materializes and executes through
+   the existing Runtime and CommandGuard boundary, then returns a strict result through generated APIs.
+   Runner completion cannot itself advance Workflow, satisfy Evidence, or grant an effect, and runner,
+   provider, web, CLI, and generated clients never connect to Record-tier persistence.
+7. **Private-source synchronization advances accepted cursors.** Each source and scope has one monotonic
+   accepted cursor binding source ordering and watermark, reader and mapping revisions, occurrence, and each
+   staged entry or typed skip. A bounded accepted prefix may advance while a visible deferred suffix remains
+   eligible. Restart, replay, equal timestamps, and duplicate discovery create no duplicate revision;
+   partial, unknown, stale, unauthorized, or conflicting input cannot claim complete-empty truth or move an
+   active pointer. External payloads are strict, and secrets are references only.
+8. **One directory import seam covers migration.** A bounded directory importer maps tool, skill, and
+   persona trees to exact scope, kind, key, schema, revision, digest, and provenance. Dry-run emits a
+   canonical per-item create/reuse/supersede/refuse report, totals, and source watermark; apply uses the
+   ordinary staged Catalog and sync path. Identical re-import creates no revision, changed content proposes
+   one new revision, and ambiguous or missing mappings refuse without partial publication. Migrating,
+   naming, counting, or preserving quirks from any real tenant inventory is outside CT-I1-030.
+9. **Outside developers get one complete documentation path in the build.** The concept home is
+   docs/concepts/catalog.md, the first-use path is linked from docs/quickstart.md, and normative schemas,
+   scopes, permissions, synchronization, invocation, refusals, and import behavior live at
+   docs/reference/catalog.md. Navigation and every affected API, CLI, runner, and security reference update
+   in the same candidate. Public pages contain no internal request or ticket identifiers, crew or seat
+   labels, private paths or links, operational jargon, or private inventory facts; same-head scanning and an
+   outside-reader walkthrough block landing.
+10. **The catalog build is independent of the project-management chain.** CT-I1-030 depends directly on the
+    existing CompanyBundle/API/CLI, Project authority, and human Actor boundaries in CT-I1-004, CT-I1-009,
+    and CT-I1-013. It consumes none of CT-I1-024..029. Exercised arbitrary invocation still waits for the
+    standing Runtime/CommandGuard prerequisite; publication alone never claims an execution path.
+
+Rejected alternatives: publishing tenant catalogs or realistic tenant inventories in the engine repository
+(breaks the engine/content boundary); parallel company and Project catalogs (duplicates D12 authority);
+mutable entries or floating latest resolution (rewrites consumed truth); Catalog visibility as an execution
+grant or a new Catalog principal/scope (bypasses D31 and existing Project authorization); control-plane or
+Record-tier execution (crosses the runner boundary); source polling without accepted cursor truth (duplicates
+or skips content); an importer that writes around CompanyBundle/Catalog staging (creates a migration authority);
+or internal documentation and follow-up public docs (leaves the first outside developer without a truthful
+contract). Specifying CT-I1-030 publishes, indexes, synchronizes, imports, materializes, or executes nothing;
+implementation waits on its dependencies and ordinary activation.
+
+## D64 — Workspaces are first-class records whose host materialization remains runner-side (product, 2026-08-14, operator order R2967 ticket B)
+
+The operator ordered one durable workspace model for ticket-bound worktrees, persistent Project checkouts,
+and persistent cross-Project company contexts. This extends D34's fleet-lifecycle close precedent, D62's
+canonical Ticket-transition causation, and D63's COMPANY/PROJECT exact Catalog pins without turning host
+directories, movement projections, or Catalog pointers into workspace authority. The durable destination is
+CT-I1-031 with acceptance family AC-WS-01..09.
+
+1. **The workspace record is product truth; host bytes are observations.** One append-only workspace record
+   owns UUIDv7 identity, immutable `WORKTREE|PROJECT|COMPANY` type and type-valid tenant/Project/Ticket binding,
+   normalized start-directory intent, immutable mount-set revisions, one exact reference to existing
+   credential-scope authority, aggregate version, lifecycle commands, runner receipts, and lifecycle facts.
+   The resolved directory, checkout, process, filesystem, and mounted bytes exist only on the runner. A host
+   path, process, janitor observation, branch ancestry, runner exit, or disappearance can never synthesize
+   `active`, `closed`, or safe-to-delete Record truth.
+2. **The three types have separate lifecycle contracts.** `WORKTREE` is ephemeral, bound to exactly one Ticket
+   and that Ticket's immutable Project, and created idempotently when its dispatch is accepted. `PROJECT` is
+   persistent and bound to exactly one tenant/Project checkout context. `COMPANY` is persistent and bound to
+   one tenant plus an existing cross-Project authorization context; it creates no company principal or free-
+   standing grant. A PR merge fact explicitly linked to a Ticket automatically requests close only for that
+   Ticket's bound `WORKTREE`; Ticket completion without that merge fact closes nothing, and persistent types
+   require an explicit authorized close and checkpoint-safe cleanup receipt.
+3. **Tickets carry references, never workspace snapshots.** A Ticket workspace-link fact has the strict shape
+   `{workspace_id: UUIDv7, workspace_type: WORKTREE|PROJECT|COMPANY}`. The server resolves the referenced
+   immutable record and validates tenant, type, Project/Ticket binding, and current authority before append.
+   It copies no directory, mount, credential, lifecycle, or host fact into the Ticket, and duplicate or
+   mismatched links refuse with zero mutation.
+4. **A linked PR merge requests WORKTREE close; it does not assert cleanup.** Acceptance of a PR merge fact
+   explicitly linked to the Ticket appends exactly one idempotent `workspace.close_requested` fact for every
+   current bound WORKTREE, causally linked to that merge fact. Where the same accepted command path moves the
+   Ticket, the close request and D62's canonical `workflow.changed` fact share the stable transition-
+   evaluation/causation pointer. PR merge, Ticket movement, close request, runner cleanup observation, and
+   `workspace.closed` or typed failure remain distinct attributable facts. The workspace derives `closing`
+   until an authenticated current-lease/current-fence cleanup receipt commits; branch ancestry, projection
+   state, replay, or silence cannot close it.
+5. **Mounts are immutable exact Catalog pins.** Every mount-set entry cites D63's exact scope, Project key or
+   null, kind, key, revision, and content digest. A workspace never follows `latest` or an active pointer
+   during its life. Remount is an explicit append-only request and runner result that creates a new immutable
+   mount-set revision; replay deduplicates, failure leaves the prior accepted pins authoritative, and
+   historical mount sets and receipts remain queryable.
+6. **Credential scope is a reference to existing authority only.** `CredentialScopeRef` names one exact
+   existing grant or binding as `{authority_kind, authority_id, authority_revision}` and resolves through the
+   existing Actor and Project authorization model. Every operation re-intersects it with tenant/Project,
+   Ticket or assignment, policy, current job/lease, and requested action. No workspace record, event, command,
+   fixture, document, or log may contain a credential value or create a principal, grant kind, authority
+   store, bearer format, or free-standing scope. A runner receives only the existing short-lived handle at
+   the authorized execution boundary.
+7. **Runner interaction is strict, authenticated, leased, and fenced.** The runner reads desired workspace
+   work through generated authenticated control-plane APIs, materializes/checks out/remounts/cleans only
+   inside the Runtime and CommandGuard boundary, and reports typed idempotent results through generated
+   authenticated commands. Runner, provider, web, CLI, and generated clients have no Record-tier import,
+   connection, or credential. Publication of a workspace record is never proof that a directory exists.
+8. **Unknown lifecycle state is explicit.** The fact fold distinguishes requested, active, remounting,
+   closing, closed, failed, and unknown. Missing, stale, gapped, conflicting, unauthorized, digest-mismatched,
+   unfenced, or unreadable Ticket, PR, Catalog, credential-scope, checkpoint, runner, remount, or cleanup input
+   names every affected source and reason and yields typed partial/unknown or refusal. It never derives
+   active, unchanged, clean, closed, or safe-to-delete from absence or silence; recovery resumes from durable
+   command/result identity without duplicating a lifecycle fact.
+9. **The build ships one outside-developer path.** `docs/concepts/workspaces.md` is the concept home,
+   `docs/quickstart.md` carries the first-use path, and `docs/reference/workspaces.md` owns record/reference
+   schemas, type/lifecycle tables, mounts, credential-scope references, commands, refusals, and recovery.
+   Navigation and affected Ticket, Catalog, API, CLI, runner, and security references update in the same
+   candidate. Public text contains no internal request/decision/ticket/acceptance identifiers, crew/seat
+   labels, fleet jargon, private paths or links, or private inventory facts.
+10. **Dependencies do not imply activation.** CT-I1-031 depends on CT-I1-003 for Ticket-stage authority,
+    CT-I1-009 for existing Project grants and seat credentials, CT-I1-027 for canonical accepted-transition
+    causation, and CT-I1-030 for COMPANY/PROJECT exact Catalog pins. It is independent of CT-I1-028/029.
+    Record/API lifecycle truth may land before host activation, but actual dispatch, materialization, remount,
+    cleanup, or arbitrary execution waits for the standing Runtime, runner, lease/fence, checkpoint, and
+    CommandGuard prerequisites.
+
+Rejected alternatives: treating a worktree directory or janitor as Record truth (crosses the host seam);
+embedding workspace snapshots or credentials in Tickets (duplicates authority and leaks scope); closing on
+branch ancestry, projection state, process exit, or silence (invents lifecycle truth); floating Catalog mounts
+or mutating a mount set in place (rewrites consumed inputs); a company principal, workspace grant, credential
+value, or parallel scope store (duplicates existing Access authority); a Record client in the runner
+(crosses the trust boundary); a standalone WorkspaceManager or second lifecycle store (creates shallow
+parallel authority); or internal/follow-up documentation (leaves the first outside developer without a
+truthful path). Specifying CT-I1-031 creates no workspace record, directory, checkout, mount, credential,
+runner command, cleanup, documentation page, or runtime behavior; implementation waits on its dependencies
+and ordinary activation.
+
+## D65 — Canonical engineering records live under docs/internal and never enter the public documentation site (architecture, 2026-08-14, commander-approved PR #208 refresh)
+
+The commander approved the R2711 front-door refresh only if the canonical-source relocation has explicit
+decision authority. D16 keeps one derived architecture atlas, D37 keeps published contracts immutable, and
+D63/D64 establish the hardened outside-developer documentation rule. This decision changes repository
+layout and publication boundaries only; it does not change product truth, activate behavior, or create a
+second source of authority.
+
+1. **Three canonical records have exact internal homes.** The system specification lives at
+   `docs/internal/SPEC.md`, the append-only decision history lives at `docs/internal/DECISIONS.md`, and the
+   sole non-normative sequencing proposal lives at `docs/internal/IMPLEMENTATION-ROADMAP.md`. Their existing
+   authority and precedence are unchanged.
+2. **The architecture atlas remains the one root-level exception.** `ARCHITECTURE.md` remains the sole
+   terminal-safe derived atlas required by D16. It may summarize and link to internal canon for repository
+   contributors, but it cannot override or extend the specification and no second structural or architecture
+   document may appear.
+3. **The move is atomic across every consumer.** Repository constitutions, contributor instructions,
+   traceability inputs, generated ownership policy, fixtures, tests, and exact secret-scan paths move in the
+   same candidate. The machine-owned generated manifest is regenerated from the relocated specification;
+   it is never hand-edited to conceal drift.
+4. **Public documentation is a separate outside-developer surface.** MkDocs excludes `docs/internal/**`.
+   Public navigation follows concepts -> quickstart -> reference and contains no internal request, decision,
+   ticket, acceptance, crew, or seat labels; private coordination paths or links; or internal operational
+   jargon. Internal records remain reviewable in the public repository but are not published as product
+   documentation.
+5. **Root-path citations migrate; compatibility aliases do not exist.** Current repository references use
+   the new exact paths. No duplicate root files, symlinks, redirect stubs, fallback lookup, or dual-read
+   compatibility layer preserves `SPEC.md`, `DECISIONS.md`, or `IMPLEMENTATION-ROADMAP.md` at the root.
+   Reachable-history scanning may name an old path only when the scanner must inspect historical commits;
+   that historical allowance grants no current source path.
+
+Rejected alternatives: leaving canonical records in public navigation (fails the outside-developer
+boundary); copying rather than moving them (creates two apparent authorities); adding root redirects,
+symlinks, fallback reads, or dual generated inputs (preserves obsolete paths and weakens drift detection);
+moving `ARCHITECTURE.md` or creating a second structural atlas (violates D16); or changing paths without
+changing every strict consumer in the same candidate (creates an invalid tree). This relocation changes no
+accepted requirement, identifier, contract, generated output other than exact source paths and digests, or
+implementation sequence.

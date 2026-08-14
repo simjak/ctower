@@ -16,11 +16,11 @@ operator dogfood surface over the running shadow instance, ordered by the operat
 Two repository facts this boundary deliberately does **not** decide, and which need an operator
 decision entry before it merges as anything other than a dogfood surface:
 
-- `SPEC.md` `CT-I1-005` reads _"No I1 browser implementation, route, placeholder, or browser
+- [`docs/internal/SPEC.md`](../../docs/internal/SPEC.md) `CT-I1-005` reads _"No I1 browser implementation, route, placeholder, or browser
   evidence is authorized."_ This boundary is a browser implementation. It exists because the
   operator dispatched it; it does not consume `CT-I1-005`/`CT-I2-005`, and it claims none of
   their evidence.
-- `DECISIONS.md` D22 §1 selected React Router 7 + Vite for `ctower-web`. Next.js here is a
+- [`docs/internal/DECISIONS.md`](../../docs/internal/DECISIONS.md) D22 §1 selected React Router 7 + Vite for `ctower-web`. Next.js here is a
   second frontend stack in the repository. D22 is not rewritten by this boundary — it is not
   `ctower-web` — but a second stack is a real fact that belongs in an append-only entry the
   operator locks.
@@ -115,7 +115,7 @@ Nothing in the "swaps to" column is cited as a work item unless one is filed for
 **Citations are facts** below.
 
 These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
-does not otherwise cross: `SPEC.md` line 67 calls Mission Control _migration or research provenance
+does not otherwise cross: [`docs/internal/SPEC.md`](../../docs/internal/SPEC.md) calls Mission Control _migration or research provenance
 only, not a runtime dependency_. Wiring Heartbeats, Workspace, Feed and Org to its live
 state makes it one for those four screens. It exists because the operator escalated (R2710 wave 2), every
 path is overridable, and nothing outside `src/read/sources/` knows any of them — but it belongs in
