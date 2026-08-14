@@ -17,8 +17,8 @@
  * * `scopeToken` is what the **vendored stylesheet** keys its Metrics radios on
  *   (`#s-bhloop`). `design-reference/app.css` is re-vendored byte-for-byte from
  *   the approved mockups and is not edited to suit this file.
- * * `deliveryLabel` is the overlay spelling SPEC uses for the same project
- *   (SPEC.md line 1253 names `lastmachines`/`bh-loop`). Metrics shows it because
+ * * `deliveryLabel` is the overlay spelling the canonical specification uses for the same project
+ *   (`docs/internal/SPEC.md` names `lastmachines`/`bh-loop`). Metrics shows it because
  *   that is the delivery context; the Board shows `key`, because that is the
  *   operator's word and the record's.
  *

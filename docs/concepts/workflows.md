@@ -116,7 +116,7 @@ The digest is the canonical digest of the workflow graph, not the digest of the 
 from the raw pack file produces a pin mismatch.
 
 There is no way to move an in-flight run to another workflow revision at this revision: no operation, CLI
-command, or kernel command performs one, so a run stays on the bytes it started with. `SPEC.md` specifies
+command, or kernel command performs one, so a run stays on the bytes it started with. The accepted design specifies
 what such a migration would have to name — source and destination revisions, the stage mapping,
 compatibility proof, invalidations, and rollback — and none of it is built.
 
@@ -132,7 +132,7 @@ acting principal, and the client command ID.
 That is the whole runtime model. A run has a current stage; it does not have a state.
 
 !!! warning "Specified, not implemented at this revision"
-    Everything in this subsection is canonical in `SPEC.md` and has no runtime object, column, or command
+    Everything in this subsection is accepted design and has no runtime object, column, or command
     here. There is no stage-instance, attempt, repair, escalation, or bound-consumption table at this
     revision, and nothing evaluates an execution policy beyond matching its pinned digest.
 

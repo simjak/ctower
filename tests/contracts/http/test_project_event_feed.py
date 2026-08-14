@@ -7,8 +7,8 @@ inventory coverage is proven by `just check`'s own `codegen-check` step (which r
 `tools.codegen`'s exact-set equality gate against this same contract) and CLI inventory
 coverage lives in `tests/modules/ctowerctl`, control-cli's own owner. Live behavioral
 proof (three-project replay, reconnect/gap, project-separation refusal, prohibited-field
-scan) lives in `tests/acceptance/increment-1/test_portfolio_board.py`, the file SPEC.md's
-CT-I1-012 row names as the designated acceptance suite.
+scan) lives in `tests/acceptance/increment-1/test_portfolio_board.py`, the file the canonical
+specification's CT-I1-012 row names as the designated acceptance suite.
 """
 
 from __future__ import annotations

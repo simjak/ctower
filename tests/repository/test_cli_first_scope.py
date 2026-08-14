@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tomllib
 import unittest
 from pathlib import Path
@@ -32,7 +33,7 @@ class CliFirstScopeTests(unittest.TestCase):
 
         D41 clause 4 said the dogfood exception introduces no ``test-suite
         activation`` while the same candidate registered a required suite that
-        ``just verify`` executes and counts. ``DECISIONS.md`` is append-only, so
+        ``just verify`` executes and counts. The decision log is append-only, so
         the repair is a superseding entry that names the activation and its
         limits — not an edit to D41, and not unregistering the verification the
         exception owes.
@@ -47,7 +48,7 @@ class CliFirstScopeTests(unittest.TestCase):
             (self.root / "tools/checks/expected-suites.toml").read_text(encoding="utf-8")
         )
         suites = cast(list[dict[str, Any]], manifest["suite"])
-        decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
+        decisions = (self.root / "docs/internal/DECISIONS.md").read_text(encoding="utf-8")
 
         activated = sorted(
             suite["id"]
@@ -68,7 +69,7 @@ class CliFirstScopeTests(unittest.TestCase):
         self.assertIn("`dogfood-inbox-promotion` becomes `dogfood-inbox-controls`", decisions)
 
     def test_d23_preserves_i1_semantics_and_defers_only_browser_realization(self) -> None:
-        decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
+        decisions = (self.root / "docs/internal/DECISIONS.md").read_text(encoding="utf-8")
 
         self.assertIn("## D23 — CLI-first I1 and deferred browser realization", decisions)
         self.assertIn(
@@ -77,34 +78,46 @@ class CliFirstScopeTests(unittest.TestCase):
         self.assertIn("`CT-I2-005` I2.4 browser sub-checkpoint", decisions)
 
     def test_current_guidance_keeps_browser_after_cli_first_cutover(self) -> None:
-        current_guidance = {
-            "README.md": (self.root / "README.md").read_text(encoding="utf-8"),
-            "project status": (self.root / "docs/project-status.md").read_text(encoding="utf-8"),
-            "coding standards": (self.root / "docs/contributing/CODING_STANDARDS.md").read_text(
-                encoding="utf-8"
-            ),
-        }
+        current_guidance = (self.root / "docs/internal/project-status.md").read_text(
+            encoding="utf-8"
+        )
         canonical_order = "Public API + protected CLI precede I1 source-of-truth cutover."
         browser_activation = (
             "Product browser implementation, browser evidence, and browser E2E first activate "
             "at CT-I2-005 / I2.4."
         )
 
-        for name, guidance in current_guidance.items():
-            with self.subTest(name=name):
-                normalized_guidance = " ".join(guidance.split())
-                self.assertIn(canonical_order, normalized_guidance)
-                self.assertIn(browser_activation, normalized_guidance)
-                self.assertIn("D41", normalized_guidance)
+        normalized_guidance = " ".join(current_guidance.split())
+        self.assertIn(canonical_order, normalized_guidance)
+        self.assertIn(browser_activation, normalized_guidance)
+        self.assertIn("D41", normalized_guidance)
 
-        self.assertNotIn(
-            "Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over",
-            current_guidance["README.md"],
+        self.assertNotIn("CLI + thin UI -> source-of-truth cutover", current_guidance)
+
+    def test_public_guidance_states_the_boundary_without_internal_references(self) -> None:
+        public_pages = [self.root / "README.md", self.root / "CONTRIBUTING.md"]
+        public_pages.extend(
+            path
+            for path in (self.root / "docs").rglob("*.md")
+            if "internal" not in path.relative_to(self.root / "docs").parts
         )
-        self.assertNotIn(
-            "CLI + thin UI -> source-of-truth cutover", current_guidance["project status"]
+        forbidden = re.compile(
+            r"\b(?:R\d{3,}|D\d{1,3}|CT-[A-Z0-9-]+|AC-[A-Z0-9-]+)\b"
+            r"|Mission Control|coordination/|docs/internal/|\.task\.md"
+            r"|github\.com/simjak/ctower/(?:issues|pull)/\d+",
+            re.IGNORECASE,
         )
-        self.assertNotIn("browser E2E before CT-I1-008", current_guidance["coding standards"])
+
+        for path in public_pages:
+            with self.subTest(path=path.relative_to(self.root)):
+                source = path.read_text(encoding="utf-8")
+                self.assertIsNone(forbidden.search(source))
+
+        readme = (self.root / "README.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "There is no published package, hosted service, or production deployment.", readme
+        )
+        self.assertIn("Browser surfaces are development-only and unsupported.", readme)
 
 
 if __name__ == "__main__":

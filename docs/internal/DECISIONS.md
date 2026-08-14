@@ -1871,7 +1871,8 @@ Rejected alternatives:
 
 ## D46 — First-class operator Requests replace the ledger and its Request-facing direct-intake assumptions (locked 2026-08-09, operator R2903, gh#399)
 
-The operator accepted the shape in [`docs/specs/operator-requests.md`](docs/specs/operator-requests.md)
+The operator accepted the shape in
+[`docs/internal/specs/operator-requests.md`](specs/operator-requests.md)
 after PR #398's independent exact-candidate review and the R2903 `GO`. `SPEC.md` 1.19 incorporates that
 contract as `INV-81..87` and `AC-REQ-01..08`. This is Phase 0 governance only: it authorizes no product code,
 endpoint, allocator, import command, UI control, adapter, credential, egress, or writer epoch by itself.
@@ -2862,3 +2863,42 @@ parallel authority); or internal/follow-up documentation (leaves the first outsi
 truthful path). Specifying CT-I1-031 creates no workspace record, directory, checkout, mount, credential,
 runner command, cleanup, documentation page, or runtime behavior; implementation waits on its dependencies
 and ordinary activation.
+
+## D65 — Canonical engineering records live under docs/internal and never enter the public documentation site (architecture, 2026-08-14, commander-approved PR #208 refresh)
+
+The commander approved the R2711 front-door refresh only if the canonical-source relocation has explicit
+decision authority. D16 keeps one derived architecture atlas, D37 keeps published contracts immutable, and
+D63/D64 establish the hardened outside-developer documentation rule. This decision changes repository
+layout and publication boundaries only; it does not change product truth, activate behavior, or create a
+second source of authority.
+
+1. **Three canonical records have exact internal homes.** The system specification lives at
+   `docs/internal/SPEC.md`, the append-only decision history lives at `docs/internal/DECISIONS.md`, and the
+   sole non-normative sequencing proposal lives at `docs/internal/IMPLEMENTATION-ROADMAP.md`. Their existing
+   authority and precedence are unchanged.
+2. **The architecture atlas remains the one root-level exception.** `ARCHITECTURE.md` remains the sole
+   terminal-safe derived atlas required by D16. It may summarize and link to internal canon for repository
+   contributors, but it cannot override or extend the specification and no second structural or architecture
+   document may appear.
+3. **The move is atomic across every consumer.** Repository constitutions, contributor instructions,
+   traceability inputs, generated ownership policy, fixtures, tests, and exact secret-scan paths move in the
+   same candidate. The machine-owned generated manifest is regenerated from the relocated specification;
+   it is never hand-edited to conceal drift.
+4. **Public documentation is a separate outside-developer surface.** MkDocs excludes `docs/internal/**`.
+   Public navigation follows concepts -> quickstart -> reference and contains no internal request, decision,
+   ticket, acceptance, crew, or seat labels; private coordination paths or links; or internal operational
+   jargon. Internal records remain reviewable in the public repository but are not published as product
+   documentation.
+5. **Root-path citations migrate; compatibility aliases do not exist.** Current repository references use
+   the new exact paths. No duplicate root files, symlinks, redirect stubs, fallback lookup, or dual-read
+   compatibility layer preserves `SPEC.md`, `DECISIONS.md`, or `IMPLEMENTATION-ROADMAP.md` at the root.
+   Reachable-history scanning may name an old path only when the scanner must inspect historical commits;
+   that historical allowance grants no current source path.
+
+Rejected alternatives: leaving canonical records in public navigation (fails the outside-developer
+boundary); copying rather than moving them (creates two apparent authorities); adding root redirects,
+symlinks, fallback reads, or dual generated inputs (preserves obsolete paths and weakens drift detection);
+moving `ARCHITECTURE.md` or creating a second structural atlas (violates D16); or changing paths without
+changing every strict consumer in the same candidate (creates an invalid tree). This relocation changes no
+accepted requirement, identifier, contract, generated output other than exact source paths and digests, or
+implementation sequence.

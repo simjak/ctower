@@ -24,7 +24,7 @@ Keep the bearer value there. Transfer only the lowercase `sha256:<64 hex>` diges
 reference to the operator through the reviewed control channel.
 
 Do not put the bearer in a command argument, environment variable, issue, chat, screenshot, log, fixture,
-request body, or repository file. See [Secret handling](../security/secret-handling.md).
+request body, or repository file. See [Secret handling](../../security/secret-handling.md).
 
 ## Issue
 
@@ -71,5 +71,6 @@ exact revocation replay returns the stored receipt, while a second distinct revo
 
 Close the controlling work item only after the secret manager marks the bearer destroyed or retired, the two
 Access event IDs and named next-call refusal are recorded, and no credential material appears in the ceremony
-record. If plaintext may have escaped, follow [Suspected exposure](../security/secret-handling.md#suspected-exposure)
+record. If plaintext may have escaped, follow
+[Suspected exposure](../../security/secret-handling.md#suspected-exposure)
 instead of continuing this ceremony.

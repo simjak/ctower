@@ -693,7 +693,8 @@ remains a later deepening, not fabricated I1 behavior.
 
 ### Accepted first-class operator Request contract
 
-The complete contract in [`docs/specs/operator-requests.md`](docs/specs/operator-requests.md) is accepted
+The complete contract in
+[`docs/internal/specs/operator-requests.md`](specs/operator-requests.md) is accepted
 into this specification by D46 and clarified by D47. Its seven `OR-01..OR-07` invariants are canonical as
 `INV-81..INV-87` below. This is specification acceptance only: no Request endpoint, allocator, migration
 command, UI control, adapter, or product behavior exists until its stable backlog item and every dependency

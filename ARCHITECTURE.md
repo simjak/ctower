@@ -3,13 +3,14 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.24 |
-| Decision history | [`DECISIONS.md`](DECISIONS.md) |
+| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.24 |
+| Decision history | [`docs/internal/DECISIONS.md`](docs/internal/DECISIONS.md) |
 | Last reviewed | 2026-08-14 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
-deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and this file is stale.
+deployment manifests. If this file and `docs/internal/SPEC.md` disagree, the specification wins and this
+file is stale.
 
 Implementation labels are strict:
 
@@ -56,7 +57,7 @@ microservice decomposition or a second sequencing model.
 | Access control | Access resolves human sessions, machine credentials, roles, grants, scopes, and revocation into one typed actor. Secrets remain references and every downstream Module rechecks the exact authority it needs. |
 | Editor and file explorer | A contextual workspace surface reads durable workspace records and runner observations. Work and Runtime own record lifecycle and exact Catalog-mounted inputs; only the runner materializes directories and bytes, and host state cannot assert active, closed, or safe-to-delete truth. |
 
-The [implementation roadmap](IMPLEMENTATION-ROADMAP.md) is the sole non-normative sequencing proposal. It
+The [implementation roadmap](docs/internal/IMPLEMENTATION-ROADMAP.md) is the sole non-normative sequencing proposal. It
 may order work against this map, but neither this grouping nor the roadmap activates product behavior.
 
 The first-class Request aggregate now exists as a tested Phase-1 development candidate: durable capture,
@@ -499,7 +500,7 @@ sets are alternatives, never a union, and the requested disposition picks one: `
 ordinary set, evidence-backed `skipped` resolves the skip set in its place and is admissible only while
 the pinned predicate holds on accepted durable facts. A skipped stage therefore owes its skip proof
 instead of the work it did not do, and a `skipped` request with an unsatisfied predicate is refused rather
-than converted or assumed. `SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
+than converted or assumed. `docs/internal/SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
 
 Six slot contracts in the software-factory package carry extra bound requirements because prose replaces
 them most often: `plan.criteria`, `implement.warm-gate`, every `use-proof`/`live-use-proof`/`verification`
@@ -516,7 +517,7 @@ stage carrying the landing boundary — and reports each stage's fact separately
 `STATE_UNKNOWN` on the head revision's candidate digest. Green requires every fact; unknown is a failure.
 The set derives from the pinned graph, never from stage-key strings, so the check carries no branch
 AC-WF-25 forbids. The check is a pure reader — no authoritative write, no Evidence, no slot, no gate — and
-is never itself proof. `SPEC.md` INV-74 and AC-REL-09 are authority for this.
+is never itself proof. `docs/internal/SPEC.md` INV-74 and AC-REL-09 are authority for this.
 
 At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
 sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->
@@ -535,7 +536,7 @@ code or more than one becomes `classification_unknown` and dispatches nothing. I
 win over that unknown-classification hold, which wins over the earliest declared repair destination when
 one disposition contains multiple failures. Product defects reach plan, design, or implement only through
 distinct typed codes, and production failures cannot repair until containment, exact-environment
-verification, and typed triage are committed. `SPEC.md` contains the complete predicate-input and
+verification, and typed triage are committed. `docs/internal/SPEC.md` contains the complete predicate-input and
 stage-by-reason tables.
 
 The no-stage-name/group-name conformance proof derives its denominator rather than maintaining it. It

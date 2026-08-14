@@ -8,9 +8,9 @@ The private read-only server foundation is implemented today. It discovers eligi
 view grants, stores restricted output, and serves a durable event stream. The product browser panel, safe
 terminal renderer, and terminal input are planned and unavailable.
 
-For the implemented design, start with [Console view grants](../concepts/console-viewer.md). For the exact
+For the implemented design, start with [Console view grants](../../concepts/console-viewer.md). For the exact
 private deployment procedure, use [How to deploy and verify the Console viewer](../operations/console-viewer.md).
-The current routes are listed in the [HTTP API reference](../reference/http-api.md#console-viewer).
+The current routes are listed in the [HTTP API reference](../../reference/http-api.md#console-viewer).
 
 ## Concepts
 
@@ -72,11 +72,11 @@ not a general installation or public service.
 
 To exercise the read-only foundation safely:
 
-1. Read [what is deliberately unavailable](../start-here/availability.md) and use only disposable or
+1. Read [what is deliberately unavailable](../../start-here/availability.md) and use only disposable or
    reconstructible data.
 2. Follow the [Console viewer deployment procedure](../operations/console-viewer.md) to configure the private
    HTTPS origin, register one existing read-only target, append an exact allowance, and prove the listener.
-3. Use the [Console viewer API](../reference/http-api.md#console-viewer) through an authenticated same-origin
+3. Use the [Console viewer API](../../reference/http-api.md#console-viewer) through an authenticated same-origin
    browser session. Do not put credentials in URLs or create a handwritten browser bearer client.
 4. Verify expiry, revocation, replacement fencing, gap reporting, and the global kill switch before trusting
    the stream.

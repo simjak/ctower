@@ -1,5 +1,5 @@
 {
-  "body": "SUMMARY: the operator approved the GitHub connector boundary against the #396 CSO brief — Phase 2 build is GO.\n\nTASK: the GitHub issues connector as the framework's second implementation per docs/specs/connectors.md Phase 2, proving the plug-point. The eight GH-C controls bind as hard requirements.\n\nACCEPTANCE: Every GH-C control is satisfied; core files remain untouched; the connector ingests real GitHub issues in the acceptance harness; CSO re-verifies the built head before judgment review and merge.",
+  "body": "SUMMARY: the operator approved the GitHub connector boundary against the #396 CSO brief — Phase 2 build is GO.\n\nTASK: the GitHub issues connector as the framework's second implementation per docs/internal/specs/connectors.md Phase 2, proving the plug-point. The eight GH-C controls bind as hard requirements.\n\nACCEPTANCE: Every GH-C control is satisfied; core files remain untouched; the connector ingests real GitHub issues in the acceptance harness; CSO re-verifies the built head before judgment review and merge.",
   "html_url": "https://github.com/simjak/ctower/issues/429",
   "id": 5113510362,
   "labels": [

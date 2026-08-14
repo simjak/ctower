@@ -4,10 +4,10 @@ Both denominators are derived from registries of record, never from a hand-copie
 roster and never from the manifest itself:
 
 * criteria — the criteria frozen by the authored gate policies in
-  ``packs/policies/gates`` plus every acceptance criterion ``SPEC.md`` declares.  Each
+  ``packs/policies/gates`` plus every acceptance criterion ``docs/internal/SPEC.md`` declares.  Each
   row names the registry it came from, so the two namespaces never share a key space.
   The denominator is what this increment owes, not what it has already built:
-  ``contracts/traceability/sources.json`` is a coverage map (``DECISIONS.md`` D17.8 —
+  ``contracts/traceability/sources.json`` is a coverage map (``docs/internal/DECISIONS.md`` D17.8 —
   SPEC owns acceptance criteria; traceability proves coverage and drift only) and is
   deliberately not read here, so an obligation cannot leave the denominator because an
   artifact stopped citing it.
@@ -51,7 +51,7 @@ _FORMAT_CHECKER = Draft202012Validator.FORMAT_CHECKER
 
 ROOT = Path(__file__).parents[3]
 GATE_POLICY_DIR = "packs/policies/gates"
-SPEC = "SPEC.md"
+SPEC = "docs/internal/SPEC.md"
 EXPECTED_SUITES = "tools/checks/expected-suites.toml"
 CAPABILITIES_DIR = "packs/components/capabilities"
 TRACEABILITY_AUTHORITY = "tools/checks/_impl/traceability.py"
@@ -105,7 +105,7 @@ def gate_policy_criteria(root: Path = ROOT) -> dict[str, int]:
 
 
 def acceptance_criteria(root: Path = ROOT) -> frozenset[str]:
-    """Every acceptance criterion SPEC.md declares — what this increment owes."""
+    """Every acceptance criterion docs/internal/SPEC.md declares — what this increment owes."""
 
     path = root / SPEC
     try:
@@ -119,7 +119,7 @@ def acceptance_criteria(root: Path = ROOT) -> frozenset[str]:
 
 
 def authority_acceptance_pattern(root: Path = ROOT) -> str:
-    """The `_ACCEPTANCE` regex literal the traceability generator extracts SPEC.md with."""
+    """Return the regex that extracts acceptance codes from the canonical specification."""
 
     path = root / TRACEABILITY_AUTHORITY
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
@@ -269,7 +269,7 @@ _DOC_ONLY_SCHEMA_KEYS = frozenset({"title", "description", "$comment"})
 
 
 def _normative_shape(node: object) -> object:
-    """Strip doc-only keys so prose edits never trip the version lock (DECISIONS.md D37)."""
+    """Strip doc-only keys so prose edits never trip the D37 version lock."""
 
     if isinstance(node, dict):
         return {
@@ -289,7 +289,8 @@ def _normative_shape_digest(schema: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-# DECISIONS.md D37: a published schema shape is immutable. Each entry is the normative-shape
+# D37 in docs/internal/DECISIONS.md: a published schema shape is immutable. Each entry is the
+# normative-shape
 # digest `schema.const` answered for at the moment it was locked; a further incompatible edit
 # under the same const must fail TestSchemaVersioningDiscipline by name instead of landing quietly.
 _SCHEMA_VERSION_LOCKS: dict[str, str] = {
@@ -403,7 +404,7 @@ class TestSchemaEnforcesTheDenominatorContract:
             _validator().validate(candidate)
 
     def test_a_v1_shaped_manifest_under_the_v2_schema_fails_by_name(self) -> None:
-        """DECISIONS.md D37 hard constraint: a manifest that declares /v2 but still carries
+        """D37 hard constraint: a manifest that declares /v2 but still carries
         /v1's flat top-level verdict_ids roster, with no per-row verdict_id/candidate_digest,
         must fail — never silently validate as if the version bump never happened."""
 
@@ -528,6 +529,7 @@ def _scratch_registries(tmp_path: Path, *, spec_extra: str = "", drop: str = "")
     spec = (ROOT / SPEC).read_text(encoding="utf-8")
     if drop:
         spec = spec.replace(f"</a>{drop} |", "</a>WITHDRAWN |")
+    (root / SPEC).parent.mkdir(parents=True, exist_ok=True)
     (root / SPEC).write_text(spec + spec_extra, encoding="utf-8")
     return root
 
@@ -732,7 +734,7 @@ class TestSchemaCarriesNoRoster:
 
 
 class TestSchemaVersioningDiscipline:
-    """DECISIONS.md D37: a published schema shape is immutable. An incompatible change
+    """docs/internal/DECISIONS.md D37: a published schema shape is immutable. An incompatible change
     must bump `schema.const`/`$id` to a new file, never edit the committed shape in place
     — the debt gh#175 named after `ctower.evidence-manifest/v1` absorbed several
     unversioned breaks across PR #171's review. gh#174 is /v2's first customer: every
@@ -747,7 +749,8 @@ class TestSchemaVersioningDiscipline:
         )
         assert _normative_shape_digest(schema) == _SCHEMA_VERSION_LOCKS[const], (
             f"{const}: the committed schema shape no longer matches its recorded version lock. "
-            "A published shape is immutable (contracts/README.md; DECISIONS.md D37) — bump "
+            "A published shape is immutable (contracts/README.md; "
+            "docs/internal/DECISIONS.md D37) — bump "
             "schema.const and $id to a new evidence-manifest-vN.schema.json (see the "
             "contracts/domain/migration/*-v2.schema.json precedent) instead of editing this "
             "file's normative shape in place."

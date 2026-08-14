@@ -59,7 +59,7 @@ class SecretScanPolicyTests(unittest.TestCase):
     def test_neighboring_decision_text_does_not_expand_the_exact_allowlist(self) -> None:
         with self._repository() as repository:
             token = self._fixture_token(repository)
-            decision = repository / "DECISIONS.md"
+            decision = repository / "docs/internal/DECISIONS.md"
             decision.write_text(
                 decision.read_text(encoding="utf-8") + f"fixture-token = {token}\n",
                 encoding="utf-8",
@@ -81,7 +81,9 @@ class SecretScanPolicyTests(unittest.TestCase):
                 self.root / "tests/repository/fixtures/secret-scan/exact-fake.txt", fixture
             )
             shutil.copyfile(self.root / ".gitleaks.toml", repository / ".gitleaks.toml")
-            (repository / "DECISIONS.md").write_text(
+            decision = repository / "docs/internal/DECISIONS.md"
+            decision.parent.mkdir(parents=True)
+            decision.write_text(
                 "The reusable-image lifecycle is setup -> capture -> scrub -> secret scan -> "
                 "SBOM/vulnerability scan ->\n",
                 encoding="utf-8",

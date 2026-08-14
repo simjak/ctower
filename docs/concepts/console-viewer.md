@@ -5,9 +5,9 @@ terminal. It does not make a tmux pane authoritative. Instead, it joins durable 
 mints a short-lived viewing grant, and streams encrypted cursor-addressed output to one authenticated browser
 session.
 
-This page explains the design. See [How to deploy and verify the read-only Console
-viewer](../operations/console-viewer.md) for the deployment procedure and the [HTTP API
-reference](../reference/http-api.md#console-viewer) for exact routes.
+This page explains the design. See [current availability](../start-here/availability.md) for
+the shipped/deferred boundary and the [HTTP API reference](../reference/http-api.md#console-viewer)
+for exact routes.
 
 ## The problem
 
@@ -140,14 +140,11 @@ operation, generic process endpoint, or fallback discovery.
 
 The shipped server foundation contains no product browser UI, safe terminal renderer, or terminal input.
 Input remains blocked until the contextual product viewer and hostile-output renderer are deployed and the
-exact whole-line input candidate receives a fresh independent maximum-depth security verdict. The older
-`apps/ctower-ui` terminal reader uses a different direct capture and refresh path; it is neither an
-implementation nor evidence of this viewer boundary.
+exact whole-line input candidate receives a fresh independent maximum-depth security verdict. The separate
+development terminal reader uses a different direct capture and refresh path; it is neither an implementation
+nor evidence of this viewer boundary.
 
 ## Related material
 
-- [Read-only viewer deployment procedure](../operations/console-viewer.md)
-- [Server-foundation security verification](../security/console-phase1-verification.md)
-- [Current terminal read](terminal-read.md), which documents the separate development-only reader
-- [Authored Console source specification](../specs/crew-console.md)
-- [Console Q3 typed-input verdict](../security/console-q3-typing-cso.md)
+- [Current availability](../start-here/availability.md)
+- [HTTP API reference](../reference/http-api.md#console-viewer)

@@ -58,7 +58,7 @@ at the same source watermark must reproduce byte-equivalent semantic rows and th
 that is what `projection_semantic_digest` is for. A projection you cannot rebuild is a second source of
 truth, and ctower does not allow one.
 
-`SPEC.md` requires that expiry, revocation, a dependency-digest change, rollback, an incident, or a
+The accepted design requires that expiry, revocation, a dependency-digest change, rollback, an incident, or a
 superseding outcome remove exactly the conditions that depended on invalidated proof before a row may keep
 saying `done`. None of those invalidation sources exists at this revision — only candidate-digest
 invalidation does, and it names evidence and verdict IDs rather than rows. Doing it slot by slot is part of
@@ -102,4 +102,4 @@ is available through the command line only. A product browser view is planned fo
 
 - [Board lanes](board.md) — the ticket-granularity projection.
 - [Proof](proof.md) — where `criteria.proven` comes from.
-- [Delivery state](../project-status.md) — the current capability matrix in the engineering record.
+- [Current availability](../start-here/availability.md) — the current capability boundary.

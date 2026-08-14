@@ -30,5 +30,5 @@ Use `ctl inbox list` to see threads and `ctl inbox read <thread-id>` to read one
 send and `ctl inbox ack` to record delivery or read state. Use `ctl inbox promote` when the discussion
 becomes Board work.
 
-The local browser controls are a server-mediated dogfood surface. They are not a general chat product. See
+The local browser controls are a server-mediated development surface. They are not a general chat product. See
 the [CLI reference](../reference/cli.md#inbox) for exact command shapes.

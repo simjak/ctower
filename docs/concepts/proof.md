@@ -73,11 +73,10 @@ server refuses with `proof-evidence-digest-mismatch` and writes nothing.
 ## Typed evidence slots
 
 !!! warning "Specified, not implemented at this revision"
-    This section describes a **required rule**, not current behaviour. It is canonical in `SPEC.md` as
-    `INV-61`, `INV-62`, and `AC-EVD-07`. The evidence record that ships has no slot field: what runs today is
-    the criterion/digest/verdict binding described above, and proof is required at the move into the last
-    stage and at resolve and close, not at every stage. Read this section as the contract the implementation
-    must meet.
+    This section describes a **required rule**, not current behaviour. The evidence record that ships has no
+    slot field: what runs today is the criterion/digest/verdict binding described above, and proof is required
+    at the move into the last stage and at resolve and close, not at every stage. Read this section as the
+    contract the implementation must meet.
 
 Every stage that can reach `succeeded` — or an evidence-backed `skipped` — declares an ordered, nonempty
 set of **required evidence slots**. A slot is a named child contract of the stage definition, not a new
@@ -162,7 +161,7 @@ not re-evaluate who recorded them.
     the reviewer. A principal who is *not* the candidate's author can record evidence and then record a
     passing verdict on that same evidence, and the ticket's proof reads as current.
 
-    `SPEC.md` `INV-19` requires the stronger rule — no principal or effective agent identity that authored
+    The accepted design requires the stronger rule: no principal or effective agent identity that authored
     an input artifact may issue a satisfying verdict for it — together with the declared perspective
     independence (`independent_of`) that a pinned gate policy is meant to carry. Delivering that is part of
     the same specified stage-signing work as [typed evidence slots](#typed-evidence-slots). Until it lands,
@@ -170,7 +169,7 @@ not re-evaluate who recorded them.
 
 The pinned gate policy does not widen any of this. It is parsed for the criteria set, and it must declare
 `reviewer_kind: operator` and `self_review: forbidden` or it is rejected outright — those two values are
-asserted, not configured. The richer gate topology `SPEC.md` describes, such as several required
+asserted, not configured. The richer gate topology in the accepted design, such as several required
 perspectives or sealed review where reviewers cannot see each other's reports until all required verdicts
 are in, is specified and has no runtime behaviour at this revision.
 
@@ -194,7 +193,7 @@ kernel command covered by module tests; it has no HTTP operation and no CLI comm
 caller outside the kernel can trigger invalidation yet.
 
 !!! warning "Specified, not implemented at this revision"
-    The rest of the invalidation rule is canonical in `SPEC.md` and has no runtime behaviour here:
+    The rest of the accepted invalidation rule has no runtime behaviour here:
 
     - dependency change, evidence expiry, and revocation as further invalidation sources;
     - marking exactly the affected typed slots unfilled and invalidating the gates that depended on them;
@@ -228,8 +227,8 @@ into the final stage requires, and what resolving and closing the ticket require
 readiness and frozen criteria instead — see
 [the three predicates](workflows.md#what-a-workflow-revision-looks-like).
 
-The typed-slot structure described above is **canonical specification** at this revision: `SPEC.md` requires
-it, and the runtime/schema implementation is explicitly out of scope of the commit that introduced it. Do
+The typed-slot structure described above is **accepted design** at this revision. The runtime/schema
+implementation is explicitly out of scope of the change that introduced it. Do
 not read the slot vocabulary as a shipped API surface yet.
 
 ## Related

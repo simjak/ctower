@@ -32,7 +32,7 @@ _OUTPUT_PATH = Path("generated/traceability-index.json")
 _MANIFEST_PATH = Path("generated/.generated-manifest.json")
 _ARTIFACT_ID = "contract-traceability-index"
 _INPUT_PATHS = (
-    Path("SPEC.md"),
+    Path("docs/internal/SPEC.md"),
     Path("contracts/traceability/sources.json"),
     Path("contracts/traceability/traceability-sources.schema.json"),
     Path("tools/checks/_impl/generated.py"),
@@ -236,9 +236,9 @@ def _discover_normative_artifacts(root: Path) -> tuple[str, ...]:
 
 def _known_references(root: Path) -> set[str]:
     try:
-        source = (root / "SPEC.md").read_text(encoding="utf-8")
+        source = (root / "docs/internal/SPEC.md").read_text(encoding="utf-8")
     except OSError as error:
-        raise TraceabilityError(f"cannot read SPEC.md: {error}") from error
+        raise TraceabilityError(f"cannot read docs/internal/SPEC.md: {error}") from error
     headings = {f"SPEC#{_heading_slug(title)}" for title in _HEADING.findall(source)}
     return headings | set(_INVARIANT.findall(source)) | set(_ACCEPTANCE.findall(source))
 

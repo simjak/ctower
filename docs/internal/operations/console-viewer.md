@@ -226,6 +226,6 @@ The archived digest-only record should name:
 
 ## Related material
 
-- [Console view grants](../concepts/console-viewer.md)
-- [HTTP API reference](../reference/http-api.md#console-viewer)
+- [Console view grants](../../concepts/console-viewer.md)
+- [HTTP API reference](../../reference/http-api.md#console-viewer)
 - [Server-foundation security verification](../security/console-phase1-verification.md)

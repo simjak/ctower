@@ -2,7 +2,7 @@
 
 CompanyBundle is the strict, portable desired-state envelope for the development Catalog checkpoint. It can
 validate, plan, atomically apply, and deterministically export one tenant's future-only component pins. It
-does not activate runners, effects, external targets, or CP3-D production recovery.
+does not activate runners, effects, external targets, or production recovery.
 
 The checked-in synthetic example is
 [`company/company.bundle.yaml`](https://github.com/simjak/ctower/blob/main/company/company.bundle.yaml).

@@ -1,7 +1,7 @@
 # O10: bounded backoff for every network request
 
 The repository-wide coding standards remain in
-[contributing/CODING_STANDARDS.md](contributing/CODING_STANDARDS.md). This page defines the O10
+[contributing/CODING_STANDARDS.md](../contributing/CODING_STANDARDS.md). This page defines the O10
 network-resilience rule used during review.
 
 Every outbound request that can cross a process or network boundary MUST execute under a bounded
