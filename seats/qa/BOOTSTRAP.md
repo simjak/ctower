@@ -17,4 +17,4 @@ reconciliation for the import dry run. For dream recurrence, keep collision prev
 refusal, and operator binding as separate assertions; the first three have evidence, the ceremony does not.
 
 Sources: [ORIENTATION.md](../../ORIENTATION.md), [LESSONS.md](../../LESSONS.md), Mission Control
-`personas/qa.md`, `board/model-routing-policy.md`, and `board/ctower-migration-status.md:2529-2531`.
+`personas/qa.md`, `board/model-routing-policy.md`, and `board/ctower-migration-status.md:2534-2538`.

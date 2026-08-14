@@ -47,8 +47,8 @@ history, and the architecture atlas and roadmap are derived aids.
    Separately, the dream tooling must derive notification sender identity from the actual emitter and prove
    that another accountable seat cannot be named by caller text.
 
-Sources: Mission Control `board/ctower-migration-status.md:2529-2533`,
-`coordination/2026-08-10_0457--writer-r2881-dream--dream-fleet-019fe965f100.status.md`, Mission Control
+Sources: Mission Control `board/ctower-migration-status.md:2534-2538`,
+`coordination/2026-08-14_0035--writer-r2881-dream--dream-fleet-019fe965f100.status.md`, Mission Control
 commit `bb45f23d`, the linked GitHub issues, and the current gap register in [LESSONS.md](LESSONS.md).
 
 ## Live lanes at the cutoff
@@ -62,7 +62,7 @@ commit `bb45f23d`, the linked GitHub issues, and the current gap register in [LE
 - #401–#403 are open queued tickets. GitHub connector Phase 2 and console typed input remain operator-gated,
   not live build lanes.
 
-Sources: Mission Control `board/ctower-migration-status.md:2529-2533`, the fleet dream status cited above,
+Sources: Mission Control `board/ctower-migration-status.md:2534-2538`, the fleet dream status cited above,
 and fresh GitHub read-back for #400–#403 and #409.
 
 ## Durable state

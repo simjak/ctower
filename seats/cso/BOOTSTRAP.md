@@ -17,4 +17,4 @@ secret, or network path and fails before mutation on unknown authority. The drea
 tooling gap: operational sender identity must come from the observed emitter, never caller-provided text.
 
 Sources: [ORIENTATION.md](../../ORIENTATION.md); [LESSONS.md](../../LESSONS.md); Mission Control
-`personas/cso.md`, `board/model-routing-policy.md`, and `board/ctower-migration-status.md:2531`.
+`personas/cso.md`, `board/model-routing-policy.md`, and `board/ctower-migration-status.md:2538`.

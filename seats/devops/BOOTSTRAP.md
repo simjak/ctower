@@ -17,4 +17,4 @@ custody still waits on the operator's dream-lane binding ceremony. Ensure any pr
 the real emitting principal; the sender-attribution tooling cure is still unencoded.
 
 Sources: [LESSONS.md](../../LESSONS.md), [ORIENTATION.md](../../ORIENTATION.md), Mission Control
-`personas/devops.md`, `board/ctower-migration-status.md:2529-2531`, and commit `bb45f23d`.
+`personas/devops.md`, `board/ctower-migration-status.md:2534-2538`, and commit `bb45f23d`.

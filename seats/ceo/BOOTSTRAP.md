@@ -17,4 +17,4 @@ GitHub connector boundary controls. The consumer collision patch is landed and n
 PRs #208, #329, and #373 remain aging conflicting drafts; require refresh, replacement, or closure.
 
 Sources: [ORIENTATION.md](../../ORIENTATION.md); Mission Control `personas/ceo.md` and
-`board/ctower-migration-status.md:2529-2533`; current GitHub metadata for #208, #329, and #373.
+`board/ctower-migration-status.md:2534-2538`; current GitHub metadata for #208, #329, and #373.

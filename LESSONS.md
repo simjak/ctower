@@ -205,8 +205,9 @@ read-back and the prior lesson's Mission Control citations.
 
 Record basis: facts absent from output commit `6b4a00d83e455582377fc7fc263582b220ed815c`
 through dispatch artifact `2026-08-10T05:20:01Z`, project `ctower` only. This folds Mission Control board
-lines 2529–2533, the collision-fix commit and the fleet status that landed before dispatch, plus PR #409;
-the later board close at line 2535 is outside this cutoff.
+entries dated `2026-08-10 05:30`, `06:00`, and `06:14` (current lines 2534–2538), the collision-fix
+commit and the fleet status that landed before dispatch, plus PR #409; the board close dated
+`2026-08-10 08:32` (current line 2542) is outside this cutoff.
 
 ### A recurrence fix closes only when prevention, replay, and landing agree
 
@@ -217,8 +218,8 @@ collisions, and retaining named failures. Durable rule → A successful retry is
 prevention by itself; recurring output is durable only when the defensive path is landed and the same
 pending work replays without loss. Encoding → Mission Control commit
 `bb45f23d2f47a62c5cbb2529188496a6d894ab4e`, `tools/ctower-dream-consumer`,
-`tests/test_ctower_dream_consumer.py`, Mission Control `board/ctower-migration-status.md:2529`, and
-`coordination/2026-08-10_0457--writer-r2881-dream--dream-fleet-019fe965f100.status.md` close the prior
+`tests/test_ctower_dream_consumer.py`, Mission Control `board/ctower-migration-status.md:2534-2538`, and
+`coordination/2026-08-14_0035--writer-r2881-dream--dream-fleet-019fe965f100.status.md` close the prior
 recurring-output gap without claiming the separate binding ceremony complete.
 
 ### A one-way ceremony needs a lossless refused state
@@ -229,7 +230,7 @@ missing one-way trust binding must produce an attributable, replayable refusal b
 silent drop or an inferred default. Encoding → [PR #394](https://github.com/simjak/ctower/pull/394),
 [`_dream_dispatch_sql.py`](packages/ctower-kernel/src/ctower_kernel/runtime/_dream_dispatch_sql.py),
 [`test_dream_dispatch_effect.py`](tests/acceptance/increment-1/test_dream_dispatch_effect.py), and Mission
-Control `board/ctower-migration-status.md:2531` carry the forward-correction design and live refusal proof.
+Control `board/ctower-migration-status.md:2538` carry the forward-correction design and live refusal proof.
 
 ### UNENCODED — operational sender identity is never borrowed
 
@@ -239,7 +240,7 @@ message derives its addressable sender from the authenticated or substrate-obser
 labels may describe a source but may not impersonate another accountable seat. Encoding → **UNENCODED.**
 The product-side precedent in [D40](DECISIONS.md) does not enforce Mission Control tooling. Owners: dream
 consumer Engineer and ctower Commander. Due: land the caller-owned sender path and regression proof by
-`2026-08-10 12:00 Europe/Berlin`. Source: Mission Control `board/ctower-migration-status.md:2531`.
+`2026-08-10 12:00 Europe/Berlin`. Source: Mission Control `board/ctower-migration-status.md:2538`.
 
 ### Current UNENCODED register at the cutoff
 

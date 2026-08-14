@@ -17,4 +17,4 @@ and replayed; preserve that evidence while leaving binding to the operator and c
 Own the unencoded sender-attribution cure and overdue #357/#358 executable gate without borrowing identity.
 
 Sources: [ORIENTATION.md](../../ORIENTATION.md); [LESSONS.md](../../LESSONS.md); Mission Control
-`board/model-routing-policy.md`, `board/ctower-migration-status.md:2529-2533`, and commit `bb45f23d`.
+`board/model-routing-policy.md`, `board/ctower-migration-status.md:2534-2538`, and commit `bb45f23d`.
