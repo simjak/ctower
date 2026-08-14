@@ -42,16 +42,21 @@ does not add a canonical console contract or deployed proof and does not cure th
 
 #### CT-C01 — complete Phase 1 product proof, not server foundation alone
 
-The #373 candidate requires inert terminal rendering (`docs/specs/crew-console.md:291-298`), the dedicated
-contextual panel (`:391-407`), full Phase 1 production verification before Phase 2 (`:409-412`), the
-hostile-output safe-render corpus (`:453`), deployed UI QA (`:466-477`), and an explicit safe-render policy
-(`:487`, `:500-505`). The original CT-C01 at this file's historical lines 87-94 named grants, allowlisting,
-custody, SSE, network, and direct-path proof, but not the renderer or its deployed browser proof.
+The exact #373 candidate reviewed here requires
+[inert terminal rendering](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L291-L298),
+a [dedicated contextual panel](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L391-L407),
+[full Phase 1 production verification before Phase 2](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L409-L412),
+a [hostile-output safe-render corpus](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L453),
+[deployed UI QA](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L466-L477),
+and an [explicit safe-render policy](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L487-L505).
+The original CT-C01 at this file's historical lines 87-94 named grants, allowlisting, custody, SSE, network,
+and direct-path proof, but not the renderer or its deployed browser proof.
 
 Issue #437 is a necessary server predecessor, not the complete one. At the inspected in-flight head
-`9d8e13463c50a7adccfda44fcfb06b07c275f34e`, its D52 explicitly says CT-I1-019 does not realize the
-contextual browser panel or safe terminal renderer. That excluded work is mandatory before #437 evidence may
-participate in a complete Phase 1 production-verification fact. #437 alone must never satisfy CT-C01.
+`9d8e13463c50a7adccfda44fcfb06b07c275f34e`, its proposed viewer decision explicitly says CT-I1-019 does not
+realize the contextual browser panel or safe terminal renderer. That excluded work is mandatory before #437
+evidence may participate in a complete Phase 1 production-verification fact. #437 alone must never satisfy
+CT-C01.
 
 - `test_console_typing_requires_full_phase1_product_viewer_production_proof`
 - `test_console_typing_rejects_server_foundation_without_safe_renderer`
@@ -59,11 +64,15 @@ participate in a complete Phase 1 production-verification fact. #437 alone must 
 
 #### CT-C02, CT-C03, and CT-C04 — bind the effective submitted line
 
-The candidate deliberately grants one exact `paste_text` **or** one payload-free `submit`
-(`docs/specs/crew-console.md:178-183`, `:194-199`, `:208-212`). Its transaction and final CAS bind only that
-individual action and plan (`:221-248`). The original controls repeat that split at historical CT-C02
-through CT-C04 and the ceremony explicitly presents paste and submit as separate grants. Aggregate ordering
-does not cure the exploit: it merely orders the three individually valid actions shown above.
+The candidate deliberately grants one exact
+[`paste_text`](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L178-L183)
+or one payload-free
+[`submit`](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L194-L212).
+Its transaction and final CAS bind only that
+[individual action and plan](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L221-L248).
+The original controls repeat that split at historical CT-C02 through CT-C04 and the ceremony explicitly
+presents paste and submit as separate grants. Aggregate ordering does not cure the exploit: it merely orders
+the three individually valid actions shown above.
 
 The repair must choose one complete security semantic. The smallest is an atomic bounded line-plus-Enter
 action whose fresh confirmation covers the entire effective line and whose final admission proves or
@@ -92,9 +101,10 @@ commit), without a required escaped preview or bidi isolation.
 
 #### CT-C07 — raw content digests are restricted data
 
-The candidate promises that only `console_input_audit_reader` can recover exact bytes while ordinary
-surfaces expose digests (`docs/specs/crew-console.md:258-271`). Canonical current rules use lowercase
-SHA-256 and content-addressed SHA-256 object keys (`SPEC.md:2915`, `:3244-3252` at the candidate commit).
+The candidate promises that only `console_input_audit_reader` can recover exact bytes while
+[ordinary surfaces expose digests](https://github.com/simjak/ctower/blob/ddb760e2751b84b2824eb620c5bdd0356c79b291/docs/specs/crew-console.md#L258-L271).
+Canonical current rules use lowercase SHA-256 and content-addressed SHA-256 object keys (`SPEC.md:2915`,
+`:3244-3252` at the candidate commit).
 Anyone who can see an ordinary-surface digest can hash a dictionary of likely inputs such as `pwd` or
 `git status` and recover the command without reader authorization or an access fact. Envelope encryption and
 distinct data keys do not change that result.
