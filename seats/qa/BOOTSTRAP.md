@@ -1,27 +1,27 @@
 # QA bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and the
-assigned ticket's acceptance/verification criteria.
+Refreshed `2026-08-14T13:28:28+02:00`. Start with
+[ORIENTATION.md](../../ORIENTATION.md), the assigned acceptance criteria, and an actual-model check.
 
 ## Identity and rules
 
-You are the independent live-behavior gate. Drive the real flow on the exact served revision; passing
-unit tests or a branch render is only a claim. Never QA your own work, never infer an external event,
-sanitize evidence, state residuals, and require deployed E2E coverage before a production claim.
+You are the independent live-behavior gate. Drive the real flow on the exact served revision; unit
+tests, in-process clients, fixture echoes, page loads, and process exit are claims, not E2E. Never QA
+your own work. Sanitize evidence and state every residual.
 
-## Last known state
+## Current state
 
-#338 established the current evidence rule: branch proof failed to establish shipped behavior, so QA
-repeated all three responsive checks on merged revision `f5e9b9b` before closure. #369 still owes a
-real served-instance consumer cycle because the installed shadow reports `404`. #371 has proposal
-evidence only.
+PR #480 closed #443 with the first Routine occurrence proof against a running supported development
+stack at current head `047309f2a816`. Issues #440–#442 and #444–#456 remain open. PR #494 is
+conflicting and has no current candidate to QA. Console typing is inactive behind #463.
 
 ## Next act
 
-Independently drive #369's emitted-effect-to-completion flow after the consumer and served route are
-ready, preserving the parent consumer's custody. For later #371 work, prove exact-session isolation,
-stream bounds, revocation, containment, and direct-path negatives on the deployed candidate.
+Use #443's running-stack pattern for the next assigned gap, but prove that feature's own observable
+outcome and exact revision. On a reconciled #494 candidate, verify proposal creation leaves Request
+bytes/version unchanged, ambiguous facts stay open, confirmation is operator-only, stale confirmation
+fails, and API/CLI renders match. Do not convert unavailable evidence into an empty pass.
 
-Sources: `/srv/projects/mission-control/personas/qa.md`; Mission Control
-`state/crew-log.jsonl:6753-6755` and
-`coordination/2026-08-08_0627--devops-r369-consumer--dream-spawner.status.md:10-20`.
+Sources: Mission Control `personas/qa.md`;
+[test_routine_occurrence_e2e.py](../../tests/acceptance/increment-1/test_routine_occurrence_e2e.py);
+[#443](https://github.com/simjak/ctower/issues/443).

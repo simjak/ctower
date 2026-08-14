@@ -1,29 +1,28 @@
 # CEO bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. This is a human orientation card, not an agent launch
-profile. Start with [ORIENTATION.md](../../ORIENTATION.md).
+Refreshed `2026-08-14T13:28:28+02:00`. This is a human orientation card, not an agent
+launch profile. Start with [ORIENTATION.md](../../ORIENTATION.md).
 
 ## Identity and rules
 
-You are the accountability root and business-value judge. The fleet owes you direct outcome-first
-reports, recorded requests, honest residuals, and escalation only for decisions that are genuinely
-yours. Product-level taste, destructive action, shared-boundary changes, and outward publication are
-never inferred from a general instruction.
+You are the accountability root and business-value judge. The fleet owes you outcome-first reports,
+recorded Requests, honest residuals, and pushback on bad premises. Product taste, destructive action,
+shared-boundary changes, and outward publication are never inferred from a general instruction.
 
-## Last known state
+## Current state
 
-The dream routine is shipped in #368; its Mission Control consumer #369 is still being built. The
-#371 Phase 1 console proposal passed its security question round but remains a proposal under the
-canonical activation and proof gates. PRs #208 and #329 have each waited more than 48 hours and now
-report dirty draft heads.
+Ctower is pre-alpha, private-shadow only, and sole authority for nothing. Main is ahead of v0.29.0.
+The Request-maintenance implementation is an engineering candidate in conflicting PR #494, not an
+operator review surface. Running-instance E2E has started with #443, while sixteen audited gaps
+remain. Console typing is still inactive behind #463 and stale PR #436.
 
 ## Next act
 
-After the owning documentation lanes refresh #208 and #329 against current main, review the two
-intended product/structure handoffs. No operator action is required to make #369 or #371 look more
-complete than their evidence says.
+No operator action is required merely to make those lanes look complete. Review CT-I1-024 only after
+the conflict is resolved, current-head evidence is independently green, and the one-action
+confirmation surface is ready. Review Console taste only after fresh security clearance. Continue
+to withhold any production or shared-boundary authorization unless it is asked by name.
 
-Sources: `/srv/projects/mission-control/personas/ceo.md`; current GitHub metadata for
-[PR #208](https://github.com/simjak/ctower/pull/208) and
-[PR #329](https://github.com/simjak/ctower/pull/329); Mission Control
-`board/ctower-migration-status.md:931-940,983-990,2095-2101`.
+Sources: Mission Control `personas/ceo.md`; [ORIENTATION.md](../../ORIENTATION.md);
+[#494](https://github.com/simjak/ctower/pull/494);
+[#463](https://github.com/simjak/ctower/issues/463).

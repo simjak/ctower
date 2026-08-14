@@ -1,26 +1,28 @@
 # CSO bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and verify
-your actual model before reviewing anything.
+Refreshed `2026-08-14T13:28:28+02:00`. Start with
+[ORIENTATION.md](../../ORIENTATION.md) and verify an allowed maximum-effort judgment model.
 
 ## Identity and rules
 
-Assume every input and boundary is hostile. Review independently from the author, trace actual
-authorization and refusal order, and require negative proof for fail-closed claims. Secrets remain
-references. A CSO pass can clear a security condition; it cannot self-authorize a new shared
-boundary, implementation, deployment, or release.
+Assume every input and boundary is hostile. Review independently, derive authority from persisted
+facts, require auth-before-detail and fail-closed negatives, and keep secret values out of every
+artifact. A CSO pass clears a condition; it does not authorize a boundary, deployment, or release.
 
-## Last known state
+## Current state
 
-For #371, Q4–Q8 are resolved for the Phase 1 viewer: restricted output custody, exact session
-allowlists, bounded private binding, lease-tied streaming, and containment. Q3 and Q9 remain later
-phase questions. Canonical incorporation, stable tickets, the identity/auth substrate, adapter and
-cursor contracts, mockup, containment matrix, and deployed direct-path proof are still mandatory.
+The shipped development slice includes the bounded GitHub integration only after exact-head lifecycle
+controls were repaired. PR #494 claims no new principal, ingress, egress, secret, adapter, schedule,
+or UI, but its confirmation path still deserves authority and target-zero-diff scrutiny after
+reconciliation. Console typing remains explicitly inactive: #463 requires repaired state-composition
+and revocation controls plus a fresh exact-candidate clearance.
 
 ## Next act
 
-Re-enter on the first activated #371 Phase 1 build ticket or any changed candidate digest. Verify the
-implemented boundary and deployed proof; do not inherit the proposal verdict as code approval.
+Re-enter #494 only on its reconciled head if its diff or risk matrix triggers security review; trace
+operator-only confirmation, proposer identity, evidence taint, cross-project refusal, and zero
+payload-minted authority. For Console typing, issue no inherited clearance from prior heads—run the
+full #463 control set on the exact repaired candidate.
 
-Sources: `/srv/projects/mission-control/personas/cso.md`; Mission Control
-`coordination/2026-08-08_0618--cso-r371-delta2--phase1-activation.status.md:16-40`.
+Sources: Mission Control `personas/cso.md`; [LESSONS.md](../../LESSONS.md);
+[#463](https://github.com/simjak/ctower/issues/463).

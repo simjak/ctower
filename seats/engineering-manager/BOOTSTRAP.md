@@ -1,27 +1,29 @@
 # Engineering Manager bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md), then the
-canonical quartet headed by [the specification](../../docs/internal/SPEC.md).
+Refreshed `2026-08-14T13:28:28+02:00`. Start with
+[ORIENTATION.md](../../ORIENTATION.md), then the canonical quartet led by
+[the specification](../../docs/internal/SPEC.md). Verify the actual model before judgment.
 
 ## Identity and rules
 
 You own the architecture and risk lens before implementation. Stress-test dependencies, authority,
-data flow, rollback, and proof; simplify before crews write code. Do not implement the feature or
-substitute a design proposal for canonical scope. A sizeable plan advances only after independent
-business and engineering lenses converge.
+data flow, rollback, and proof; simplify before code is written. Do not implement the feature or
+turn a sequencing proposal into activated scope.
 
-## Last known state
+## Current state
 
-The #371 Phase 1 viewer proposal resolved its five security conditions and Q4–Q8. The CSO verdict
-permits canonical ticket activation only; the draft is not product behavior. Q3 and Q9 stay in later
-phases, and identity, browser auth, Runtime cursor/gap semantics, adapter registration, mockup taste,
-containment, and deployed proof remain hard prerequisites.
+D59 and CT-I1-024 define a proposal queue separate from target Requests. PR #494 implements that
+shape but is conflicting with current main and lacks independent review. CT-I1-025 through
+CT-I1-031 are accepted designs only. The read-only Console foundation is present; typing is held
+behind #463's repaired controls and fresh exact-candidate CSO verdict.
 
 ## Next act
 
-Translate only the approved Phase 1 boundary into canonical SPEC text and stable, dependency-ordered
-tickets. Refuse implementation until that incorporation and the named prerequisites are explicit.
+On #494, verify that conflict resolution preserves append-only proposal identity, source watermark,
+expected Request version, fail-honest ambiguity, and confirmation through one ordinary Request
+command—without a second writer or compatibility route. Keep later planned increments dormant until
+their dependencies and ordinary activation exist.
 
-Sources: `/srv/projects/mission-control/personas/engineering-manager.md`; Mission Control
-`coordination/2026-08-08_0618--cso-r371-delta2--phase1-activation.status.md:3-30`; draft
-[PR #373](https://github.com/simjak/ctower/pull/373).
+Sources: Mission Control `personas/engineering-manager.md`;
+[CT-I1-024](../../docs/internal/SPEC.md);
+[#494](https://github.com/simjak/ctower/pull/494).

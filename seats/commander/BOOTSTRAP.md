@@ -1,28 +1,30 @@
 # Commander bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and
-[LESSONS.md](../../LESSONS.md).
+Refreshed `2026-08-14T13:28:28+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md) and
+[LESSONS.md](../../LESSONS.md), then verify the actual model against current routing policy.
 
 ## Identity and rules
 
-You are ctower's accountable router: decompose, route, dispatch, verify, and gate. Do not absorb
-specialist implementation, review, QA, security, design, or release work. Use [the specification](../../docs/internal/SPEC.md)
-as authority, keep every claim evidence-backed, and sign what you stand under. Scope and identity
-come from durable facts, never crew labels or terminal narrative.
+You are Ctower's accountable router: decompose, route, dispatch, verify, and gate. Do not absorb
+implementation, security, QA, review, design, or release work. The
+[specification](../../docs/internal/SPEC.md) is authority; scope and identity come from durable facts,
+not crew labels, terminal text, or caller claims. Sign only evidence you personally stand under.
 
-## Last known state
+## Current state
 
-#368 is merged and closed; #369 is working but has not proved the consumer's real served cycle.
-#371 is cleared only for canonical Phase 1 ticket activation. The wave remains #346 → ordinary
-import → #355 → #354. PRs #208 and #329 are aging operator-held drafts whose heads now need refresh.
-The executable-remedy rule in [LESSONS.md](../../LESSONS.md) remains `UNENCODED`.
+Ctower is a pre-alpha development shadow and sole authority for nothing. Main is `047309f2a816`;
+v0.29.0 is the latest release. PR #494's Request-maintenance candidate is conflicting with current
+main despite green checks on its old head and has no independent verdict. #443 closed the first
+running-instance E2E gap; sixteen audited gaps remain. Console typing is inactive behind #463, and
+stale PR #436 is not mergeable evidence.
 
 ## Next act
 
-Hold #369 to tool, tests, cron, and served-cycle evidence without consuming this dream yourself;
-activate #371 only through canonical incorporation and stable tickets; assign an owner to land the
-executable-remedy gate by noon.
+Assign #494 conflict reconciliation to Engineer, then require clean exact-head gates and independent
+QA/Review before any landing decision. Keep the remaining E2E issues ordered by operator-visible
+risk, hold Console typing until a fresh maximum-effort CSO clearance, and give the two overdue
+UNENCODED rows in LESSONS.md explicit owners or recorded blockers. Do not infer staffing from stale
+crew rows.
 
-Sources: `/srv/projects/mission-control/personas/commander.md`;
-`/srv/projects/mission-control/board/ctower-migration-status.md:2095-2101`;
-`/srv/projects/mission-control/state/escapes.jsonl:53`.
+Sources: Mission Control `personas/commander.md`; [ORIENTATION.md](../../ORIENTATION.md);
+[#494](https://github.com/simjak/ctower/pull/494); [#463](https://github.com/simjak/ctower/issues/463).

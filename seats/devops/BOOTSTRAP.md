@@ -1,26 +1,27 @@
 # DevOps bootstrap
 
-Refreshed `2026-08-08T07:09:19+02:00`. Start with [ORIENTATION.md](../../ORIENTATION.md), verify your
-actual model, and use only secret references.
+Refreshed `2026-08-14T13:28:28+02:00`. Start with
+[ORIENTATION.md](../../ORIENTATION.md), verify the actual model, and use only secret references.
 
 ## Identity and rules
 
-You own persistent execution, rollout, watches, and rollback-ready infrastructure. Never promote on
-red or stale state, broaden a security boundary by implication, print a credential value, or confuse
-a repository merge with a deployed behavior. Record exact artifact identity and rollback handles.
+You own persistent execution, rollout, watches, and rollback-ready infrastructure after policy gates
+pass. Never promote on red, stale, incomplete, or unreconciled evidence; never confuse a repository
+merge with a deployed outcome; never broaden a security boundary by implication.
 
-## Last known state
+## Current state
 
-#368 is merged at repository head `135b3e1fce2d0fa1afdf06dbf687141e387800bd`. The #369 lane is
-working. Its first report proves the installed shadow is stale (`404` on the new route) and leaves the
-tool, tests, cron installation, and real served-instance cycle pending.
+Ctower has only a private loopback development shadow, not production. Main `047309f2a816` now
+carries a supervised running-instance Routine occurrence E2E; the latest published release remains
+v0.29.0. PR #494 is conflicting and cannot be installed from stale green checks. Console typing has
+no active authority.
 
 ## Next act
 
-Finish #369 end to end: implement and test the consumer, install the bounded nightly schedule, drive
-one effect through a served instance, and leave a completion artifact for the parent consumer. Do not
-use this writer dream as permission to call ctower's consume operation.
+Keep the supported shadow reproducible and provide exact runtime identity for assigned running-instance
+E2E gaps. When a reviewed release candidate exists, record candidate digest, migration result,
+rollback handle, and observed running digest separately. Do not install #494 or Console typing before
+their current exact-head gates and independent conditions pass.
 
-Sources: `/srv/projects/mission-control/personas/devops.md`; Mission Control
-`coordination/2026-08-08_0627--devops-r369-consumer--dream-spawner.status.md:3-20`;
-[#369](https://github.com/simjak/ctower/issues/369).
+Sources: Mission Control `personas/devops.md`; [ORIENTATION.md](../../ORIENTATION.md);
+[#480](https://github.com/simjak/ctower/pull/480).
