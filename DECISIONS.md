@@ -2780,3 +2780,85 @@ or skips content); an importer that writes around CompanyBundle/Catalog staging 
 or internal documentation and follow-up public docs (leaves the first outside developer without a truthful
 contract). Specifying CT-I1-030 publishes, indexes, synchronizes, imports, materializes, or executes nothing;
 implementation waits on its dependencies and ordinary activation.
+
+## D64 — Workspaces are first-class records whose host materialization remains runner-side (product, 2026-08-14, operator order R2967 ticket B)
+
+The operator ordered one durable workspace model for ticket-bound worktrees, persistent Project checkouts,
+and persistent cross-Project company contexts. This extends D34's fleet-lifecycle close precedent, D62's
+canonical Ticket-transition causation, and D63's COMPANY/PROJECT exact Catalog pins without turning host
+directories, movement projections, or Catalog pointers into workspace authority. The durable destination is
+CT-I1-031 with acceptance family AC-WS-01..09.
+
+1. **The workspace record is product truth; host bytes are observations.** One append-only workspace record
+   owns UUIDv7 identity, immutable `WORKTREE|PROJECT|COMPANY` type and type-valid tenant/Project/Ticket binding,
+   normalized start-directory intent, immutable mount-set revisions, one exact reference to existing
+   credential-scope authority, aggregate version, lifecycle commands, runner receipts, and lifecycle facts.
+   The resolved directory, checkout, process, filesystem, and mounted bytes exist only on the runner. A host
+   path, process, janitor observation, branch ancestry, runner exit, or disappearance can never synthesize
+   `active`, `closed`, or safe-to-delete Record truth.
+2. **The three types have separate lifecycle contracts.** `WORKTREE` is ephemeral, bound to exactly one Ticket
+   and that Ticket's immutable Project, and created idempotently when its dispatch is accepted. `PROJECT` is
+   persistent and bound to exactly one tenant/Project checkout context. `COMPANY` is persistent and bound to
+   one tenant plus an existing cross-Project authorization context; it creates no company principal or free-
+   standing grant. A PR merge fact explicitly linked to a Ticket automatically requests close only for that
+   Ticket's bound `WORKTREE`; Ticket completion without that merge fact closes nothing, and persistent types
+   require an explicit authorized close and checkpoint-safe cleanup receipt.
+3. **Tickets carry references, never workspace snapshots.** A Ticket workspace-link fact has the strict shape
+   `{workspace_id: UUIDv7, workspace_type: WORKTREE|PROJECT|COMPANY}`. The server resolves the referenced
+   immutable record and validates tenant, type, Project/Ticket binding, and current authority before append.
+   It copies no directory, mount, credential, lifecycle, or host fact into the Ticket, and duplicate or
+   mismatched links refuse with zero mutation.
+4. **A linked PR merge requests WORKTREE close; it does not assert cleanup.** Acceptance of a PR merge fact
+   explicitly linked to the Ticket appends exactly one idempotent `workspace.close_requested` fact for every
+   current bound WORKTREE, causally linked to that merge fact. Where the same accepted command path moves the
+   Ticket, the close request and D62's canonical `workflow.changed` fact share the stable transition-
+   evaluation/causation pointer. PR merge, Ticket movement, close request, runner cleanup observation, and
+   `workspace.closed` or typed failure remain distinct attributable facts. The workspace derives `closing`
+   until an authenticated current-lease/current-fence cleanup receipt commits; branch ancestry, projection
+   state, replay, or silence cannot close it.
+5. **Mounts are immutable exact Catalog pins.** Every mount-set entry cites D63's exact scope, Project key or
+   null, kind, key, revision, and content digest. A workspace never follows `latest` or an active pointer
+   during its life. Remount is an explicit append-only request and runner result that creates a new immutable
+   mount-set revision; replay deduplicates, failure leaves the prior accepted pins authoritative, and
+   historical mount sets and receipts remain queryable.
+6. **Credential scope is a reference to existing authority only.** `CredentialScopeRef` names one exact
+   existing grant or binding as `{authority_kind, authority_id, authority_revision}` and resolves through the
+   existing Actor and Project authorization model. Every operation re-intersects it with tenant/Project,
+   Ticket or assignment, policy, current job/lease, and requested action. No workspace record, event, command,
+   fixture, document, or log may contain a credential value or create a principal, grant kind, authority
+   store, bearer format, or free-standing scope. A runner receives only the existing short-lived handle at
+   the authorized execution boundary.
+7. **Runner interaction is strict, authenticated, leased, and fenced.** The runner reads desired workspace
+   work through generated authenticated control-plane APIs, materializes/checks out/remounts/cleans only
+   inside the Runtime and CommandGuard boundary, and reports typed idempotent results through generated
+   authenticated commands. Runner, provider, web, CLI, and generated clients have no Record-tier import,
+   connection, or credential. Publication of a workspace record is never proof that a directory exists.
+8. **Unknown lifecycle state is explicit.** The fact fold distinguishes requested, active, remounting,
+   closing, closed, failed, and unknown. Missing, stale, gapped, conflicting, unauthorized, digest-mismatched,
+   unfenced, or unreadable Ticket, PR, Catalog, credential-scope, checkpoint, runner, remount, or cleanup input
+   names every affected source and reason and yields typed partial/unknown or refusal. It never derives
+   active, unchanged, clean, closed, or safe-to-delete from absence or silence; recovery resumes from durable
+   command/result identity without duplicating a lifecycle fact.
+9. **The build ships one outside-developer path.** `docs/concepts/workspaces.md` is the concept home,
+   `docs/quickstart.md` carries the first-use path, and `docs/reference/workspaces.md` owns record/reference
+   schemas, type/lifecycle tables, mounts, credential-scope references, commands, refusals, and recovery.
+   Navigation and affected Ticket, Catalog, API, CLI, runner, and security references update in the same
+   candidate. Public text contains no internal request/decision/ticket/acceptance identifiers, crew/seat
+   labels, fleet jargon, private paths or links, or private inventory facts.
+10. **Dependencies do not imply activation.** CT-I1-031 depends on CT-I1-003 for Ticket-stage authority,
+    CT-I1-009 for existing Project grants and seat credentials, CT-I1-027 for canonical accepted-transition
+    causation, and CT-I1-030 for COMPANY/PROJECT exact Catalog pins. It is independent of CT-I1-028/029.
+    Record/API lifecycle truth may land before host activation, but actual dispatch, materialization, remount,
+    cleanup, or arbitrary execution waits for the standing Runtime, runner, lease/fence, checkpoint, and
+    CommandGuard prerequisites.
+
+Rejected alternatives: treating a worktree directory or janitor as Record truth (crosses the host seam);
+embedding workspace snapshots or credentials in Tickets (duplicates authority and leaks scope); closing on
+branch ancestry, projection state, process exit, or silence (invents lifecycle truth); floating Catalog mounts
+or mutating a mount set in place (rewrites consumed inputs); a company principal, workspace grant, credential
+value, or parallel scope store (duplicates existing Access authority); a Record client in the runner
+(crosses the trust boundary); a standalone WorkspaceManager or second lifecycle store (creates shallow
+parallel authority); or internal/follow-up documentation (leaves the first outside developer without a
+truthful path). Specifying CT-I1-031 creates no workspace record, directory, checkout, mount, credential,
+runner command, cleanup, documentation page, or runtime behavior; implementation waits on its dependencies
+and ordinary activation.
