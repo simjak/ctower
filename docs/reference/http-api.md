@@ -180,8 +180,9 @@ The Console event route refuses every query string before it evaluates stream au
 Reconnect supplies the durable cursor only through `Last-Event-ID`, bounded from zero through the maximum
 signed 64-bit value; malformed, negative, and larger values refuse before a stream claim.
 
-The three `/v1/admin/console` routes use operator bearer authentication. An allowance request carries the
-complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` Phase-1 values.
+The three `/v1/admin/console` routes use administrator bearer authentication. An allowance request carries
+the complete `ConsoleSessionRef` fields plus the fixed `tmux-v1`, `standard`, and `restricted` read-only
+values.
 Revocation carries a 1–500-character reason. The global switch carries `enabled` and a 1–500-character
 reason. Allow is the only Console operation emitted into the ordinary protected generated client; the
 browser/SSE and empty-204 admin operations remain server-only boundaries and do not create handwritten

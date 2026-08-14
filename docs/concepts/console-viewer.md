@@ -1,12 +1,12 @@
 # Console view grants
 
-The Phase-1 Console viewer is a private, read-only server boundary for following one current crew terminal.
-It does not make a tmux pane authoritative. Instead, it joins durable work facts to live runtime identity,
+The Console viewer server foundation is a private, read-only boundary for following one current worker
+terminal. It does not make a tmux pane authoritative. Instead, it joins durable work facts to live runtime identity,
 mints a short-lived viewing grant, and streams encrypted cursor-addressed output to one authenticated browser
 session.
 
-This page explains the design. See [How to deploy and verify the Phase-1 Console
-viewer](../operations/console-viewer.md) for the operator procedure and the [HTTP API
+This page explains the design. See [How to deploy and verify the read-only Console
+viewer](../operations/console-viewer.md) for the deployment procedure and the [HTTP API
 reference](../reference/http-api.md#console-viewer) for exact routes.
 
 ## The problem
@@ -18,7 +18,8 @@ output.
 
 The viewer therefore separates three concerns:
 
-- Record facts say which Project, seat, crew engagement, assignment interval, and work session are current.
+- Record facts say which Project, worker identity and engagement, assignment interval, and work session are
+  current.
 - A trusted current-registration reader supplies runtime/runner/epoch/backend identity plus the output
   log's device/inode identity, and the registered Adapter reports the live Project and tmux incarnation for
   that backend.
@@ -28,10 +29,10 @@ No one concern can substitute for the others.
 
 ## The authority join
 
-An operator first appends one allowance for an exact `ConsoleSessionRef`. The reference binds:
+An administrator first appends one allowance for an exact `ConsoleSessionRef`. The reference binds:
 
 - tenant and Project;
-- non-Commander seat principal and crew name;
+- an eligible non-coordinator worker identity and engagement;
 - assignment ticket, assignment kind, and interval sequence;
 - recorded work-session and runtime-attempt identities;
 - runner identity and epoch;
@@ -59,17 +60,18 @@ Output and gap facts commit before their SSE event is returned, and a quiet poll
 and collection lock before it waits.
 
 ```text
-operator allowance ------+
+administrator allowance -+
 current Record facts -----+--> exact grant decision --> one stream claim
 live Adapter observation -+              ^
                                          |
 human role binding + browser session ----+
 ```
 
-Commander authority is deliberately absent on both sides of the join: a Commander-owned target engagement
-cannot receive an allowance, and a Commander Actor cannot discover, mint, or claim a stream. Viewers and
-operators still need an exact Project grant. Three denials inside the configured five-minute window append
-an immutable suspension fact and suspend the Actor for the fact's full fifteen-minute interval.
+Coordinating control identities are deliberately absent on both sides of the join: a coordinator-owned
+target engagement cannot receive an allowance, and a coordinator Actor cannot discover, mint, or claim a
+stream. Viewers and administrators still need an exact Project grant. Three denials inside the configured
+five-minute window append an immutable suspension fact and suspend the Actor for the fact's full
+fifteen-minute interval.
 
 ## Grant lifetime
 
@@ -134,16 +136,18 @@ The Adapter uses bounded argument arrays to inspect one registered tmux target a
 log beneath an allowlisted root. It has no Record-tier client, shell execution, pane-write or key-injection
 operation, generic process endpoint, or fallback discovery.
 
-## What Phase 1 does not activate
+## What the server foundation does not activate
 
-Phase 1 contains no browser UI and no terminal input. The Q3 typed-input verdict remains a separate,
-controlled Phase-2 prerequisite. The older `apps/ctower-ui` terminal reader uses a different direct capture
-and refresh path; it is neither an implementation nor evidence of this viewer boundary.
+The shipped server foundation contains no product browser UI, safe terminal renderer, or terminal input.
+Input remains blocked until the contextual product viewer and hostile-output renderer are deployed and the
+exact whole-line input candidate receives a fresh independent maximum-depth security verdict. The older
+`apps/ctower-ui` terminal reader uses a different direct capture and refresh path; it is neither an
+implementation nor evidence of this viewer boundary.
 
 ## Related material
 
-- [Phase-1 operator procedure](../operations/console-viewer.md)
-- [Phase-1 security verification](../security/console-phase1-verification.md)
-- [Current terminal read](terminal-read.md), which documents the separate dogfood reader
+- [Read-only viewer deployment procedure](../operations/console-viewer.md)
+- [Server-foundation security verification](../security/console-phase1-verification.md)
+- [Current terminal read](terminal-read.md), which documents the separate development-only reader
 - [Authored Console source specification](../specs/crew-console.md)
 - [Console Q3 typed-input verdict](../security/console-q3-typing-cso.md)
