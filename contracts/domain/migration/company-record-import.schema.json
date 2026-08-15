@@ -1,0 +1,63 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Company record import row",
+  "description": "One typed accountability row for the append-only company-record aggregate. Natural key per record type; refuses credential material, production customer data, and other prohibited classes at the contract boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "record_type",
+    "natural_key",
+    "occurred_on",
+    "payload"
+  ],
+  "properties": {
+    "schema": { "const": "ctower.company-record-import/v1" },
+    "record_type": { "enum": ["escape"] },
+    "natural_key": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "occurred_on": { "type": "string", "format": "date" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 40,
+      "properties": {
+        "caught_by": { "type": "string" },
+        "class": { "type": "string" },
+        "crew": { "type": "string" },
+        "date": { "type": "string" },
+        "defect": { "type": "string" },
+        "deliverable": { "type": "string" },
+        "detail": { "type": "string" },
+        "escape": { "type": "string" },
+        "escape_class": { "type": "string" },
+        "escape_ref": { "type": "string" },
+        "evidence": { "type": "string" },
+        "finding": { "type": "string" },
+        "found_by": { "type": "string" },
+        "gate_change": { "type": "string" },
+        "gate_hardened": { "type": "string" },
+        "impact": { "type": "string" },
+        "note": { "type": "string" },
+        "prevention": { "type": "string" },
+        "project": { "type": "string" },
+        "req": { "type": "string" },
+        "retro": { "type": ["boolean", "string"] },
+        "seat": { "type": "string" },
+        "severity": { "type": "string" },
+        "should_have_caught": { "type": "string" },
+        "signed_by": { "type": "string" },
+        "status": { "type": "string" },
+        "summary": { "type": "string" },
+        "ts": { "type": "string" },
+        "type": { "type": "string" },
+        "what": { "type": "string" },
+        "why_it_escaped": { "type": "string" },
+        "window": { "type": "string" },
+        "window_end_utc": { "type": "string" },
+        "window_start_utc": { "type": "string" }
+      }
+    }
+  }
+}

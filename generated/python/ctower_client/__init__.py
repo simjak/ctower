@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:ac4410ec5d7cc4e25581979eaa8ba1874d25b3bb55163737992631bf58f523f3
+Authored contract digest: sha256:1370b8427780ce29193c6bb9b84f37979fa5e3c4e70210e8101c81e10c852b3e
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -108,6 +108,18 @@ from ctower_client.models import (
     DreamModelRequirement,
     DreamModelSelection,
     DurabilityState,
+    EstateCompanyRecordImportRow,
+    EstateCompanyRecordsImportRequest,
+    EstateImportManifest,
+    EstateImportParity,
+    EstateImportResult,
+    EstateImportSignature,
+    EstateInboxImportRequest,
+    EstateInboxImportRow,
+    EstateKnowledgeImportRequest,
+    EstateKnowledgeImportRow,
+    EstateRulingImportRow,
+    EstateRulingsImportRequest,
     EvidenceRequest,
     FindingDispositionRequest,
     FindingDispositionResult,
@@ -420,6 +432,18 @@ __all__ = [
     "DreamModelRequirement",
     "DreamModelSelection",
     "DurabilityState",
+    "EstateCompanyRecordImportRow",
+    "EstateCompanyRecordsImportRequest",
+    "EstateImportManifest",
+    "EstateImportParity",
+    "EstateImportResult",
+    "EstateImportSignature",
+    "EstateInboxImportRequest",
+    "EstateInboxImportRow",
+    "EstateKnowledgeImportRequest",
+    "EstateKnowledgeImportRow",
+    "EstateRulingImportRow",
+    "EstateRulingsImportRequest",
     "EvidenceRequest",
     "FindingDispositionRequest",
     "FindingDispositionResult",

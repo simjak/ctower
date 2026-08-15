@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:ac4410ec5d7cc4e25581979eaa8ba1874d25b3bb55163737992631bf58f523f3
+Authored contract digest: sha256:1370b8427780ce29193c6bb9b84f37979fa5e3c4e70210e8101c81e10c852b3e
 """
 
 from __future__ import annotations
@@ -118,6 +118,18 @@ __all__ = [
     "DreamModelRequirement",
     "DreamModelSelection",
     "DurabilityState",
+    "EstateCompanyRecordImportRow",
+    "EstateCompanyRecordsImportRequest",
+    "EstateImportManifest",
+    "EstateImportParity",
+    "EstateImportResult",
+    "EstateImportSignature",
+    "EstateInboxImportRequest",
+    "EstateInboxImportRow",
+    "EstateKnowledgeImportRequest",
+    "EstateKnowledgeImportRow",
+    "EstateRulingImportRow",
+    "EstateRulingsImportRequest",
     "EvidenceRequest",
     "FindingDispositionRequest",
     "FindingDispositionResult",
@@ -1027,6 +1039,56 @@ class DreamModelSelection(_BoundaryModel):
 class DurabilityState(StrEnum):
     DURABILITY_PENDING = "durability_pending"
     ACCEPTED = "accepted"
+
+
+class EstateCompanyRecordImportRow(_BoundaryModel):
+    schema_id: Literal["ctower.company-record-import/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    record_type: Literal["escape"]
+    natural_key: Annotated[str, Field(min_length=1, max_length=256)]
+    occurred_on: str
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    seat: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,127}$")]
+    imported_at: _Rfc3339DateTime
+    payload: dict[str, object]
+
+
+class EstateImportSignature(_BoundaryModel):
+    algorithm: Literal["Ed25519"]
+    signed_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{1,96}$")]
+    key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: Annotated[str, Field(pattern="^[A-Za-z0-9_-]{86}$")]
+
+
+class EstateInboxImportRow(_BoundaryModel):
+    message_id: UUID
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    source_sender: Annotated[str, Field(min_length=1, max_length=128)]
+    source_recipient: Annotated[str, Field(min_length=1, max_length=128)]
+    sent_at: _Rfc3339DateTime
+    subject: Annotated[str, Field(max_length=1024)]
+    body: Annotated[str, Field(min_length=1, max_length=65536)]
+    read_state: Literal["delivered", "read"]
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class EstateKnowledgeImportRow(_BoundaryModel):
+    document_id: UUID
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    title: Annotated[str, Field(min_length=1, max_length=1024)]
+    body: Annotated[str, Field(min_length=1, max_length=1048576)]
+    recorded_at: _Rfc3339DateTime
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class EstateRulingImportRow(_BoundaryModel):
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
+    recorded_at: _Rfc3339DateTime
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
 class EvidenceRequest(_BoundaryModel):
@@ -2160,6 +2222,35 @@ class DreamModelRequirement(_BoundaryModel):
     excluded_families: Annotated[tuple[Literal["claude"], ...], Field(min_length=1, max_length=1)]
 
 
+class EstateImportManifest(_BoundaryModel):
+    schema_id: Literal["ctower.estate-import-manifest/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    source_identity: dict[str, object]
+    seat_mapping_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None = None
+    counts: dict[str, object]
+    batches: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
+    manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: EstateImportSignature
+
+
+class EstateImportParity(_BoundaryModel):
+    schema_id: Literal["ctower.estate-import-parity/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    source_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    imported_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    batches: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
+    sampled_content_hashes: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
+    source_only_owners: tuple[dict[str, object], ...]
+    emitted_before_closure: Literal[True]
+    parity_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: EstateImportSignature
+
+
 class FindingDispositionResult(_BoundaryModel):
     command_id: UUID
     finding_id: UUID
@@ -3139,6 +3230,37 @@ class DreamDispatchEffect(_BoundaryModel):
     model_requirement: DreamModelRequirement
     emitted_at: _Rfc3339DateTime
     consumption: None | DreamDispatchConsumption
+
+
+class EstateCompanyRecordsImportRequest(_BoundaryModel):
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateCompanyRecordImportRow, ...], Field(min_length=1, max_length=100)]
+
+
+class EstateImportResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    source_count: Annotated[int, Field(ge=1, le=9007199254740991)]
+    imported_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    parity: EstateImportParity
+
+
+class EstateInboxImportRequest(_BoundaryModel):
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateInboxImportRow, ...], Field(min_length=1, max_length=100)]
+
+
+class EstateKnowledgeImportRequest(_BoundaryModel):
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateKnowledgeImportRow, ...], Field(min_length=1, max_length=100)]
+
+
+class EstateRulingsImportRequest(_BoundaryModel):
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateRulingImportRow, ...], Field(min_length=1, max_length=100)]
 
 
 class HealthDimension(_BoundaryModel):

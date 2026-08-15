@@ -2515,6 +2515,32 @@
         "AC-GL-02",
         "AC-GL-03"
       ]
+    },
+    {
+      "path": "contracts/domain/migration/estate-import-manifest.schema.json",
+      "references": [
+        "AC-IMP-01",
+        "AC-IMP-04"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/estate-import-parity.schema.json",
+      "references": [
+        "AC-IMP-04"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/company-record-import.schema.json",
+      "references": [
+        "AC-IMP-03"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/estate-seat-mapping.schema.json",
+      "references": [
+        "AC-IMP-01",
+        "AC-IMP-04"
+      ]
     }
   ]
 }

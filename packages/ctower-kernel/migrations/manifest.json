@@ -643,6 +643,15 @@
       "forward_test": "pytest:tests/modules/work/test_request_proposals.py::test_fresh_apply_installs_separate_append_only_proposal_facts",
       "rollback_or_forward_compensation": "Preserve every immutable proposal, evidence pointer, terminal decision, canonical event, command result, outbox row, and ordinary Request command result; append reviewed forward compensation and never edit, delete, reopen, merge, or reuse an accepted proposal fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Request, proposal, proposal-evidence, proposal-decision, event, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; all three proposal tables start empty."
+    },
+    {
+      "path": "0068_company_records.sql",
+      "sha256": "sha256:deb7429a00c9907b5e5255fe9599d83faab284b766ec9ee07ed503f086edfcef",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_estate_imports.py",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration."
     }
   ]
 }

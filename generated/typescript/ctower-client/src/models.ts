@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:ac4410ec5d7cc4e25581979eaa8ba1874d25b3bb55163737992631bf58f523f3
+// Authored contract digest: sha256:1370b8427780ce29193c6bb9b84f37979fa5e3c4e70210e8101c81e10c852b3e
 
 export type ActivityClass = "work" | "verification";
 
@@ -849,6 +849,148 @@ export type DreamModelSelection = Readonly<{
 }>;
 
 export type DurabilityState = "durability_pending" | "accepted";
+
+export type EstateCompanyRecordImportRow = Readonly<{
+  readonly "imported_at": string;
+  readonly "natural_key": string;
+  readonly "occurred_on": string;
+  readonly "payload": Readonly<{
+    readonly "date"?: string;
+    readonly "defect"?: string;
+    readonly "evidence"?: string;
+    readonly "found_by"?: string;
+    readonly "gate_hardened"?: string;
+    readonly "note"?: string;
+    readonly "seat"?: string;
+    readonly "should_have_caught"?: string;
+    readonly "signed_by"?: string;
+    readonly "status"?: string;
+    readonly "summary"?: string;
+  }>;
+  readonly "record_type": "escape";
+  readonly "schema": "ctower.company-record-import/v1";
+  readonly "seat": string;
+  readonly "source_ref": string;
+}>;
+
+export type EstateCompanyRecordsImportRequest = Readonly<{
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateCompanyRecordImportRow>;
+}>;
+
+export type EstateImportManifest = Readonly<{
+  readonly "batches": ReadonlyArray<Readonly<{
+    readonly "batch_digest": string;
+    readonly "batch_index": number;
+    readonly "source_count": number;
+  }>>;
+  readonly "counts": Readonly<{
+    readonly "mapped_rows"?: number;
+    readonly "source_only_rows"?: number;
+    readonly "source_rows": number;
+  }>;
+  readonly "manifest_digest": string;
+  readonly "schema": "ctower.estate-import-manifest/v1";
+  readonly "seat_mapping_digest"?: string | null;
+  readonly "signature": EstateImportSignature;
+  readonly "source_identity": Readonly<{
+    readonly "frozen_at"?: string;
+    readonly "namespace": string;
+    readonly "size_bytes"?: number;
+    readonly "source_path": string;
+    readonly "source_sha256": string;
+  }>;
+  readonly "tier": "inbox_history" | "agreed_decisions" | "knowledge_documents" | "company_records";
+}>;
+
+export type EstateImportParity = Readonly<{
+  readonly "batches": ReadonlyArray<Readonly<{
+    readonly "batch_digest": string;
+    readonly "batch_index": number;
+    readonly "imported_count": number;
+    readonly "source_count": number;
+  }>>;
+  readonly "emitted_before_closure": true;
+  readonly "imported_count": number;
+  readonly "manifest_digest": string;
+  readonly "parity_digest": string;
+  readonly "sampled_content_hashes": ReadonlyArray<Readonly<{
+    readonly "content_sha256": string;
+    readonly "source_ref": string;
+  }>>;
+  readonly "schema": "ctower.estate-import-parity/v1";
+  readonly "signature": EstateImportSignature;
+  readonly "source_count": number;
+  readonly "source_only_owners": ReadonlyArray<Readonly<{
+    readonly "row_count": number;
+    readonly "source_only_disposition": "source_only";
+    readonly "source_seat": string;
+  }>>;
+  readonly "tier": "inbox_history" | "agreed_decisions" | "knowledge_documents" | "company_records";
+}>;
+
+export type EstateImportResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "imported_count": number;
+  readonly "manifest_digest": string;
+  readonly "parity": EstateImportParity;
+  readonly "source_count": number;
+  readonly "tier": "inbox_history" | "agreed_decisions" | "knowledge_documents" | "company_records";
+}>;
+
+export type EstateImportSignature = Readonly<{
+  readonly "algorithm": "Ed25519";
+  readonly "key_ref": string;
+  readonly "key_version": number;
+  readonly "public_key_digest": string;
+  readonly "signature": string;
+  readonly "signed_digest": string;
+}>;
+
+export type EstateInboxImportRequest = Readonly<{
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateInboxImportRow>;
+}>;
+
+export type EstateInboxImportRow = Readonly<{
+  readonly "body": string;
+  readonly "content_sha256": string;
+  readonly "message_id": string;
+  readonly "read_state": "delivered" | "read";
+  readonly "sent_at": string;
+  readonly "source_recipient": string;
+  readonly "source_ref": string;
+  readonly "source_sender": string;
+  readonly "subject": string;
+}>;
+
+export type EstateKnowledgeImportRequest = Readonly<{
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateKnowledgeImportRow>;
+}>;
+
+export type EstateKnowledgeImportRow = Readonly<{
+  readonly "body": string;
+  readonly "content_sha256": string;
+  readonly "document_id": string;
+  readonly "recorded_at": string;
+  readonly "source_ref": string;
+  readonly "title": string;
+}>;
+
+export type EstateRulingImportRow = Readonly<{
+  readonly "content_sha256": string;
+  readonly "recorded_at": string;
+  readonly "source_ref": string;
+  readonly "verbatim": string;
+}>;
+
+export type EstateRulingsImportRequest = Readonly<{
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateRulingImportRow>;
+}>;
 
 export type EvidenceRequest = Readonly<{
   readonly "artifact_digest": string;

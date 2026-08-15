@@ -7,6 +7,7 @@
     "ctower.capability/v1": "contracts/components/capability.schema.json",
     "ctower.checkpoint/v1": "contracts/components/checkpoint.schema.json",
     "ctower.company-bundle/v1": "contracts/company/company-bundle.schema.json",
+    "ctower.company-record-import/v1": "contracts/domain/migration/company-record-import.schema.json",
     "ctower.compatibility-input/v1": "contracts/compatibility/matrix-input.schema.json",
     "ctower.compatibility-result/v1": "contracts/compatibility/matrix-result.schema.json",
     "ctower.ctower-project-alias-map/v1": "contracts/domain/migration/ctower-project-alias-map.schema.json",
@@ -29,6 +30,9 @@
     "ctower.ctower-project-source-link/v1": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "ctower.ctower-project-source-selection/v1": "contracts/domain/migration/ctower-project-source-selection.schema.json",
     "ctower.environment/v1": "contracts/components/environment.schema.json",
+    "ctower.estate-import-manifest/v1": "contracts/domain/migration/estate-import-manifest.schema.json",
+    "ctower.estate-import-parity/v1": "contracts/domain/migration/estate-import-parity.schema.json",
+    "ctower.estate-seat-mapping/v1": "contracts/domain/migration/estate-seat-mapping.schema.json",
     "ctower.evidence-manifest/v1": "contracts/evidence/evidence-manifest.schema.json",
     "ctower.evidence-manifest/v2": "contracts/evidence/evidence-manifest-v2.schema.json",
     "ctower.evidence-policy/v1": "contracts/execution/evidence-policy.schema.json",
@@ -73,6 +77,7 @@
     "https://ctower.dev/contracts/domain/console/console-stream-event.schema.json": "contracts/domain/console/console-stream-event.schema.json",
     "https://ctower.dev/contracts/domain/console/console-view-grant.schema.json": "contracts/domain/console/console-view-grant.schema.json",
     "https://ctower.dev/contracts/domain/events/event-envelope.schema.json": "contracts/domain/events/event-envelope.schema.json",
+    "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json": "contracts/domain/migration/company-record-import.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json": "contracts/domain/migration/ctower-project-alias-map.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-cutover-health.schema.json": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -92,6 +97,9 @@
     "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation.schema.json": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-link.schema.json": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json": "contracts/domain/migration/ctower-project-source-selection.schema.json",
+    "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json": "contracts/domain/migration/estate-import-manifest.schema.json",
+    "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json": "contracts/domain/migration/estate-import-parity.schema.json",
+    "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json": "contracts/domain/migration/estate-seat-mapping.schema.json",
     "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json": "contracts/domain/migration/migration-boundary.schema.json",
     "https://ctower.dev/contracts/domain/migration/request-batch-proof.schema.json": "contracts/domain/migration/request-batch-proof.schema.json",
     "https://ctower.dev/contracts/domain/migration/request-import-manifest.schema.json": "contracts/domain/migration/request-import-manifest.schema.json",
@@ -6809,6 +6817,153 @@
       "title": "Ctower registered knowledge document",
       "type": "object"
     },
+    "contracts/domain/migration/company-record-import.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One typed accountability row for the append-only company-record aggregate. Natural key per record type; refuses credential material, production customer data, and other prohibited classes at the contract boundary.",
+      "properties": {
+        "natural_key": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "occurred_on": {
+          "format": "date",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "maxProperties": 40,
+          "minProperties": 1,
+          "properties": {
+            "caught_by": {
+              "type": "string"
+            },
+            "class": {
+              "type": "string"
+            },
+            "crew": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "defect": {
+              "type": "string"
+            },
+            "deliverable": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "escape": {
+              "type": "string"
+            },
+            "escape_class": {
+              "type": "string"
+            },
+            "escape_ref": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "string"
+            },
+            "finding": {
+              "type": "string"
+            },
+            "found_by": {
+              "type": "string"
+            },
+            "gate_change": {
+              "type": "string"
+            },
+            "gate_hardened": {
+              "type": "string"
+            },
+            "impact": {
+              "type": "string"
+            },
+            "note": {
+              "type": "string"
+            },
+            "prevention": {
+              "type": "string"
+            },
+            "project": {
+              "type": "string"
+            },
+            "req": {
+              "type": "string"
+            },
+            "retro": {
+              "type": [
+                "boolean",
+                "string"
+              ]
+            },
+            "seat": {
+              "type": "string"
+            },
+            "severity": {
+              "type": "string"
+            },
+            "should_have_caught": {
+              "type": "string"
+            },
+            "signed_by": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "ts": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "what": {
+              "type": "string"
+            },
+            "why_it_escaped": {
+              "type": "string"
+            },
+            "window": {
+              "type": "string"
+            },
+            "window_end_utc": {
+              "type": "string"
+            },
+            "window_start_utc": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "record_type": {
+          "enum": [
+            "escape"
+          ]
+        },
+        "schema": {
+          "const": "ctower.company-record-import/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "record_type",
+        "natural_key",
+        "occurred_on",
+        "payload"
+      ],
+      "title": "Company record import row",
+      "type": "object"
+    },
     "contracts/domain/migration/ctower-project-alias-map-v2.schema.json": {
       "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10841,6 +10996,419 @@
         "signature"
       ],
       "title": "Reviewed ctower-project source selection",
+      "type": "object"
+    },
+    "contracts/domain/migration/estate-import-manifest.schema.json": {
+      "$defs": {
+        "ed25519-signature": {
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "Ed25519"
+            },
+            "key_ref": {
+              "pattern": "^signing-key-ref:[a-z0-9/_-]{1,96}$",
+              "type": "string"
+            },
+            "key_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "public_key_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "signature": {
+              "pattern": "^[A-Za-z0-9_-]{86}$",
+              "type": "string"
+            },
+            "signed_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "algorithm",
+            "signed_digest",
+            "key_ref",
+            "key_version",
+            "public_key_digest",
+            "signature"
+          ],
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One signed frozen-source manifest binding an external estate ledger to an import tier. Every tier admits the same strict manifest envelope; tier rows vary by tier kind.",
+      "properties": {
+        "batches": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "batch_digest": {
+                "$ref": "#/$defs/sha256"
+              },
+              "batch_index": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "source_count": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "batch_index",
+              "batch_digest",
+              "source_count"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "mapped_rows": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_only_rows": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_rows": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "source_rows"
+          ],
+          "type": "object"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schema": {
+          "const": "ctower.estate-import-manifest/v1"
+        },
+        "seat_mapping_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "signature": {
+          "$ref": "#/$defs/ed25519-signature"
+        },
+        "source_identity": {
+          "additionalProperties": false,
+          "properties": {
+            "frozen_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "namespace": {
+              "pattern": "^[a-z][a-z0-9-]{1,63}:[a-z][a-z0-9._-]{1,127}$",
+              "type": "string"
+            },
+            "size_bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_path": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "namespace",
+            "source_path",
+            "source_sha256"
+          ],
+          "type": "object"
+        },
+        "tier": {
+          "enum": [
+            "inbox_history",
+            "agreed_decisions",
+            "knowledge_documents",
+            "company_records"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "tier",
+        "source_identity",
+        "counts",
+        "batches",
+        "manifest_digest",
+        "signature"
+      ],
+      "title": "Estate import manifest",
+      "type": "object"
+    },
+    "contracts/domain/migration/estate-import-parity.schema.json": {
+      "$defs": {
+        "ed25519-signature": {
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "Ed25519"
+            },
+            "key_ref": {
+              "pattern": "^signing-key-ref:[a-z0-9/_-]{1,96}$",
+              "type": "string"
+            },
+            "key_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "public_key_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "signature": {
+              "pattern": "^[A-Za-z0-9_-]{86}$",
+              "type": "string"
+            },
+            "signed_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "algorithm",
+            "signed_digest",
+            "key_ref",
+            "key_version",
+            "public_key_digest",
+            "signature"
+          ],
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One typed parity report per import tier, emitted before any source-path closure act. Names source row count, imported record count, per-batch digests, and sampled content hashes; unknown source owners appear under an explicit source-only state.",
+      "properties": {
+        "batches": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "batch_digest": {
+                "$ref": "#/$defs/sha256"
+              },
+              "batch_index": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "imported_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "source_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "batch_index",
+              "batch_digest",
+              "source_count",
+              "imported_count"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "emitted_before_closure": {
+          "const": true
+        },
+        "imported_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "parity_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sampled_content_hashes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "source_ref": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_ref",
+              "content_sha256"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.estate-import-parity/v1"
+        },
+        "signature": {
+          "$ref": "#/$defs/ed25519-signature"
+        },
+        "source_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_only_owners": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "row_count": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "source_only_disposition": {
+                "const": "source_only"
+              },
+              "source_seat": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_seat",
+              "row_count",
+              "source_only_disposition"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "tier": {
+          "enum": [
+            "inbox_history",
+            "agreed_decisions",
+            "knowledge_documents",
+            "company_records"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "tier",
+        "manifest_digest",
+        "source_count",
+        "imported_count",
+        "batches",
+        "sampled_content_hashes",
+        "source_only_owners",
+        "emitted_before_closure",
+        "parity_digest",
+        "signature"
+      ],
+      "title": "Estate import parity report",
+      "type": "object"
+    },
+    "contracts/domain/migration/estate-seat-mapping.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "The accepted seat-mapping plan for one estate import. Every source seat resolves to exactly one disposition: mapped onto an existing ctower project seat, or explicit source-only.",
+      "properties": {
+        "mapping_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "mappings": {
+          "items": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "disposition": {
+                      "const": "mapped"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "target_seat_key"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "disposition": {
+                      "const": "source_only"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "target_seat_key": false
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "disposition": {
+                "enum": [
+                  "mapped",
+                  "source_only"
+                ]
+              },
+              "source_seat": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_seat_key": {
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_seat",
+              "disposition"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.estate-seat-mapping/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "mapping_digest",
+        "mappings"
+      ],
+      "title": "Estate seat mapping plan",
       "type": "object"
     },
     "contracts/domain/migration/migration-boundary.schema.json": {
@@ -18342,6 +18910,11 @@
       "sha256": "sha256:576841e16512bcb0621fc7e63a4542d3d45779cebc4509e029000a871818b7bd"
     },
     {
+      "id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
+      "path": "contracts/domain/migration/company-record-import.schema.json",
+      "sha256": "sha256:3d5ac334ea956dca6d713e8ae5f52ce8a50b57ee721dd2ca2bad6716e6415d6b"
+    },
+    {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
       "path": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
       "sha256": "sha256:8bca608ef4a2d0bc75b4dc0bc6a5bc57f8476bd720c555514192515ec5819dd3"
@@ -18435,6 +19008,21 @@
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json",
       "path": "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "sha256": "sha256:5c9a06a3e2808cd7bf80975dc1646e303bb9f3325995f30a9a8abd86d5cefcc8"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
+      "path": "contracts/domain/migration/estate-import-manifest.schema.json",
+      "sha256": "sha256:712d7e50799b81a214e37e8f73f976c415029958c68b37873901b9cd0e3d86b6"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json",
+      "path": "contracts/domain/migration/estate-import-parity.schema.json",
+      "sha256": "sha256:365ed5c274de8b9edb9e80bb01e6e6ae472ebcf8c1a537d880e972d17691f928"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json",
+      "path": "contracts/domain/migration/estate-seat-mapping.schema.json",
+      "sha256": "sha256:bd3013b6ab5665a5baeaa69fc78a7df481cb503c419c878ff494709a4d4e93d7"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json",

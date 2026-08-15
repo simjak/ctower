@@ -29,6 +29,7 @@ phase_order = [
   "CT-I1-020",
   "CT-I1-021",
   "CT-I1-024",
+  "CT-I1-032",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -1070,3 +1071,52 @@ path = "tests/acceptance/increment-2"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/acceptance/increment-2", "-q"]
 timeout_seconds = 1800
+
+[[suite]]
+id = "estate-import-contracts"
+owner = "CT-I1-032"
+phase = "CT-I1-032"
+status = "deferred"
+path = "tests/contracts/estate_imports"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/estate_imports", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "estate-import-modules"
+owner = "CT-I1-032"
+phase = "CT-I1-032"
+status = "deferred"
+path = "tests/modules/migration"
+patterns = ["test_estate_imports.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/migration/test_estate_imports.py", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "estate-import-acceptance"
+owner = "CT-I1-032"
+phase = "CT-I1-032"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_estate_imports.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_estate_imports.py", "-q"]
+timeout_seconds = 900
+
+[[suite]]
+id = "estate-import-tooling"
+owner = "CT-I1-032"
+phase = "CT-I1-032"
+status = "deferred"
+path = "tests/migration"
+patterns = ["test_inbox_import.py", "test_rulings_import.py", "test_knowledge_import.py", "test_company_records_import.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/migration/test_inbox_import.py",
+  "tests/migration/test_rulings_import.py",
+  "tests/migration/test_knowledge_import.py",
+  "tests/migration/test_company_records_import.py",
+  "-q",
+]
+timeout_seconds = 300

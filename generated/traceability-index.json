@@ -299,6 +299,18 @@
       "packages/ctower-kernel/migrations/0055_connector_framework.sql",
       "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql"
     ],
+    "AC-IMP-01": [
+      "contracts/domain/migration/estate-import-manifest.schema.json",
+      "contracts/domain/migration/estate-seat-mapping.schema.json"
+    ],
+    "AC-IMP-03": [
+      "contracts/domain/migration/company-record-import.schema.json"
+    ],
+    "AC-IMP-04": [
+      "contracts/domain/migration/estate-import-manifest.schema.json",
+      "contracts/domain/migration/estate-import-parity.schema.json",
+      "contracts/domain/migration/estate-seat-mapping.schema.json"
+    ],
     "AC-INBOX-01": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",

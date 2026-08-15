@@ -194,6 +194,10 @@
       "finalizeCtowerProjectImportRun",
       "getCtowerProjectImportRun",
       "appendCtowerProjectImportCorrection",
+      "importEstateInbox",
+      "importEstateRulings",
+      "importEstateKnowledge",
+      "importEstateCompanyRecords",
       "retireBeatRoutine",
       "prepareCtowerProjectCutover:refusal_only",
       "commitCtowerProjectDevelopmentEpoch:refusal_only"

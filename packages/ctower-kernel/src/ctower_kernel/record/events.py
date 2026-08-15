@@ -70,6 +70,8 @@ from ctower_kernel.record.routine_events import (
     validate_routine_retirement_identity,
 )
 from ctower_kernel.record.ruling_events import RulingRecordedPayload
+from ctower_kernel.record.estate_import_events import CompanyRecordAppendedPayload
+from ctower_kernel.record.estate_import_events import EstateImportChangedPayload
 from ctower_kernel.record.ruling_events import _validate_identity as _validate_ruling_identity
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
@@ -283,6 +285,8 @@ type EventPayload = (
     | RequestChangedPayload
     | RequestProposalChangedPayload
     | RulingRecordedPayload
+    | EstateImportChangedPayload
+    | CompanyRecordAppendedPayload
 )
 
 
@@ -497,6 +501,18 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             "request-proposal",
         ),
         EventCatalogEntry(EventKind.RULING_RECORDED, RulingRecordedPayload, "ruling"),
+        EventCatalogEntry(
+            EventKind.ESTATE_IMPORT_CHANGED,
+            EstateImportChangedPayload,
+            "estate-import",
+            _API_OR_IMPORT,
+        ),
+        EventCatalogEntry(
+            EventKind.COMPANY_RECORD_APPENDED,
+            CompanyRecordAppendedPayload,
+            "company-record",
+            _API_OR_IMPORT,
+        ),
     )
 }
 

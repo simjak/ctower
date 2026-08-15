@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:ac4410ec5d7cc4e25581979eaa8ba1874d25b3bb55163737992631bf58f523f3
+// Authored contract digest: sha256:1370b8427780ce29193c6bb9b84f37979fa5e3c4e70210e8101c81e10c852b3e
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -238,6 +238,26 @@ export type GetTicketInput = Readonly<{
 export type GetTicketTimelineInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
+}>;
+
+export type ImportEstateCompanyRecordsInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateCompanyRecordsImportRequest;
+}>;
+
+export type ImportEstateInboxInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateInboxImportRequest;
+}>;
+
+export type ImportEstateKnowledgeInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateKnowledgeImportRequest;
+}>;
+
+export type ImportEstateRulingsInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateRulingsImportRequest;
 }>;
 
 export type IngestInboxNotificationInput = Readonly<{
@@ -528,6 +548,10 @@ export type OperationInputs = Readonly<{
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
+  readonly "importEstateCompanyRecords": ImportEstateCompanyRecordsInput;
+  readonly "importEstateInbox": ImportEstateInboxInput;
+  readonly "importEstateKnowledge": ImportEstateKnowledgeInput;
+  readonly "importEstateRulings": ImportEstateRulingsInput;
   readonly "ingestInboxNotification": IngestInboxNotificationInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
   readonly "listBeatDispatchEffects": ListBeatDispatchEffectsInput;
@@ -620,6 +644,10 @@ export type OperationResults = Readonly<{
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
+  readonly "importEstateCompanyRecords": Models.EstateImportResult;
+  readonly "importEstateInbox": Models.EstateImportResult;
+  readonly "importEstateKnowledge": Models.EstateImportResult;
+  readonly "importEstateRulings": Models.EstateImportResult;
   readonly "ingestInboxNotification": Models.InboxSendResult;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
   readonly "listBeatDispatchEffects": Models.BeatDispatchEffectList;
@@ -943,6 +971,30 @@ export class CtowerClient {
     input: GetTicketTimelineInput,
   ): Promise<Models.TimelineResponse> {
     return this.execute("getTicketTimeline", input);
+  }
+
+  public async importEstateCompanyRecords(
+    input: ImportEstateCompanyRecordsInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateCompanyRecords", input);
+  }
+
+  public async importEstateInbox(
+    input: ImportEstateInboxInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateInbox", input);
+  }
+
+  public async importEstateKnowledge(
+    input: ImportEstateKnowledgeInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateKnowledge", input);
+  }
+
+  public async importEstateRulings(
+    input: ImportEstateRulingsInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateRulings", input);
   }
 
   public async ingestInboxNotification(

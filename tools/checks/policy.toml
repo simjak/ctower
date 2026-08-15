@@ -189,6 +189,8 @@ paths = [
   "tools/migration/operator_inbox/**",
   "tools/migration/operator_rulings/**",
   "tools/migration/company_records/**",
+  "tools/migration/estate_imports/**",
+  "tools/migration/operator_knowledge/**",
 ]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 

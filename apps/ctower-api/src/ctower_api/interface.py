@@ -29,6 +29,7 @@ from ctower_api._dream_dispatch_routes import (
     DreamDispatchRuntime,
     install_dream_dispatch_routes,
 )
+from ctower_api._estate_import_routes import EstateImportPort, install_estate_import_routes
 from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
     UnscopedAuthentication as _UnscopedAuthentication,
