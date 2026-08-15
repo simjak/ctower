@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0067_request_maintenance_proposals.sql",
-    "schema_sha256": "sha256:a469179f2e1f13cae2ab11325d1b764188e626124be3a0c0bc29079c2a7527a4",
+    "through": "0068_activity_gated_routines.sql",
+    "schema_sha256": "sha256:a31778cb4f87c595359e29c877ff81d8c4212809f7df45915a0b78a9e6365728",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:b38c6aa1eaef75e0a4904976b1656bde423d36bea1797022e875c4338ae6ab70"
+    "schema_object_sum256": "sum256:b6373747523db4e35ba1206b394748b87e56b9ab4b91f7368db5e5542d0b9489"
   },
   "ledger_advance_transitions": [
     {
@@ -643,6 +643,15 @@
       "forward_test": "pytest:tests/modules/work/test_request_proposals.py::test_fresh_apply_installs_separate_append_only_proposal_facts",
       "rollback_or_forward_compensation": "Preserve every immutable proposal, evidence pointer, terminal decision, canonical event, command result, outbox row, and ordinary Request command result; append reviewed forward compensation and never edit, delete, reopen, merge, or reuse an accepted proposal fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Request, proposal, proposal-evidence, proposal-decision, event, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; all three proposal tables start empty."
+    },
+    {
+      "path": "0068_activity_gated_routines.sql",
+      "sha256": "sha256:a227e09115fdc6c427704b915e5a841523cb595850ebc0b5b41c480a847c63ee",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_routines.py::test_ac_rtn_02_gate_true_fires_one_dispatch_fact_with_evidence",
+      "rollback_or_forward_compensation": "Preserve every immutable registration, gate evaluation, dispatch effect, occurrence, and watermark; retirement stays append-only and mc-cron.* refs retire through the same operator path; never rewrite or delete an evaluation fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture routine_activity_gates, routine_gate_evaluations, routine_gate_watermarks, routine_revisions, runtime_beat_dispatch_effects, and routine_occurrences counts grouped by tenant plus a verified database backup; the three gate tables start empty."
     }
   ]
 }

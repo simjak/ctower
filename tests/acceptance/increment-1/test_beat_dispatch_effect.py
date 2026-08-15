@@ -37,7 +37,6 @@ from ctower_kernel.runtime import Routine
 from ctower_kernel.runtime.postgres import PostgresRuntime
 
 __all__: tuple[str, ...] = ()
-_BEAT_COUNT = 5
 
 
 def test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_routines(
@@ -92,7 +91,7 @@ def test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_r
         client._http = transport
         listed_routines = client.list_beat_routines()
         listed_effects = client.list_beat_dispatch_effects()
-    assert len(listed_routines.routines) == _BEAT_COUNT
+    assert len(listed_routines.routines) == len(beats)
     assert [listed.effect_id for listed in listed_effects.effects] == [effect.effect_id]
 
     with psycopg.connect(tenant.database.admin_dsn) as connection:
@@ -106,7 +105,7 @@ def test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_r
         ).fetchone()
     assert job_count is not None and job_count[0] == 1
     print(
-        "TEST-POSTGRES beat_routines=5 health_effects=1 full_prompt=exact "
+        f"TEST-POSTGRES beat_routines={len(beats)} health_effects=1 full_prompt=exact "
         "target=commander operation_jobs=1"
     )
 

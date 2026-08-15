@@ -9,7 +9,7 @@ from uuid import UUID
 
 __all__ = ["BeatRoutineRetireCommand", "BeatRoutineRetirementReceipt"]
 
-_BEAT_REFERENCE = re.compile(r"^ctower\.beat\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")
+_BEAT_REFERENCE = re.compile(r"^(ctower\.beat|mc-cron)\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 
 
 @dataclass(frozen=True, slots=True)

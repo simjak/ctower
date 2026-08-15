@@ -637,6 +637,36 @@
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
     ],
+    "AC-RTN-01": [
+      "contracts/runtime/routine-v4.schema.json",
+      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
+      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
+      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
+      "packs/routines/mc-cron.manibo-report/v1.yaml",
+      "packs/routines/mc-cron.structural-report/v1.yaml",
+      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
+    ],
+    "AC-RTN-02": [
+      "contracts/runtime/routine-gate-evaluation.schema.json",
+      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql"
+    ],
+    "AC-RTN-03": [
+      "contracts/runtime/routine-migration-backlog.json",
+      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
+      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
+      "packs/routines/mc-cron.manibo-report/v1.yaml",
+      "packs/routines/mc-cron.structural-report/v1.yaml",
+      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
+    ],
+    "AC-RTN-04": [
+      "contracts/runtime/routine-migration-backlog.json",
+      "contracts/runtime/routine-v4.schema.json",
+      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
+      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
+      "packs/routines/mc-cron.manibo-report/v1.yaml",
+      "packs/routines/mc-cron.structural-report/v1.yaml",
+      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
+    ],
     "AC-RUL-01": [
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
@@ -1240,6 +1270,7 @@
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
       "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
+      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
       "packs/routines/ctower.beat.bhloop/v1.yaml",
       "packs/routines/ctower.beat.digest/v1.yaml",
       "packs/routines/ctower.beat.director-drive/v1.yaml",
@@ -1248,7 +1279,12 @@
       "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "packs/routines/ctower.dream.ctower/v1.yaml",
       "packs/routines/ctower.dream.fleet/v1.yaml",
-      "packs/routines/ctower.dream.manibo/v1.yaml"
+      "packs/routines/ctower.dream.manibo/v1.yaml",
+      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
+      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
+      "packs/routines/mc-cron.manibo-report/v1.yaml",
+      "packs/routines/mc-cron.structural-report/v1.yaml",
+      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
     ],
     "INV-79": [
       "contracts/domain/events/canonical-vectors.json",
@@ -1315,6 +1351,17 @@
       "contracts/domain/migration/request-owner-map.schema.json",
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
+    ],
+    "SPEC#activity-gated-routines": [
+      "contracts/runtime/routine-gate-evaluation.schema.json",
+      "contracts/runtime/routine-migration-backlog.json",
+      "contracts/runtime/routine-v4.schema.json",
+      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
+      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
+      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
+      "packs/routines/mc-cron.manibo-report/v1.yaml",
+      "packs/routines/mc-cron.structural-report/v1.yaml",
+      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",

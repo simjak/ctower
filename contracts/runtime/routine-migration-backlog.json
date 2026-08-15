@@ -1,0 +1,188 @@
+{
+  "schema": "ctower.routine-migration-backlog/v1",
+  "captured_from": "MC host crontab 2026-08-15 ~02:00Z (R3000 migration inventory)",
+  "migrated": [
+    "mc-cron.manibo-report@1",
+    "mc-cron.structural-report@1",
+    "mc-cron.manibo-merge-watch@1",
+    "mc-cron.worktree-janitor-apply@1",
+    "mc-cron.capacity-sentinel@1"
+  ],
+  "unmigrated": [
+    {
+      "cron_tool": "ctower-feed-notify",
+      "schedule": "*/10 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "wip-alarm",
+      "schedule": "*/15 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "open_tickets_above",
+        "threshold": 0
+      }
+    },
+    {
+      "cron_tool": "idle-alarm",
+      "schedule": "*/20 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "new_movement_since_watermark",
+        "source": "events"
+      }
+    },
+    {
+      "cron_tool": "ctower-beat-watchdog",
+      "schedule": "*/9 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "claude-model-watch",
+      "schedule": "*/5 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "ctower-zero-check",
+      "schedule": "17 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "data-catalog-pull",
+      "schedule": "30 3 * * *",
+      "owner_seat": "engineer",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "data-catalog-check",
+      "schedule": "0 9 * * 1",
+      "owner_seat": "engineer",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "mc-branch-guard",
+      "schedule": "*/30 * * * *",
+      "owner_seat": "engineer",
+      "activity_gate": {
+        "kind": "open_tickets_above",
+        "threshold": 0
+      }
+    },
+    {
+      "cron_tool": "crew-model-watch",
+      "schedule": "*/10 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "r2809-drain-monitor",
+      "schedule": "*/15 * * * *",
+      "owner_seat": "engineer",
+      "activity_gate": {
+        "kind": "new_movement_since_watermark",
+        "source": "events"
+      }
+    },
+    {
+      "cron_tool": "hetzner-auction-watch",
+      "schedule": "13 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "affidea-rule-watch",
+      "schedule": "*/5 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "gbrain-dream",
+      "schedule": "37 3 * * *",
+      "owner_seat": "engineer",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "worktree-janitor --alarm",
+      "schedule": "11 * * * *",
+      "owner_seat": "engineer",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "manibo-filter-watch",
+      "schedule": "*/5 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "always"
+      }
+    },
+    {
+      "cron_tool": "inject-or-inbox --target commander-ctower-fable",
+      "schedule": "15,45 * * * *",
+      "owner_seat": "commander",
+      "activity_gate": {
+        "kind": "new_movement_since_watermark",
+        "source": "events"
+      }
+    }
+  ],
+  "stays_host_level": [
+    {
+      "cron_tool": "ctower-beat-consumer",
+      "schedule": "* * * * *",
+      "reason": "durable consumer of ctower effects into DIRECTOR; transport, not a routine"
+    },
+    {
+      "cron_tool": "ctower-inbox-session-consumer",
+      "schedule": "* * * * *",
+      "reason": "1-minute seat-inbox poll; host-side transport"
+    },
+    {
+      "cron_tool": "ctower-dream-consumer",
+      "schedule": "10 2 * * *",
+      "reason": "already ctower-routed through ctower.dream.* dispatch effects"
+    },
+    {
+      "cron_tool": "ctower-consumer-alarm",
+      "schedule": "*/30 * * * *",
+      "reason": "dead-consumer watchdog safety net for the host consumers"
+    },
+    {
+      "cron_tool": "platform-health-sweep-bg",
+      "schedule": "*/20 * * * *",
+      "reason": "overlaps ctower.beat.health@1; cron stays until that beat has alarmed once (catch-parity), then the director removes it"
+    }
+  ],
+  "dies_with_mc": [
+    {
+      "cron_tool": "R2900-HOLD bhloop-beat (commented)",
+      "schedule": "7,37 * * * *",
+      "reason": "R2900 stand-down; commented out, not returning"
+    }
+  ]
+}

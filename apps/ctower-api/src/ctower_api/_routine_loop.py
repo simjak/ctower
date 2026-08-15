@@ -20,6 +20,7 @@ from ctower_kernel.runtime import (
     SchedulerScan,
 )
 from ctower_kernel.runtime.beats import BeatDispatchSpec
+from ctower_kernel.runtime.gates import ActivityGate
 
 __all__: tuple[str, ...] = ()
 
@@ -36,6 +37,11 @@ _PACK_PATHS = (
     "routines/ctower.beat.bhloop/v1.yaml",
     "routines/ctower.beat.sprint/v1.yaml",
     "routines/ctower.beat.digest/v1.yaml",
+    "routines/mc-cron.manibo-report/v1.yaml",
+    "routines/mc-cron.structural-report/v1.yaml",
+    "routines/mc-cron.manibo-merge-watch/v1.yaml",
+    "routines/mc-cron.worktree-janitor-apply/v1.yaml",
+    "routines/mc-cron.capacity-sentinel/v1.yaml",
 )
 _EXPECTED_ROUTINE_REFS = frozenset(
     {
@@ -51,6 +57,11 @@ _EXPECTED_ROUTINE_REFS = frozenset(
         "ctower.beat.bhloop@1",
         "ctower.beat.sprint@1",
         "ctower.beat.digest@1",
+        "mc-cron.manibo-report@1",
+        "mc-cron.structural-report@1",
+        "mc-cron.manibo-merge-watch@1",
+        "mc-cron.worktree-janitor-apply@1",
+        "mc-cron.capacity-sentinel@1",
     }
 )
 _TOP_LEVEL_KEYS_V1 = frozenset(
@@ -70,12 +81,22 @@ _TOP_LEVEL_KEYS_V1 = frozenset(
 )
 _TOP_LEVEL_KEYS_V2 = _TOP_LEVEL_KEYS_V1 | {"dream_dispatch"}
 _TOP_LEVEL_KEYS_V3 = _TOP_LEVEL_KEYS_V1 | {"beat_dispatch"}
+_TOP_LEVEL_KEYS_V4 = _TOP_LEVEL_KEYS_V3 | {"activity_gate"}
+_SUPPORTED_SCHEMA_IDS = frozenset(
+    {
+        "ctower.routine/v1",
+        "ctower.routine/v2",
+        "ctower.routine/v3",
+        "ctower.routine/v4",
+    }
+)
 _SCHEDULE_KEYS = frozenset({"kind", "timezone", "local_time"})
 _BEAT_SCHEDULE_KEYS = frozenset({"kind", "timezone", "minutes", "hours"})
 _DREAM_KEYS = frozenset({"scope_kind", "project_key", "skill_path", "model_requirement"})
 _MODEL_KEYS = frozenset({"primary", "fallback", "minimum_tier", "excluded_families"})
 _MODEL_SELECTION_KEYS = frozenset({"model_ref", "reasoning_effort"})
 _BEAT_KEYS = frozenset({"beat_key", "prompt_source", "prompt_sha256", "prompt", "target_session"})
+_GATE_KEYS = frozenset({"kind", "source", "threshold", "project_key"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,17 +138,19 @@ def _load_revision(path: Path) -> RoutineRevision:
         "ctower.routine/v1": _TOP_LEVEL_KEYS_V1,
         "ctower.routine/v2": _TOP_LEVEL_KEYS_V2,
         "ctower.routine/v3": _TOP_LEVEL_KEYS_V3,
+        "ctower.routine/v4": _TOP_LEVEL_KEYS_V4,
     }.get(schema_id, _TOP_LEVEL_KEYS_V1)
     if frozenset(pack) != expected_keys:
         raise ValueError(f"Routine pack has unknown or missing fields: {path}")
     schedule = _mapping(pack["schedule"], "Routine schedule")
-    schedule_keys = _BEAT_SCHEDULE_KEYS if schema_id == "ctower.routine/v3" else _SCHEDULE_KEYS
+    schedule_keys = (
+        _BEAT_SCHEDULE_KEYS
+        if schema_id in {"ctower.routine/v3", "ctower.routine/v4"}
+        else _SCHEDULE_KEYS
+    )
     if frozenset(schedule) != schedule_keys:
         raise ValueError(f"Routine schedule has unknown or missing fields: {path}")
-    if (
-        schema_id not in {"ctower.routine/v1", "ctower.routine/v2", "ctower.routine/v3"}
-        or pack["dst_policy"] != "wall_clock_once"
-    ):
+    if schema_id not in _SUPPORTED_SCHEMA_IDS or pack["dst_policy"] != "wall_clock_once":
         raise ValueError(f"Routine pack declares an unsupported contract or DST policy: {path}")
     declared_digest = _string(pack["revision_digest"], "revision_digest")
     authored = {key: value for key, value in pack.items() if key != "revision_digest"}
@@ -137,10 +160,13 @@ def _load_revision(path: Path) -> RoutineRevision:
     local_time = _local_time(schedule.get("local_time"))
     dream_dispatch = _dream_dispatch(pack.get("dream_dispatch"))
     beat_dispatch = _beat_dispatch(pack.get("beat_dispatch"))
+    activity_gate = _activity_gate(pack.get("activity_gate"))
     if (schema_id == "ctower.routine/v2") != (dream_dispatch is not None):
         raise ValueError(f"Routine contract version and effect facts do not match: {path}")
-    if (schema_id == "ctower.routine/v3") != (beat_dispatch is not None):
+    if (schema_id in {"ctower.routine/v3", "ctower.routine/v4"}) != (beat_dispatch is not None):
         raise ValueError(f"Routine contract version and beat facts do not match: {path}")
+    if (schema_id == "ctower.routine/v4") != (activity_gate is not None):
+        raise ValueError(f"Routine contract version and gate facts do not match: {path}")
     return RoutineRevision(
         routine_ref=_string(pack["routine_ref"], "routine_ref"),
         revision_digest=declared_digest,
@@ -157,6 +183,33 @@ def _load_revision(path: Path) -> RoutineRevision:
         minute_marks=_integers(schedule.get("minutes"), "schedule.minutes"),
         hour_marks=_optional_integers(schedule.get("hours"), "schedule.hours"),
         beat_dispatch=beat_dispatch,
+        activity_gate=activity_gate,
+    )
+
+
+def _activity_gate(value: object) -> ActivityGate | None:
+    if value is None:
+        return None
+    gate = _mapping(value, "activity_gate")
+    if not frozenset(gate) <= _GATE_KEYS:
+        raise ValueError("activity_gate has unknown fields")
+    return ActivityGate(
+        kind=_string(gate["kind"], "activity_gate.kind"),
+        source=(
+            _string(gate["source"], "activity_gate.source")
+            if gate.get("source") is not None
+            else None
+        ),
+        threshold=(
+            _integer(gate["threshold"], "activity_gate.threshold")
+            if gate.get("threshold") is not None
+            else None
+        ),
+        project_key=(
+            _string(gate["project_key"], "activity_gate.project_key")
+            if gate.get("project_key") is not None
+            else None
+        ),
     )
 
 

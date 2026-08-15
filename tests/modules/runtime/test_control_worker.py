@@ -281,6 +281,11 @@ def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
             "ctower.beat.bhloop@1",
             "ctower.beat.sprint@1",
             "ctower.beat.digest@1",
+            "mc-cron.manibo-report@1",
+            "mc-cron.structural-report@1",
+            "mc-cron.manibo-merge-watch@1",
+            "mc-cron.worktree-janitor-apply@1",
+            "mc-cron.capacity-sentinel@1",
         ]
         * EXPECTED_TICKS
     )

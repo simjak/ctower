@@ -107,6 +107,7 @@ EXPECTED_OPERATIONS = frozenset(
 EXPECTED_SCHEMAS = frozenset(
     {
         "ActivityClass",
+        "ActivityGate",
         "AdmitIntent",
         "AdmittedAuditData",
         "AppendFindingRequest",

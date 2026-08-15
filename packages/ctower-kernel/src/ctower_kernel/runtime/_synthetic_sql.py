@@ -31,7 +31,7 @@ from ctower_kernel.runtime import (
     SyntheticRunReceipt,
     SyntheticRunState,
 )
-from ctower_kernel.runtime._routine_sql import _revision as _stored_revision
+from ctower_kernel.runtime._routine_rows import revision as _stored_revision
 
 __all__: tuple[str, ...] = ()
 
