@@ -65,6 +65,7 @@ from ctower_api._request_proposal_routes import install_request_proposal_routes
 from ctower_api._request_routes import install_request_routes
 from ctower_api._ruling_routes import install_ruling_routes
 from ctower_api._session_routes import install_session_routes
+from ctower_api._spawn_record_routes import install_spawn_record_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
 from ctower_api.console_routes import ConsoleRuntime, install_console_routes
@@ -98,7 +99,7 @@ from ctower_kernel.record import (
     TicketTimeline,
 )
 from ctower_kernel.record.credentials import CredentialScope
-from ctower_kernel.runtime import RoutineRevision
+from ctower_kernel.runtime import PostgresSpawnRecords, RoutineRevision
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
 from ctower_kernel.work.request_cutover import RequestCutover
@@ -198,6 +199,7 @@ def create_app(
     oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
     telemetry: TelemetryRecorder | None = None,
     console: ConsoleRuntime | None = None,
+    spawn_records: PostgresSpawnRecords | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
@@ -235,6 +237,8 @@ def create_app(
     _install_runtime_boundaries(
         app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
     )
+    if spawn_records is not None:
+        install_spawn_record_routes(app, access, spawn_records, recorder)
     return app
 
 

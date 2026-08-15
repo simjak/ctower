@@ -84,6 +84,14 @@ from ctower_kernel.record.session_events import (
     SessionStartedPayload,
     SessionTransitionedPayload,
 )
+from ctower_kernel.record.spawn_events import (
+    SpawnEventPayload,
+    SpawnRecordedPayload,
+    SpawnTransitionedPayload,
+)
+from ctower_kernel.record.spawn_events import (
+    spawn_payload_from_mapping as _spawn_payload_from_mapping,
+)
 from ctower_kernel.record.ticket_events import (
     CustodyTransferredPayload,
     TicketCommentAddedPayload,
@@ -112,6 +120,9 @@ __all__ = [
     "PoisonDispositionRecordedPayload",
     "ProofChangedPayload",
     "RoutineOccurrenceRecordedPayload",
+    "SpawnEventPayload",
+    "SpawnRecordedPayload",
+    "SpawnTransitionedPayload",
     "TicketCommentAddedPayload",
     "TicketCreatedPayload",
     "TicketEventPayload",
@@ -120,6 +131,7 @@ __all__ = [
     "canonical_event_bytes",
     "event_catalog",
     "event_digest",
+    "spawn_payload_from_mapping",
     "ticket_payload_from_mapping",
 ]
 
@@ -292,6 +304,8 @@ type EventPayload = (
     | RulingRecordedPayload
     | EstateImportChangedPayload
     | CompanyRecordAppendedPayload
+    | SpawnRecordedPayload
+    | SpawnTransitionedPayload
 )
 
 
@@ -365,6 +379,15 @@ def ticket_payload_from_mapping(
         payload,
         legacy_project_key=legacy_project_key,
     )
+
+
+def spawn_payload_from_mapping(
+    kind: EventKind,
+    payload: Mapping[str, object],
+) -> SpawnEventPayload:
+    """Rebuild one typed spawn payload at the persistence read boundary."""
+
+    return _spawn_payload_from_mapping(kind.value, payload)
 
 
 @dataclass(frozen=True, slots=True)
@@ -522,6 +545,12 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             CompanyRecordAppendedPayload,
             "company-record",
             _API_OR_IMPORT,
+        ),
+        EventCatalogEntry(
+            EventKind.SPAWN_RECORDED, SpawnRecordedPayload, "spawn-record", _API_OR_IMPORT
+        ),
+        EventCatalogEntry(
+            EventKind.SPAWN_TRANSITIONED, SpawnTransitionedPayload, "spawn-record", _API_OR_IMPORT
         ),
     )
 }

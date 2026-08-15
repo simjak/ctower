@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0075_ticket_display_keys.sql",
-    "schema_sha256": "sha256:03221e0f1e0505dda74f6768d23c9338f6d6935ab81d0cd072136c9ff1568140",
+    "through": "0076_spawn_records.sql",
+    "schema_sha256": "sha256:12b66b0116e13488cc0a9b7ecc9d829f08aedb1808471886bbdffe8b57b0dcd7",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:37a61de2a21773c339cfd5eb78c442fe618cc46bd5dd9d9298f85c81c6b39b05"
+    "schema_object_sum256": "sum256:ad504996e93fc010ef0a8fb5059eb69fa88462faaa19e9dd9d860930bd417e81"
   },
   "ledger_advance_transitions": [
     {
@@ -711,6 +711,15 @@
       "forward_test": "pytest:tests/contracts/domain/test_ticket_display_keys_contract.py::test_ticket_display_key_migration_is_additive_and_backfills_by_creation_order",
       "rollback_or_forward_compensation": "Preserve immutable ticket display keys and sequence high-water facts; append reviewed forward compensation and never rewrite, delete, or renumber an assigned display key.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture ticket counts grouped by tenant/project, current catalog project-prefix revisions, ticket display keys, board rows, and a verified database backup; the allocator and display columns are additive."
+    },
+    {
+      "path": "0076_spawn_records.sql",
+      "sha256": "sha256:63d53c613516baf72009dc2dc5c16bb06394513c5b223b8411dd2949933ea2f4",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_spawn_records.py::test_migration_forward_apply_creates_requested_spawn",
+      "rollback_or_forward_compensation": "Preserve every immutable spawn record, appended transition fact, canonical event, command result, and outbox row; append reviewed forward compensation and never edit, delete, or reuse an accepted spawn fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture spawn-record, transition, event, event-link, command-result, and outbox counts grouped by tenant plus a verified database backup; both spawn tables start empty."
     }
   ]
 }
