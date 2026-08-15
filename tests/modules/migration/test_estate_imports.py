@@ -15,10 +15,13 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ctower_kernel.inbox.models import InboxAcknowledgementState
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record._estate_import_sql import (
     _inbox_acknowledge_command,
+    _inbox_batch_header,
     _inbox_send_command,
+    _knowledge_import_command,
+    _ruling_import_command,
 )
 from ctower_kernel.record.events import EventOrigin
 from ctower_kernel.record.inbox_events import InboxParticipant
@@ -169,6 +172,59 @@ def test_inbox_import_commands_preserve_source_identity_and_read_timestamp() -> 
     assert acknowledge.state is InboxAcknowledgementState.READ
     assert acknowledge.recorded_at == sent_at
     assert acknowledge.origin is EventOrigin.MIGRATION_IMPORTER
+
+
+def test_ruling_import_command_preserves_source_timestamp_and_origin() -> None:
+    actor = Actor(uuid4(), uuid4(), PrincipalKind.OPERATOR)
+    recorded_at = datetime(2026, 8, 14, 20, 30, tzinfo=UTC)
+    verbatim = "# Agreed\n\nKeep the decision."
+    row = {
+        "source_ref": "agreed-decision.md",
+        "verbatim": verbatim,
+        "recorded_at": recorded_at.isoformat(),
+        "content_sha256": "sha256:" + hashlib.sha256(verbatim.encode()).hexdigest(),
+    }
+
+    command = _ruling_import_command(actor, row, project_key="ctower")
+
+    assert command.source_ref == "agreed-decision.md"
+    assert command.recorded_at == recorded_at
+    assert command.project_key == "ctower"
+    assert command.origin is EventOrigin.MIGRATION_IMPORTER
+
+
+def test_knowledge_import_command_preserves_document_identity_and_source_metadata() -> None:
+    actor = Actor(uuid4(), uuid4(), PrincipalKind.OPERATOR)
+    document_id = uuid4()
+    recorded_at = datetime(2026, 8, 14, 20, 30, tzinfo=UTC)
+    body = "Reference body."
+    row = {
+        "document_id": str(document_id),
+        "source_ref": "policy/reference.md",
+        "title": "Reference",
+        "body": body,
+        "recorded_at": recorded_at.isoformat(),
+        "content_sha256": "sha256:" + __import__("hashlib").sha256(body.encode()).hexdigest(),
+    }
+
+    command = _knowledge_import_command(actor, row)
+
+    assert command.document_id == document_id
+    assert command.source_ref == "policy/reference.md"
+    assert command.recorded_at == recorded_at
+    assert command.origin is EventOrigin.MIGRATION_IMPORTER
+
+
+def test_estate_batch_header_refuses_negative_batch_index() -> None:
+    problem = _inbox_batch_header(
+        {"batches": [{"batch_index": -1, "source_count": 1}]},
+        -1,
+        1,
+        uuid4(),
+    )
+
+    assert isinstance(problem, RecordProblem)
+    assert problem.code == "estate-import-batch-invalid"
 
 
 def test_parity_report_rejects_more_imports_than_source_rows() -> None:

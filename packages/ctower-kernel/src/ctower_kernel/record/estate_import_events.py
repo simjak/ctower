@@ -16,9 +16,7 @@ _MAX_SOURCE_REF = 512
 _MAX_NATURAL_KEY = 256
 _SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 _SEAT = re.compile(r"^[a-z][a-z0-9._-]{1,127}$")
-_TIERS = frozenset(
-    {"inbox_history", "agreed_decisions", "knowledge_documents", "company_records"}
-)
+_TIERS = frozenset({"inbox_history", "agreed_decisions", "knowledge_documents", "company_records"})
 
 
 @dataclass(frozen=True, slots=True)

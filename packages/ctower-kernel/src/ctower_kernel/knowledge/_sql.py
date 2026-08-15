@@ -20,6 +20,7 @@ from ctower_kernel.knowledge.models import (
 )
 from ctower_kernel.knowledge.source import KnowledgeSource, KnowledgeSourceUnavailableError
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record.events import EventOrigin
 from ctower_kernel.record.identifiers import uuid7
 from ctower_kernel.record.transaction import (
     EventCommit,
@@ -62,7 +63,7 @@ def register_document(
             return _refuse(transaction, actor, command, request_digest, resolved, now)
         title, body = resolved
         recorded_at = command.recorded_at if command.recorded_at is not None else now
-        document_id = uuid7(recorded_at)
+        document_id = command.document_id if command.document_id is not None else uuid7(recorded_at)
         durable = transaction.require_durable_subjects(
             actor.tenant_id,
             actor.principal_id,
@@ -79,6 +80,7 @@ def register_document(
             document_id,
             request_digest,
             recorded_at,
+            now,
             telemetry,
             body=body,
             title=title,
@@ -214,6 +216,8 @@ def _write_authority_problem(
             command.client_command_id,
         )
     project_key = cast(str, command.project_key)
+    if actor.kind is PrincipalKind.OPERATOR and command.origin is EventOrigin.MIGRATION_IMPORTER:
+        return None
     return project_mutation_refusal(
         connection,
         tenant_id=actor.tenant_id,
@@ -268,6 +272,8 @@ def _resolve_content(
     source: KnowledgeSource | None,
     command: KnowledgeAddCommand,
 ) -> tuple[str, str] | RecordProblem:
+    if command.origin is EventOrigin.MIGRATION_IMPORTER and command.body is not None:
+        return cast(str, command.title), command.body
     if command.source_ref is None:
         return cast(str, command.title), cast(str, command.body)
     if source is None:

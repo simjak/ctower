@@ -30,6 +30,8 @@ from ctower_kernel.inbox.models import (
     InboxSendCommand,
 )
 from ctower_kernel.inbox.postgres import PostgresInbox
+from ctower_kernel.knowledge._sql import register_document
+from ctower_kernel.knowledge.models import KnowledgeAddCommand
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.artifacts import (
     ArtifactError,
@@ -56,6 +58,8 @@ from ctower_kernel.record.transaction import (
     recover_ambiguous_commit,
 )
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.work._ruling_sql import append_ruling
+from ctower_kernel.work._ruling_types import RulingAppend
 
 __all__ = (
     "CompanyRecordAppend",
@@ -207,6 +211,99 @@ def _inbox_acknowledge_command(
     )
 
 
+def _ruling_import_command(
+    actor: Actor,
+    row: Mapping[str, object],
+    *,
+    project_key: str | None = None,
+) -> RulingAppend:
+    """Translate one verified estate row into a historical Ruling command."""
+    source_ref = _required_text(row, "source_ref")
+    verbatim = _required_text(row, "verbatim")
+    recorded_at = _import_timestamp(row["recorded_at"])
+    content_sha256 = _required_text(row, "content_sha256")
+    _require_content_digest(verbatim, content_sha256)
+    ruling_id_value = row.get("ruling_id")
+    ruling_id = (
+        UUID(str(ruling_id_value))
+        if ruling_id_value is not None
+        else uuid5(_ESTATE_ROW_NAMESPACE, f"ruling:{source_ref}")
+    )
+    return RulingAppend(
+        uuid5(_ESTATE_ROW_NAMESPACE, f"{actor.tenant_id}:ruling:{source_ref}"),
+        verbatim,
+        source_ref=source_ref,
+        recorded_at=recorded_at,
+        project_key=project_key,
+        ruling_id=ruling_id,
+        origin=EventOrigin.MIGRATION_IMPORTER,
+    )
+
+
+def _knowledge_import_command(
+    actor: Actor,
+    row: Mapping[str, object],
+) -> KnowledgeAddCommand:
+    """Translate one verified estate row into a historical Knowledge command."""
+    document_id = UUID(_required_text(row, "document_id"))
+    source_ref = _required_text(row, "source_ref")
+    title = _required_text(row, "title")
+    body = _required_text(row, "body")
+    recorded_at = _import_timestamp(row["recorded_at"])
+    content_sha256 = _required_text(row, "content_sha256")
+    _require_content_digest(body, content_sha256)
+    scope = row.get("scope", "org")
+    project_key = row.get("project_key")
+    if not isinstance(scope, str) or not isinstance(project_key, (str, type(None))):
+        raise TypeError("estate knowledge scope is invalid")
+    return KnowledgeAddCommand(
+        uuid5(_ESTATE_ROW_NAMESPACE, f"{actor.tenant_id}:knowledge:{source_ref}"),
+        scope,
+        body=body,
+        project_key=project_key,
+        source_ref=source_ref,
+        title=title,
+        recorded_at=recorded_at,
+        document_id=document_id,
+        origin=EventOrigin.MIGRATION_IMPORTER,
+    )
+
+
+def _company_import_command(
+    actor: Actor,
+    row: Mapping[str, object],
+) -> CompanyRecordAppend:
+    """Translate one verified estate row into a company-record command."""
+    record_type = _required_text(row, "record_type")
+    natural_key = _required_text(row, "natural_key")
+    occurred_on = _required_text(row, "occurred_on")
+    seat = _required_text(row, "seat")
+    source_ref = _required_text(row, "source_ref")
+    imported_at = _import_timestamp(row["imported_at"])
+    payload = row.get("payload")
+    if not isinstance(payload, Mapping) or not payload:
+        raise ValueError("estate company-record payload is invalid")
+    if not all(isinstance(key, str) and isinstance(value, str) for key, value in payload.items()):
+        raise ValueError("estate company-record payload values must be strings")
+    typed_payload = tuple(sorted((str(key), str(value)) for key, value in payload.items()))
+    return CompanyRecordAppend(
+        uuid5(_ESTATE_ROW_NAMESPACE, f"{actor.tenant_id}:company:{source_ref}"),
+        record_type,
+        natural_key,
+        occurred_on,
+        seat,
+        typed_payload,
+        source_ref,
+        imported_at,
+    )
+
+
+def _require_content_digest(content: str, digest: str) -> None:
+    expected = "sha256:" + hashlib.sha256(content.encode("utf-8")).hexdigest()
+    if digest != expected:
+        raise ValueError("estate import content digest does not match the source fields")
+
+
 def _required_text(row: Mapping[str, object], key: str, *, allow_empty: bool = False) -> str:
     value = row.get(key)
     if not isinstance(value, str) or (not allow_empty and not value):
@@ -262,6 +359,32 @@ class _InboxImportPlan:
     recipient: InboxParticipant | None
     command: InboxSendCommand | None
     source_only: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _RulingImportPlan:
+    row: Mapping[str, object]
+    command: RulingAppend
+    source_only: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class _KnowledgeImportPlan:
+    row: Mapping[str, object]
+    command: KnowledgeAddCommand
+    source_only: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class _CompanyImportPlan:
+    row: Mapping[str, object]
+    command: CompanyRecordAppend
+    source_only: bool = True
+
+
+type _EstateImportPlan = (
+    _InboxImportPlan | _RulingImportPlan | _KnowledgeImportPlan | _CompanyImportPlan
+)
 
 
 class PostgresEstateImports:
@@ -357,22 +480,143 @@ class PostgresEstateImports:
         command_id: UUID,
         manifest: Mapping[str, object],
         rows: Sequence[Mapping[str, object]],
-    ) -> tuple[str, tuple[_InboxImportPlan, ...]] | RecordProblem:
+    ) -> tuple[str, tuple[_EstateImportPlan, ...]] | RecordProblem:
         try:
             artifact, manifest_digest = self._verified_manifest(manifest, tier)
-            prepared = self._prepare_inbox_batch(
-                connection,
-                actor,
-                artifact,
-                batch_index,
-                rows,
-                command_id,
-            )
+            prepared: tuple[_EstateImportPlan, ...] | RecordProblem
+            if tier == "inbox_history":
+                prepared = self._prepare_inbox_batch(
+                    connection, actor, artifact, batch_index, rows, command_id
+                )
+            elif tier == "agreed_decisions":
+                prepared = self._prepare_ruling_batch(
+                    actor, artifact, batch_index, rows, command_id
+                )
+            elif tier == "knowledge_documents":
+                prepared = self._prepare_knowledge_batch(
+                    artifact, batch_index, rows, command_id, actor
+                )
+            elif tier == "company_records":
+                prepared = self._prepare_company_batch(
+                    artifact, batch_index, rows, command_id, actor
+                )
+            else:
+                prepared = _estate_problem(
+                    command_id,
+                    "estate-import-invalid",
+                    "Estate import tier is outside the contract.",
+                )
         except (ArtifactError, KeyError, TypeError, ValueError) as error:
             return _estate_problem(command_id, "estate-import-invalid", str(error))
         if isinstance(prepared, RecordProblem):
             return prepared
         return manifest_digest, prepared
+
+    def _prepare_ruling_batch(
+        self,
+        actor: Actor,
+        artifact: Mapping[str, object],
+        batch_index: int,
+        rows: Sequence[Mapping[str, object]],
+        command_id: UUID,
+    ) -> tuple[_RulingImportPlan, ...] | RecordProblem:
+        header = _inbox_batch_header(artifact, batch_index, len(rows), command_id)
+        if isinstance(header, RecordProblem):
+            return header
+        plans: list[_RulingImportPlan] = []
+        seen: set[str] = set()
+        project_key = artifact.get("project_key")
+        project_key = project_key if isinstance(project_key, str) else None
+        for row in rows:
+            try:
+                source_ref = _required_text(row, "source_ref")
+                command = _ruling_import_command(actor, row, project_key=project_key)
+            except (KeyError, TypeError, ValueError) as error:
+                return _estate_problem(command_id, "estate-import-row-invalid", str(error))
+            refusal = prohibited_data_refusal((command.verbatim, source_ref), command_id=command_id)
+            if refusal is not None:
+                return refusal
+            if source_ref in seen:
+                return _estate_problem(
+                    command_id,
+                    "estate-import-duplicate-source",
+                    "A batch contains a duplicate source reference.",
+                )
+            seen.add(source_ref)
+            plans.append(_RulingImportPlan(row, command))
+        problem = _validate_generic_batch_digest(header, "agreed_decisions", rows, command_id)
+        if problem is not None:
+            return problem
+        return tuple(plans)
+
+    def _prepare_knowledge_batch(
+        self,
+        artifact: Mapping[str, object],
+        batch_index: int,
+        rows: Sequence[Mapping[str, object]],
+        command_id: UUID,
+        actor: Actor,
+    ) -> tuple[_KnowledgeImportPlan, ...] | RecordProblem:
+        header = _inbox_batch_header(artifact, batch_index, len(rows), command_id)
+        if isinstance(header, RecordProblem):
+            return header
+        plans: list[_KnowledgeImportPlan] = []
+        seen: set[str] = set()
+        for row in rows:
+            try:
+                source_ref = _required_text(row, "source_ref")
+                command = _knowledge_import_command(actor, row)
+            except (KeyError, TypeError, ValueError) as error:
+                return _estate_problem(command_id, "estate-import-row-invalid", str(error))
+            refusal = prohibited_data_refusal(
+                (command.title, command.body, source_ref), command_id=command_id
+            )
+            if refusal is not None:
+                return refusal
+            if source_ref in seen:
+                return _estate_problem(
+                    command_id,
+                    "estate-import-duplicate-source",
+                    "A batch contains a duplicate source reference.",
+                )
+            seen.add(source_ref)
+            plans.append(_KnowledgeImportPlan(row, command))
+        problem = _validate_generic_batch_digest(header, "knowledge_documents", rows, command_id)
+        if problem is not None:
+            return problem
+        return tuple(plans)
+
+    def _prepare_company_batch(
+        self,
+        artifact: Mapping[str, object],
+        batch_index: int,
+        rows: Sequence[Mapping[str, object]],
+        command_id: UUID,
+        actor: Actor,
+    ) -> tuple[_CompanyImportPlan, ...] | RecordProblem:
+        header = _inbox_batch_header(artifact, batch_index, len(rows), command_id)
+        if isinstance(header, RecordProblem):
+            return header
+        plans: list[_CompanyImportPlan] = []
+        seen: set[str] = set()
+        for row in rows:
+            try:
+                source_ref = _required_text(row, "source_ref")
+                command = _company_import_command(actor, row)
+            except (KeyError, TypeError, ValueError) as error:
+                return _estate_problem(command_id, "estate-import-row-invalid", str(error))
+            if source_ref in seen:
+                return _estate_problem(
+                    command_id,
+                    "estate-import-duplicate-source",
+                    "A batch contains a duplicate source reference.",
+                )
+            seen.add(source_ref)
+            plans.append(_CompanyImportPlan(row, command))
+        problem = _validate_generic_batch_digest(header, "company_records", rows, command_id)
+        if problem is not None:
+            return problem
+        return tuple(plans)
 
     def _commit_inbox_batch(
         self,
@@ -384,7 +628,7 @@ class PostgresEstateImports:
         command_id: UUID,
         manifest_digest: str,
         rows: Sequence[Mapping[str, object]],
-        plans: Sequence[_InboxImportPlan],
+        plans: Sequence[_EstateImportPlan],
         now: datetime,
         telemetry: TelemetryContext,
     ) -> EstateImportBatchResult | RecordProblem:
@@ -427,12 +671,23 @@ class PostgresEstateImports:
                 now=now,
             )
             return imported
-        parity = _inbox_parity(
-            tier=tier,
-            manifest_digest=manifest_digest,
-            batch_index=batch_index,
-            plans=plans,
-            signer=self._parity_signer,
+        parity = (
+            _inbox_parity(
+                tier=tier,
+                manifest_digest=manifest_digest,
+                batch_index=batch_index,
+                plans=cast(Sequence[_InboxImportPlan], plans),
+                signer=self._parity_signer,
+            )
+            if tier == "inbox_history"
+            else _generic_parity(
+                tier=tier,
+                manifest_digest=manifest_digest,
+                batch_index=batch_index,
+                rows=rows,
+                imported_count=imported,
+                signer=self._parity_signer,
+            )
         )
         event = _estate_batch_event(
             actor,
@@ -555,45 +810,110 @@ class PostgresEstateImports:
     def _apply_inbox_plans(
         self,
         actor: Actor,
-        plans: Sequence[_InboxImportPlan],
+        plans: Sequence[_EstateImportPlan],
         *,
         command_id: UUID,
         now: datetime,
         telemetry: TelemetryContext,
         connection: psycopg.Connection[dict[str, object]],
     ) -> int | RecordProblem:
-        imported = 0
         for plan in plans:
-            if plan.source_only:
-                problem = _persist_source_only_message(connection, actor, plan, command_id, now)
-                if problem is not None:
-                    return problem
-            else:
-                if plan.command is None:
-                    raise RuntimeError("mapped inbox plan has no send command")
-                send = self._inbox.send(
-                    actor,
-                    plan.command,
-                    request_digest=_digest_request("inbox-send", 0, [plan.row]),
-                    now=now,
-                    telemetry=telemetry,
-                )
-                if isinstance(send, RecordProblem):
-                    return send
-                state = InboxAcknowledgementState(
-                    "read" if plan.row["read_state"] == "read" else "delivered"
-                )
-                acknowledge = self._inbox.acknowledge(
-                    actor,
-                    _inbox_acknowledge_command(plan.command, state),
-                    request_digest=_digest_request("inbox-acknowledge", 0, [plan.row]),
-                    now=now,
-                    telemetry=telemetry,
-                )
-                if isinstance(acknowledge, RecordProblem):
-                    return acknowledge
-            imported += 1
-        return imported
+            problem = self._apply_plan(
+                actor,
+                plan,
+                command_id=command_id,
+                now=now,
+                telemetry=telemetry,
+                connection=connection,
+            )
+            if problem is not None:
+                return problem
+        return len(plans)
+
+    def _apply_plan(
+        self,
+        actor: Actor,
+        plan: _EstateImportPlan,
+        *,
+        command_id: UUID,
+        now: datetime,
+        telemetry: TelemetryContext,
+        connection: psycopg.Connection[dict[str, object]],
+    ) -> RecordProblem | None:
+        if isinstance(plan, _InboxImportPlan):
+            return self._apply_inbox_plan(
+                actor,
+                plan,
+                command_id=command_id,
+                now=now,
+                telemetry=telemetry,
+                connection=connection,
+            )
+        if isinstance(plan, _RulingImportPlan):
+            ruling_result = append_ruling(
+                self._dsn,
+                actor,
+                plan.command,
+                request_digest=_digest_request("ruling-import", 0, [plan.row]),
+                now=now,
+                telemetry=telemetry,
+            )
+            return ruling_result if isinstance(ruling_result, RecordProblem) else None
+        if isinstance(plan, _KnowledgeImportPlan):
+            knowledge_result = register_document(
+                self._dsn,
+                actor,
+                plan.command,
+                request_digest=_digest_request("knowledge-import", 0, [plan.row]),
+                now=now,
+                telemetry=telemetry,
+                source=None,
+            )
+            return knowledge_result if isinstance(knowledge_result, RecordProblem) else None
+        company_result = append_company_record(
+            self._dsn,
+            actor,
+            plan.command,
+            request_digest=_digest_request("company-record-import", 0, [plan.row]),
+            now=now,
+            telemetry=telemetry,
+        )
+        return company_result if isinstance(company_result, RecordProblem) else None
+
+    def _apply_inbox_plan(
+        self,
+        actor: Actor,
+        plan: _InboxImportPlan,
+        *,
+        command_id: UUID,
+        now: datetime,
+        telemetry: TelemetryContext,
+        connection: psycopg.Connection[dict[str, object]],
+    ) -> RecordProblem | None:
+        if plan.source_only:
+            return _persist_source_only_message(connection, actor, plan, command_id, now)
+        if plan.command is None:
+            raise RuntimeError("mapped inbox plan has no send command")
+        send = self._inbox.send(
+            actor,
+            plan.command,
+            request_digest=_digest_request("inbox-send", 0, [plan.row]),
+            now=now,
+            telemetry=telemetry,
+        )
+        if isinstance(send, RecordProblem):
+            return send
+        state = InboxAcknowledgementState(
+            "read" if plan.row["read_state"] == "read" else "delivered"
+        )
+        acknowledge = self._inbox.acknowledge(
+            actor,
+            _inbox_acknowledge_command(plan.command, state),
+            request_digest=_digest_request("inbox-acknowledge", 0, [plan.row]),
+            now=now,
+            telemetry=telemetry,
+        )
+        return acknowledge if isinstance(acknowledge, RecordProblem) else None
 
 
 def append_company_record(
@@ -656,7 +976,7 @@ def append_company_record(
                     command.seat,
                     f"sha256:{payload_sha256}",
                     command.source_ref,
-                    command.imported_at,
+                    cast(datetime, existing["imported_at"]),
                     already_present=True,
                 )
             record_id = uuid7(now)
@@ -767,7 +1087,7 @@ def _inbox_batch_header(
     command_id: UUID,
 ) -> Mapping[str, object] | RecordProblem:
     batches = artifact.get("batches")
-    if not isinstance(batches, list) or batch_index >= len(batches):
+    if not isinstance(batches, list) or batch_index < 0 or batch_index >= len(batches):
         return _estate_problem(
             command_id,
             "estate-import-batch-invalid",
@@ -788,6 +1108,43 @@ def _inbox_batch_header(
             "Batch row count differs from the signed manifest.",
         )
     return batch
+
+
+def _validate_generic_batch_digest(
+    header: Mapping[str, object],
+    tier: str,
+    rows: Sequence[Mapping[str, object]],
+    command_id: UUID,
+) -> RecordProblem | None:
+    expected = header.get("batch_digest")
+    projected = [_generic_manifest_projection(tier, row) for row in rows]
+    if expected != _digest_json(projected):
+        return _estate_problem(
+            command_id,
+            "estate-import-batch-digest-mismatch",
+            "Batch rows do not match the signed batch digest.",
+        )
+    return None
+
+
+def _generic_manifest_projection(tier: str, row: Mapping[str, object]) -> dict[str, object]:
+    source_ref = _required_text(row, "source_ref")
+    content_sha256 = _required_text(row, "content_sha256")
+    source_seat = row.get("source_seat", row.get("seat", "unknown-owner"))
+    projection: dict[str, object] = {
+        "_disposition": row.get("_disposition", "source_only"),
+        "content_sha256": content_sha256,
+        "source_ref": source_ref,
+        "source_seat": source_seat,
+    }
+    if tier == "company_records":
+        projection["natural_key"] = _required_text(row, "natural_key")
+        projection["target_seat_key"] = row.get("target_seat_key")
+        payload = row.get("payload")
+        if not isinstance(payload, Mapping):
+            raise ValueError("estate company-record payload is invalid")
+        projection["payload"] = dict(payload)
+    return projection
 
 
 def _validate_inbox_row(row: Mapping[str, object], command_id: UUID) -> RecordProblem | None:
@@ -1000,6 +1357,55 @@ def _inbox_parity(
     return signer.seal(report, "parity_digest")
 
 
+def _generic_parity(
+    *,
+    tier: str,
+    manifest_digest: str,
+    batch_index: int,
+    rows: Sequence[Mapping[str, object]],
+    imported_count: int,
+    signer: _EstateParitySigner,
+) -> dict[str, object]:
+    owner_counts: dict[str, int] = {}
+    for row in rows:
+        owner = str(row.get("source_seat", row.get("seat", "unknown-owner")))
+        owner_counts[owner] = owner_counts.get(owner, 0) + 1
+    report: dict[str, object] = {
+        "schema": _PARITY_SCHEMA,
+        "tier": tier,
+        "manifest_digest": manifest_digest,
+        "source_count": len(rows),
+        "imported_count": imported_count,
+        "batches": [
+            {
+                "batch_index": batch_index,
+                "batch_digest": _digest_json(
+                    [_generic_manifest_projection(tier, row) for row in rows]
+                ),
+                "source_count": len(rows),
+                "imported_count": imported_count,
+            }
+        ],
+        "sampled_content_hashes": [
+            {
+                "source_ref": _required_text(row, "source_ref"),
+                "content_sha256": _required_text(row, "content_sha256"),
+            }
+            for row in rows[:3]
+        ],
+        "source_only_owners": [
+            {
+                "source_seat": source_seat,
+                "row_count": count,
+                "source_only_disposition": "source_only",
+            }
+            for source_seat, count in sorted(owner_counts.items())
+        ],
+        "emitted_before_closure": True,
+    }
+    return signer.seal(report, "parity_digest")
+
+
 def _estate_batch_event(
     actor: Actor,
     command_id: UUID,
@@ -1109,5 +1515,4 @@ def _same_record(row: dict[str, object], command: CompanyRecordAppend, payload_s
         and str(row["seat"]) == command.seat
         and bytes(cast(bytes, row["payload_sha256"])).hex() == payload_sha256
         and str(row["source_ref"]) == command.source_ref
-        and row["imported_at"] == command.imported_at
     )

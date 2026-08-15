@@ -5,12 +5,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from collections.abc import Mapping
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 from uuid import UUID, uuid5
 
-import httpx
 import rfc8785
 
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
@@ -26,6 +26,27 @@ __all__ = ["analyze_escapes_import", "execute_escapes_import"]
 _ESCAPE_NAMESPACE = UUID("c3d4e5f6-a7b8-9012-cdef-123456789012")
 _TIER = "company_records"
 _SOURCE_PATH = "state/escapes.jsonl"
+_BATCH_SIZE = 100
+_HTTP_CONFLICT = 409
+
+
+class _ImportResponse(Protocol):
+    status_code: int
+
+    def raise_for_status(self) -> None: ...
+
+    def json(self) -> dict[str, object]: ...
+
+
+class _ImportClient(Protocol):
+    def post(
+        self,
+        url: str,
+        *,
+        json: dict[str, object],
+        headers: Mapping[str, str],
+        timeout: float,
+    ) -> _ImportResponse: ...
 
 
 def _parse_escapes(path: Path) -> list[dict[str, Any]]:
@@ -91,36 +112,110 @@ def analyze_escapes_import(
 
 
 def execute_escapes_import(
-    client: httpx.Client,
+    client: _ImportClient,
     *,
     escapes_path: Path,
     manifest: dict[str, Any],
     base_url: str,
     evidence_dir: Path,
 ) -> dict[str, Any]:
-    """Send one signed company-record batch through the operator-only API seam."""
+    """Send signed, bounded company-record batches through the API seam."""
 
     records = _parse_escapes(escapes_path)
     rows = [_request_row(record) for record in records]
+    batches = manifest.get("batches")
+    manifest_digest = manifest.get("manifest_digest")
+    if not isinstance(batches, list) or not batches or not isinstance(manifest_digest, str):
+        raise ValueError("company-record manifest has no complete batches")
     evidence_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    imported = 0
+    results: list[dict[str, object]] = []
+    offset = 0
+    for expected_index, batch in enumerate(batches):
+        count = _batch_count(batch, expected_index)
+        current = rows[offset : offset + count]
+        if len(current) != count:
+            raise ValueError("manifest company-record batches do not cover the frozen source")
+        result = _post_batch(
+            client,
+            base_url=base_url,
+            manifest=manifest,
+            manifest_digest=manifest_digest,
+            batch_index=expected_index,
+            rows=current,
+        )
+        batch_imported = result.get("imported_count")
+        if not isinstance(batch_imported, int) or not 0 <= batch_imported <= count:
+            raise ValueError("company-record import response has an invalid imported count")
+        imported += batch_imported
+        results.append(result)
+        _write_parity(evidence_dir, expected_index, result)
+        offset += count
+    if offset != len(rows):
+        raise ValueError("manifest company-record batches do not cover the frozen source")
+    evidence_dir.joinpath("results.json").write_bytes(rfc8785.dumps(cast(Any, results)))
+    return {
+        "schema": "ctower.company-records-import-transcript/v1",
+        "phase": "completed",
+        "source_count": len(rows),
+        "imported_count": imported,
+        "batch_count": len(batches),
+        "writes_attempted": len(batches),
+        "evidence_dir": str(evidence_dir),
+        "results": results,
+    }
+
+
+def _batch_count(batch: object, expected_index: int) -> int:
+    if not isinstance(batch, Mapping) or batch.get("batch_index") != expected_index:
+        raise ValueError("manifest company-record batches are not contiguous")
+    count = batch.get("source_count")
+    if not isinstance(count, int) or not 1 <= count <= _BATCH_SIZE:
+        raise ValueError("manifest company-record batch count is invalid")
+    return count
+
+
+def _post_batch(
+    client: _ImportClient,
+    *,
+    base_url: str,
+    manifest: dict[str, Any],
+    manifest_digest: str,
+    batch_index: int,
+    rows: list[dict[str, Any]],
+) -> dict[str, object]:
+    command_id = uuid5(
+        _ESCAPE_NAMESPACE,
+        f"estate-company-records:{manifest_digest}:{batch_index}",
+    )
     response = client.post(
         f"{base_url}/v1/migrations/estate/company-records",
-        json={"manifest": manifest, "rows": rows},
+        json={"manifest": manifest, "batch_index": batch_index, "rows": rows},
+        headers={
+            "Content-Type": "application/json",
+            "Idempotency-Key": str(command_id),
+        },
         timeout=60,
     )
+    if response.status_code == _HTTP_CONFLICT:
+        return response.json()
     response.raise_for_status()
-    result = response.json()
-    (evidence_dir / "parity.json").write_bytes(rfc8785.dumps(result["parity"]))
-    return cast(dict[str, Any], result)
+    return response.json()
+
+
+def _write_parity(evidence_dir: Path, batch_index: int, result: Mapping[str, object]) -> None:
+    parity = result.get("parity")
+    if isinstance(parity, Mapping):
+        evidence_dir.joinpath(f"batch-{batch_index:04d}.parity.json").write_bytes(
+            rfc8785.dumps(cast(Any, parity))
+        )
 
 
 def _manifest_row(
     record: dict[str, Any], dispositions: dict[str, SeatDisposition]
 ) -> dict[str, Any]:
     source_seat = str(record.get("seat", "unknown-owner"))
-    disposition = dispositions.get(
-        source_seat, SeatDisposition(source_seat, "source_only", None)
-    )
+    disposition = dispositions.get(source_seat, SeatDisposition(source_seat, "source_only", None))
     payload = {
         key: value
         for key, value in record.items()
