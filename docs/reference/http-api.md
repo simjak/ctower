@@ -301,10 +301,10 @@ fact-derived `read_through_position`; reading does not advance it or reduce unre
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
 |---|---|---|---|---|---|---|
-| `POST` | `/v1/spawn-records` | `createSpawnRecord` | `spawn record` | mutation | allowed | `201`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/spawn-records` | `createSpawnRecord` | `spawn record` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/spawn-records` | `listSpawnRecords` | `spawn list` | query | forbidden | `200`, `401`, `403`, `422` |
 | `GET` | `/v1/spawn-records/{spawn_id}` | `getSpawnRecord` | `spawn show` | query | forbidden | `200`, `401`, `403`, `404` |
-| `POST` | `/v1/spawn-records/{spawn_id}/transitions` | `appendSpawnTransition` | `spawn transition` | mutation | allowed | `200`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/spawn-records/{spawn_id}/transitions` | `appendSpawnTransition` | `spawn transition` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 
 `createSpawnRecord` is the pre-dispatch commitment. Its response must be durable before a host session is
 created. `appendSpawnTransition` appends a lifecycle fact; it never updates the spawn row. `listSpawnRecords`
