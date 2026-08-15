@@ -3766,6 +3766,30 @@
   ],
   "deferred_suites": [
     {
+      "suite_id": "estate-import-acceptance",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
+      "suite_id": "estate-import-contracts",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
+      "suite_id": "estate-import-modules",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
+      "suite_id": "estate-import-tooling",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
       "suite_id": "activity-gated-routine-acceptance",
       "status": "not_exercised",
       "source_count": 0,

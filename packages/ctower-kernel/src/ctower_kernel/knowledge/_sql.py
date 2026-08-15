@@ -20,6 +20,7 @@ from ctower_kernel.knowledge.models import (
 )
 from ctower_kernel.knowledge.source import KnowledgeSource, KnowledgeSourceUnavailableError
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record.events import EventOrigin
 from ctower_kernel.record.identifiers import uuid7
 from ctower_kernel.record.transaction import (
     EventCommit,
@@ -61,7 +62,8 @@ def register_document(
         if isinstance(resolved, RecordProblem):
             return _refuse(transaction, actor, command, request_digest, resolved, now)
         title, body = resolved
-        document_id = uuid7(now)
+        recorded_at = command.recorded_at if command.recorded_at is not None else now
+        document_id = command.document_id if command.document_id is not None else uuid7(recorded_at)
         durable = transaction.require_durable_subjects(
             actor.tenant_id,
             actor.principal_id,
@@ -77,21 +79,13 @@ def register_document(
             command,
             document_id,
             request_digest,
+            recorded_at,
             now,
             telemetry,
             body=body,
             title=title,
         )
-        result = KnowledgeAddResult(
-            command.client_command_id,
-            document_id,
-            event.event_id,
-            now,
-            command.scope,
-            title,
-            command.project_key,
-            command.source_ref,
-        )
+        result = _add_result(command, document_id, event.event_id, recorded_at, title)
         transaction.commit_batch(
             (EventCommit(event, uuid7(now)),),
             response_body=result.response_payload(),
@@ -187,6 +181,25 @@ def _document_from_row(row: dict[str, object]) -> KnowledgeDocument:
     )
 
 
+def _add_result(
+    command: KnowledgeAddCommand,
+    document_id: UUID,
+    event_id: UUID,
+    recorded_at: datetime,
+    title: str,
+) -> KnowledgeAddResult:
+    return KnowledgeAddResult(
+        command.client_command_id,
+        document_id,
+        event_id,
+        recorded_at,
+        command.scope,
+        title,
+        command.project_key,
+        command.source_ref,
+    )
+
+
 def _write_authority_problem(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
@@ -203,6 +216,11 @@ def _write_authority_problem(
             command.client_command_id,
         )
     project_key = cast(str, command.project_key)
+    if actor.kind is PrincipalKind.OPERATOR and command.origin in {
+        EventOrigin.MIGRATION_IMPORTER,
+        EventOrigin.ESTATE_IMPORT,
+    }:
+        return None
     return project_mutation_refusal(
         connection,
         tenant_id=actor.tenant_id,
@@ -257,6 +275,11 @@ def _resolve_content(
     source: KnowledgeSource | None,
     command: KnowledgeAddCommand,
 ) -> tuple[str, str] | RecordProblem:
+    if (
+        command.origin in {EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}
+        and command.body is not None
+    ):
+        return cast(str, command.title), command.body
     if command.source_ref is None:
         return cast(str, command.title), cast(str, command.body)
     if source is None:

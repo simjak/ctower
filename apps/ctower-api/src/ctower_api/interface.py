@@ -15,12 +15,9 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 
-from ctower_api._attention_finding_routes import install_attention_finding_routes
 from ctower_api._auth_routes import install_auth_routes
 from ctower_api._beat_dispatch_routes import BeatDispatchRuntime, install_beat_dispatch_routes
-from ctower_api._board_context_routes import install_board_context_routes
-from ctower_api._board_routes import install_board_routes
-from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
+from ctower_api._catalog_routes import BundleCatalog
 from ctower_api._comment_routes import install_comment_routes
 from ctower_api._credential_routes import install_credential_routes
 from ctower_api._custody_routes import install_custody_route
@@ -29,7 +26,6 @@ from ctower_api._dream_dispatch_routes import (
     DreamDispatchRuntime,
     install_dream_dispatch_routes,
 )
-from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
     UnscopedAuthentication as _UnscopedAuthentication,
 )
@@ -54,15 +50,13 @@ from ctower_api._http_support import (
 from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
-from ctower_api._inbox_routes import install_inbox_routes
 from ctower_api._intake_routes import install_intake_routes
-from ctower_api._knowledge_routes import install_knowledge_routes
 from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
 from ctower_api._morning_digest_routes import install_morning_digest_routes
 from ctower_api._mutation_response import mutation_response as _mutation_response
+from ctower_api._optional_routes import install_optional_routes
 from ctower_api._project_event_routes import install_project_event_routes
-from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._request_cutover_routes import install_request_cutover_routes
 from ctower_api._request_proposal_routes import install_request_proposal_routes
 from ctower_api._request_routes import install_request_routes
@@ -71,6 +65,7 @@ from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
 from ctower_api.console_routes import ConsoleRuntime, install_console_routes
+from ctower_api.estate_import_port import EstateImportPort
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
@@ -168,6 +163,10 @@ def _build_access(
     )
 
 
+def _app_runtime(telemetry: TelemetryRecorder | None) -> tuple[FastAPI, TelemetryRecorder]:
+    return FastAPI(title="ctower control API", version="0.0.0"), telemetry or TelemetryRecorder()
+
+
 def create_app(
     record: Record,
     *,
@@ -183,6 +182,7 @@ def create_app(
     board_context: BoardContextFacts | None = None,
     inbox: Inbox | None = None,
     knowledge: Knowledge | None = None,
+    estate_imports: EstateImportPort | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
@@ -198,8 +198,7 @@ def create_app(
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
-    app = FastAPI(title="ctower control API", version="0.0.0")
-    recorder = telemetry or TelemetryRecorder()
+    app, recorder = _app_runtime(telemetry)
     access = _build_access(
         record,
         recorder,
@@ -223,6 +222,7 @@ def create_app(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        estate_imports=estate_imports,
         catalog=catalog,
     )
     _install_cutover_boundary(app, access, record, projections, migration, recorder)
@@ -254,6 +254,7 @@ def _install_application_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
 ) -> None:
     work_module = work or Work(record, telemetry=recorder)
@@ -283,6 +284,7 @@ def _install_application_routes(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        estate_imports=estate_imports,
         catalog=catalog,
         recorder=recorder,
     )
@@ -340,24 +342,25 @@ def _install_optional_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
     recorder: TelemetryRecorder,
 ) -> None:
-    if catalog is not None:
-        install_catalog_routes(app, access, record, catalog, recorder)
-    if proof is not None and workflow is not None:
-        install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
-    if board_context is not None:
-        install_board_context_routes(app, access, record, board_context, recorder)
-    if attention is not None:
-        install_attention_finding_routes(app, access, record, attention, recorder)
-    if projections is not None:
-        install_board_routes(app, access, projections, recorder)
-        install_health_routes(app, access, record, projections, recorder, attention)
-    if inbox is not None and projections is not None:
-        install_inbox_routes(app, access, record, inbox, projections, recorder)
-    if knowledge is not None:
-        install_knowledge_routes(app, access, record, knowledge, recorder)
+    install_optional_routes(
+        app,
+        access,
+        record,
+        proof=proof,
+        workflow=workflow,
+        projections=projections,
+        attention=attention,
+        board_context=board_context,
+        inbox=inbox,
+        knowledge=knowledge,
+        estate_imports=estate_imports,
+        catalog=catalog,
+        recorder=recorder,
+    )
 
 
 def _install_synthetic_boundary(

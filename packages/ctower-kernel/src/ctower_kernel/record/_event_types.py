@@ -43,6 +43,8 @@ class EventKind(StrEnum):
     REQUEST_CHANGED = "request.changed"
     REQUEST_PROPOSAL_CHANGED = "request.proposal_changed"
     RULING_RECORDED = "ruling.recorded"
+    ESTATE_IMPORT_CHANGED = "estate.import_changed"
+    COMPANY_RECORD_APPENDED = "company.record_appended"
 
 
 class EventOrigin(StrEnum):
@@ -50,3 +52,4 @@ class EventOrigin(StrEnum):
     BOOTSTRAP = "bootstrap"
     CONTROL_WORKER = "control_worker"
     MIGRATION_IMPORTER = "migration_importer"
+    ESTATE_IMPORT = "estate_import"

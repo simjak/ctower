@@ -1,0 +1,91 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Estate import manifest",
+  "description": "One signed frozen-source manifest binding an external estate ledger to an import tier. Every tier admits the same strict manifest envelope; tier rows vary by tier kind.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tier",
+    "source_identity",
+    "counts",
+    "batches",
+    "manifest_digest",
+    "signature"
+  ],
+  "properties": {
+    "schema": { "const": "ctower.estate-import-manifest/v1" },
+    "tier": {
+      "enum": ["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    },
+    "project_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,63}$"
+    },
+    "source_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "source_path", "source_sha256"],
+      "properties": {
+        "namespace": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}:[a-z][a-z0-9._-]{1,127}$" },
+        "source_path": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "source_sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "frozen_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "seat_mapping_digest": { "$ref": "#/$defs/sha256" },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_rows"],
+      "properties": {
+        "source_rows": { "type": "integer", "minimum": 1 },
+        "mapped_rows": { "type": "integer", "minimum": 0 },
+        "source_only_rows": { "type": "integer", "minimum": 0 }
+      }
+},
+    "batches": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["batch_index", "batch_digest", "source_count"],
+        "properties": {
+          "batch_index": { "type": "integer", "minimum": 0 },
+          "batch_digest": { "$ref": "#/$defs/sha256" },
+          "source_count": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "manifest_digest": { "$ref": "#/$defs/sha256" },
+    "signature": { "$ref": "#/$defs/ed25519-signature" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "ed25519-signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "signed_digest", "key_ref", "key_version", "public_key_digest", "signature"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "signed_digest": { "$ref": "#/$defs/sha256" },
+        "key_ref": { "type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{1,96}$" },
+        "key_version": { "type": "integer", "minimum": 1 },
+        "public_key_digest": { "$ref": "#/$defs/sha256" },
+        "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "tier": { "const": "agreed_decisions" } } },
+      "then": { "required": ["project_key"] }
+    }
+  ]
+}

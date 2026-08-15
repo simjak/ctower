@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from ctower_kernel.record.events import EventOrigin
+
 __all__ = [
     "RulingAppend",
     "RulingAppendResult",
@@ -21,15 +23,31 @@ class RulingAppend:
     verbatim: str
     supersedes_ruling_id: UUID | None = None
     request_id: UUID | None = None
+    source_ref: str | None = None
+    recorded_at: datetime | None = None
+    project_key: str | None = None
+    ruling_id: UUID | None = None
+    origin: EventOrigin = EventOrigin.API
 
     def request_payload(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "request_id": None if self.request_id is None else str(self.request_id),
             "supersedes_ruling_id": (
                 None if self.supersedes_ruling_id is None else str(self.supersedes_ruling_id)
             ),
             "verbatim": self.verbatim,
         }
+        if self.source_ref is not None:
+            payload["source_ref"] = self.source_ref
+        if self.recorded_at is not None:
+            payload["recorded_at"] = self.recorded_at.isoformat()
+        if self.project_key is not None:
+            payload["project_key"] = self.project_key
+        if self.ruling_id is not None:
+            payload["ruling_id"] = str(self.ruling_id)
+        if self.origin is not EventOrigin.API:
+            payload["origin"] = self.origin.value
+        return payload
 
 
 @dataclass(frozen=True, slots=True)

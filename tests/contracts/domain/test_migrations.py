@@ -82,13 +82,18 @@ _EXPECTED_MIGRATION_PATHS = [
     "0066_beat_routine_retirement.sql",
     "0067_request_maintenance_proposals.sql",
     "0068_activity_gated_routines.sql",
+    "0070_company_records.sql",
+    "0071_estate_import_idempotency.sql",
+    "0072_estate_import_authority.sql",
+    "0073_restore_request_proposal_constraints.sql",
+    "0074_restore_routine_retirement_kind.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0068_activity_gated_routines.sql",
-    "schema_sha256": ("sha256:a31778cb4f87c595359e29c877ff81d8c4212809f7df45915a0b78a9e6365728"),
+    "through": "0074_restore_routine_retirement_kind.sql",
+    "schema_sha256": ("sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:b6373747523db4e35ba1206b394748b87e56b9ab4b91f7368db5e5542d0b9489"
+        "sum256:b35533df20f94ae7eb67dfd9cdea4a15884de96213d6e43521c3413fb2a6732e"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [

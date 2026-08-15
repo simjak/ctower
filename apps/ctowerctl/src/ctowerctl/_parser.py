@@ -25,7 +25,6 @@ from ctower_client.models import (
 from ctowerctl._argument_types import (
     _assertions,
     _aware_datetime,
-    _beat_routine_ref,
     _nonnegative_int,
     _positive_int,
     _safe_base_url,
@@ -33,6 +32,11 @@ from ctowerctl._argument_types import (
 )
 from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
 from ctowerctl._digest_parser import digest_parser
+from ctowerctl._dispatch_parser import (
+    beat_dispatch_parser,
+    dream_dispatch_parser,
+    dream_lane_parser,
+)
 from ctowerctl._knowledge_parser import knowledge_parser
 from ctowerctl._parser_support import (
     AUTHORED_COMMAND_NAMES,
@@ -100,9 +104,9 @@ def _parser() -> argparse.ArgumentParser:
     _project_parser(areas.add_parser("project"))
     _spool_parser(areas.add_parser("spool"))
     attention_parser(areas.add_parser("attention"))
-    _dream_dispatch_parser(areas.add_parser("dream-dispatch"))
-    _beat_dispatch_parser(areas.add_parser("beat-dispatch"))
-    _dream_lane_parser(areas.add_parser("dream-lane"))
+    dream_dispatch_parser(areas.add_parser("dream-dispatch"))
+    beat_dispatch_parser(areas.add_parser("beat-dispatch"))
+    dream_lane_parser(areas.add_parser("dream-lane"))
     return parser
 
 
@@ -114,43 +118,6 @@ def _validate_ceremony_principal(arguments: argparse.Namespace) -> None:
         raise ValueError("usage: dream-lane bind requires --as operator")
     if not is_binding and arguments.ceremony_principal is not None:
         raise ValueError("usage: --as operator is only valid for dream-lane bind")
-
-
-def _dream_dispatch_parser(parser: argparse.ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    list_parser = actions.add_parser("list")
-    list_parser.set_defaults(cli_name="dream-dispatch list")
-    consume = actions.add_parser("consume")
-    consume.set_defaults(cli_name="dream-dispatch consume")
-    _command_id(consume)
-    consume.add_argument("effect_id", type=UUID)
-    consume.add_argument("--output-digest", required=True, type=_sha256_digest)
-
-
-def _beat_dispatch_parser(parser: argparse.ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    list_parser = actions.add_parser("list")
-    list_parser.set_defaults(cli_name="beat-dispatch list")
-    routines = actions.add_parser("routines")
-    routines.set_defaults(cli_name="beat-dispatch routines")
-    retire = actions.add_parser("retire")
-    retire.set_defaults(cli_name="beat-dispatch retire")
-    retire.add_argument("routine_ref", type=_beat_routine_ref)
-    retire.add_argument("--command-id", required=True, type=UUID)
-
-
-def _dream_lane_parser(parser: argparse.ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    bind = actions.add_parser("bind")
-    bind.set_defaults(cli_name="dream-lane bind")
-    _command_id(bind)
-    bind.add_argument("--lane", dest="lane_ref", required=True)
-    bind.add_argument("--crew", dest="crew_name", required=True)
-    bind.add_argument("--harness", dest="harness_ref", required=True)
-    bind.add_argument("--model", dest="model_ref", required=True)
-    bind.add_argument("--effort", dest="reasoning_effort", required=True)
-    bind.add_argument("--fallback", dest="fallback_model_ref", required=True)
-    bind.add_argument("--tier", dest="model_tier", required=True)
 
 
 def _bootstrap_parser(parser: argparse.ArgumentParser) -> None:
@@ -595,6 +562,20 @@ def _migration_parser(parser: argparse.ArgumentParser) -> None:
     _command_id(fence_observe)
     fence_observe.add_argument("--request-file", required=True, type=Path)
     actions.add_parser("verify").set_defaults(cli_name="migration ctower-project verify")
+
+    for subject in (
+        "ctower-inbox",
+        "ctower-ruling",
+        "ctower-knowledge",
+        "ctower-company-record",
+    ):
+        estate_actions = projects.add_parser(subject).add_subparsers(
+            dest="migration_action", required=True, parser_class=_Parser
+        )
+        import_command = estate_actions.add_parser("import")
+        import_command.set_defaults(cli_name=f"migration {subject} import")
+        _command_id(import_command)
+        import_command.add_argument("--request-file", required=True, type=Path)
 
 
 def _session_parser(parser: argparse.ArgumentParser) -> None:

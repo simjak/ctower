@@ -89,6 +89,9 @@ def send_message(
             command.text,
             final_hash,
             is_new=thread is None,
+            source_ref=command.source_ref,
+            source_sender=command.source_sender,
+            source_recipient=command.source_recipient,
         )
         return result
 
@@ -102,14 +105,9 @@ def _validate_send(
         return _problem(
             command.client_command_id, "invalid-request", 422, "Message text is invalid"
         )
-    sender = _actor_seat(connection, actor)
-    if sender is None:
-        return _problem(
-            command.client_command_id,
-            "inbox-sender-unaddressable",
-            422,
-            "The authenticated principal has no addressable project seat.",
-        )
+    sender = _requested_sender(connection, actor, command)
+    if isinstance(sender, RecordProblem):
+        return sender
     if command.thread_id is None:
         return _new_participants(connection, actor, command, sender)
     return _existing_participants(connection, actor, command, sender)
@@ -206,6 +204,43 @@ def _actor_seat(
     return InboxParticipant(cast(UUID, row["principal_id"]), str(row["seat_key"]))
 
 
+def _requested_sender(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: InboxSendCommand,
+) -> InboxParticipant | RecordProblem:
+    if command.sender_principal_id is None and command.sender_seat is None:
+        sender = _actor_seat(connection, actor)
+        return sender or _problem(
+            command.client_command_id,
+            "inbox-sender-unaddressable",
+            422,
+            "The authenticated principal has no addressable project seat.",
+        )
+    if command.sender_principal_id is None or command.sender_seat is None:
+        return _problem(
+            command.client_command_id,
+            "inbox-sender-invalid",
+            422,
+            "An imported sender requires both a principal and seat.",
+        )
+    row = connection.execute(
+        """
+        SELECT principal_id, seat_key FROM project_seats
+        WHERE tenant_id = %s AND principal_id = %s AND seat_key = %s
+        """,
+        (actor.tenant_id, command.sender_principal_id, command.sender_seat),
+    ).fetchone()
+    if row is None:
+        return _problem(
+            command.client_command_id,
+            "inbox-sender-not-found",
+            422,
+            "The imported sender is not a project seat in the authenticated tenant.",
+        )
+    return InboxParticipant(cast(UUID, row["principal_id"]), str(row["seat_key"]))
+
+
 def _lock_thread(
     connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, thread_id: UUID
 ) -> dict[str, object] | None:
@@ -238,7 +273,8 @@ def _message_commits(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> tuple[InboxSendResult, tuple[EventCommit, ...], bytes]:
-    message_id = uuid7(now)
+    message_id = command.message_id or uuid7(now)
+    sent_at = command.sent_at or now
     commits: list[EventCommit] = []
     if thread is None:
         opened = _opened_event(
@@ -283,7 +319,7 @@ def _message_commits(
         sender.seat_key,
         message_id,
         position,
-        now,
+        sent_at,
         thread_id,
         sequence,
         recipient.seat_key,
@@ -301,6 +337,9 @@ def _persist_message(
     final_hash: bytes,
     *,
     is_new: bool,
+    source_ref: str | None = None,
+    source_sender: str | None = None,
+    source_recipient: str | None = None,
 ) -> None:
     if is_new:
         connection.execute(
@@ -336,8 +375,9 @@ def _persist_message(
         """
         INSERT INTO inbox_messages (
             message_id, tenant_id, thread_id, position, sender_id, sender_seat,
-            recipient_id, recipient_seat, content, event_id, sent_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            recipient_id, recipient_seat, content, event_id, sent_at,
+            source_ref, source_sender, source_recipient
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             result.message_id,
@@ -351,6 +391,9 @@ def _persist_message(
             text,
             result.message_id,
             result.sent_at,
+            source_ref,
+            source_sender,
+            source_recipient,
         ),
     )
 

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:28441b19aabecddba035b7024d2ec6bfecd1f7ded66972077ec36e89ed4e8ade
+Authored contract digest: sha256:3c64910c84ef9419bf8fbaf219189b952ff287b7d6923a931706280886c071ee
 """
 
 from __future__ import annotations
@@ -602,6 +602,58 @@ OPERATIONS = MappingProxyType(
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
+            refusal_only=False,
+        ),
+        "importEstateCompanyRecords": OperationSpec(
+            operation_id="importEstateCompanyRecords",
+            client_method="import_estate_company_records",
+            method="POST",
+            path="/v1/migrations/estate/company-records",
+            request_model=_models.EstateCompanyRecordsImportRequest,
+            response_model=_models.EstateImportResult,
+            cli_names=('migration ctower-company-record import',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='operator',
+            refusal_only=False,
+        ),
+        "importEstateInbox": OperationSpec(
+            operation_id="importEstateInbox",
+            client_method="import_estate_inbox",
+            method="POST",
+            path="/v1/migrations/estate/inbox",
+            request_model=_models.EstateInboxImportRequest,
+            response_model=_models.EstateImportResult,
+            cli_names=('migration ctower-inbox import',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='operator',
+            refusal_only=False,
+        ),
+        "importEstateKnowledge": OperationSpec(
+            operation_id="importEstateKnowledge",
+            client_method="import_estate_knowledge",
+            method="POST",
+            path="/v1/migrations/estate/knowledge",
+            request_model=_models.EstateKnowledgeImportRequest,
+            response_model=_models.EstateImportResult,
+            cli_names=('migration ctower-knowledge import',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='operator',
+            refusal_only=False,
+        ),
+        "importEstateRulings": OperationSpec(
+            operation_id="importEstateRulings",
+            client_method="import_estate_rulings",
+            method="POST",
+            path="/v1/migrations/estate/rulings",
+            request_model=_models.EstateRulingsImportRequest,
+            response_model=_models.EstateImportResult,
+            cli_names=('migration ctower-ruling import',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='operator',
             refusal_only=False,
         ),
         "ingestInboxNotification": OperationSpec(
@@ -1333,6 +1385,10 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket query": OPERATIONS["getTicket"],
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
+        "migration ctower-company-record import": OPERATIONS["importEstateCompanyRecords"],
+        "migration ctower-inbox import": OPERATIONS["importEstateInbox"],
+        "migration ctower-knowledge import": OPERATIONS["importEstateKnowledge"],
+        "migration ctower-ruling import": OPERATIONS["importEstateRulings"],
         "inbox notify": OPERATIONS["ingestInboxNotification"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
         "beat-dispatch list": OPERATIONS["listBeatDispatchEffects"],

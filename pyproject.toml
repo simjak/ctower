@@ -123,6 +123,8 @@ ignore = ["D", "PLR0913", "PLR0917", "TRY003"]
 "tests/**/*.py" = ["S101"]
 "tests/acceptance/increment-1/**/*.py" = ["INP001"]
 "tests/contracts/task-management/**/*.py" = ["INP001"]
+"tests/migration/**/*.py" = ["INP001", "S108", "PLR2004", "ARG001"]
+"tests/test_manifest_generation.py" = ["INP001", "PLR2004", "ARG001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["ctower_api", "ctower_client", "ctower_kernel", "ctowerctl", "tools"]

@@ -7,7 +7,7 @@ from uuid import UUID
 
 from ctower_kernel.inbox.models import InboxAcknowledgeCommand, InboxAcknowledgementState
 from ctower_kernel.record import Actor
-from ctower_kernel.record.events import EventEnvelope, EventKind, EventOrigin, event_digest
+from ctower_kernel.record.events import EventEnvelope, EventKind, event_digest
 from ctower_kernel.record.identifiers import uuid7
 from ctower_kernel.record.inbox_events import (
     InboxMessageDeliveredPayload,
@@ -56,7 +56,7 @@ def _acknowledgement_events(
                 if state is InboxAcknowledgementState.DELIVERED
                 else EventKind.INBOX_MESSAGE_READ
             ),
-            origin=EventOrigin.API,
+            origin=command.origin,
             payload=payload,
             prev_hash=previous_hash,
             request_sha256=request_digest,

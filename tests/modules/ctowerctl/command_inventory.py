@@ -34,6 +34,27 @@ from ctowerctl._ticket_commands import query_command_names as ticket_queries
 
 __all__ = ["assert_explicit_handlers_cover_generated_operations"]
 
+_FORBIDDEN_MUTATION_NAMES = frozenset(
+    {
+        "bootstrap first-tenant",
+        "beat-dispatch retire",
+        "credential seat issue",
+        "credential seat revoke",
+        "dream-lane bind",
+        "migration ctower-company-record import",
+        "migration ctower-inbox import",
+        "migration ctower-knowledge import",
+        "migration ctower-project inventory",
+        "migration ctower-project export",
+        "migration ctower-project plan",
+        "migration ctower-project import",
+        "migration ctower-project reconcile",
+        "migration ctower-project correction append",
+        "migration ctower-project fence observe",
+        "migration ctower-ruling import",
+    }
+)
+
 
 def assert_explicit_handlers_cover_generated_operations() -> None:
     mutations = (
@@ -85,17 +106,4 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
     assert mutations == expected_mutations - {"bootstrap first-tenant"}
     assert queries == expected_queries
     assert refusals == expected_refusals
-    assert forbidden == {
-        "bootstrap first-tenant",
-        "beat-dispatch retire",
-        "credential seat issue",
-        "credential seat revoke",
-        "dream-lane bind",
-        "migration ctower-project inventory",
-        "migration ctower-project export",
-        "migration ctower-project plan",
-        "migration ctower-project import",
-        "migration ctower-project reconcile",
-        "migration ctower-project correction append",
-        "migration ctower-project fence observe",
-    }
+    assert forbidden == _FORBIDDEN_MUTATION_NAMES

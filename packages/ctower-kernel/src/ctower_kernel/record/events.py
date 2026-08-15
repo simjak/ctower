@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from uuid import UUID
 
+from ctower_kernel.record._event_encoding import (
+    _canonical,
+    _timestamp,
+)
 from ctower_kernel.record._event_types import EventKind, EventOrigin
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
@@ -34,6 +37,10 @@ from ctower_kernel.record.dream_dispatch_events import (
     DreamDispatchConsumedPayload,
     DreamLaneBoundPayload,
     validate_dream_runtime_identity,
+)
+from ctower_kernel.record.estate_import_events import (
+    CompanyRecordAppendedPayload,
+    EstateImportChangedPayload,
 )
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
@@ -283,6 +290,8 @@ type EventPayload = (
     | RequestChangedPayload
     | RequestProposalChangedPayload
     | RulingRecordedPayload
+    | EstateImportChangedPayload
+    | CompanyRecordAppendedPayload
 )
 
 
@@ -378,7 +387,9 @@ class EventCatalogEntry:
 
 _BOOTSTRAP = frozenset({EventOrigin.BOOTSTRAP})
 _WORKER = frozenset({EventOrigin.CONTROL_WORKER})
-_API_OR_IMPORT = frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER})
+_API_OR_IMPORT = frozenset(
+    {EventOrigin.API, EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}
+)
 _SESSION = "session"
 
 # THE authoritative event catalog. Rows default to the API origin; a row states its
@@ -448,7 +459,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             EventKind.INBOUND_EVENT_PROMOTED, InboundEventPromotedPayload, "inbound-thread"
         ),
         *(
-            EventCatalogEntry(EventKind(kind), payload_type, "inbox-thread")
+            EventCatalogEntry(EventKind(kind), payload_type, "inbox-thread", _API_OR_IMPORT)
             for kind, payload_type in INBOX_EVENT_TYPES
         ),
         EventCatalogEntry(
@@ -484,6 +495,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             EventKind.KNOWLEDGE_DOCUMENT_REGISTERED,
             KnowledgeDocumentRegisteredPayload,
             "knowledge-document",
+            _API_OR_IMPORT,
         ),
         EventCatalogEntry(
             EventKind.REQUEST_CHANGED,
@@ -496,7 +508,21 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             RequestProposalChangedPayload,
             "request-proposal",
         ),
-        EventCatalogEntry(EventKind.RULING_RECORDED, RulingRecordedPayload, "ruling"),
+        EventCatalogEntry(
+            EventKind.RULING_RECORDED, RulingRecordedPayload, "ruling", _API_OR_IMPORT
+        ),
+        EventCatalogEntry(
+            EventKind.ESTATE_IMPORT_CHANGED,
+            EstateImportChangedPayload,
+            "estate-import",
+            _API_OR_IMPORT,
+        ),
+        EventCatalogEntry(
+            EventKind.COMPANY_RECORD_APPENDED,
+            CompanyRecordAppendedPayload,
+            "company-record",
+            _API_OR_IMPORT,
+        ),
     )
 }
 
@@ -674,28 +700,3 @@ def _require_uuid_fields(value: object, names: tuple[str, ...]) -> None:
 def _require_uuid_tuple(label: str, value: object) -> None:
     if not isinstance(value, tuple) or not all(isinstance(item, UUID) for item in value):
         raise TypeError(f"{label} must be a UUID tuple")
-
-
-def _canonical(value: object) -> str:
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-    if isinstance(value, Mapping):
-        if not all(isinstance(key, str) for key in value):
-            raise TypeError("canonical JSON object keys must be strings")
-        items = sorted(value.items(), key=lambda item: item[0].encode("utf-16be"))
-        return "{" + ",".join(f"{_canonical(key)}:{_canonical(item)}" for key, item in items) + "}"
-    if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray):
-        return "[" + ",".join(_canonical(item) for item in value) + "]"
-    raise TypeError(f"unsupported canonical event value: {type(value).__name__}")
-
-
-def _timestamp(value: datetime) -> str:
-    if value.tzinfo is None:
-        raise ValueError("event timestamps must be timezone-aware")
-    return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")

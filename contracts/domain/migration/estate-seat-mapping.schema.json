@@ -1,0 +1,45 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Estate seat mapping plan",
+  "description": "The accepted seat-mapping plan for one estate import. Every source seat resolves to exactly one disposition: mapped onto an existing ctower project seat, or explicit source-only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "mapping_digest", "mappings"],
+  "properties": {
+    "schema": { "const": "ctower.estate-seat-mapping/v1" },
+    "mapping_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_seat", "disposition"],
+        "properties": {
+          "source_seat": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "disposition": {
+            "enum": ["mapped", "source_only"]
+          },
+          "target_seat_key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{1,95}$"
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "disposition": { "const": "mapped" } } },
+            "then": { "required": ["target_seat_key"] }
+          },
+          {
+            "if": { "properties": { "disposition": { "const": "source_only" } } },
+            "then": { "properties": { "target_seat_key": false } }
+          }
+        ]
+      }
+    }
+  }
+}

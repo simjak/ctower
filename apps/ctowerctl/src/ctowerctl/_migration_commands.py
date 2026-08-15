@@ -19,6 +19,11 @@ from ctower_client.models import (
     CtowerProjectImportCorrectionRequest,
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRunCreateRequest,
+    EstateCompanyRecordsImportRequest,
+    EstateImportResult,
+    EstateInboxImportRequest,
+    EstateKnowledgeImportRequest,
+    EstateRulingsImportRequest,
     ProjectDeliveryAssignedSeatAssignment,
     ProjectDeliverySeat,
     ProjectDeliverySlot,
@@ -39,6 +44,12 @@ _REQUEST_MODELS: dict[str, type[BaseModel]] = {
     "migration ctower-project prepare": CtowerProjectEpochRefusalRequest,
     "migration ctower-project commit-development-epoch": CtowerProjectEpochRefusalRequest,
 }
+_ESTATE_REQUEST_MODELS: dict[str, type[BaseModel]] = {
+    "migration ctower-inbox import": EstateInboxImportRequest,
+    "migration ctower-ruling import": EstateRulingsImportRequest,
+    "migration ctower-knowledge import": EstateKnowledgeImportRequest,
+    "migration ctower-company-record import": EstateCompanyRecordsImportRequest,
+}
 _REFUSAL_COMMANDS = frozenset(
     {
         "migration ctower-project prepare",
@@ -51,9 +62,9 @@ def execute_online(arguments: argparse.Namespace, client: CtowerClient) -> BaseM
     """Validate one command-specific DTO and send it without replay spooling."""
 
     cli_name = cast(str, arguments.cli_name)
-    model = _REQUEST_MODELS.get(cli_name)
+    model = _REQUEST_MODELS.get(cli_name) or _ESTATE_REQUEST_MODELS.get(cli_name)
     if model is None:
-        raise ValueError("usage: unsupported ctower-project mutation")
+        raise ValueError("usage: unsupported migration mutation")
     payload = model.model_validate_json(
         cast(Path, arguments.request_file).read_text(encoding="utf-8")
     )
@@ -64,7 +75,34 @@ def execute_online(arguments: argparse.Namespace, client: CtowerClient) -> BaseM
         "migration ctower-project plan",
     }:
         return _execute_binding(cli_name, client, payload, command_id)
+    if cli_name in _ESTATE_REQUEST_MODELS:
+        return _execute_estate_import(cli_name, client, payload, command_id)
     return _execute_import_cutover(cli_name, client, payload, command_id)
+
+
+def _execute_estate_import(
+    cli_name: str,
+    client: CtowerClient,
+    payload: BaseModel,
+    command_id: UUID,
+) -> EstateImportResult:
+    if cli_name == "migration ctower-inbox import":
+        return client.import_estate_inbox(
+            cast(EstateInboxImportRequest, payload), command_id=command_id
+        )
+    if cli_name == "migration ctower-ruling import":
+        return client.import_estate_rulings(
+            cast(EstateRulingsImportRequest, payload), command_id=command_id
+        )
+    if cli_name == "migration ctower-knowledge import":
+        return client.import_estate_knowledge(
+            cast(EstateKnowledgeImportRequest, payload), command_id=command_id
+        )
+    if cli_name == "migration ctower-company-record import":
+        return client.import_estate_company_records(
+            cast(EstateCompanyRecordsImportRequest, payload), command_id=command_id
+        )
+    raise AssertionError("closed estate import dispatch fell through")
 
 
 def _execute_binding(
@@ -217,7 +255,7 @@ def _seat_text(seat: ProjectDeliverySeat) -> str:
 def mutation_command_names() -> frozenset[str]:
     """Return the exact online-only, unspoolable mutation inventory."""
 
-    return frozenset(_REQUEST_MODELS) - _REFUSAL_COMMANDS
+    return frozenset(_REQUEST_MODELS | _ESTATE_REQUEST_MODELS) - _REFUSAL_COMMANDS
 
 
 def refusal_command_names() -> frozenset[str]:

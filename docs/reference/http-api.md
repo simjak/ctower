@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **95 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **99 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -42,7 +42,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 218 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 229 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
@@ -385,6 +385,18 @@ request. Non-operators receive `dream-lane-binding-operator-required`; an alread
 | `POST` | `/v1/migrations/ctower-project/plan` | `bindCtowerProjectAliasPlan` | `migration ctower-project plan` | mutation | forbidden | `200`, `202`, `401`, `409`, `422` |
 | `POST` | `/v1/migrations/ctower-project/prepare` | `prepareCtowerProjectCutover` | `migration ctower-project prepare` | refusal-only | forbidden | `401`, `409`, `422` |
 | `POST` | `/v1/migrations/ctower-project/reconcile` | `finalizeCtowerProjectImportRun` | `migration ctower-project reconcile` | mutation | forbidden | `200`, `202`, `401`, `409`, `422` |
+
+### Migration (external estate)
+
+These operator-only, online operations accept signed, bounded estate batches. They are not spoolable; replay
+uses the manifest and batch identity to converge without appending duplicates.
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/migrations/estate/inbox` | `importEstateInbox` | `migration ctower-inbox import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/migrations/estate/rulings` | `importEstateRulings` | `migration ctower-ruling import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/migrations/estate/knowledge` | `importEstateKnowledge` | `migration ctower-knowledge import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/migrations/estate/company-records` | `importEstateCompanyRecords` | `migration ctower-company-record import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
 
 ## Principals
 

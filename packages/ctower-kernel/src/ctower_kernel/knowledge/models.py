@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
+from ctower_kernel.record.events import EventOrigin
+
 __all__ = [
     "KnowledgeAddCommand",
     "KnowledgeAddResult",
@@ -19,7 +21,7 @@ _SCOPES = frozenset({"org", "project"})
 _MAX_TITLE_LENGTH = 1024
 _MAX_BODY_LENGTH = 1_048_576
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
-_SOURCE_REF = re.compile(r"^[a-z][a-z0-9._-]{0,127}$")
+_SOURCE_REF = re.compile(r"^[a-z][a-z0-9._/-]{0,511}$")
 
 
 def _require_tz(value: datetime) -> None:
@@ -53,6 +55,15 @@ def _require_content(*, body: str | None, source_ref: str | None, title: str | N
         raise ValueError("knowledge body is outside the authored contract")
 
 
+def _require_import_content(*, body: str | None, source_ref: str | None, title: str | None) -> None:
+    if source_ref is None or _SOURCE_REF.fullmatch(source_ref) is None:
+        raise ValueError("knowledge source_ref is outside the authored contract")
+    if not isinstance(title, str) or not 1 <= len(title) <= _MAX_TITLE_LENGTH:
+        raise ValueError("knowledge title is outside the authored contract")
+    if not isinstance(body, str) or not 1 <= len(body) <= _MAX_BODY_LENGTH:
+        raise ValueError("knowledge body is outside the authored contract")
+
+
 @dataclass(frozen=True, slots=True)
 class KnowledgeAddCommand:
     """Register one direct or static-source knowledge document as an immutable snapshot."""
@@ -63,6 +74,9 @@ class KnowledgeAddCommand:
     project_key: str | None = None
     source_ref: str | None = None
     title: str | None = None
+    recorded_at: datetime | None = None
+    document_id: UUID | None = None
+    origin: EventOrigin = EventOrigin.API
 
     def __post_init__(self) -> None:
         if not isinstance(self.client_command_id, UUID):
@@ -70,17 +84,31 @@ class KnowledgeAddCommand:
         if self.scope not in _SCOPES:
             raise ValueError("knowledge scope must be org or project")
         _require_project_key(self.scope, self.project_key)
-        _require_content(body=self.body, source_ref=self.source_ref, title=self.title)
+        if self.origin in {EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}:
+            _require_import_content(body=self.body, source_ref=self.source_ref, title=self.title)
+        else:
+            _require_content(body=self.body, source_ref=self.source_ref, title=self.title)
 
     def request_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {"scope": self.scope}
         if self.project_key is not None:
             payload["project_key"] = self.project_key
-        if self.source_ref is not None:
+        if self.source_ref is not None and self.origin not in {
+            EventOrigin.MIGRATION_IMPORTER,
+            EventOrigin.ESTATE_IMPORT,
+        }:
             payload["source_ref"] = self.source_ref
         else:
             payload["body"] = cast(str, self.body)
             payload["title"] = cast(str, self.title)
+            if self.source_ref is not None:
+                payload["source_ref"] = self.source_ref
+        if self.recorded_at is not None:
+            payload["recorded_at"] = self.recorded_at.isoformat()
+        if self.document_id is not None:
+            payload["document_id"] = str(self.document_id)
+        if self.origin is not EventOrigin.API:
+            payload["origin"] = self.origin.value
         return payload
 
 

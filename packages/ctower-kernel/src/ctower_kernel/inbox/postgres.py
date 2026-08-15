@@ -7,6 +7,7 @@ from datetime import datetime
 from ctower_kernel.inbox._delivery_sql import acknowledge_message
 from ctower_kernel.inbox._notification_sql import ingest_notification
 from ctower_kernel.inbox._promotion_sql import promote_thread
+from ctower_kernel.inbox._sql import _message_commits as message_commits
 from ctower_kernel.inbox._sql import send_message
 from ctower_kernel.inbox.models import (
     InboxAcknowledgeCommand,
@@ -20,7 +21,7 @@ from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import TelemetryContext
 
-__all__ = ["PostgresInbox"]
+__all__ = ["PostgresInbox", "message_commits"]
 
 
 class PostgresInbox:

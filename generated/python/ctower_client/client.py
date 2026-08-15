@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:28441b19aabecddba035b7024d2ec6bfecd1f7ded66972077ec36e89ed4e8ade
+Authored contract digest: sha256:3c64910c84ef9419bf8fbaf219189b952ff287b7d6923a931706280886c071ee
 """
 
 from __future__ import annotations
@@ -59,6 +59,11 @@ from ctower_client.models import (
     DreamDispatchReceipt,
     DreamLaneBindRequest,
     DreamLaneBindingReceipt,
+    EstateCompanyRecordsImportRequest,
+    EstateImportResult,
+    EstateInboxImportRequest,
+    EstateKnowledgeImportRequest,
+    EstateRulingsImportRequest,
     EvidenceRequest,
     FindingDispositionRequest,
     FindingDispositionResult,
@@ -1059,6 +1064,90 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_company_records(
+        self,
+        request: EstateCompanyRecordsImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/company-records",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_inbox(
+        self,
+        request: EstateInboxImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/inbox",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_knowledge(
+        self,
+        request: EstateKnowledgeImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/knowledge",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_rulings(
+        self,
+        request: EstateRulingsImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/rulings",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def ingest_inbox_notification(

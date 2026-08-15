@@ -29,6 +29,8 @@ from ctower_kernel.inbox import (
     PostgresInbox,
 )
 from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record.events import EventOrigin
+from ctower_kernel.record.inbox_events import InboxParticipant
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -206,3 +208,72 @@ def test_acknowledge_replays_through_recover_ambiguous_commit(
 
     assert outcome is durable
     assert calls == _REPLAY_ATTEMPTS
+
+
+def test_import_send_command_preserves_source_identity_and_original_timestamp() -> None:
+    sent_at = datetime(2026, 8, 14, 20, 30, tzinfo=UTC)
+    message_id = uuid4()
+    command = InboxSendCommand(
+        uuid4(),
+        "operator",
+        "Subject\n\nbody",
+        message_id=message_id,
+        sent_at=sent_at,
+        source_ref="inbox.jsonl#17",
+        source_sender="unknown-mc-seat",
+        source_recipient="operator",
+        origin=EventOrigin.MIGRATION_IMPORTER,
+    )
+
+    assert command.message_id == message_id
+    assert command.sent_at == sent_at
+    assert command.source_ref == "inbox.jsonl#17"
+    assert command.source_sender == "unknown-mc-seat"
+    assert command.source_recipient == "operator"
+    assert command.origin is EventOrigin.MIGRATION_IMPORTER
+
+
+def test_import_message_commit_uses_supplied_identity_and_timestamp() -> None:
+    sent_at = datetime(2026, 8, 14, 20, 30, tzinfo=UTC)
+    message_id = uuid4()
+    actor = _actor()
+    sender = InboxParticipant(uuid4(), "source-sender")
+    recipient = InboxParticipant(uuid4(), "operator")
+    command = InboxSendCommand(
+        uuid4(),
+        recipient.seat_key,
+        "imported body",
+        message_id=message_id,
+        sent_at=sent_at,
+        origin=EventOrigin.MIGRATION_IMPORTER,
+    )
+
+    result, commits, _ = inbox_postgres.message_commits(
+        actor,
+        command,
+        sender,
+        recipient,
+        None,
+        thread_id=uuid4(),
+        request_digest=bytes(32),
+        now=datetime.now(UTC),
+        telemetry=_telemetry(),
+    )
+
+    assert result.message_id == message_id
+    assert result.sent_at == sent_at
+    assert all(item.event.origin is EventOrigin.MIGRATION_IMPORTER for item in commits)
+
+
+def test_import_acknowledge_command_carries_source_recorded_at() -> None:
+    recorded_at = datetime(2026, 8, 14, 20, 30, tzinfo=UTC)
+    command = InboxAcknowledgeCommand(
+        uuid4(),
+        uuid4(),
+        InboxAcknowledgementState.READ,
+        recorded_at=recorded_at,
+        origin=EventOrigin.MIGRATION_IMPORTER,
+    )
+
+    assert command.recorded_at == recorded_at
+    assert command.origin is EventOrigin.MIGRATION_IMPORTER

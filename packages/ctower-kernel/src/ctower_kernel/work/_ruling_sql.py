@@ -51,7 +51,16 @@ def append_ruling(
                 if isinstance(replay, RecordProblem)
                 else append_result_from_committed(replay)
             )
-        seat = _existing_seat(connection, actor)
+        seat = _existing_seat(
+            connection,
+            actor,
+            project_key=command.project_key,
+            allow_operator=command.origin
+            in {
+                EventOrigin.MIGRATION_IMPORTER,
+                EventOrigin.ESTATE_IMPORT,
+            },
+        )
         if seat is None:
             return _refuse(
                 transaction,
@@ -130,7 +139,7 @@ def _commit_ruling(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> RulingAppendResult | RecordProblem:
-    ruling_id = uuid7(now)
+    recorded_at, ruling_id = _ruling_identity(command, now)
     subjects = _subjects(ruling_id, request_id)
     durable = transaction.require_durable_subjects(
         actor.tenant_id,
@@ -151,6 +160,7 @@ def _commit_ruling(
         decision_blocker_fact_id=decision_blocker_fact_id,
         request_digest=request_digest,
         seat_key=seat_key,
+        recorded_at=recorded_at,
         now=now,
         telemetry=telemetry,
     )
@@ -161,7 +171,7 @@ def _commit_ruling(
         project_key,
         actor.principal_id,
         seat_key,
-        now,
+        recorded_at,
         command.supersedes_ruling_id,
         request_id,
     )
@@ -181,6 +191,12 @@ def _commit_ruling(
         decision_blocker_fact_id=decision_blocker_fact_id,
     )
     return result
+
+
+def _ruling_identity(command: RulingAppend, now: datetime) -> tuple[datetime, UUID]:
+    recorded_at = command.recorded_at if command.recorded_at is not None else now
+    ruling_id = command.ruling_id if command.ruling_id is not None else uuid7(recorded_at)
+    return recorded_at, ruling_id
 
 
 def list_rulings(
@@ -256,8 +272,20 @@ def get_ruling(
 
 
 def _existing_seat(
-    connection: psycopg.Connection[dict[str, object]], actor: Actor
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    *,
+    project_key: str | None,
+    allow_operator: bool,
 ) -> tuple[str, str] | None:
+    principal_kind = "operator" if allow_operator else "commander"
+    parameters: tuple[object, ...] = (
+        actor.tenant_id,
+        actor.principal_id,
+        principal_kind,
+        project_key,
+        project_key,
+    )
     row = connection.execute(
         """
         SELECT seat.project_key, seat.seat_key
@@ -266,9 +294,10 @@ def _existing_seat(
           ON principal.tenant_id = seat.tenant_id
          AND principal.principal_id = seat.principal_id
         WHERE seat.tenant_id = %s AND seat.principal_id = %s
-          AND principal.kind = 'commander' AND NOT principal.disabled
+          AND principal.kind = %s AND NOT principal.disabled
+          AND (%s::text IS NULL OR seat.project_key = %s)
         """,
-        (actor.tenant_id, actor.principal_id),
+        parameters,
     ).fetchone()
     if row is None:
         return None
@@ -423,6 +452,7 @@ def _ruling_event(
     decision_blocker_fact_id: UUID | None,
     request_digest: bytes,
     seat_key: str,
+    recorded_at: datetime,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> EventEnvelope:
@@ -435,7 +465,7 @@ def _ruling_event(
         correlation_id=telemetry.correlation_uuid(command.client_command_id),
         event_id=uuid7(now),
         kind=EventKind.RULING_RECORDED,
-        origin=EventOrigin.API,
+        origin=command.origin,
         payload=RulingRecordedPayload(
             ruling_id,
             project_key,
@@ -443,7 +473,7 @@ def _ruling_event(
             f"sha256:{verbatim_digest}",
             actor.principal_id,
             seat_key,
-            now,
+            recorded_at,
             command.supersedes_ruling_id,
             request_id,
             decision_blocker_fact_id,
@@ -471,8 +501,8 @@ def _persist_ruling(
         INSERT INTO rulings (
             ruling_id, tenant_id, project_key, verbatim_bytes, verbatim_sha256,
             recorded_by, seat_key, recorded_at, command_id, event_id,
-            supersedes_ruling_id, request_id, decision_blocker_fact_id
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            supersedes_ruling_id, request_id, decision_blocker_fact_id, source_ref
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             result.ruling_id,
@@ -488,6 +518,7 @@ def _persist_ruling(
             command.supersedes_ruling_id,
             result.request_id,
             decision_blocker_fact_id,
+            command.source_ref,
         ),
     )
 

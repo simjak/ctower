@@ -24,6 +24,7 @@ from ctower_api.development_finalizer import (
     write_finalizer_progress,
 )
 from ctower_api.development_secrets import development_dsn, load_secret
+from ctower_api.estate_imports import PostgresEstateImports
 from ctower_api.interface import OidcRuntimeConfig, create_app
 from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
 from ctower_client import CtowerClient
@@ -161,6 +162,11 @@ def api_main() -> None:
                     runtime_dsn,
                     source=StaticFileKnowledgeSource(bundled_static_root()),
                 )
+            ),
+            estate_imports=PostgresEstateImports(
+                runtime_dsn,
+                trusted_keys={},
+                parity_signer=None,
             ),
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),

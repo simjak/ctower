@@ -14,7 +14,7 @@ __all__ = [
 
 _SCOPE = re.compile(r"^(org|project)$")
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
-_SOURCE_REF = re.compile(r"^[a-z][a-z0-9._-]{0,127}$")
+_SOURCE_REF = re.compile(r"^[a-z][a-z0-9._/-]{0,511}$")
 _MAX_TITLE_LENGTH = 1024
 _MAX_BODY_LENGTH = 1_048_576
 
