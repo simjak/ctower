@@ -89,7 +89,9 @@
         "request.proposal_changed",
         "ruling.recorded",
         "estate.import_changed",
-        "company.record_appended"
+        "company.record_appended",
+        "spawn.recorded",
+        "spawn.transitioned"
       ]
     },
     "origin": {
@@ -124,7 +126,7 @@
     },
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36})$"
     },
     "tenant_id": {
       "type": "string",
@@ -649,6 +651,22 @@
         {
           "properties": {
             "kind": {
+              "const": "spawn.recorded"
+            },
+            "origin": {
+              "const": "api"
+            },
+            "stream_id": {
+              "pattern": "^spawn-record:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/spawnRecorded"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
               "const": "company.record_appended"
             },
             "origin": {
@@ -659,6 +677,22 @@
             },
             "payload": {
               "$ref": "#/$defs/companyRecordAppended"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "spawn.transitioned"
+            },
+            "origin": {
+              "const": "api"
+            },
+            "stream_id": {
+              "pattern": "^spawn-record:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/spawnTransitioned"
             }
           }
         }
@@ -2278,6 +2312,42 @@
         "supersedes_ruling_id": {"type": ["string", "null"], "format": "uuid"},
         "verbatim": {"type": "string", "minLength": 1, "maxLength": 65536},
         "verbatim_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "spawnRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "crew_name", "effort", "harness", "model", "project_key", "seat_key",
+        "spawn_id", "task_file_ref", "worktree_path", "workspace_id"
+      ],
+      "properties": {
+        "crew_name": {"type": "string", "minLength": 1, "maxLength": 255},
+        "effort": {"type": ["string", "null"], "minLength": 1, "maxLength": 64},
+        "harness": {"type": "string", "minLength": 1, "maxLength": 64},
+        "model": {"type": "string", "minLength": 1, "maxLength": 128},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,95}$"},
+        "spawn_id": {"type": "string", "format": "uuid"},
+        "task_file_ref": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "worktree_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "workspace_id": {"type": ["string", "null"], "format": "uuid"}
+      }
+    },
+    "spawnTransitioned": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_state", "reason", "spawn_id", "to_state", "transition_number"],
+      "properties": {
+        "from_state": {
+          "enum": ["requested", "accepted", "running", "completed", "failed", "reaped"]
+        },
+        "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 4096},
+        "spawn_id": {"type": "string", "format": "uuid"},
+        "to_state": {
+          "enum": ["requested", "accepted", "running", "completed", "failed", "reaped"]
+        },
+        "transition_number": {"type": "integer", "minimum": 1}
       }
     },
     "requestProposalChanged": {
