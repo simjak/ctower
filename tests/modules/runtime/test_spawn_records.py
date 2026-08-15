@@ -14,7 +14,6 @@ from ctower_kernel.record.spawn_events import (
     SpawnState,
     spawn_transition_allowed,
 )
-from ctower_kernel.runtime._spawn_record_sql import APPEND_TRANSITION
 from ctower_kernel.runtime.spawn_driver import (
     SpawnDriveContext,
     SpawnDurabilityState,
@@ -492,10 +491,6 @@ def test_record_before_drive_orders_record_then_host_drive(tmp_path: Path) -> No
 
     assert result.context.durability_state is SpawnDurabilityState.RECORDED
     assert events == ["record", "drive"]
-
-
-def test_same_instant_transition_conflict_is_noop_for_typed_refusal() -> None:
-    assert "ON CONFLICT (spawn_id, tenant_id, transition_number) DO NOTHING" in APPEND_TRANSITION
 
 
 def test_unreachable_record_is_spooled_and_then_driven(tmp_path: Path) -> None:

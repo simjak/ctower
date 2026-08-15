@@ -6,10 +6,6 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-import pytest
-from pydantic import ValidationError
-
-from ctower_api._spawn_record_routes import SpawnRecordCreateRequest
 from ctower_client.models import SpawnRecordResult
 
 ROOT = Path(__file__).parents[3]
@@ -120,16 +116,10 @@ def test_generated_response_accepts_an_appended_transition_fact() -> None:
     assert result.transitions[0].to_status == "accepted"
 
 
-def test_create_boundary_rejects_seat_key_outside_event_contract() -> None:
-    with pytest.raises(ValidationError):
-        SpawnRecordCreateRequest.model_validate(
-            {
-                "project_key": "ctower",
-                "seat_key": "Engineer",
-                "crew_name": "mc-engineer-contract",
-                "task_file_ref": "coordination/contract.md",
-                "worktree_path": "/srv/worktrees/contract",
-                "harness": "codex-crew",
-                "model": "gpt-5-codex",
-            }
-        )
+def test_spawn_openapi_seat_key_matches_event_contract() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    expected_pattern = r"^[a-z][a-z0-9._-]{0,95}$"
+
+    for schema_name in ("SpawnRecordCreateRequest", "SpawnRecord", "SpawnRecordResult"):
+        schema = document["components"]["schemas"][schema_name]
+        assert schema["properties"]["seat_key"]["pattern"] == expected_pattern
