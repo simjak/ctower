@@ -65,7 +65,7 @@ def project_scope_refusal(
 
     principal = _scope_principal(connection, tenant_id, principal_id)
     human_grants = _human_project_grants(principal)
-    if principal is not None and principal["kind"] == "operator" and human_grants is None:
+    if principal is not None and principal["kind"] == "operator":
         return None
     requested = set(project_keys)
     if not requested and not operator_only:
