@@ -33,6 +33,7 @@ from ctower_kernel.work.postgres import PostgresWork
 __all__: tuple[str, ...] = ()
 HTTP_ACCEPTED = 202
 HTTP_NOT_FOUND = 404
+HTTP_FORBIDDEN = 403
 HTTP_UNPROCESSABLE = 422
 
 _MANIBO_CHECKPOINTS = (
@@ -232,12 +233,18 @@ def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
         & {card.ticket_id for card in right_board.cards}
     )
     with _client(tenant) as client:
-        assert _get_ticket(client, tenant, left_ticket, right).status_code == HTTP_NOT_FOUND
-        assert _get_ticket(client, tenant, right_ticket, left).status_code == HTTP_NOT_FOUND
+        assert (
+            _get_ticket(client, tenant, left_ticket, right).status_code
+            == _expected_project_read_status(right)
+        )
+        assert (
+            _get_ticket(client, tenant, right_ticket, left).status_code
+            == _expected_project_read_status(left)
+        )
         for suffix in ("timeline", "assignments", "audit"):
             assert (
                 _get_ticket_child(client, tenant, left_ticket, right, suffix).status_code
-                == HTTP_NOT_FOUND
+                == _expected_project_read_status(right)
             )
         second_left = _created_ticket_id(_submit_intake(client, tenant, left, f"{left}-R104"))
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
@@ -249,6 +256,12 @@ def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
     assert left_after.source_watermark > left_board.source_watermark
     assert right_after.source_watermark == right_board.source_watermark
     assert right_after.projection_watermark == right_board.projection_watermark
+
+
+def _expected_project_read_status(project_key: str) -> int:
+    """The fixture Commander has only the bootstrap ``ctower`` Project grant."""
+
+    return HTTP_NOT_FOUND if project_key == "ctower" else HTTP_FORBIDDEN
 
 
 def _apply_portfolio_bundle(tenant: TenantFixture) -> None:
