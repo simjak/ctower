@@ -22,6 +22,7 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.movement_events import MovementCountList, MovementEventPage
 from ctower_kernel.record.project_events import ProjectEventPage
 from ctower_kernel.record.sessions import (
     ProjectSessionPage,
@@ -279,6 +280,20 @@ class EventAuditStore(Protocol):
         limit: int,
         telemetry: TelemetryContext,
     ) -> ProjectEventPage | RecordProblem: ...
+
+    def movement_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> MovementEventPage | RecordProblem: ...
+
+    def movement_counts(
+        self, actor: Actor, *, telemetry: TelemetryContext
+    ) -> MovementCountList | RecordProblem: ...
 
 
 @dataclass(frozen=True, slots=True)

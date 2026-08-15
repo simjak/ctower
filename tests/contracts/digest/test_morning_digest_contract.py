@@ -30,6 +30,8 @@ def test_morning_digest_is_one_strict_read_only_generated_surface() -> None:
         "artifact_sha256",
         "digest_date",
         "observed_at",
+        "movement",
+        "movement_watermark",
         "open_decisions",
         "proof",
         "request_maintenance",

@@ -109,6 +109,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "migration ctower-company-record import",
         "project delivery query",
         "project events",
+        "project movement",
         "attention finding append",
         "attention finding disposition",
     }

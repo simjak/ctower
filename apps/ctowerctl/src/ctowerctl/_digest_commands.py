@@ -45,6 +45,19 @@ def morning_text(digest: MorningDigest) -> str:
     lines.extend(("", f"Proof — {_count(digest.proof)}"))
     _unreached(lines, digest.proof.unreached)
     lines.extend(_proof_lines(digest))
+    movement = digest.movement
+    lines.extend(
+        (
+            "",
+            f"Movement — {movement.source_state.upper()} · watermark={movement.watermark}",
+            f"View: {movement.pointer}",
+        )
+    )
+    lines.extend(
+        f"- {item.project_key} · {item.from_stage} -> {item.to_stage} · {item.count}"
+        for item in movement.counts
+    )
+    lines.extend(f"Unreached: {scope}" for scope in movement.unreached_scopes)
     summary = digest.request_maintenance
     lines.extend(
         (

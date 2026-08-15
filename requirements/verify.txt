@@ -478,6 +478,14 @@ fastapi==0.141.1 \
     --hash=sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3 \
     --hash=sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1
     # via -r requirements/verify.in
+feedparser==6.0.14 \
+    --hash=sha256:088679b0c4b543ee211a820dd544698c76a402122eae7473c04a43425f283d06 \
+    --hash=sha256:e35e3f760151b0c3b22cac9684155cae186a233e16c49bcbc6c49e91e3131137
+    # via -r requirements/verify.in
+feedparser-sgmllib==2.1.0 \
+    --hash=sha256:2cab2d43b95a954f920f18aebce7a4dbbb3f539780b127e2aa114f579821e01d \
+    --hash=sha256:61facf2918c4389b5b00714f76c5e03431ffcd94cd1f51d657edd6cd7c396579
+    # via feedparser
 filelock==3.31.0 \
     --hash=sha256:739b73e580fe88bb78d830aeddbc492519ece3d97ac8368de13a2032c61010c1 \
     --hash=sha256:c188cbc4307c18894c5424fa73f97ea7fa127ddf62192487546da3a214d0a381

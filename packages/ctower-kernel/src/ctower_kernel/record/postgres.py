@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hmac
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
@@ -58,6 +58,8 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationStateError,
     apply_database_migrations,
 )
+from ctower_kernel.record._movement_event_sql import movement_counts as _movement_counts
+from ctower_kernel.record._movement_event_sql import movement_events as _movement_events
 from ctower_kernel.record._project_event_sql import project_events as _project_events
 from ctower_kernel.record._session_read_sql import project_sessions as _project_sessions
 from ctower_kernel.record._session_read_sql import ticket_sessions as _ticket_sessions
@@ -85,6 +87,7 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.movement_events import MovementCountList, MovementEventPage
 from ctower_kernel.record.project_events import ProjectEventPage
 from ctower_kernel.record.sessions import (
     ProjectSessionPage,
@@ -329,6 +332,29 @@ class _PostgresEventAudit:
     ) -> ProjectEventPage | RecordProblem:
         outcome = _project_events(self._dsn, actor, project_key, cursor=cursor, limit=limit)
         self._emit("record.project_events", telemetry, outcome)
+        return outcome
+
+    def movement_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> MovementEventPage | RecordProblem:
+        outcome = _movement_events(self._dsn, actor, project_key, cursor=cursor, limit=limit)
+        self._emit("record.movement_events", telemetry, outcome)
+        return outcome
+
+    def movement_counts(
+        self,
+        actor: Actor,
+        *,
+        telemetry: TelemetryContext,
+    ) -> MovementCountList | RecordProblem:
+        outcome = _movement_counts(self._dsn, actor, now=datetime.now(UTC))
+        self._emit("record.movement_counts", telemetry, outcome)
         return outcome
 
     def _emit(self, name: str, telemetry: TelemetryContext, outcome: object) -> None:

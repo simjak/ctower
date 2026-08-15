@@ -637,6 +637,12 @@ def _project_parser(parser: argparse.ArgumentParser) -> None:
     events.add_argument("--cursor", type=_nonnegative_int)
     events.add_argument("--limit", type=_positive_int)
 
+    movement = subjects.add_parser("movement")
+    movement.set_defaults(cli_name="project movement")
+    movement.add_argument("project_key", type=_PROJECT_KEY.validate_python)
+    movement.add_argument("--cursor", type=_nonnegative_int)
+    movement.add_argument("--limit", type=_positive_int)
+
 
 def _spool_parser(parser: argparse.ArgumentParser) -> None:
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)

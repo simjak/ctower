@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-024"
+active_phase = "CT-I1-027"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -29,6 +29,7 @@ phase_order = [
   "CT-I1-020",
   "CT-I1-021",
   "CT-I1-024",
+  "CT-I1-027",
   "CT-I1-032",
   "CT-I1-033",
   "CT-I1-008",
@@ -993,6 +994,36 @@ command = [
   "tests/acceptance/increment-1/test_morning_digest.py",
   "-q",
 ]
+timeout_seconds = 900
+
+[[suite]]
+id = "movement-feed-contracts"
+owner = "CT-I1-027"
+phase = "CT-I1-027"
+status = "required"
+path = "tests/contracts/movement_feed"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/movement_feed", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "ticket-movement-projection"
+owner = "CT-I1-027"
+phase = "CT-I1-027"
+status = "required"
+path = "tests/modules/projections"
+patterns = ["test_ticket_movement.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/projections/test_ticket_movement.py", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "ticket-movement-acceptance"
+owner = "CT-I1-027"
+phase = "CT-I1-027"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_ticket_movement.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_ticket_movement.py", "-q"]
 timeout_seconds = 900
 
 [[suite]]

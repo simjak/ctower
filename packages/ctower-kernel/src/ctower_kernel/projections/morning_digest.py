@@ -6,15 +6,24 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from ctower_kernel.projections._reading import (
+    ReadingState,
+    SourceReading,
+    UnreachedScope,
+)
 from ctower_kernel.projections.request_proposals import (
     ProposalSummaryInput,
     RequestMaintenanceProposalSummary,
     derive_request_maintenance_summary,
+)
+from ctower_kernel.projections.ticket_movement import (
+    MovementCountInput,
+    MovementDigestSummary,
+    derive_movement_summary,
 )
 
 __all__ = [
@@ -34,90 +43,8 @@ _MAX_COMPLETENESS = 10
 _DECISION_CHOICE_COUNT = 3
 
 
-class ReadingState(StrEnum):
-    """Knowledge state of one source or rendered digest section."""
-
-    COMPLETE = "complete"
-    PARTIAL = "partial"
-    UNKNOWN = "unknown"
-
-
 class _ResponsePayload(Protocol):
     def response_payload(self) -> dict[str, object]: ...
-
-
-@dataclass(frozen=True, slots=True)
-class UnreachedScope:
-    key: str
-    reason: str
-
-    def response_payload(self) -> dict[str, object]:
-        return {"key": self.key, "reason": self.reason}
-
-
-@dataclass(frozen=True, slots=True)
-class SourceReading[T]:
-    """Rows that answered plus the exact scopes that did not."""
-
-    state: ReadingState
-    rows: tuple[T, ...]
-    watermark: int | None
-    observed_at: datetime
-    unreached: tuple[UnreachedScope, ...] = ()
-
-    def __post_init__(self) -> None:
-        _validate_source_time(self.observed_at, self.watermark)
-        _validate_source_state(self.state, self.rows, self.unreached)
-
-    @classmethod
-    def complete(
-        cls,
-        rows: tuple[T, ...],
-        *,
-        watermark: int,
-        observed_at: datetime,
-    ) -> SourceReading[T]:
-        return cls(ReadingState.COMPLETE, rows, watermark, observed_at)
-
-    @classmethod
-    def partial(
-        cls,
-        rows: tuple[T, ...],
-        *,
-        watermark: int,
-        observed_at: datetime,
-        unreached: tuple[UnreachedScope, ...],
-    ) -> SourceReading[T]:
-        return cls(ReadingState.PARTIAL, rows, watermark, observed_at, unreached)
-
-    @classmethod
-    def unknown(
-        cls,
-        scope: UnreachedScope,
-        *,
-        observed_at: datetime,
-    ) -> SourceReading[T]:
-        return cls(ReadingState.UNKNOWN, (), None, observed_at, (scope,))
-
-
-def _validate_source_time(observed_at: datetime, watermark: int | None) -> None:
-    if observed_at.tzinfo is None:
-        raise ValueError("source observation must be timezone-aware")
-    if watermark is not None and watermark < 0:
-        raise ValueError("source watermark cannot be negative")
-
-
-def _validate_source_state(
-    state: ReadingState,
-    rows: tuple[object, ...],
-    unreached: tuple[UnreachedScope, ...],
-) -> None:
-    if state is ReadingState.COMPLETE and unreached:
-        raise ValueError("a complete reading cannot name an unreached scope")
-    if state is ReadingState.PARTIAL and not unreached:
-        raise ValueError("a partial reading must name an unreached scope")
-    if state is ReadingState.UNKNOWN and (rows or not unreached):
-        raise ValueError("an unknown reading carries no rows and names its failed scope")
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,6 +241,8 @@ class MorningDigest:
     open_decisions: DigestSection[DigestDecision]
     yesterday_rulings: DigestSection[DigestRuling]
     proof: DigestSection[DigestProof]
+    movement: MovementDigestSummary
+    movement_watermark: int | None
 
     def response_payload(self) -> dict[str, object]:
         payload = self.content_payload()
@@ -333,6 +262,8 @@ class MorningDigest:
             "state": self.state.value,
             "timezone": self.timezone,
             "yesterday_rulings": self.yesterday_rulings.response_payload(),
+            "movement": self.movement.response_payload(),
+            "movement_watermark": self.movement_watermark,
         }
 
     def artifact_payload(self) -> dict[str, object]:
@@ -347,11 +278,12 @@ def project_morning_digest(
     requests: SourceReading[DigestRequestFact],
     rulings: SourceReading[DigestRulingFact],
     proposals: SourceReading[ProposalSummaryInput],
+    movement: SourceReading[MovementCountInput],
     *,
     digest_date: date,
     observed_at: datetime,
 ) -> MorningDigest:
-    """Fold two independent source readings without turning absence into knowledge."""
+    """Fold independent source readings without turning absence into knowledge."""
 
     decisions = _decision_section(requests)
     request_index = {item.request_id: item for item in requests.rows}
@@ -367,7 +299,11 @@ def project_morning_digest(
         if proposal_summary.source_state == "unavailable"
         else ReadingState(proposal_summary.source_state)
     )
-    state = _combined_state(decisions.state, yesterday.state, proof.state, proposal_state)
+    movement_summary = derive_movement_summary(movement, digest_date=digest_date)
+    movement_state = movement_summary.state
+    state = _combined_state(
+        decisions.state, yesterday.state, proof.state, proposal_state, movement_state
+    )
     artifact_key = f"morning-digest:{digest_date.isoformat()}:Europe/Vilnius"
     digest = MorningDigest(
         artifact_key=artifact_key,
@@ -382,6 +318,8 @@ def project_morning_digest(
         open_decisions=decisions,
         yesterday_rulings=yesterday,
         proof=proof,
+        movement=movement_summary,
+        movement_watermark=movement.watermark,
     )
     canonical = json.dumps(
         digest.artifact_payload(),
@@ -402,6 +340,8 @@ def project_morning_digest(
         open_decisions=digest.open_decisions,
         yesterday_rulings=digest.yesterday_rulings,
         proof=digest.proof,
+        movement=digest.movement,
+        movement_watermark=digest.movement_watermark,
     )
 
 

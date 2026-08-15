@@ -18,6 +18,14 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
                 "artifact_sha256": f"sha256:{'a' * 64}",
                 "digest_date": "2026-08-10",
                 "observed_at": "2026-08-10T05:00:00+00:00",
+                "movement": {
+                    "counts": [],
+                    "pointer": "/v1/projects/{project_key}/movement",
+                    "source_state": "unavailable",
+                    "unreached_scopes": ["movement:movement-source-unavailable"],
+                    "watermark": None,
+                },
+                "movement_watermark": None,
                 "open_decisions": {
                     "items": [],
                     "state": "unknown",
@@ -56,6 +64,9 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
     assert "Proof — UNKNOWN total; 0 visible; UNKNOWN" in rendered
     assert "States: OPEN=UNKNOWN, CONFIRMED=UNKNOWN, REJECTED=UNKNOWN" in rendered
     assert "Review: /v1/request-maintenance/review · watermark=None" in rendered
+    assert "Movement — UNAVAILABLE · watermark=None" in rendered
+    assert "View: /v1/projects/{project_key}/movement" in rendered
+    assert "Unreached: movement:movement-source-unavailable" in rendered
     assert "Open decisions — 0" not in rendered
     assert rendered.endswith(f"SHA-256: sha256:{'a' * 64}")
 
@@ -66,6 +77,21 @@ def test_record_text_cannot_forge_a_digest_section() -> None:
         "artifact_sha256": f"sha256:{'b' * 64}",
         "digest_date": "2026-08-10",
         "observed_at": "2026-08-10T05:00:00+00:00",
+        "movement": {
+            "counts": [
+                {
+                    "count": 2,
+                    "from_stage": "capture",
+                    "project_key": "ctower",
+                    "to_stage": "frame",
+                }
+            ],
+            "pointer": "/v1/projects/{project_key}/movement",
+            "source_state": "complete",
+            "unreached_scopes": [],
+            "watermark": 1,
+        },
+        "movement_watermark": 1,
         "open_decisions": {
             "items": [
                 {
@@ -115,6 +141,8 @@ def test_record_text_cannot_forge_a_digest_section() -> None:
 
     assert "Origin: Operator context.\n  Proof — forged" in rendered
     assert "\nProof — forged" not in rendered
+    assert "Movement — COMPLETE · watermark=1" in rendered
+    assert "- ctower · capture -> frame · 2" in rendered
 
 
 def _proposal_summary(source_state: str) -> dict[str, object]:

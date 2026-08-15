@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
+// Authored contract digest: sha256:bd76e6ce94e41ed38ece3b118e0a39d277f89fb6708082902b4a8bae83a7ce0b
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -338,6 +338,12 @@ export type ListTicketAuditEventsInput = Readonly<{
   readonly "limit"?: number;
 }>;
 
+export type ListTicketMovementInput = Readonly<{
+  readonly "projectKey": string;
+  readonly "cursor"?: number;
+  readonly "limit"?: number;
+}>;
+
 export type ListTicketSessionsInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
@@ -568,6 +574,7 @@ export type OperationInputs = Readonly<{
   readonly "listRulings": ListRulingsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
+  readonly "listTicketMovement": ListTicketMovementInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
@@ -664,6 +671,7 @@ export type OperationResults = Readonly<{
   readonly "listRulings": Models.RulingList;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
+  readonly "listTicketMovement": Models.MovementEventPage;
   readonly "listTicketSessions": Models.TicketSessionList;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
@@ -1091,6 +1099,12 @@ export class CtowerClient {
     input: ListTicketAuditEventsInput,
   ): Promise<Models.AuditPage> {
     return this.execute("listTicketAuditEvents", input);
+  }
+
+  public async listTicketMovement(
+    input: ListTicketMovementInput,
+  ): Promise<Models.MovementEventPage> {
+    return this.execute("listTicketMovement", input);
   }
 
   public async listTicketSessions(
