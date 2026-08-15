@@ -299,38 +299,6 @@
       "packages/ctower-kernel/migrations/0055_connector_framework.sql",
       "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql"
     ],
-    "AC-IMP-01": [
-      "contracts/domain/migration/estate-import-manifest.schema.json",
-      "contracts/domain/migration/estate-seat-mapping.schema.json",
-      "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
-    ],
-    "AC-IMP-02": [
-      "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
-    ],
-    "AC-IMP-03": [
-      "contracts/domain/migration/company-record-import.schema.json",
-      "packages/ctower-kernel/migrations/0070_company_records.sql",
-      "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
-    ],
-    "AC-IMP-04": [
-      "contracts/domain/migration/estate-import-manifest.schema.json",
-      "contracts/domain/migration/estate-import-parity.schema.json",
-      "contracts/domain/migration/estate-seat-mapping.schema.json",
-      "packages/ctower-kernel/migrations/0070_company_records.sql",
-      "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
-    ],
     "AC-INBOX-01": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
@@ -602,32 +570,24 @@
       "contracts/domain/request-proposals/append.schema.json",
       "contracts/domain/request-proposals/list.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "AC-PROP-02": [
       "contracts/domain/request-proposals/append.schema.json",
       "contracts/domain/request-proposals/evidence.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "AC-PROP-03": [
       "contracts/domain/request-proposals/decision.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "AC-PROP-04": [
       "contracts/domain/request-proposals/decision.schema.json",
       "contracts/domain/request-proposals/list.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "AC-PROP-05": [
       "contracts/domain/request-proposals/append.schema.json",
@@ -635,23 +595,17 @@
       "contracts/domain/request-proposals/list.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
       "contracts/domain/request-proposals/review.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "AC-PROP-06": [
       "contracts/domain/request-proposals/review.schema.json",
-      "contracts/domain/request-proposals/summary.schema.json",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "contracts/domain/request-proposals/summary.schema.json"
     ],
     "AC-PROP-07": [
       "contracts/domain/request-proposals/append.schema.json",
       "contracts/domain/request-proposals/decision.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "AC-QUAL-01": [
       "contracts/compatibility/matrix-input.schema.json",
@@ -682,36 +636,6 @@
       "contracts/domain/migration/request-owner-map.schema.json",
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
-    ],
-    "AC-RTN-01": [
-      "contracts/runtime/routine-v4.schema.json",
-      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
-      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
-      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
-      "packs/routines/mc-cron.manibo-report/v1.yaml",
-      "packs/routines/mc-cron.structural-report/v1.yaml",
-      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
-    ],
-    "AC-RTN-02": [
-      "contracts/runtime/routine-gate-evaluation.schema.json",
-      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql"
-    ],
-    "AC-RTN-03": [
-      "contracts/runtime/routine-migration-backlog.json",
-      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
-      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
-      "packs/routines/mc-cron.manibo-report/v1.yaml",
-      "packs/routines/mc-cron.structural-report/v1.yaml",
-      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
-    ],
-    "AC-RTN-04": [
-      "contracts/runtime/routine-migration-backlog.json",
-      "contracts/runtime/routine-v4.schema.json",
-      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
-      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
-      "packs/routines/mc-cron.manibo-report/v1.yaml",
-      "packs/routines/mc-cron.structural-report/v1.yaml",
-      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
     ],
     "AC-RUL-01": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -808,6 +732,12 @@
     "AC-SES-04": [
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
+    "AC-SPWN-01": [
+      "packages/ctower-kernel/migrations/0068_spawn_records.sql"
+    ],
+    "AC-SPWN-02": [
+      "packages/ctower-kernel/migrations/0068_spawn_records.sql"
     ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
@@ -919,7 +849,8 @@
       "packages/ctower-kernel/migrations/0003_privileges.sql",
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
-      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
+      "packages/ctower-kernel/migrations/0068_spawn_records.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -937,7 +868,8 @@
       "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
       "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql",
       "packages/ctower-kernel/migrations/0055_connector_framework.sql",
-      "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql"
+      "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql",
+      "packages/ctower-kernel/migrations/0068_spawn_records.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -1316,7 +1248,6 @@
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
       "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
-      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
       "packs/routines/ctower.beat.bhloop/v1.yaml",
       "packs/routines/ctower.beat.digest/v1.yaml",
       "packs/routines/ctower.beat.director-drive/v1.yaml",
@@ -1325,12 +1256,7 @@
       "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "packs/routines/ctower.dream.ctower/v1.yaml",
       "packs/routines/ctower.dream.fleet/v1.yaml",
-      "packs/routines/ctower.dream.manibo/v1.yaml",
-      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
-      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
-      "packs/routines/mc-cron.manibo-report/v1.yaml",
-      "packs/routines/mc-cron.structural-report/v1.yaml",
-      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
+      "packs/routines/ctower.dream.manibo/v1.yaml"
     ],
     "INV-79": [
       "contracts/domain/events/canonical-vectors.json",
@@ -1397,17 +1323,6 @@
       "contracts/domain/migration/request-owner-map.schema.json",
       "contracts/domain/migration/request-source-fence.schema.json",
       "packages/ctower-kernel/migrations/0059_request_authority.sql"
-    ],
-    "SPEC#activity-gated-routines": [
-      "contracts/runtime/routine-gate-evaluation.schema.json",
-      "contracts/runtime/routine-migration-backlog.json",
-      "contracts/runtime/routine-v4.schema.json",
-      "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
-      "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
-      "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
-      "packs/routines/mc-cron.manibo-report/v1.yaml",
-      "packs/routines/mc-cron.structural-report/v1.yaml",
-      "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -1651,11 +1566,7 @@
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
       "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
       "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
-      "packages/ctower-kernel/migrations/0070_company_records.sql",
-      "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
-      "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0068_spawn_records.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
@@ -1750,6 +1661,9 @@
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
+    ],
+    "SPEC#spawn-custody-records": [
+      "packages/ctower-kernel/migrations/0068_spawn_records.sql"
     ],
     "SPEC#stage-contracts": [
       "contracts/domain/intake/thread-intake.schema.json"

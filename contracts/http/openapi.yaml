@@ -2452,6 +2452,113 @@
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
+    },
+    "/v1/spawn-records": {
+      "post": {
+        "operationId": "createSpawnRecord",
+        "x-ctower-cli": "spawn record",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordCreateRequest"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Spawn fact recorded; the driver may now drive the substrate",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      },
+      "get": {
+        "operationId": "listSpawnRecords",
+        "x-ctower-cli": "spawn list",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "authenticated",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/ProjectKey"},
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string", "enum": ["requested", "accepted", "running", "completed", "failed", "reaped"]}
+          },
+          {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100}},
+          {"name": "offset", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 0, "default": 0}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Spawn records with derived lifecycle state",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordListResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/spawn-records/{spawn_id}": {
+      "get": {
+        "operationId": "getSpawnRecord",
+        "x-ctower-cli": "spawn show",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "authenticated",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "spawn_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "One spawn record with its appended transition facts",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/spawn-records/{spawn_id}/transitions": {
+      "post": {
+        "operationId": "appendSpawnTransition",
+        "x-ctower-cli": "spawn transition",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"},
+          {"name": "spawn_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/SpawnTransitionRequest"}}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition fact appended; derived state follows the latest fact",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
     }
   },
   "components": {
@@ -6855,6 +6962,97 @@
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "events": {"type": "array", "items": {"$ref": "#/components/schemas/TimelineEvent"}},
           "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "SpawnRecordCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_key", "seat_key", "crew_name", "task_file_ref", "worktree_path", "harness", "model"],
+        "properties": {
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "seat_key": {"type": "string", "minLength": 1, "maxLength": 255},
+          "crew_name": {"type": "string", "minLength": 1, "maxLength": 255},
+          "task_file_ref": {"type": "string", "minLength": 1, "maxLength": 1024},
+          "worktree_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+          "harness": {"type": "string", "minLength": 1, "maxLength": 64},
+          "model": {"type": "string", "minLength": 1, "maxLength": 128},
+          "effort": {"type": "string", "minLength": 1, "maxLength": 64},
+          "workspace_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "SpawnTransitionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["to_status"],
+        "properties": {
+          "to_status": {"type": "string", "enum": ["accepted", "running", "completed", "failed", "reaped"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 4096}
+        }
+      },
+      "SpawnRecordTransitionFact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["transition_id", "spawn_id", "from_status", "to_status", "principal_id", "transitioned_at"],
+        "properties": {
+          "transition_id": {"type": "string", "format": "uuid"},
+          "spawn_id": {"type": "string", "format": "uuid"},
+          "from_status": {"type": "string", "enum": ["requested", "accepted", "running"]},
+          "to_status": {"type": "string", "enum": ["accepted", "running", "completed", "failed", "reaped"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "principal_id": {"type": "string", "format": "uuid"},
+          "transitioned_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "SpawnRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["spawn_id", "project_key", "seat_key", "crew_name", "task_file_ref", "worktree_path", "harness", "model", "status", "principal_id", "created_at", "updated_at", "transitions"],
+        "properties": {
+          "spawn_id": {"type": "string", "format": "uuid"},
+          "project_key": {"type": "string"},
+          "seat_key": {"type": "string"},
+          "crew_name": {"type": "string"},
+          "task_file_ref": {"type": "string"},
+          "worktree_path": {"type": "string"},
+          "harness": {"type": "string"},
+          "model": {"type": "string"},
+          "effort": {"type": "string"},
+          "workspace_id": {"type": "string", "format": "uuid"},
+          "status": {"type": "string", "enum": ["requested", "accepted", "running", "completed", "failed", "reaped"]},
+          "principal_id": {"type": "string", "format": "uuid"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "transitions": {"type": "array", "items": {"$ref": "#/components/schemas/SpawnRecordTransitionFact"}}
+        }
+      },
+      "SpawnRecordResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["spawn_id", "project_key", "seat_key", "crew_name", "task_file_ref", "worktree_path", "harness", "model", "status", "principal_id", "created_at", "updated_at", "transitions"],
+        "properties": {
+          "spawn_id": {"type": "string", "format": "uuid"},
+          "project_key": {"type": "string"},
+          "seat_key": {"type": "string"},
+          "crew_name": {"type": "string"},
+          "task_file_ref": {"type": "string"},
+          "worktree_path": {"type": "string"},
+          "harness": {"type": "string"},
+          "model": {"type": "string"},
+          "effort": {"type": "string"},
+          "workspace_id": {"type": "string", "format": "uuid"},
+          "status": {"type": "string", "enum": ["requested", "accepted", "running", "completed", "failed", "reaped"]},
+          "principal_id": {"type": "string", "format": "uuid"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "transitions": {"type": "array", "items": {"$ref": "#/components/schemas/SpawnRecordTransitionFact"}}
+        }
+      },
+      "SpawnRecordListResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["records"],
+        "properties": {
+          "records": {"type": "array", "items": {"$ref": "#/components/schemas/SpawnRecord"}}
         }
       }
     }

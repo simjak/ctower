@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
+Authored contract digest: sha256:b15cd812b396627a264217134e14b9138e5a476ff2652f93594e7c958de52818
 """
 
 from __future__ import annotations
@@ -59,11 +59,6 @@ from ctower_client.models import (
     DreamDispatchReceipt,
     DreamLaneBindRequest,
     DreamLaneBindingReceipt,
-    EstateCompanyRecordsImportRequest,
-    EstateImportResult,
-    EstateInboxImportRequest,
-    EstateKnowledgeImportRequest,
-    EstateRulingsImportRequest,
     EvidenceRequest,
     FindingDispositionRequest,
     FindingDispositionResult,
@@ -126,6 +121,10 @@ from ctower_client.models import (
     SessionFactRequest,
     SessionReceipt,
     SessionStartRequest,
+    SpawnRecordCreateRequest,
+    SpawnRecordListResult,
+    SpawnRecordResult,
+    SpawnTransitionRequest,
     SyntheticRunReceipt,
     SyntheticRunRequest,
     SyntheticRunResource,
@@ -385,6 +384,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: RulingAppendResult, 202: RulingAppendResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem, 503: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def append_spawn_transition(
+        self,
+        spawn_id: UUID,
+        request: SpawnTransitionRequest,
+        *,
+        command_id: UUID,
+    ) -> SpawnRecordResult:
+        response = self._http.post(
+            f"/v1/spawn-records/{quote(str(spawn_id), safe='')}/transitions",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_company_bundle(
@@ -755,6 +776,27 @@ class CtowerClient:
         return _response(response, {201: CtowerProjectImportRun, 202: CtowerProjectImportRun}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def create_spawn_record(
+        self,
+        request: SpawnRecordCreateRequest,
+        *,
+        command_id: UUID,
+    ) -> SpawnRecordResult:
+        response = self._http.post(
+            "/v1/spawn-records",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ticket(
         self,
         request: TicketCreateRequest,
@@ -878,7 +920,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: BoardView}, {401: Problem, 403: Problem, 422: Problem})
+        return _response(response, {200: BoardView}, {401: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_control_health(
@@ -978,7 +1020,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_request_maintenance_review(
@@ -1010,6 +1052,22 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: RulingRow}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_spawn_record(
+        self,
+        spawn_id: UUID,
+    ) -> SpawnRecordResult:
+        response = self._http.get(
+            f"/v1/spawn-records/{quote(str(spawn_id), safe='')}",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(
@@ -1044,7 +1102,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TicketResource}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketResource}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket_timeline(
@@ -1063,91 +1121,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TimelineResponse}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def import_estate_company_records(
-        self,
-        request: EstateCompanyRecordsImportRequest,
-        *,
-        command_id: UUID,
-    ) -> EstateImportResult:
-        response = self._http.post(
-            "/v1/migrations/estate/company-records",
-            content=request.model_dump_json(),
-            headers=self._telemetry_headers(
-                self._context(command_id),
-                {
-                    **self._auth_headers(),
-                    "Content-Type": "application/json",
-                    "Idempotency-Key": str(command_id),
-                },
-            ),
-        )
-        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def import_estate_inbox(
-        self,
-        request: EstateInboxImportRequest,
-        *,
-        command_id: UUID,
-    ) -> EstateImportResult:
-        response = self._http.post(
-            "/v1/migrations/estate/inbox",
-            content=request.model_dump_json(),
-            headers=self._telemetry_headers(
-                self._context(command_id),
-                {
-                    **self._auth_headers(),
-                    "Content-Type": "application/json",
-                    "Idempotency-Key": str(command_id),
-                },
-            ),
-        )
-        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def import_estate_knowledge(
-        self,
-        request: EstateKnowledgeImportRequest,
-        *,
-        command_id: UUID,
-    ) -> EstateImportResult:
-        response = self._http.post(
-            "/v1/migrations/estate/knowledge",
-            content=request.model_dump_json(),
-            headers=self._telemetry_headers(
-                self._context(command_id),
-                {
-                    **self._auth_headers(),
-                    "Content-Type": "application/json",
-                    "Idempotency-Key": str(command_id),
-                },
-            ),
-        )
-        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def import_estate_rulings(
-        self,
-        request: EstateRulingsImportRequest,
-        *,
-        command_id: UUID,
-    ) -> EstateImportResult:
-        response = self._http.post(
-            "/v1/migrations/estate/rulings",
-            content=request.model_dump_json(),
-            headers=self._telemetry_headers(
-                self._context(command_id),
-                {
-                    **self._auth_headers(),
-                    "Content-Type": "application/json",
-                    "Idempotency-Key": str(command_id),
-                },
-            ),
-        )
-        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def ingest_inbox_notification(
@@ -1402,6 +1376,27 @@ class CtowerClient:
         return _response(response, {200: RulingList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_spawn_records(
+        self,
+        project_key: ProjectKey,
+        *,
+        status: str | None = None,
+        limit: Annotated[int, Field(ge=1, le=1000)] | None = None,
+        offset: Annotated[int, Field(ge=0)] | None = None,
+    ) -> SpawnRecordListResult:
+        response = self._http.get(
+            f"/v1/spawn-records",
+            params={**({"status": status} if status is not None else {}), **({"limit": limit} if limit is not None else {}), **({"offset": offset} if offset is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: SpawnRecordListResult}, {401: Problem, 403: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
         self,
         ticket_id: UUID,
@@ -1418,7 +1413,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: AssignmentList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AssignmentList}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_audit_events(
@@ -1439,7 +1434,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: AuditPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AuditPage}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_sessions(
@@ -1458,7 +1453,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TicketSessionList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketSessionList}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def plan_company_bundle(
