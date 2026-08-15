@@ -20,6 +20,7 @@ import argparse
 import hashlib
 import json
 import uuid as uuid_mod
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,11 +28,12 @@ try:
     import httpx
     import rfc8785
 except ImportError:
-    httpx = None
-    rfc8785 = None
+    httpx = None  # type: ignore[assignment]
+    rfc8785 = None  # type: ignore[assignment]
 
 from tools.migration.ctower_project.ctower_project_source.canonical import sha256_digest
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
+from tools.migration.estate_imports import build_estate_manifest
 
 __all__ = ["analyze_rulings_import", "execute_rulings_import"]
 
@@ -61,6 +63,8 @@ def _parse_agreed_files(agreed_dir: Path) -> list[dict[str, Any]]:
                 "verbatim": content,
                 "content_sha256": hashlib.sha256(content.encode()).hexdigest(),
                 "file_size": fpath.stat().st_size,
+                "recorded_at": datetime.fromtimestamp(fpath.stat().st_mtime, tz=UTC).isoformat(),
+                "source_ref": str(fpath.relative_to(agreed_dir.parent)),
             }
         )
     return rulings
@@ -96,6 +100,31 @@ def analyze_rulings_import(
         "rulings_digest": f"sha256:{rulings_digest}",
     }
 
+    estate_rows = [
+        {
+            "_disposition": "source_only",
+            "content_sha256": f"sha256:{ruling['content_sha256']}",
+            "source_ref": ruling["source_ref"],
+            "source_seat": "unknown-owner",
+        }
+        for ruling in rulings
+    ]
+    estate_manifest = (
+        build_estate_manifest(
+            tier="agreed_decisions",
+            source_identity={
+                "namespace": "mission-control:estate",
+                "source_path": str(agreed_dir.resolve()),
+                "source_sha256": f"sha256:{rulings_digest}",
+            },
+            rows=estate_rows,
+            seat_mapping_digest=None,
+            signer=signer,
+        )
+        if estate_rows
+        else None
+    )
+
     if signer is not None:
         manifest = signer.seal(manifest, "manifest_digest")
 
@@ -108,6 +137,8 @@ def analyze_rulings_import(
         "project_key": project_key,
         "writes_attempted": 0,
         "manifest": manifest,
+        "estate_manifest": estate_manifest,
+        "estate_rows": estate_rows,
     }
 
 

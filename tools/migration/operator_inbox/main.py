@@ -23,15 +23,11 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid5
 
-try:
-    import httpx
-    import rfc8785
-except ImportError:
-    httpx = None  # type: ignore[assignment]
-    rfc8785 = None  # type: ignore[assignment]
+import httpx
+import rfc8785
 
 from tools.migration.ctower_project.ctower_project_source.canonical import (
     sha256_digest,
@@ -39,6 +35,11 @@ from tools.migration.ctower_project.ctower_project_source.canonical import (
 )
 from tools.migration.ctower_project.ctower_project_source.signing import (
     ArtifactSigner,
+)
+from tools.migration.estate_imports import (
+    build_estate_manifest,
+    load_seat_mapping,
+    read_stable_source,
 )
 
 __all__ = ["analyze_inbox_import", "execute_inbox_import"]
@@ -117,8 +118,9 @@ def analyze_inbox_import(
     signer: ArtifactSigner | None = None,
 ) -> dict[str, Any]:
     """Read-only analysis: derive manifest without writing target state."""
-    source_bytes, _source_identity = _read_stable_regular(ledger_path)
-    _ = _source_identity  # preserved for parity reporting
+    if not ledger_path.exists():
+        raise FileNotFoundError(ledger_path)
+    source_bytes, source_identity = read_stable_source(ledger_path)
     ledger_digest = sha256_digest(source_bytes)
     physical = _parse_inbox_jsonl(ledger_path)
 
@@ -128,9 +130,7 @@ def analyze_inbox_import(
     source_sha256 = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
     # Load seat map if provided
-    seat_map: dict[str, str] = {}
-    if seat_map_path and seat_map_path.exists():
-        seat_map = dict(strict_json(seat_map_path.read_bytes(), context="seat map"))
+    seat_map = _load_seat_map(seat_map_path)
 
     # Build batches
     batches: list[dict[str, Any]] = []
@@ -153,7 +153,7 @@ def analyze_inbox_import(
     manifest: dict[str, Any] = {
         "schema": _SCHEMA,
         "ledger_sha256": f"sha256:{source_sha256}",
-        "source_identity": _source_identity,
+        "source_identity": source_identity,
         "project_key": project_key,
         "counts": {
             "physical_rows": source_count,
@@ -169,6 +169,15 @@ def analyze_inbox_import(
         if row["from"] not in seat_map:
             unknown_seats.add(row["from"])
 
+    import_rows = _estate_rows(rows, ledger_path, seat_map)
+    estate_manifest = build_estate_manifest(
+        tier="inbox_history",
+        source_identity=source_identity,
+        rows=import_rows,
+        seat_mapping_digest=_mapping_digest(seat_map_path),
+        signer=signer,
+    )
+
     # Sign if a signer is provided
     if signer is not None:
         manifest = signer.seal(manifest, "manifest_digest")
@@ -176,7 +185,7 @@ def analyze_inbox_import(
     return {
         "schema": "ctower.inbox-import-dry-run/v1",
         "mode": "DRY-RUN" if signer is None else "SIGNED",
-        "eligible": len(unknown_seats) == 0,
+        "eligible": source_count > 0,
         "ledger_digest": f"sha256:{ledger_digest}",
         "row_count": source_count,
         "batch_count": len(batches),
@@ -185,7 +194,52 @@ def analyze_inbox_import(
         "project_key": project_key,
         "writes_attempted": 0,
         "manifest": manifest,
+        "estate_manifest": estate_manifest,
+        "estate_rows": import_rows,
     }
+
+
+def _estate_rows(
+    rows: list[dict[str, Any]], ledger_path: Path, seat_map: dict[str, str]
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for index, row in enumerate(rows, 1):
+        source_seat = str(row["from"])
+        target = seat_map.get(source_seat)
+        result.append(
+            {
+                "_disposition": "mapped" if target is not None else "source_only",
+                "content_sha256": f"sha256:{row['content_sha256']}",
+                "source_ref": f"{ledger_path.name}#{index}",
+                "source_seat": source_seat,
+                "target_seat_key": target,
+            }
+        )
+    return result
+
+
+def _load_seat_map(path: Path | None) -> dict[str, str]:
+    if path is None or not path.exists():
+        return {}
+    loaded = strict_json(path.read_bytes(), context="seat map")
+    if isinstance(loaded, dict) and loaded.get("schema") == "ctower.estate-seat-mapping/v1":
+        return {
+            source: str(item.target_seat_key)
+            for source, item in load_seat_mapping(path).items()
+            if item.disposition == "mapped" and item.target_seat_key is not None
+        }
+    if not isinstance(loaded, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in loaded.items()
+    ):
+        raise ValueError("seat map must be an object of source-seat to target-seat strings")
+    return cast(dict[str, str], loaded)
+
+
+def _mapping_digest(path: Path | None) -> str | None:
+    if path is None or not path.exists():
+        return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    return value.get("mapping_digest") if isinstance(value, dict) else None
 
 
 # ---- Execution ----
@@ -206,51 +260,21 @@ def execute_inbox_import(
     physical = _parse_inbox_jsonl(ledger_path)
     rows = [_extract_fields(r) for r in physical]
 
-    imported = 0
     batches = manifest.get("batches", [])
     evidence_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
-    for batch in batches:
-        batch_idx = int(batch["batch_index"])
-        start = batch_idx * _BATCH_SIZE
-        current = rows[start : start + int(batch.get("source_count", _BATCH_SIZE))]
-
-        for row in current:
-            # Use the existing inbox send via ctowerctl or direct HTTP
-            payload = {
-                "to": row["from"],
-                "text": f"Subject: {row['subject']}\n\n{row['body']}",
-            }
-            command_id = uuid5(_INBOX_NAMESPACE, row["message_id"])
-            try:
-                resp = client.post(
-                    f"{base_url}/v1/inbox/messages",
-                    json=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Idempotency-Key": str(command_id),
-                        "X-Import-Source": "r3000-inbox",
-                    },
-                    timeout=30,
-                )
-                resp.raise_for_status()
-                imported += 1
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == _HTTP_CONFLICT:
-                    imported += 1
-                    continue
-                raise
-
-        # Record batch proof
-        proof: dict[str, Any] = {
-            "schema": "ctower.inbox-import-batch-proof/v1",
-            "batch_index": batch_idx,
-            "source_count": len(current),
-            "cumulative_count": min((batch_idx + 1) * _BATCH_SIZE, len(rows)),
-        }
-        proof_path = evidence_dir / f"batch-{batch_idx:04d}.proof.json"
-        proof_path.write_text(rfc8785.dumps(proof))
-
+    import_rows = [_request_row(row, index) for index, row in enumerate(rows, 1)]
+    response = client.post(
+        f"{base_url}/v1/migrations/estate/inbox",
+        json={"manifest": manifest, "rows": import_rows},
+        timeout=60,
+    )
+    response.raise_for_status()
+    result = cast(dict[str, Any], response.json())
+    parity = result.get("parity")
+    if isinstance(parity, dict):
+        (evidence_dir / "parity.json").write_bytes(rfc8785.dumps(parity))
+    imported = int(result.get("imported_count", len(rows)))
     return {
         "schema": "ctower.inbox-import-transcript/v1",
         "phase": "completed",
@@ -259,6 +283,21 @@ def execute_inbox_import(
         "batch_count": len(batches),
         "writes_attempted": imported + len(batches),
         "evidence_dir": str(evidence_dir),
+        "parity": parity,
+    }
+
+
+def _request_row(row: dict[str, Any], line_number: int) -> dict[str, Any]:
+    recipient = row.get("to") or row.get("recipient") or "operator"
+    return {
+        "message_id": row["message_id"],
+        "source_ref": f"inbox.jsonl#{line_number}",
+        "source_sender": row["from"],
+        "source_recipient": recipient,
+        "sent_at": row["ts"],
+        "subject": row["subject"],
+        "body": row["body"],
+        "read_state": "read" if row["read"] else "delivered",
     }
 
 
@@ -289,8 +328,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run or not args.evidence:
         print(json.dumps(report, separators=(",", ":"), sort_keys=True))
-        if args.manifest_output and isinstance(report.get("manifest"), dict):
-            args.manifest_output.write_bytes(rfc8785.dumps(report["manifest"]))
+        if args.manifest_output and isinstance(report.get("estate_manifest"), dict):
+            args.manifest_output.write_bytes(rfc8785.dumps(report["estate_manifest"]))
         return 0 if report["eligible"] else 3
 
     if not args.base_url:
@@ -300,7 +339,7 @@ def main(argv: list[str] | None = None) -> int:
         print("signing args required for non-dry-run mode", file=__import__("sys").stderr)
         return 1
 
-    with httpx.Client(verify=False) as client:
+    with httpx.Client() as client:
         result = execute_inbox_import(
             client,
             ledger_path=args.ledger,
@@ -330,11 +369,11 @@ def _signer(args: argparse.Namespace) -> ArtifactSigner | None:
 
 
 def _signed_artifact(path: Path, _signer: ArtifactSigner, digest_field: str) -> dict[str, Any]:
-    raw = rfc8785.loads(path.read_bytes())
+    raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise TypeError("manifest must be a JSON object")
-    raw[digest_field] = str(raw.get(digest_field, ""))
-    return raw
+    _signer.verifier().verify(cast(dict[str, Any], raw), digest_field)
+    return cast(dict[str, Any], raw)
 
 
 if __name__ == "__main__":
