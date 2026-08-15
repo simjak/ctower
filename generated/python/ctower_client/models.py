@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:2ccf3cff64e2fa9d8464e4417f0e916508b0bf7c63abdb55c09c68b718c02d0b
+Authored contract digest: sha256:ac4410ec5d7cc4e25581979eaa8ba1874d25b3bb55163737992631bf58f523f3
 """
 
 from __future__ import annotations
@@ -2295,10 +2295,10 @@ class IntakeSubmitRequest(_BoundaryModel):
 class KnowledgeAddRequest(_BoundaryModel):
     body: Annotated[str, Field(min_length=1, max_length=1048576)] | None = None
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None
+    recorded_at: _Rfc3339DateTime | None = None
     scope: KnowledgeScope
     source_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,127}$")] | None = None
     title: Annotated[str, Field(min_length=1, max_length=1024)] | None = None
-    recorded_at: _Rfc3339DateTime | None = None
 
 
 class KnowledgeAddResult(_BoundaryModel):

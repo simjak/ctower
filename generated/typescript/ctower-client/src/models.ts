@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:2ccf3cff64e2fa9d8464e4417f0e916508b0bf7c63abdb55c09c68b718c02d0b
+// Authored contract digest: sha256:ac4410ec5d7cc4e25581979eaa8ba1874d25b3bb55163737992631bf58f523f3
 
 export type ActivityClass = "work" | "verification";
 
@@ -1079,6 +1079,7 @@ export type IntakeTaint = "authenticated" | "external_untrusted" | "quarantine_r
 export type KnowledgeAddRequest = Readonly<{
   readonly "body"?: string | null;
   readonly "project_key": string | null;
+  readonly "recorded_at"?: string | null;
   readonly "scope": KnowledgeScope;
   readonly "source_ref"?: string | null;
   readonly "title"?: string | null;
