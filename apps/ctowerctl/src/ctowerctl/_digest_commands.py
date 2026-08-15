@@ -45,8 +45,36 @@ def morning_text(digest: MorningDigest) -> str:
     lines.extend(("", f"Proof — {_count(digest.proof)}"))
     _unreached(lines, digest.proof.unreached)
     lines.extend(_proof_lines(digest))
+    summary = digest.request_maintenance
+    lines.extend(
+        (
+            "",
+            f"Request maintenance — {summary.source_state.upper()}",
+            (
+                "States: "
+                f"OPEN={_proposal_count(summary.by_state.OPEN)}, "
+                f"CONFIRMED={_proposal_count(summary.by_state.CONFIRMED)}, "
+                f"REJECTED={_proposal_count(summary.by_state.REJECTED)}"
+            ),
+            (
+                "Kinds: "
+                f"duplicate={_proposal_count(summary.by_kind.duplicate)}, "
+                "completed-but-open="
+                f"{_proposal_count(summary.by_kind.completed_but_open)}, "
+                f"supersession={_proposal_count(summary.by_kind.supersession)}, "
+                f"kill={_proposal_count(summary.by_kind.kill)}, "
+                f"keep={_proposal_count(summary.by_kind.keep)}"
+            ),
+            f"Review: {summary.pointer} · watermark={summary.watermark}",
+        )
+    )
+    lines.extend(f"Unreached: {scope}" for scope in summary.unreached_scopes)
     lines.extend(("", f"Artifact: {digest.artifact_key}", f"SHA-256: {digest.artifact_sha256}"))
     return "\n".join(lines)
+
+
+def _proposal_count(value: int | None) -> str:
+    return "UNKNOWN" if value is None else str(value)
 
 
 def _decision_lines(digest: MorningDigest) -> list[str]:

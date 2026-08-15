@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/proposal.schema.json",
+  "title": "RequestMaintenanceProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ambiguity_reason", "basis", "created_at", "evidence", "kind", "project_key",
+    "proposal_id", "proposal_version", "proposer_principal_id", "related_expected_version",
+    "related_request_id", "related_text", "seat_credential_id", "source_record_position",
+    "state", "target_expected_version", "target_request_id", "target_text", "decision"
+  ],
+  "properties": {
+    "proposal_id": {"type": "string", "format": "uuid"},
+    "proposal_version": {"const": 1},
+    "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+    "kind": {"type": "string", "enum": ["duplicate", "completed-but-open", "supersession", "kill", "keep"]},
+    "basis": {"type": "string", "enum": ["recorded-evidence", "similarity"]},
+    "state": {"type": "string", "enum": ["OPEN", "CONFIRMED", "REJECTED"]},
+    "ambiguity_reason": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "evidence-conflicting-or-incomplete", "duplicate-uncertain",
+            "supersession-unclear", "target-version-stale", "completion-unproven"
+          ]
+        },
+        {"type": "null"}
+      ]
+    },
+    "target_request_id": {"type": "string", "format": "uuid"},
+    "target_expected_version": {"type": "integer", "minimum": 1},
+    "target_text": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "related_request_id": {"type": ["string", "null"], "format": "uuid"},
+    "related_expected_version": {"type": ["integer", "null"], "minimum": 1},
+    "related_text": {"type": ["string", "null"], "minLength": 1, "maxLength": 65536},
+    "source_record_position": {"type": "integer", "minimum": 0},
+    "proposer_principal_id": {"type": "string", "format": "uuid"},
+    "seat_credential_id": {"type": ["string", "null"], "format": "uuid"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "evidence": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json"}},
+    "decision": {"oneOf": [{"type": "null"}, {"$ref": "https://ctower.dev/contracts/domain/request-proposals/decision.schema.json"}]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"enum": ["duplicate", "supersession"]}}},
+      "then": {
+        "properties": {
+          "related_request_id": {"type": "string", "format": "uuid"},
+          "related_expected_version": {"type": "integer", "minimum": 1},
+          "related_text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "else": {
+        "properties": {
+          "related_request_id": {"const": null},
+          "related_expected_version": {"const": null},
+          "related_text": {"const": null}
+        }
+      }
+    }
+  ]
+}

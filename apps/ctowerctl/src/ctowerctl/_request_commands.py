@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import Literal, cast
 from uuid import UUID
 
@@ -14,18 +15,25 @@ from ctower_client.models import (
     RequestBlockerRequest,
     RequestCaptureRequest,
     RequestClosureEvaluationRequest,
+    RequestMaintenanceProposalAppendRequest,
+    RequestMaintenanceProposalConfirmRequest,
+    RequestMaintenanceProposalRejectRequest,
     RequestOwnerRequest,
     RequestPriorityRequest,
     RequestTicketRelationRequest,
     RequestTriageRequest,
 )
 from ctowerctl._command_types import MutationPayload
+from ctowerctl._input import read_text
 
 __all__: tuple[str, ...] = ()
+_PROPOSAL_INPUT_MAX_BYTES = 128 * 1024
 
 
 def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
     name = cast(str, arguments.cli_name)
+    if name.startswith("request proposal "):
+        return _proposal_mutation(name, arguments)
     if name == "request capture":
         return MutationPayload(
             request=RequestCaptureRequest(
@@ -36,6 +44,34 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
     return MutationPayload(
         request=_change_payload(name, arguments),
         path_parameters={"request_id": str(cast(UUID, arguments.request_id))},
+    )
+
+
+def _proposal_mutation(name: str, arguments: argparse.Namespace) -> MutationPayload:
+    if name == "request proposal append":
+        content = read_text(
+            cast(Path, arguments.input_file),
+            maximum_bytes=_PROPOSAL_INPUT_MAX_BYTES,
+            label="Request proposal input",
+        )
+        append_request = RequestMaintenanceProposalAppendRequest.model_validate_json(content)
+        return MutationPayload(request=append_request, path_parameters={})
+    proposal_id = cast(UUID, arguments.proposal_id)
+    expected = cast(Literal[1], arguments.expected_version)
+    decision_request: BaseModel
+    if name == "request proposal confirm":
+        decision_request = RequestMaintenanceProposalConfirmRequest(
+            expected_proposal_version=expected
+        )
+    elif name == "request proposal reject":
+        decision_request = RequestMaintenanceProposalRejectRequest(
+            expected_proposal_version=expected,
+            reason=cast(str | None, arguments.reason),
+        )
+    else:
+        raise ValueError("usage: unsupported Request proposal mutation")
+    return MutationPayload(
+        request=decision_request, path_parameters={"proposal_id": str(proposal_id)}
     )
 
 
@@ -85,9 +121,19 @@ def _change_payload(name: str, arguments: argparse.Namespace) -> BaseModel:
 
 
 def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
-    if cast(str, arguments.cli_name) != "request list":
-        raise ValueError("usage: unsupported Request query")
-    return client.list_requests(project_key=cast(str | None, arguments.project_key))
+    name = cast(str, arguments.cli_name)
+    if name == "request list":
+        return client.list_requests(project_key=cast(str | None, arguments.project_key))
+    if name == "request proposal list":
+        return client.list_request_maintenance_proposals(
+            proposal_id=cast(UUID | None, arguments.proposal_id),
+            project_key=cast(str | None, arguments.project_key),
+            kind=cast(str | None, arguments.kind),
+            state=cast(str | None, arguments.state),
+        )
+    if name == "request proposal review":
+        return client.get_request_maintenance_review()
+    raise ValueError("usage: unsupported Request query")
 
 
 def mutation_command_names() -> frozenset[str]:
@@ -97,6 +143,9 @@ def mutation_command_names() -> frozenset[str]:
             "request capture",
             "request closure evaluate",
             "request owner assign",
+            "request proposal append",
+            "request proposal confirm",
+            "request proposal reject",
             "request prioritize",
             "request ticket relate",
             "request triage",
@@ -105,4 +154,10 @@ def mutation_command_names() -> frozenset[str]:
 
 
 def query_command_names() -> frozenset[str]:
-    return frozenset({"request list"})
+    return frozenset(
+        {
+            "request list",
+            "request proposal list",
+            "request proposal review",
+        }
+    )

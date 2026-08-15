@@ -41,6 +41,7 @@ class EventKind(StrEnum):
     ATTENTION_FINDING_DISPOSITION_RECORDED = "attention.finding_disposition_recorded"
     KNOWLEDGE_DOCUMENT_REGISTERED = "knowledge.document_registered"
     REQUEST_CHANGED = "request.changed"
+    REQUEST_PROPOSAL_CHANGED = "request.proposal_changed"
     RULING_RECORDED = "ruling.recorded"
 
 

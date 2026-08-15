@@ -9,6 +9,12 @@ from uuid import uuid4
 
 import psycopg
 from support.acceptance import accept_pending_commands
+from support.request_authority import (
+    assert_command_id_reuse_cannot_cross_principal_authority,
+    assert_non_commander_project_seat_cannot_directly_triage,
+    assert_payload_authority_cannot_override_authenticated_principal,
+    assert_routine_held_seat_cannot_directly_triage,
+)
 from support.tenant_fixture import TenantFixture
 
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
@@ -179,6 +185,28 @@ def test_owner_project_seat_with_transition_scope_can_mutate(
     )
 
     assert isinstance(blocked, RequestChangeResult)
+
+
+def test_non_commander_project_seat_cannot_directly_triage(
+    tenant: TenantFixture,
+) -> None:
+    assert_non_commander_project_seat_cannot_directly_triage(tenant)
+
+
+def test_routine_held_seat_cannot_directly_triage(tenant: TenantFixture) -> None:
+    assert_routine_held_seat_cannot_directly_triage(tenant)
+
+
+def test_payload_authority_field_cannot_substitute_authenticated_principal(
+    tenant: TenantFixture,
+) -> None:
+    assert_payload_authority_cannot_override_authenticated_principal(tenant)
+
+
+def test_operator_command_id_cannot_be_reused_across_principals(
+    tenant: TenantFixture,
+) -> None:
+    assert_command_id_reuse_cannot_cross_principal_authority(tenant)
 
 
 def test_cross_tenant_rejected_and_self_duplicate_outcomes_are_explicit(

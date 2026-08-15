@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:3a985fad6955dbecd5cc3edb85dcbf361cff67bba3ae4859b08c282b57b3ce44
+// Authored contract digest: sha256:2ccf3cff64e2fa9d8464e4417f0e916508b0bf7c63abdb55c09c68b718c02d0b
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -48,6 +48,11 @@ export type AppendAttentionFindingInput = Readonly<{
 export type AppendCtowerProjectImportCorrectionInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectImportCorrectionRequest;
+}>;
+
+export type AppendRequestMaintenanceProposalInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestMaintenanceProposalAppendRequest;
 }>;
 
 export type AppendRulingInput = Readonly<{
@@ -124,6 +129,12 @@ export type ChangeTicketPriorityInput = Readonly<{
 export type CommitCtowerProjectDevelopmentEpochInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectEpochRefusalRequest;
+}>;
+
+export type ConfirmRequestMaintenanceProposalInput = Readonly<{
+  readonly "proposalId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestMaintenanceProposalConfirmRequest;
 }>;
 
 export type ConsumeDreamDispatchEffectInput = Readonly<{
@@ -207,6 +218,10 @@ export type GetProjectDeliveryInput = Readonly<{
   readonly "projectKey": string;
 }>;
 
+export type GetRequestMaintenanceReviewInput = Readonly<{
+
+}>;
+
 export type GetRulingInput = Readonly<{
   readonly "rulingId": string;
 }>;
@@ -270,6 +285,13 @@ export type ListProjectSessionsInput = Readonly<{
   readonly "projectKey": string;
   readonly "cursor"?: number;
   readonly "limit"?: number;
+}>;
+
+export type ListRequestMaintenanceProposalsInput = Readonly<{
+  readonly "proposalId"?: string;
+  readonly "projectKey"?: string;
+  readonly "kind"?: "duplicate" | "completed-but-open" | "supersession" | "kill" | "keep";
+  readonly "state"?: "OPEN" | "CONFIRMED" | "REJECTED";
 }>;
 
 export type ListRequestsInput = Readonly<{
@@ -373,6 +395,12 @@ export type RecordTicketSessionFactInput = Readonly<{
   readonly body: Models.SessionFactRequest;
 }>;
 
+export type RejectRequestMaintenanceProposalInput = Readonly<{
+  readonly "proposalId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.RequestMaintenanceProposalRejectRequest;
+}>;
+
 export type RelateRequestTicketInput = Readonly<{
   readonly "requestId": string;
   readonly "IdempotencyKey": string;
@@ -464,6 +492,7 @@ export type OperationInputs = Readonly<{
   readonly "allowConsoleSession": AllowConsoleSessionInput;
   readonly "appendAttentionFinding": AppendAttentionFindingInput;
   readonly "appendCtowerProjectImportCorrection": AppendCtowerProjectImportCorrectionInput;
+  readonly "appendRequestMaintenanceProposal": AppendRequestMaintenanceProposalInput;
   readonly "appendRuling": AppendRulingInput;
   readonly "applyCompanyBundle": ApplyCompanyBundleInput;
   readonly "applyCtowerProjectImportBatch": ApplyCtowerProjectImportBatchInput;
@@ -478,6 +507,7 @@ export type OperationInputs = Readonly<{
   readonly "changeTicketAssignment": ChangeTicketAssignmentInput;
   readonly "changeTicketPriority": ChangeTicketPriorityInput;
   readonly "commitCtowerProjectDevelopmentEpoch": CommitCtowerProjectDevelopmentEpochInput;
+  readonly "confirmRequestMaintenanceProposal": ConfirmRequestMaintenanceProposalInput;
   readonly "consumeDreamDispatchEffect": ConsumeDreamDispatchEffectInput;
   readonly "consumeReviewDispatchEffect": ConsumeReviewDispatchEffectInput;
   readonly "createCtowerProjectImportRun": CreateCtowerProjectImportRunInput;
@@ -493,6 +523,7 @@ export type OperationInputs = Readonly<{
   readonly "getKnowledgeDocument": GetKnowledgeDocumentInput;
   readonly "getMorningDigest": GetMorningDigestInput;
   readonly "getProjectDelivery": GetProjectDeliveryInput;
+  readonly "getRequestMaintenanceReview": GetRequestMaintenanceReviewInput;
   readonly "getRuling": GetRulingInput;
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
@@ -507,6 +538,7 @@ export type OperationInputs = Readonly<{
   readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
+  readonly "listRequestMaintenanceProposals": ListRequestMaintenanceProposalsInput;
   readonly "listRequests": ListRequestsInput;
   readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
   readonly "listRulings": ListRulingsInput;
@@ -526,6 +558,7 @@ export type OperationInputs = Readonly<{
   readonly "recordProofVerdict": RecordProofVerdictInput;
   readonly "recordTicketChangeReference": RecordTicketChangeReferenceInput;
   readonly "recordTicketSessionFact": RecordTicketSessionFactInput;
+  readonly "rejectRequestMaintenanceProposal": RejectRequestMaintenanceProposalInput;
   readonly "relateRequestTicket": RelateRequestTicketInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
@@ -551,6 +584,7 @@ export type OperationResults = Readonly<{
   readonly "allowConsoleSession": Models.ConsoleSessionAllowance;
   readonly "appendAttentionFinding": Models.AttentionFindingResult;
   readonly "appendCtowerProjectImportCorrection": Models.CtowerProjectMigrationReceipt;
+  readonly "appendRequestMaintenanceProposal": Models.RequestMaintenanceProposalAppendResult;
   readonly "appendRuling": Models.RulingAppendResult;
   readonly "applyCompanyBundle": Models.CompanyBundleCommandResult;
   readonly "applyCtowerProjectImportBatch": Models.CtowerProjectImportBatchResult;
@@ -565,6 +599,7 @@ export type OperationResults = Readonly<{
   readonly "changeTicketAssignment": Models.WorkReceipt;
   readonly "changeTicketPriority": Models.WorkReceipt;
   readonly "commitCtowerProjectDevelopmentEpoch": never;
+  readonly "confirmRequestMaintenanceProposal": Models.RequestMaintenanceProposalDecisionResult;
   readonly "consumeDreamDispatchEffect": Models.DreamDispatchReceipt;
   readonly "consumeReviewDispatchEffect": Models.WorkReceipt;
   readonly "createCtowerProjectImportRun": Models.CtowerProjectImportRun;
@@ -580,6 +615,7 @@ export type OperationResults = Readonly<{
   readonly "getKnowledgeDocument": Models.KnowledgeDocument;
   readonly "getMorningDigest": Models.MorningDigest;
   readonly "getProjectDelivery": Models.ProjectDeliveryView;
+  readonly "getRequestMaintenanceReview": Models.RequestMaintenanceReview;
   readonly "getRuling": Models.RulingRow;
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
@@ -594,6 +630,7 @@ export type OperationResults = Readonly<{
   readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
   readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
+  readonly "listRequestMaintenanceProposals": Models.RequestMaintenanceProposalList;
   readonly "listRequests": Models.RequestList;
   readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
   readonly "listRulings": Models.RulingList;
@@ -613,6 +650,7 @@ export type OperationResults = Readonly<{
   readonly "recordProofVerdict": Models.ProofReceipt;
   readonly "recordTicketChangeReference": Models.ChangeReferenceResult;
   readonly "recordTicketSessionFact": Models.SessionReceipt;
+  readonly "rejectRequestMaintenanceProposal": Models.RequestMaintenanceProposalDecisionResult;
   readonly "relateRequestTicket": Models.RequestChangeResult;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
@@ -689,6 +727,12 @@ export class CtowerClient {
     input: AppendCtowerProjectImportCorrectionInput,
   ): Promise<Models.CtowerProjectMigrationReceipt> {
     return this.execute("appendCtowerProjectImportCorrection", input);
+  }
+
+  public async appendRequestMaintenanceProposal(
+    input: AppendRequestMaintenanceProposalInput,
+  ): Promise<Models.RequestMaintenanceProposalAppendResult> {
+    return this.execute("appendRequestMaintenanceProposal", input);
   }
 
   public async appendRuling(
@@ -773,6 +817,12 @@ export class CtowerClient {
     input: CommitCtowerProjectDevelopmentEpochInput,
   ): Promise<never> {
     return this.execute("commitCtowerProjectDevelopmentEpoch", input);
+  }
+
+  public async confirmRequestMaintenanceProposal(
+    input: ConfirmRequestMaintenanceProposalInput,
+  ): Promise<Models.RequestMaintenanceProposalDecisionResult> {
+    return this.execute("confirmRequestMaintenanceProposal", input);
   }
 
   public async consumeDreamDispatchEffect(
@@ -865,6 +915,12 @@ export class CtowerClient {
     return this.execute("getProjectDelivery", input);
   }
 
+  public async getRequestMaintenanceReview(
+    input: GetRequestMaintenanceReviewInput,
+  ): Promise<Models.RequestMaintenanceReview> {
+    return this.execute("getRequestMaintenanceReview", input);
+  }
+
   public async getRuling(
     input: GetRulingInput,
   ): Promise<Models.RulingRow> {
@@ -947,6 +1003,12 @@ export class CtowerClient {
     input: ListProjectSessionsInput,
   ): Promise<Models.ProjectSessionPage> {
     return this.execute("listProjectSessions", input);
+  }
+
+  public async listRequestMaintenanceProposals(
+    input: ListRequestMaintenanceProposalsInput,
+  ): Promise<Models.RequestMaintenanceProposalList> {
+    return this.execute("listRequestMaintenanceProposals", input);
   }
 
   public async listRequests(
@@ -1061,6 +1123,12 @@ export class CtowerClient {
     input: RecordTicketSessionFactInput,
   ): Promise<Models.SessionReceipt> {
     return this.execute("recordTicketSessionFact", input);
+  }
+
+  public async rejectRequestMaintenanceProposal(
+    input: RejectRequestMaintenanceProposalInput,
+  ): Promise<Models.RequestMaintenanceProposalDecisionResult> {
+    return this.execute("rejectRequestMaintenanceProposal", input);
   }
 
   public async relateRequestTicket(

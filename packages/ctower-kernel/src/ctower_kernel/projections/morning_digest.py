@@ -11,6 +11,12 @@ from typing import Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from ctower_kernel.projections.request_proposals import (
+    ProposalSummaryInput,
+    RequestMaintenanceProposalSummary,
+    derive_request_maintenance_summary,
+)
+
 __all__ = [
     "DecisionBriefFact",
     "DecisionChoiceFact",
@@ -304,6 +310,7 @@ class MorningDigest:
     state: ReadingState
     request_watermark: int | None
     ruling_watermark: int | None
+    request_maintenance: RequestMaintenanceProposalSummary
     open_decisions: DigestSection[DigestDecision]
     yesterday_rulings: DigestSection[DigestRuling]
     proof: DigestSection[DigestProof]
@@ -321,6 +328,7 @@ class MorningDigest:
             "open_decisions": self.open_decisions.response_payload(),
             "proof": self.proof.response_payload(),
             "request_watermark": self.request_watermark,
+            "request_maintenance": self.request_maintenance.response_payload(),
             "ruling_watermark": self.ruling_watermark,
             "state": self.state.value,
             "timezone": self.timezone,
@@ -338,6 +346,7 @@ class MorningDigest:
 def project_morning_digest(
     requests: SourceReading[DigestRequestFact],
     rulings: SourceReading[DigestRulingFact],
+    proposals: SourceReading[ProposalSummaryInput],
     *,
     digest_date: date,
     observed_at: datetime,
@@ -352,7 +361,13 @@ def project_morning_digest(
         execution.request_id for ruling in yesterday.items for execution in ruling.executions
     )
     proof = _proof_section(requests, yesterday, related_request_ids)
-    state = _combined_state(decisions.state, yesterday.state, proof.state)
+    proposal_summary = _proposal_summary(proposals)
+    proposal_state = (
+        ReadingState.UNKNOWN
+        if proposal_summary.source_state == "unavailable"
+        else ReadingState(proposal_summary.source_state)
+    )
+    state = _combined_state(decisions.state, yesterday.state, proof.state, proposal_state)
     artifact_key = f"morning-digest:{digest_date.isoformat()}:Europe/Vilnius"
     digest = MorningDigest(
         artifact_key=artifact_key,
@@ -363,6 +378,7 @@ def project_morning_digest(
         state=state,
         request_watermark=requests.watermark,
         ruling_watermark=rulings.watermark,
+        request_maintenance=proposal_summary,
         open_decisions=decisions,
         yesterday_rulings=yesterday,
         proof=proof,
@@ -382,9 +398,38 @@ def project_morning_digest(
         state=digest.state,
         request_watermark=digest.request_watermark,
         ruling_watermark=digest.ruling_watermark,
+        request_maintenance=digest.request_maintenance,
         open_decisions=digest.open_decisions,
         yesterday_rulings=digest.yesterday_rulings,
         proof=digest.proof,
+    )
+
+
+def _proposal_summary(
+    reading: SourceReading[ProposalSummaryInput],
+) -> RequestMaintenanceProposalSummary:
+    unreached = tuple(f"{item.key}:{item.reason}" for item in reading.unreached)
+    if reading.state is ReadingState.UNKNOWN:
+        return RequestMaintenanceProposalSummary(
+            tuple(
+                (kind, None)
+                for kind in (
+                    "duplicate",
+                    "completed-but-open",
+                    "supersession",
+                    "kill",
+                    "keep",
+                )
+            ),
+            tuple((state, None) for state in ("OPEN", "CONFIRMED", "REJECTED")),
+            None,
+            "unavailable",
+            unreached,
+        )
+    return derive_request_maintenance_summary(
+        reading.rows,
+        watermark=reading.watermark if reading.watermark is not None else 0,
+        unreached_scopes=unreached,
     )
 
 

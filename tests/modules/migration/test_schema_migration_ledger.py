@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 
-from ctower_kernel.record import _setup_sql
+from ctower_kernel.record import _migration_ledger_sql, _setup_sql
 from ctower_kernel.record.postgres import (
     MigrationAdoptionError,
     MigrationBaseline,
@@ -27,6 +27,7 @@ from ._ledger_support import (
     database_migration_ids,
     ledger_rows,
     reset_to_empty_public_schema,
+    schema_snapshot,
 )
 from ._postgres import Database
 
@@ -52,6 +53,15 @@ def test_fresh_empty_database_migrates_once_and_repeat_is_noop(
     assert len(first) == _database_migration_count()
     assert all(row[2] == "applied" for row in first)
     assert ledger_rows(migration_database) == first
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    fingerprint, records = schema_snapshot(migration_database)
+    assert (
+        fingerprint,
+        f"sum256:{_migration_ledger_sql._schema_object_sum(records):064x}",
+    ) == (
+        manifest["adoption_baseline"]["schema_sha256"],
+        manifest["adoption_baseline"]["schema_object_sum256"],
+    )
     with psycopg.connect(migration_database.admin_dsn) as connection:
         assert connection.execute("SELECT to_regclass('public.tenants')").fetchone() == ("tenants",)
 

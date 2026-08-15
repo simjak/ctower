@@ -566,6 +566,47 @@
       "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
       "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
     ],
+    "AC-PROP-01": [
+      "contracts/domain/request-proposals/append.schema.json",
+      "contracts/domain/request-proposals/list.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+    ],
+    "AC-PROP-02": [
+      "contracts/domain/request-proposals/append.schema.json",
+      "contracts/domain/request-proposals/evidence.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+    ],
+    "AC-PROP-03": [
+      "contracts/domain/request-proposals/decision.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+    ],
+    "AC-PROP-04": [
+      "contracts/domain/request-proposals/decision.schema.json",
+      "contracts/domain/request-proposals/list.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+    ],
+    "AC-PROP-05": [
+      "contracts/domain/request-proposals/append.schema.json",
+      "contracts/domain/request-proposals/evidence.schema.json",
+      "contracts/domain/request-proposals/list.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "contracts/domain/request-proposals/review.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+    ],
+    "AC-PROP-06": [
+      "contracts/domain/request-proposals/review.schema.json",
+      "contracts/domain/request-proposals/summary.schema.json"
+    ],
+    "AC-PROP-07": [
+      "contracts/domain/request-proposals/append.schema.json",
+      "contracts/domain/request-proposals/decision.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+    ],
     "AC-QUAL-01": [
       "contracts/compatibility/matrix-input.schema.json",
       "contracts/compatibility/matrix-result.schema.json"
@@ -1515,7 +1556,8 @@
       "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
-      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql"
+      "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
@@ -1572,6 +1614,16 @@
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
+    ],
+    "SPEC#request-maintenance-proposal-queue": [
+      "contracts/domain/request-proposals/append.schema.json",
+      "contracts/domain/request-proposals/decision.schema.json",
+      "contracts/domain/request-proposals/evidence.schema.json",
+      "contracts/domain/request-proposals/list.schema.json",
+      "contracts/domain/request-proposals/proposal.schema.json",
+      "contracts/domain/request-proposals/review.schema.json",
+      "contracts/domain/request-proposals/summary.schema.json",
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",

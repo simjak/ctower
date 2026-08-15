@@ -83,6 +83,13 @@ their typed Request executions, then Ticket proof links. Generated API/client an
 partial and unknown sources explicitly. Delivery reuses Mission Control's existing notification rail; this
 candidate adds no store, scheduler, identity, adapter, Slack/Hermes path, or director-cron change.
 
+The Request-maintenance proposal queue is a tested CT-I1-024 candidate. Immutable proposal/evidence/
+decision facts remain separate from Request authority; only the existing operator can terminally confirm or
+reject. Confirmation records a separately identified ordinary Request command in the same transaction.
+The generated API/CLI expose accepted history and an active-Catalog-derived deterministic top-20 review;
+the digest contains counts and a pointer only. No Routine, product UI, principal, ingress, egress, adapter,
+or Mission Control writer is added.
+
 The contextual Console viewer server foundation is a tested CT-I1-021 candidate. It joins one operator
 allowance to current Record facts and live registered tmux identity, issues one short-lived exact human
 `ConsoleViewGrant`, and streams cursor-addressed encrypted output through a bounded SSE reader. The browser

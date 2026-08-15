@@ -99,6 +99,13 @@
     "https://ctower.dev/contracts/domain/migration/request-source-fence.schema.json": "contracts/domain/migration/request-source-fence.schema.json",
     "https://ctower.dev/contracts/domain/outbox-delivery.schema.json": "contracts/domain/outbox-delivery.schema.json",
     "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json": "contracts/domain/project-delivery/project-delivery.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/append.schema.json": "contracts/domain/request-proposals/append.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/decision.schema.json": "contracts/domain/request-proposals/decision.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json": "contracts/domain/request-proposals/evidence.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/list.schema.json": "contracts/domain/request-proposals/list.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/proposal.schema.json": "contracts/domain/request-proposals/proposal.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/review.schema.json": "contracts/domain/request-proposals/review.schema.json",
+    "https://ctower.dev/contracts/domain/request-proposals/summary.schema.json": "contracts/domain/request-proposals/summary.schema.json",
     "https://ctower.dev/contracts/domain/task-management/board-view.schema.json": "contracts/domain/task-management/board-view.schema.json",
     "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json": "contracts/domain/task-management/scheduling-policy.schema.json",
     "https://ctower.dev/contracts/domain/task-management/task-command.schema.json": "contracts/domain/task-management/task-command.schema.json",
@@ -4580,6 +4587,73 @@
           ],
           "type": "object"
         },
+        "requestProposalChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "enum": [
+                "appended",
+                "confirmed",
+                "rejected"
+              ]
+            },
+            "proposal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "proposal_kind": {
+              "enum": [
+                "duplicate",
+                "completed-but-open",
+                "supersession",
+                "kill",
+                "keep"
+              ]
+            },
+            "proposal_state": {
+              "enum": [
+                "OPEN",
+                "CONFIRMED",
+                "REJECTED"
+              ]
+            },
+            "target_command_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "target_outcome": {
+              "enum": [
+                "accepted",
+                "refused",
+                null
+              ]
+            },
+            "target_problem_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "target_request_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation",
+            "proposal_id",
+            "proposal_kind",
+            "proposal_state",
+            "target_command_id",
+            "target_outcome",
+            "target_problem_code",
+            "target_request_id"
+          ],
+          "type": "object"
+        },
         "routineOccurrenceRecorded": {
           "additionalProperties": false,
           "properties": {
@@ -5745,6 +5819,22 @@
             {
               "properties": {
                 "kind": {
+                  "const": "request.proposal_changed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/requestProposalChanged"
+                },
+                "stream_id": {
+                  "pattern": "^request-proposal:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
                   "const": "ruling.recorded"
                 },
                 "origin": {
@@ -5824,6 +5914,7 @@
             "attention.finding_disposition_recorded",
             "knowledge.document_registered",
             "request.changed",
+            "request.proposal_changed",
             "ruling.recorded"
           ],
           "type": "string"
@@ -5857,7 +5948,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -12374,6 +12465,906 @@
       "title": "compact read-only Project Delivery projection",
       "type": "object"
     },
+    "contracts/domain/request-proposals/append.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/append.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "related_expected_version": false,
+              "related_request_id": false,
+              "related_text": false
+            }
+          },
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "duplicate",
+                  "supersession"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "related_request_id",
+              "related_expected_version",
+              "related_text"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "basis": {
+                "const": "similarity"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "kind": {
+                "const": "duplicate"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "ambiguity_reason": {
+          "enum": [
+            "evidence-conflicting-or-incomplete",
+            "duplicate-uncertain",
+            "supersession-unclear",
+            "target-version-stale",
+            "completion-unproven"
+          ],
+          "type": "string"
+        },
+        "basis": {
+          "enum": [
+            "recorded-evidence",
+            "similarity"
+          ],
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "duplicate",
+            "completed-but-open",
+            "supersession",
+            "kill",
+            "keep"
+          ],
+          "type": "string"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "type": "string"
+        },
+        "related_expected_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "related_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "related_text": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_record_position": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "target_expected_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "target_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "target_text": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "basis",
+        "evidence",
+        "kind",
+        "project_key",
+        "source_record_position",
+        "target_expected_version",
+        "target_request_id",
+        "target_text"
+      ],
+      "title": "AppendRequestMaintenanceProposal",
+      "type": "object"
+    },
+    "contracts/domain/request-proposals/decision.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/decision.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "reason": {
+                "const": null
+              },
+              "target_command_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "target_outcome": {
+                "enum": [
+                  "accepted",
+                  "refused"
+                ],
+                "type": "string"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "rejected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target_command_id": {
+                "const": null
+              },
+              "target_outcome": {
+                "const": null
+              },
+              "target_problem_code": {
+                "const": null
+              },
+              "target_request_version": {
+                "const": null
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "target_outcome": {
+                "const": "accepted"
+              }
+            },
+            "required": [
+              "target_outcome"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_problem_code": {
+                "const": null
+              },
+              "target_request_version": {
+                "minimum": 2,
+                "type": "integer"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "target_outcome": {
+                "const": "refused"
+              }
+            },
+            "required": [
+              "target_outcome"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_problem_code": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_request_version": {
+                "const": null
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "accepted_position": {
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "command_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "decided_by": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "decision_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "durability_state": {
+          "enum": [
+            "durability_pending",
+            "accepted"
+          ],
+          "type": "string"
+        },
+        "event_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        },
+        "expected_proposal_version": {
+          "const": 1
+        },
+        "operation": {
+          "enum": [
+            "confirmed",
+            "rejected"
+          ],
+          "type": "string"
+        },
+        "proposal_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_command_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_outcome": {
+          "oneOf": [
+            {
+              "enum": [
+                "accepted",
+                "refused"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_problem_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_request_version": {
+          "minimum": 2,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "accepted_position",
+        "command_id",
+        "decided_at",
+        "decided_by",
+        "decision_id",
+        "durability_state",
+        "event_ids",
+        "expected_proposal_version",
+        "operation",
+        "proposal_id",
+        "reason",
+        "target_command_id",
+        "target_outcome",
+        "target_problem_code",
+        "target_request_version"
+      ],
+      "title": "RequestMaintenanceProposalDecision",
+      "type": "object"
+    },
+    "contracts/domain/request-proposals/evidence.schema.json": {
+      "$defs": {
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "ticket_id"
+                ]
+              },
+              {
+                "required": [
+                  "proof_id"
+                ]
+              },
+              {
+                "required": [
+                  "evidence_id"
+                ]
+              },
+              {
+                "required": [
+                  "artifact_digest"
+                ]
+              }
+            ]
+          },
+          "properties": {
+            "kind": {
+              "const": "record-event"
+            }
+          },
+          "required": [
+            "event_id",
+            "event_kind",
+            "event_digest"
+          ]
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "event_id"
+                ]
+              },
+              {
+                "required": [
+                  "event_kind"
+                ]
+              },
+              {
+                "required": [
+                  "event_digest"
+                ]
+              }
+            ]
+          },
+          "properties": {
+            "kind": {
+              "const": "proof-evidence"
+            }
+          },
+          "required": [
+            "ticket_id",
+            "proof_id",
+            "evidence_id",
+            "artifact_digest"
+          ]
+        }
+      ],
+      "properties": {
+        "artifact_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "event_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_kind": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "record-event",
+            "proof-evidence"
+          ],
+          "type": "string"
+        },
+        "proof_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "ticket_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "RequestMaintenanceEvidencePointer",
+      "type": "object"
+    },
+    "contracts/domain/request-proposals/list.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/list.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "https://ctower.dev/contracts/domain/request-proposals/proposal.schema.json"
+          },
+          "type": "array"
+        },
+        "unanswered_projects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "watermark": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "observed_at",
+        "rows",
+        "unanswered_projects",
+        "watermark"
+      ],
+      "title": "RequestMaintenanceProposalList",
+      "type": "object"
+    },
+    "contracts/domain/request-proposals/proposal.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/proposal.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "related_expected_version": {
+                "const": null
+              },
+              "related_request_id": {
+                "const": null
+              },
+              "related_text": {
+                "const": null
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "duplicate",
+                  "supersession"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "related_expected_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "related_request_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "related_text": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "ambiguity_reason": {
+          "oneOf": [
+            {
+              "enum": [
+                "evidence-conflicting-or-incomplete",
+                "duplicate-uncertain",
+                "supersession-unclear",
+                "target-version-stale",
+                "completion-unproven"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "basis": {
+          "enum": [
+            "recorded-evidence",
+            "similarity"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "decision": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "https://ctower.dev/contracts/domain/request-proposals/decision.schema.json"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "duplicate",
+            "completed-but-open",
+            "supersession",
+            "kill",
+            "keep"
+          ],
+          "type": "string"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "type": "string"
+        },
+        "proposal_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "proposal_version": {
+          "const": 1
+        },
+        "proposer_principal_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "related_expected_version": {
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "related_request_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "related_text": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seat_credential_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_record_position": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "OPEN",
+            "CONFIRMED",
+            "REJECTED"
+          ],
+          "type": "string"
+        },
+        "target_expected_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "target_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "target_text": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ambiguity_reason",
+        "basis",
+        "created_at",
+        "evidence",
+        "kind",
+        "project_key",
+        "proposal_id",
+        "proposal_version",
+        "proposer_principal_id",
+        "related_expected_version",
+        "related_request_id",
+        "related_text",
+        "seat_credential_id",
+        "source_record_position",
+        "state",
+        "target_expected_version",
+        "target_request_id",
+        "target_text",
+        "decision"
+      ],
+      "title": "RequestMaintenanceProposal",
+      "type": "object"
+    },
+    "contracts/domain/request-proposals/review.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/review.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "pointer": {
+          "const": "/v1/request-maintenance/review",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "goal_relevance": {
+                "enum": [
+                  "relevant",
+                  "not-relevant",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "operator_decision_required": {
+                "type": "boolean"
+              },
+              "proposal_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "request_id": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "created_at",
+              "goal_relevance",
+              "operator_decision_required",
+              "proposal_id",
+              "request_id"
+            ],
+            "type": "object"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "unanswered_sources": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "watermark": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "observed_at",
+        "partial",
+        "pointer",
+        "rows",
+        "unanswered_sources",
+        "watermark"
+      ],
+      "title": "RequestMaintenanceReview",
+      "type": "object"
+    },
+    "contracts/domain/request-proposals/summary.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/request-proposals/summary.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "by_kind": {
+          "additionalProperties": false,
+          "properties": {
+            "completed_but_open": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "duplicate": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "keep": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "kill": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "supersession": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "completed_but_open",
+            "duplicate",
+            "keep",
+            "kill",
+            "supersession"
+          ],
+          "type": "object"
+        },
+        "by_state": {
+          "additionalProperties": false,
+          "properties": {
+            "CONFIRMED": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "OPEN": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "REJECTED": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "CONFIRMED",
+            "OPEN",
+            "REJECTED"
+          ],
+          "type": "object"
+        },
+        "pointer": {
+          "const": "/v1/request-maintenance/review",
+          "type": "string"
+        },
+        "source_state": {
+          "enum": [
+            "complete",
+            "partial",
+            "unavailable"
+          ],
+          "type": "string"
+        },
+        "unreached_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "watermark": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "by_kind",
+        "by_state",
+        "pointer",
+        "source_state",
+        "unreached_scopes",
+        "watermark"
+      ],
+      "title": "RequestMaintenanceProposalSummary",
+      "type": "object"
+    },
     "contracts/domain/task-management/board-view.schema.json": {
       "$defs": {
         "applied_label": {
@@ -17323,7 +18314,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:589add4626aa848abbb31c2140d4348b0ab9c110c2ab01f807a8e07f64fc00ca"
+      "sha256": "sha256:420fa5838ba55f9ce0696b5f85550bf9eda423bb4a420233336ad3f4c7dcdfa7"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
@@ -17479,6 +18470,41 @@
       "id": "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json",
       "path": "contracts/domain/project-delivery/project-delivery.schema.json",
       "sha256": "sha256:e96ca0974ead055648212fb98d3ea2f0b4451da4cb10c3f4efed72a1753f61d0"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/append.schema.json",
+      "path": "contracts/domain/request-proposals/append.schema.json",
+      "sha256": "sha256:d64cb7976e2b10c46344cc6f2f3208cbdb5f2c65497d95e23b13d572362f80d7"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/decision.schema.json",
+      "path": "contracts/domain/request-proposals/decision.schema.json",
+      "sha256": "sha256:df1ecce85640323f56a330b90730d407187caba581493959cbe1b233b954f018"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json",
+      "path": "contracts/domain/request-proposals/evidence.schema.json",
+      "sha256": "sha256:b3c1d4ef7540913e03d4591077c9730e5cd3db2661930828d082cf01674fa092"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/list.schema.json",
+      "path": "contracts/domain/request-proposals/list.schema.json",
+      "sha256": "sha256:3c7bf451cc0e3e3851126640eb1e46892dd8c564efb9a6b2b91d394e70b31126"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/proposal.schema.json",
+      "path": "contracts/domain/request-proposals/proposal.schema.json",
+      "sha256": "sha256:a2837d649a31e1727dc252c1b1d7ffc625f3ab1e2d6793a589c63c8b409225db"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/review.schema.json",
+      "path": "contracts/domain/request-proposals/review.schema.json",
+      "sha256": "sha256:5c94e527cc8d41077bec7b7cbd0fc3ac65e52d2caa17b8690c333039a555f741"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/request-proposals/summary.schema.json",
+      "path": "contracts/domain/request-proposals/summary.schema.json",
+      "sha256": "sha256:6a6979cd67d77a887b4d641b282093d1df278191deb0fdcd7face87df880aec3"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",

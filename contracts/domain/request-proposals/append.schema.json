@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/append.schema.json",
+  "title": "AppendRequestMaintenanceProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "basis", "evidence", "kind", "project_key", "source_record_position",
+    "target_expected_version", "target_request_id", "target_text"
+  ],
+  "properties": {
+    "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+    "kind": {
+      "type": "string",
+      "enum": ["duplicate", "completed-but-open", "supersession", "kill", "keep"]
+    },
+    "basis": {"type": "string", "enum": ["recorded-evidence", "similarity"]},
+    "target_request_id": {"type": "string", "format": "uuid"},
+    "target_expected_version": {"type": "integer", "minimum": 1},
+    "target_text": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "related_request_id": {"type": "string", "format": "uuid"},
+    "related_expected_version": {"type": "integer", "minimum": 1},
+    "related_text": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "source_record_position": {"type": "integer", "minimum": 0},
+    "ambiguity_reason": {
+      "type": "string",
+      "enum": [
+        "evidence-conflicting-or-incomplete", "duplicate-uncertain",
+        "supersession-unclear", "target-version-stale", "completion-unproven"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"enum": ["duplicate", "supersession"]}}},
+      "then": {"required": ["related_request_id", "related_expected_version", "related_text"]},
+      "else": {
+        "properties": {
+          "related_request_id": false,
+          "related_expected_version": false,
+          "related_text": false
+        }
+      }
+    },
+    {
+      "if": {"properties": {"basis": {"const": "similarity"}}},
+      "then": {
+        "properties": {"kind": {"const": "duplicate"}}
+      }
+    }
+  ]
+}

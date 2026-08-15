@@ -117,6 +117,22 @@ The server derives Actor, project authority, submitter, initial owner, source, n
 may remain without a Ticket; relations are explicit and never change Ticket custody or lifecycle. See
 [Requests](../concepts/requests.md).
 
+## Request-maintenance proposals
+
+| Command | Positional | Flags |
+|---|---|---|
+| `request proposal append` | — | required: `--input <strict-json-file>`; optional: `--command-id` |
+| `request proposal list` | — | optional: `--proposal-id`, `--project-key`, `--kind`, `--state` |
+| `request proposal review` | — | — |
+| `request proposal confirm` | `<proposal_id>` | required: `--expected-version 1`; optional: `--command-id` |
+| `request proposal reject` | `<proposal_id>` | required: `--expected-version 1`; optional: `--command-id`, `--reason` |
+
+Append validates one bounded strict JSON document through the generated request model; it has no free-form
+evidence language. Append, confirm, and reject use the encrypted spool and preserve the exact command ID.
+List and operator-only review are online reads. Confirmation creates a separately identified ordinary
+Request command and reports its accepted or refused outcome. See
+[Request-maintenance proposals](../concepts/request-maintenance-proposals.md).
+
 ## Rulings
 
 | Command | Positional | Flags |

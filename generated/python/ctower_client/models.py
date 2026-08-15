@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3a985fad6955dbecd5cc3edb85dcbf361cff67bba3ae4859b08c282b57b3ce44
+Authored contract digest: sha256:2ccf3cff64e2fa9d8464e4417f0e916508b0bf7c63abdb55c09c68b718c02d0b
 """
 
 from __future__ import annotations
@@ -225,8 +225,26 @@ __all__ = [
     "RequestChangeResult",
     "RequestClosureEvaluationRequest",
     "RequestList",
+    "RequestMaintenanceProposalAmbiguity",
+    "RequestMaintenanceProposalAppendRequest",
+    "RequestMaintenanceProposalAppendResult",
+    "RequestMaintenanceProposalConfirmRequest",
+    "RequestMaintenanceProposalDecisionResult",
+    "RequestMaintenanceProposalKind",
+    "RequestMaintenanceProposalKindCounts",
+    "RequestMaintenanceProposalList",
+    "RequestMaintenanceProposalRejectRequest",
+    "RequestMaintenanceProposalRow",
+    "RequestMaintenanceProposalState",
+    "RequestMaintenanceProposalStateCounts",
+    "RequestMaintenanceProposalSummary",
+    "RequestMaintenanceReview",
+    "RequestMaintenanceReviewRow",
     "RequestOwnerRequest",
     "RequestPriorityRequest",
+    "RequestProposalEvidence",
+    "RequestProposalProofEvidence",
+    "RequestProposalRecordEventEvidence",
     "RequestRow",
     "RequestTicketRelationRequest",
     "RequestTriageRequest",
@@ -1470,10 +1488,78 @@ class RequestClosureEvaluationRequest(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
+class RequestMaintenanceProposalAmbiguity(StrEnum):
+    EVIDENCE_CONFLICTING_OR_INCOMPLETE = "evidence-conflicting-or-incomplete"
+    DUPLICATE_UNCERTAIN = "duplicate-uncertain"
+    SUPERSESSION_UNCLEAR = "supersession-unclear"
+    TARGET_VERSION_STALE = "target-version-stale"
+    COMPLETION_UNPROVEN = "completion-unproven"
+
+
+class RequestMaintenanceProposalConfirmRequest(_BoundaryModel):
+    expected_proposal_version: Literal[1]
+
+
+class RequestMaintenanceProposalKind(StrEnum):
+    DUPLICATE = "duplicate"
+    COMPLETED_BUT_OPEN = "completed-but-open"
+    SUPERSESSION = "supersession"
+    KILL = "kill"
+    KEEP = "keep"
+
+
+class RequestMaintenanceProposalKindCounts(_BoundaryModel):
+    completed_but_open: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    duplicate: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    keep: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    kill: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    supersession: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+
+
+class RequestMaintenanceProposalRejectRequest(_BoundaryModel):
+    expected_proposal_version: Literal[1]
+    reason: Annotated[str, Field(min_length=1, max_length=500)] | None = None
+
+
+class RequestMaintenanceProposalState(StrEnum):
+    OPEN = "OPEN"
+    CONFIRMED = "CONFIRMED"
+    REJECTED = "REJECTED"
+
+
+class RequestMaintenanceProposalStateCounts(_BoundaryModel):
+    CONFIRMED: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    OPEN: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    REJECTED: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+
+
+class RequestMaintenanceReviewRow(_BoundaryModel):
+    created_at: _Rfc3339DateTime
+    goal_relevance: Literal["relevant", "not-relevant", "unknown"]
+    operator_decision_required: bool
+    proposal_id: UUID
+    request_id: UUID
+
+
 class RequestOwnerRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     owner_id: UUID
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class RequestProposalProofEvidence(_BoundaryModel):
+    artifact_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    evidence_id: UUID
+    kind: Literal["proof-evidence"]
+    proof_id: UUID
+    ticket_id: UUID
+
+
+class RequestProposalRecordEventEvidence(_BoundaryModel):
+    event_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    event_kind: Annotated[str, Field(min_length=1, max_length=128)]
+    kind: Literal["record-event"]
 
 
 class RequestTicketRelationRequest(_BoundaryModel):
@@ -2411,6 +2497,25 @@ class Problem(_BoundaryModel):
         "migration-source-selection-drift",
         "migration-source-tainted",
         "poison-not-found",
+        "proposal-already-decided",
+        "proposal-append-forbidden",
+        "proposal-credential-invalid",
+        "proposal-decision-forbidden",
+        "proposal-evidence-invalid",
+        "proposal-evidence-unavailable",
+        "proposal-invalid",
+        "proposal-kind-invalid",
+        "proposal-not-found",
+        "proposal-project-invalid",
+        "proposal-project-unavailable",
+        "proposal-quote-invalid",
+        "proposal-quote-mismatch",
+        "proposal-reason-invalid",
+        "proposal-related-not-found",
+        "proposal-state-invalid",
+        "proposal-target-not-found",
+        "proposal-version-conflict",
+        "proposal-watermark-invalid",
         "prohibited-data-class",
         "project-delivery-unavailable",
         "project-grant-required",
@@ -2583,10 +2688,65 @@ class RequestChangeResult(_BoundaryModel):
     version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
+class RequestMaintenanceProposalAppendResult(_BoundaryModel):
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    ambiguity_reason: RequestMaintenanceProposalAmbiguity | None
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
+    kind: RequestMaintenanceProposalKind
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    proposal_id: UUID
+    proposal_version: Literal[1]
+    proposer_principal_id: UUID
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    state: Literal["OPEN"]
+    target_request_id: UUID
+
+
+class RequestMaintenanceProposalDecisionResult(_BoundaryModel):
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    command_id: UUID
+    decided_at: _Rfc3339DateTime
+    decided_by: UUID
+    decision_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
+    expected_proposal_version: Literal[1]
+    operation: Literal["confirmed", "rejected"]
+    proposal_id: UUID
+    reason: Annotated[str, Field(min_length=1, max_length=500)] | None
+    target_command_id: UUID | None
+    target_outcome: Literal["accepted", "refused"] | None
+    target_problem_code: str | None
+    target_request_version: Annotated[int, Field(ge=2, le=9007199254740991)] | None
+
+
+class RequestMaintenanceProposalSummary(_BoundaryModel):
+    by_kind: RequestMaintenanceProposalKindCounts
+    by_state: RequestMaintenanceProposalStateCounts
+    pointer: Literal["/v1/request-maintenance/review"]
+    source_state: Literal["complete", "partial", "unavailable"]
+    unreached_scopes: tuple[str, ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+
+
+class RequestMaintenanceReview(_BoundaryModel):
+    observed_at: _Rfc3339DateTime
+    partial: bool
+    pointer: Literal["/v1/request-maintenance/review"]
+    rows: Annotated[tuple[RequestMaintenanceReviewRow, ...], Field(max_length=20)]
+    unanswered_sources: tuple[str, ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 class RequestPriorityRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+type RequestProposalEvidence = RequestProposalRecordEventEvidence | RequestProposalProofEvidence
 
 
 class ReviewDispatchEffect(_BoundaryModel):
@@ -3033,6 +3193,43 @@ class ProjectSessionPage(_BoundaryModel):
     sessions: tuple[TicketSession, ...]
 
 
+class RequestMaintenanceProposalAppendRequest(_BoundaryModel):
+    ambiguity_reason: RequestMaintenanceProposalAmbiguity | None = None
+    basis: Literal["recorded-evidence", "similarity"]
+    evidence: Annotated[tuple[RequestProposalEvidence, ...], Field(min_length=1, max_length=100)]
+    kind: RequestMaintenanceProposalKind
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    related_expected_version: Annotated[int, Field(ge=1, le=9007199254740991)] | None = None
+    related_request_id: UUID | None = None
+    related_text: Annotated[str, Field(min_length=1, max_length=65536)] | None = None
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    target_expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    target_request_id: UUID
+    target_text: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
+class RequestMaintenanceProposalRow(_BoundaryModel):
+    ambiguity_reason: RequestMaintenanceProposalAmbiguity | None
+    basis: Literal["recorded-evidence", "similarity"]
+    created_at: _Rfc3339DateTime
+    decision: RequestMaintenanceProposalDecisionResult | None
+    evidence: Annotated[tuple[RequestProposalEvidence, ...], Field(min_length=1)]
+    kind: RequestMaintenanceProposalKind
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    proposal_id: UUID
+    proposal_version: Literal[1]
+    proposer_principal_id: UUID
+    related_expected_version: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    related_request_id: UUID | None
+    related_text: str | None
+    seat_credential_id: UUID | None
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    state: RequestMaintenanceProposalState
+    target_expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    target_request_id: UUID
+    target_text: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
 class RequestRow(_BoundaryModel):
     age_seconds: Annotated[int, Field(ge=0, le=9007199254740991)]
     blocker: str | None
@@ -3205,6 +3402,13 @@ class RequestList(_BoundaryModel):
     watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
+class RequestMaintenanceProposalList(_BoundaryModel):
+    observed_at: _Rfc3339DateTime
+    rows: tuple[RequestMaintenanceProposalRow, ...]
+    unanswered_projects: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")], ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 class TimelineResponse(_BoundaryModel):
     durability_state: DurabilityState
     events: tuple[TimelineEvent, ...]
@@ -3268,6 +3472,7 @@ class MorningDigest(_BoundaryModel):
     observed_at: _Rfc3339DateTime
     open_decisions: MorningDigestDecisionSection
     proof: MorningDigestProofSection
+    request_maintenance: RequestMaintenanceProposalSummary
     request_watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
     ruling_watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
     state: DigestReadingState
