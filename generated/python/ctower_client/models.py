@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:b15cd812b396627a264217134e14b9138e5a476ff2652f93594e7c958de52818
+Authored contract digest: sha256:c5017acc0c01b4e53c25d466d9877d9ce39feb51f017f901bfe78400bf37c782
 """
 
 from __future__ import annotations
@@ -1689,7 +1689,7 @@ class SourceReference(_BoundaryModel):
 
 class SpawnRecordCreateRequest(_BoundaryModel):
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    seat_key: Annotated[str, Field(min_length=1, max_length=255)]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,95}$")]
     crew_name: Annotated[str, Field(min_length=1, max_length=255)]
     task_file_ref: Annotated[str, Field(min_length=1, max_length=1024)]
     worktree_path: Annotated[str, Field(min_length=1, max_length=1024)]
@@ -2908,7 +2908,7 @@ class SessionTransitionedPayload(_BoundaryModel):
 class SpawnRecord(_BoundaryModel):
     spawn_id: UUID
     project_key: str
-    seat_key: str
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,95}$")]
     crew_name: str
     task_file_ref: str
     worktree_path: str
@@ -2926,7 +2926,7 @@ class SpawnRecord(_BoundaryModel):
 class SpawnRecordResult(_BoundaryModel):
     spawn_id: UUID
     project_key: str
-    seat_key: str
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,95}$")]
     crew_name: str
     task_file_ref: str
     worktree_path: str

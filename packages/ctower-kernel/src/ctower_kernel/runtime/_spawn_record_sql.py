@@ -70,6 +70,7 @@ WHERE spawn.spawn_id = %(spawn_id)s
             ELSE NULL
         END
       )
+ON CONFLICT (spawn_id, tenant_id, transition_number) DO NOTHING
 RETURNING transition_number
 """
 

@@ -2,7 +2,7 @@
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
     "through": "0075_spawn_records.sql",
-    "schema_sha256": "sha256:12b66b0116e13488cc0a9b7ecc9d829f08aedb1808471886bbdffe8b57b0dcd7",
+    "schema_sha256": "sha256:7cf6cf01904116a2331c11130c778be2232abcabfe38c106b2eae69d3f89bd48",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:ad504996e93fc010ef0a8fb5059eb69fa88462faaa19e9dd9d860930bd417e81"
   },
@@ -705,7 +705,7 @@
     },
     {
       "path": "0075_spawn_records.sql",
-      "sha256": "sha256:63d53c613516baf72009dc2dc5c16bb06394513c5b223b8411dd2949933ea2f4",
+      "sha256": "sha256:496747d2206a02b744140248c69ea1284788f1516baa703c8ca4f66a931d29bd",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_spawn_records.py::test_migration_forward_apply_creates_requested_spawn",
