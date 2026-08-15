@@ -175,7 +175,7 @@ class LabelledCountTests(unittest.TestCase):
     def test_the_conversation_list_marks_unread_without_a_word_for_it(self) -> None:
         """The de-texting amendment: presence is the mark, not a label beside it."""
         self.assertIn(
-            '.cw-row.unread .bar',
+            ".cw-row.unread .bar",
             (_SURFACE / "app/conductor.css").read_text(encoding="utf-8"),
             "an unread conversation carries no element of its own, so the list can only "
             "say so in words",
