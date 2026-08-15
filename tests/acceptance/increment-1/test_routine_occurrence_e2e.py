@@ -64,9 +64,25 @@ def test_running_worker_records_one_due_routine_across_duplicate_scan_and_restar
     )
 
 
+def test_ct_i1_006_worker_world_does_not_auto_register_migration_packs(
+    tenant: TenantFixture,
+) -> None:
+    runtime = Routine(PostgresRuntime(tenant.database.runtime_dsn))
+    worker = _worker(tenant, runtime)
+
+    worker.tick()
+
+    assert _registered_routine_refs(tenant) == []
+
+
 def _worker(tenant: TenantFixture, runtime: Routine) -> ControlWorker:
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
-    return build_worker(runtime, projections, pack_root=_ROOT / "packs")
+    return build_worker(
+        runtime,
+        projections,
+        pack_root=_ROOT / "packs",
+        routine_revisions=(),
+    )
 
 
 def _health_revision() -> RoutineRevision:
@@ -118,3 +134,19 @@ def _durable_rows(
             (tenant.tenant_id, bytes.fromhex(revision.revision_digest.removeprefix("sha256:"))),
         ).fetchall()
     return [tuple(row) for row in rows]
+
+
+def _registered_routine_refs(tenant: TenantFixture) -> list[str]:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        rows = connection.execute(
+            """
+            SELECT revision.routine_ref
+            FROM routine_triggers AS trigger
+            JOIN routine_revisions AS revision
+              ON revision.revision_digest = trigger.revision_digest
+            WHERE trigger.tenant_id = %s
+            ORDER BY revision.routine_ref
+            """,
+            (tenant.tenant_id,),
+        ).fetchall()
+    return [str(row[0]) for row in rows]
