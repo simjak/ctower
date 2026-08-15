@@ -99,7 +99,8 @@ from ctower_kernel.record import (
     TicketTimeline,
 )
 from ctower_kernel.record.credentials import CredentialScope
-from ctower_kernel.runtime import PostgresSpawnRecords, RoutineRevision
+from ctower_kernel.runtime import RoutineRevision
+from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
 from ctower_kernel.work.request_cutover import RequestCutover
@@ -212,9 +213,8 @@ def create_app(
         migration_importer_credential_resolver=migration_importer_credential_resolver,
         fence_observer_resolver=fence_observer_resolver,
     )
-    route_dependencies = (app, access, record, recorder, oidc)
     _install_application_routes(
-        *route_dependencies,
+        *(app, access, record, recorder, oidc),
         proof=proof,
         workflow=workflow,
         work=work,
@@ -237,9 +237,21 @@ def create_app(
     _install_runtime_boundaries(
         app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
     )
-    if spawn_records is not None:
-        install_spawn_record_routes(app, access, spawn_records, recorder)
+    _install_spawn_boundary(app, access, spawn_records, recorder)
     return app
+
+
+def _install_spawn_boundary(
+    app: FastAPI,
+    access: Access,
+    spawn_records: PostgresSpawnRecords | None,
+    recorder: TelemetryRecorder,
+) -> None:
+    return (
+        install_spawn_record_routes(app, access, spawn_records, recorder)
+        if spawn_records is not None
+        else None
+    )
 
 
 def _install_application_routes(

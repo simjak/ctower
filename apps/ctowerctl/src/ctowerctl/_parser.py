@@ -64,16 +64,13 @@ _PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse only explicit authored commands; unknown operations are usage errors."""
 
-    parsed = _parser().parse_args(argv)
-    _validate_ceremony_principal(parsed)
+    _validate_ceremony_principal(parsed := _parser().parse_args(argv))
     if getattr(parsed, "command_id", None) is None and hasattr(parsed, "command_id"):
         parsed.command_id = uuid4()
     return parsed
 
 
 def authored_command_names() -> frozenset[str]:
-    """Expose the closed command inventory for generated-contract parity tests."""
-
     return AUTHORED_COMMAND_NAMES
 
 

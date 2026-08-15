@@ -47,8 +47,9 @@ from ctower_kernel.proof import Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record import DurabilityFinalizationBatch
 from ctower_kernel.record.postgres import PostgresDurabilityFinalizer, PostgresRecord
-from ctower_kernel.runtime import FixedOperations, PostgresSpawnRecords, Routine, RoutineRevision
+from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime
+from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.work.request_cutover import PostgresRequestCutover, RequestCutover

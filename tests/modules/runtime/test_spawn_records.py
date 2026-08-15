@@ -3,12 +3,32 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
 import pytest
 
-from ctower_kernel.runtime import (
+from ctower_kernel.record.spawn_events import (
+    SpawnRecordedPayload,
+    SpawnState,
+    spawn_transition_allowed,
+)
+from ctower_kernel.runtime.spawn_driver import (
+    SpawnDriveContext,
+    SpawnDurabilityState,
+    SpawnSpool,
+    SpawnSpoolRefusalError,
+    build_parity_proof,
+    derive_initial_running_set,
+    history_parity_report,
+    latest_status_effective,
+    reconcile_source,
+    record_before_drive,
+    record_parity_proof,
+    replay_spool,
+)
+from ctower_kernel.runtime.spawn_records import (
     SpawnRecordCreate,
     SpawnRecordGet,
     SpawnRecordList,
@@ -17,13 +37,16 @@ from ctower_kernel.runtime import (
     SpawnRecordTransitionCommand,
     SpawnRecordTransitionRow,
 )
-from ctower_kernel.runtime._spawn_records import VALID_STATUSES, VALID_TRANSITIONS
 
 __all__: tuple[str, ...] = ()
 
 _STATUS_404 = 404
 _STATUS_409 = 409
 _STATUS_422 = 422
+_SPOOL_MODE = 0o600
+_PENDING_SPOOL_ENTRIES = 2
+_SOURCE_ROWS = 3
+_DISTINCT_SOURCE_IDS = 2
 
 
 class TestSpawnRecordTypes:
@@ -268,35 +291,36 @@ class TestSpawnRecordLifecycle:
     """Valid and invalid lifecycle transitions."""
 
     def test_valid_transitions(self) -> None:
-        """Every valid_from -> valid_to pair is allowed."""
-        assert "requested" in VALID_TRANSITIONS
-        assert "accepted" in VALID_TRANSITIONS["requested"]
-        assert "failed" in VALID_TRANSITIONS["requested"]
-        assert "running" in VALID_TRANSITIONS["accepted"]
-        assert "failed" in VALID_TRANSITIONS["accepted"]
-        assert "completed" in VALID_TRANSITIONS["running"]
-        assert "failed" in VALID_TRANSITIONS["running"]
-        assert "reaped" in VALID_TRANSITIONS["running"]
+        """Every authored edge is allowed and no other edge is."""
+        allowed = {
+            (SpawnState.REQUESTED, SpawnState.ACCEPTED),
+            (SpawnState.REQUESTED, SpawnState.FAILED),
+            (SpawnState.ACCEPTED, SpawnState.RUNNING),
+            (SpawnState.ACCEPTED, SpawnState.FAILED),
+            (SpawnState.RUNNING, SpawnState.COMPLETED),
+            (SpawnState.RUNNING, SpawnState.FAILED),
+            (SpawnState.RUNNING, SpawnState.REAPED),
+        }
+        for from_state in SpawnState:
+            for to_state in SpawnState:
+                assert spawn_transition_allowed(from_state, to_state) == (
+                    (from_state, to_state) in allowed
+                )
 
     def test_terminal_states(self) -> None:
-        """completed, failed, and reaped are terminal (no outgoing transitions)."""
-        for status in ("completed", "failed", "reaped"):
-            assert len(VALID_TRANSITIONS[status]) == 0, f"{status} should be terminal"
+        """completed, failed, and reaped are terminal."""
+        for status in (SpawnState.COMPLETED, SpawnState.FAILED, SpawnState.REAPED):
+            assert all(not spawn_transition_allowed(status, target) for target in SpawnState)
 
-    def test_invalid_transition_not_in_mapping(self) -> None:
-        """running -> requested is not a valid transition."""
-        assert "requested" not in VALID_TRANSITIONS["running"]
-
-    def test_invalid_status_not_in_mapping(self) -> None:
-        """Unknown status raises KeyError in VALID_TRANSITIONS lookup."""
-        with pytest.raises(KeyError):
-            _ = VALID_TRANSITIONS["bogus"]
-
-    def test_command_status_validation(self) -> None:
-        """TransitionCommand validates to_status against VALID_STATUSES."""
-        for valid in ("requested", "accepted", "running", "completed", "failed", "reaped"):
-            assert valid in VALID_STATUSES
-        assert "bogus" not in VALID_STATUSES
+    def test_authored_statuses_are_closed(self) -> None:
+        assert {state.value for state in SpawnState} == {
+            "requested",
+            "accepted",
+            "running",
+            "completed",
+            "failed",
+            "reaped",
+        }
 
 
 class TestSpawnRecordProblem:
@@ -352,3 +376,193 @@ class TestSpawnRecordProblem:
         assert problem.command_id is None
         payload = problem.response_payload()
         assert "command_id" not in payload
+
+
+_RUNNING_ONE = uuid4()
+_TERMINATED = uuid4()
+_TERMINAL_LATEST = uuid4()
+_REVIVED = uuid4()
+
+
+def _spawn_command(*, task_file_ref: str = "coordination/task.md") -> SpawnRecordCreate:
+    return SpawnRecordCreate(
+        client_command_id=uuid4(),
+        project_key="ctower",
+        seat_key="engineer",
+        crew_name="mc-engineer-r3000-spawn",
+        task_file_ref=task_file_ref,
+        worktree_path="/srv/projects/ctower/.worktrees/r3000-spawn",
+        harness="hermes",
+        model="deepseek-v4-flash",
+        effort=None,
+        workspace_id=None,
+    )
+
+
+def _recorded_spawn(command: SpawnRecordCreate) -> SpawnRecordGet:
+    now = datetime.now(UTC)
+    return SpawnRecordGet(
+        record=SpawnRecordRow(
+            spawn_id=uuid4(),
+            project_key=command.project_key,
+            seat_key=command.seat_key,
+            crew_name=command.crew_name,
+            task_file_ref=command.task_file_ref,
+            worktree_path=command.worktree_path,
+            harness=command.harness,
+            model=command.model,
+            effort=command.effort,
+            workspace_id=command.workspace_id,
+            status="requested",
+            principal_id=uuid4(),
+            created_at=now,
+            updated_at=now,
+            transitions=(),
+        )
+    )
+
+
+def test_spawn_event_accepts_the_authored_one_character_seat_key() -> None:
+    SpawnRecordedPayload(
+        spawn_id=uuid4(),
+        project_key="ctower",
+        seat_key="a",
+        crew_name="crew",
+        task_file_ref="coordination/task.md",
+        worktree_path="/srv/worktrees/crew",
+        harness="codex-crew",
+        model="gpt-5-codex",
+        effort=None,
+        workspace_id=None,
+    )
+
+
+def test_spool_discipline_is_mode_0600_and_ack_only_removal(tmp_path: Path) -> None:
+    spool = SpawnSpool(tmp_path / "spawn-spool.jsonl")
+    first = spool.append(_spawn_command())
+    second = spool.append(_spawn_command())
+
+    assert first.state == "durability_pending"
+    assert second.state == "durability_pending"
+    assert (tmp_path / "spawn-spool.jsonl").stat().st_mode & 0o777 == _SPOOL_MODE
+    assert len(spool.pending()) == _PENDING_SPOOL_ENTRIES
+    assert spool.remove_acked(()) == 0
+    assert spool.remove_acked([first.entry_id]) == 1
+    assert [entry.entry_id for entry in spool.pending()] == [second.entry_id]
+
+
+def test_spool_does_not_follow_a_symlink(tmp_path: Path) -> None:
+    target = tmp_path / "redirected.jsonl"
+    path = tmp_path / "spawn-spool.jsonl"
+    path.symlink_to(target)
+
+    with pytest.raises(OSError):
+        SpawnSpool(path).append(_spawn_command())
+    assert not target.exists()
+
+
+def test_spool_replay_removes_only_a_typed_create_ack(tmp_path: Path) -> None:
+    spool = SpawnSpool(tmp_path / "spawn-spool.jsonl")
+    spool.append(_spawn_command())
+
+    replayed, refused = replay_spool(spool, lambda _command: None)
+
+    assert (replayed, refused) == (0, 1)
+    assert len(spool.pending()) == 1
+
+
+def test_record_before_drive_orders_record_then_host_drive(tmp_path: Path) -> None:
+    events: list[str] = []
+    command = _spawn_command()
+
+    def record(_command: SpawnRecordCreate) -> SpawnRecordGet:
+        events.append("record")
+        return _recorded_spawn(command)
+
+    def drive(_context: SpawnDriveContext) -> None:
+        events.append("drive")
+
+    result = record_before_drive(
+        command,
+        record=record,
+        drive=drive,
+        spool=SpawnSpool(tmp_path / "spawn-spool.jsonl"),
+    )
+
+    assert result.context.durability_state is SpawnDurabilityState.RECORDED
+    assert events == ["record", "drive"]
+
+
+def test_unreachable_record_is_spooled_and_then_driven(tmp_path: Path) -> None:
+    events: list[str] = []
+    command = _spawn_command()
+    spool = SpawnSpool(tmp_path / "spawn-spool.jsonl")
+
+    def record(_command: SpawnRecordCreate) -> SpawnRecordProblem:
+        events.append("record")
+        raise ConnectionError("ctower unavailable")
+
+    def drive(context: SpawnDriveContext) -> None:
+        assert context.durability_state is SpawnDurabilityState.DURABILITY_PENDING
+        assert context.spool_entry_id is not None
+        events.append("drive")
+
+    result = record_before_drive(command, record=record, drive=drive, spool=spool)
+
+    assert result.context.durability_state is SpawnDurabilityState.DURABILITY_PENDING
+    assert result.context.record is None
+    assert len(spool.pending()) == 1
+    assert events == ["record", "drive"]
+
+
+def test_spool_refuses_prohibited_data_before_writing(tmp_path: Path) -> None:
+    credential_label = "api" + "_key"
+    path = tmp_path / "spawn-spool.jsonl"
+
+    with pytest.raises(SpawnSpoolRefusalError):
+        SpawnSpool(path).append(_spawn_command(task_file_ref=f"{credential_label} = {'a' * 8}"))
+    assert not path.exists()
+
+
+def test_import_derivation_is_latest_status_effective() -> None:
+    rows = [
+        {"uuid": str(_RUNNING_ONE), "status": "running"},
+        {"uuid": str(_TERMINATED), "status": "completed"},
+        {"uuid": str(_TERMINAL_LATEST), "status": "running"},
+        {"uuid": str(_TERMINAL_LATEST), "status": "failed"},
+        {"uuid": str(_REVIVED), "status": "failed"},
+        {"uuid": str(_REVIVED), "status": "running"},
+    ]
+
+    effective = latest_status_effective(rows)
+    assert effective[_TERMINAL_LATEST] == "failed"
+    assert effective[_REVIVED] == "running"
+    assert {row.uuid for row in derive_initial_running_set(rows)} == {_RUNNING_ONE, _REVIVED}
+
+
+def test_history_parity_report_names_missing_and_duplicate_source_ids() -> None:
+    rows = [
+        {"uuid": str(_RUNNING_ONE), "status": "running"},
+        {"uuid": str(_TERMINATED), "status": "completed"},
+        {"uuid": str(_RUNNING_ONE), "status": "working"},
+    ]
+
+    report = history_parity_report(rows, imported_source_ids=(_RUNNING_ONE,))
+
+    assert report.source_row_count == _SOURCE_ROWS
+    assert report.distinct_source_count == _DISTINCT_SOURCE_IDS
+    assert report.duplicate_source_row_count == 1
+    assert report.imported_record_count == 1
+    assert report.missing_source_ids == (_TERMINATED,)
+    assert report.parity_ok is False
+    assert report.initial_running_ids == (_RUNNING_ONE,)
+
+
+def test_reconcile_reads_twin_until_recorded_parity_proof() -> None:
+    assert reconcile_source() == "external-twin"
+    twin = [{"uuid": str(_RUNNING_ONE), "status": "running"}]
+    candidate = build_parity_proof(twin, twin, window="2026-08-15T00:00Z/2026-08-15T01:00Z")
+    assert reconcile_source(parity_proof=candidate) == "external-twin"
+    recorded = record_parity_proof(candidate)
+    assert recorded.parity_ok is True
+    assert reconcile_source(parity_proof=recorded) == "ctower-spawn-reads"

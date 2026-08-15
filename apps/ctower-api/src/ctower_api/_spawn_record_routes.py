@@ -24,7 +24,7 @@ from ctower_api.telemetry import TelemetryRecorder
 from ctower_kernel.access import Access
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.credentials import CredentialScope
-from ctower_kernel.runtime import (
+from ctower_kernel.runtime.spawn_records import (
     PostgresSpawnRecords,
     SpawnRecordCreate,
     SpawnRecordGet,
@@ -74,7 +74,7 @@ class SpawnRecordTransitionRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-def install_spawn_record_routes(  # noqa: PLR0915, C901
+def install_spawn_record_routes(
     app: FastAPI,
     access: Access,
     spawn_records: PostgresSpawnRecords,
@@ -82,6 +82,18 @@ def install_spawn_record_routes(  # noqa: PLR0915, C901
 ) -> None:
     """Bind the protected spawn-record command adapter."""
 
+    _install_create_route(app, access, spawn_records, recorder)
+    _install_transition_route(app, access, spawn_records, recorder)
+    _install_list_route(app, access, spawn_records, recorder)
+    _install_get_route(app, access, spawn_records, recorder)
+
+
+def _install_create_route(
+    app: FastAPI,
+    access: Access,
+    spawn_records: PostgresSpawnRecords,
+    recorder: TelemetryRecorder,
+) -> None:
     @app.post("/v1/spawn-records")
     async def create_spawn_record(
         request: Request,
@@ -131,6 +143,13 @@ def install_spawn_record_routes(  # noqa: PLR0915, C901
             status_code=201,
         )
 
+
+def _install_transition_route(
+    app: FastAPI,
+    access: Access,
+    spawn_records: PostgresSpawnRecords,
+    recorder: TelemetryRecorder,
+) -> None:
     @app.post("/v1/spawn-records/{spawn_id}/transitions")
     async def append_spawn_transition(spawn_id: str, request: Request) -> JSONResponse:
         actor = authenticate(
@@ -173,6 +192,13 @@ def install_spawn_record_routes(  # noqa: PLR0915, C901
             status_code=200,
         )
 
+
+def _install_list_route(
+    app: FastAPI,
+    access: Access,
+    spawn_records: PostgresSpawnRecords,
+    recorder: TelemetryRecorder,
+) -> None:
     @app.get("/v1/spawn-records")
     async def list_spawn_records(request: Request) -> JSONResponse:
         actor = authenticate(
@@ -212,6 +238,13 @@ def install_spawn_record_routes(  # noqa: PLR0915, C901
             status_code=200,
         )
 
+
+def _install_get_route(
+    app: FastAPI,
+    access: Access,
+    spawn_records: PostgresSpawnRecords,
+    recorder: TelemetryRecorder,
+) -> None:
     @app.get("/v1/spawn-records/{spawn_id}")
     async def get_spawn_record(spawn_id: str, request: Request) -> JSONResponse:
         actor = authenticate(
