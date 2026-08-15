@@ -2936,3 +2936,34 @@ dormant, already-specified machinery and admits three bounded feature candidates
 4. **Safe-degraded honesty.** Anything in the R3000 scope not product-grade inside the
    window ships as a working shim plus an admitted backlog row named in this file's
    successors — never as silent scope, never as a weakened gate. §5 gates bind unchanged.
+
+## D67 — Routine output is a recorded work item for a seat's Inbox, never a message injected into a running session (product, 2026-08-15, operator order R3016)
+
+The first Routine migrated under D66 exposed that the shipped dispatch effect names a target
+session. The operator ruled that mechanism wrong: a scheduled prompt injected into a seat's
+running session interrupts work in progress, competes with whatever that session is mid-way
+through, and leaves no durable artifact of whether the work was ever done. This decision fixes
+the shape of Routine output for every Routine, and admits one bounded candidate to deliver it.
+
+1. **A Routine's product output is a recorded Inbox work item for the owning seat.** Firing
+   appends the item as a record fact addressed to the seat; it never writes to, prompts, or
+   otherwise touches a session. Session-targeted dispatch is removed rather than kept beside
+   the new path — no compatibility fork, per the standing engineering principle. Routines that
+   already migrated under CT-I1-033 are re-pointed by the same candidate; their host twins stay
+   alive until the re-pointed Routine has fired once with a receipt, per D66's catch-parity
+   rule.
+2. **The item carries a pointer, never an embedded specification.** What the seat must produce
+   lives once, as a Knowledge record; the item references it. Editing the policy edits the
+   Knowledge record, and every future item inherits the edit. An item that embeds instructions
+   is a defect, because it forks the policy at the moment it is written.
+3. **One open item per window.** Firing is suppressed while the previous window's item for that
+   Routine is unconsumed, and the suppression is a recorded typed fact, never silence. This is
+   a typed gate over recorded Inbox state, not a caller argument.
+4. **Completion is a receipt, not a claim.** The owning seat closes the item with evidence of
+   the delivered artifact. An item closed without its evidence reference is refused.
+5. **A missed window is an alarm.** A Routine whose window ends with no receipt raises to the
+   escalation seat as a recorded fact. Absence of a receipt is a reportable condition, never an
+   assumed success — the same honesty rule the estate's own audit gap established.
+6. **CT-I1-035 is admitted** to deliver items 1-5 as one landable candidate per D62. It adds no
+   product UI, no new principal, no session write path, no second Inbox store, and no expression
+   language in the gate set.
