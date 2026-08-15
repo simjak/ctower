@@ -139,8 +139,7 @@ def _commit_ruling(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> RulingAppendResult | RecordProblem:
-    recorded_at = command.recorded_at if command.recorded_at is not None else now
-    ruling_id = command.ruling_id if command.ruling_id is not None else uuid7(recorded_at)
+    recorded_at, ruling_id = _ruling_identity(command, now)
     subjects = _subjects(ruling_id, request_id)
     durable = transaction.require_durable_subjects(
         actor.tenant_id,
@@ -192,6 +191,12 @@ def _commit_ruling(
         decision_blocker_fact_id=decision_blocker_fact_id,
     )
     return result
+
+
+def _ruling_identity(command: RulingAppend, now: datetime) -> tuple[datetime, UUID]:
+    recorded_at = command.recorded_at if command.recorded_at is not None else now
+    ruling_id = command.ruling_id if command.ruling_id is not None else uuid7(recorded_at)
+    return recorded_at, ruling_id
 
 
 def list_rulings(

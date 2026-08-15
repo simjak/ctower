@@ -4074,6 +4074,17 @@
               "dream-dispatch-unavailable",
               "dream-lane-already-bound",
               "dream-lane-binding-operator-required",
+              "estate-import-batch-digest-mismatch",
+              "estate-import-batch-invalid",
+              "estate-import-content-mismatch",
+              "estate-import-count-mismatch",
+              "estate-import-duplicate-source",
+              "estate-import-invalid",
+              "estate-import-operator-required",
+              "estate-import-parity-signer-unavailable",
+              "estate-import-project-required",
+              "estate-import-row-invalid",
+              "estate-import-source-conflict",
               "durability_pending",
               "i1-7c-required",
               "idempotency-conflict",
@@ -4557,7 +4568,13 @@
           },
           "manifest_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "signature": {"$ref": "#/components/schemas/EstateImportSignature"}
-        }
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"tier": {"const": "agreed_decisions"}}},
+            "then": {"required": ["project_key"]}
+          }
+        ]
       },
       "EstateInboxImportRow": {
         "type": "object",

@@ -16,13 +16,15 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ctower_kernel.inbox.models import InboxAcknowledgementState
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
-from ctower_kernel.record._estate_import_sql import (
+from ctower_api.estate_import_contracts import (
     CompanyRecordAppend,
     _inbox_acknowledge_command,
-    _inbox_batch_header,
     _inbox_send_command,
     _knowledge_import_command,
     _ruling_import_command,
+)
+from ctower_api.estate_import_support import (
+    _inbox_batch_header,
     _same_record,
 )
 from ctower_kernel.record.events import EventOrigin

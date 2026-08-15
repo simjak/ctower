@@ -45,6 +45,7 @@ from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record import DurabilityFinalizationBatch
+from ctower_api.estate_imports import PostgresEstateImports
 from ctower_kernel.record.postgres import PostgresDurabilityFinalizer, PostgresRecord
 from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime
@@ -161,6 +162,11 @@ def api_main() -> None:
                     runtime_dsn,
                     source=StaticFileKnowledgeSource(bundled_static_root()),
                 )
+            ),
+            estate_imports=PostgresEstateImports(
+                runtime_dsn,
+                trusted_keys={},
+                parity_signer=None,
             ),
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),

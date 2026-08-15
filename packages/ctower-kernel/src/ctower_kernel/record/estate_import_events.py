@@ -29,14 +29,7 @@ class EstateImportChangedPayload:
     source_ref: str
 
     def __post_init__(self) -> None:
-        if self.tier not in _TIERS:
-            raise ValueError("estate import tier is outside the authored contract")
-        if self.operation not in {"parity_reported", "batch_applied", "tier_closed"}:
-            raise ValueError("estate import operation is outside the authored contract")
-        if _SHA256.fullmatch(self.manifest_digest) is None:
-            raise ValueError("estate import manifest digest is outside the contract")
-        if not self.source_ref or len(self.source_ref) > _MAX_SOURCE_REF:
-            raise ValueError("estate import source reference is outside the contract")
+        _validate_estate_import_changed(self)
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -45,6 +38,17 @@ class EstateImportChangedPayload:
             "source_ref": self.source_ref,
             "tier": self.tier,
         }
+
+
+def _validate_estate_import_changed(payload: EstateImportChangedPayload) -> None:
+    if payload.tier not in _TIERS:
+        raise ValueError("estate import tier is outside the authored contract")
+    if payload.operation not in {"parity_reported", "batch_applied", "tier_closed"}:
+        raise ValueError("estate import operation is outside the authored contract")
+    if _SHA256.fullmatch(payload.manifest_digest) is None:
+        raise ValueError("estate import manifest digest is outside the contract")
+    if not payload.source_ref or len(payload.source_ref) > _MAX_SOURCE_REF:
+        raise ValueError("estate import source reference is outside the contract")
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,22 +65,7 @@ class CompanyRecordAppendedPayload:
     imported_at: datetime
 
     def __post_init__(self) -> None:
-        if not isinstance(self.record_id, UUID):
-            raise TypeError("company record identity must be a UUID")
-        if self.record_type != "escape":
-            raise ValueError("company record type is outside the authored contract")
-        if not self.natural_key or len(self.natural_key) > _MAX_NATURAL_KEY:
-            raise ValueError("company record natural key is outside the contract")
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", self.occurred_on):
-            raise ValueError("company record occurred_on must be an ISO date")
-        if _SEAT.fullmatch(self.seat) is None:
-            raise ValueError("company record seat is outside the authored contract")
-        if _SHA256.fullmatch(self.payload_digest) is None:
-            raise ValueError("company record payload digest is outside the contract")
-        if not self.source_ref or len(self.source_ref) > _MAX_SOURCE_REF:
-            raise ValueError("company record source reference is outside the contract")
-        if not isinstance(self.imported_at, datetime) or self.imported_at.tzinfo is None:
-            raise ValueError("company record imported_at must be timezone-aware")
+        _validate_company_record(self)
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -89,3 +78,34 @@ class CompanyRecordAppendedPayload:
             "seat": self.seat,
             "source_ref": self.source_ref,
         }
+
+
+def _validate_company_record(payload: CompanyRecordAppendedPayload) -> None:
+    _validate_company_identity(payload)
+    _validate_company_source(payload)
+    _validate_company_timestamp(payload)
+
+
+def _validate_company_identity(payload: CompanyRecordAppendedPayload) -> None:
+    if not isinstance(payload.record_id, UUID):
+        raise TypeError("company record identity must be a UUID")
+    if payload.record_type != "escape":
+        raise ValueError("company record type is outside the authored contract")
+    if not payload.natural_key or len(payload.natural_key) > _MAX_NATURAL_KEY:
+        raise ValueError("company record natural key is outside the contract")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", payload.occurred_on):
+        raise ValueError("company record occurred_on must be an ISO date")
+
+
+def _validate_company_source(payload: CompanyRecordAppendedPayload) -> None:
+    if _SEAT.fullmatch(payload.seat) is None:
+        raise ValueError("company record seat is outside the authored contract")
+    if _SHA256.fullmatch(payload.payload_digest) is None:
+        raise ValueError("company record payload digest is outside the contract")
+    if not payload.source_ref or len(payload.source_ref) > _MAX_SOURCE_REF:
+        raise ValueError("company record source reference is outside the contract")
+
+
+def _validate_company_timestamp(payload: CompanyRecordAppendedPayload) -> None:
+    if not isinstance(payload.imported_at, datetime) or payload.imported_at.tzinfo is None:
+        raise ValueError("company record imported_at must be timezone-aware")

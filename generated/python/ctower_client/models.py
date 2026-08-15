@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d3921400650f116fe93d54d0d3b11f9bdf428392e13cd89c4b5a9313ccc2eabf
+Authored contract digest: sha256:2045322bb916d57528c58ea0d80467a54510d7ac0259dfa29d19dbd1bbd971ca
 """
 
 from __future__ import annotations
@@ -2554,6 +2554,17 @@ class Problem(_BoundaryModel):
         "dream-dispatch-unavailable",
         "dream-lane-already-bound",
         "dream-lane-binding-operator-required",
+        "estate-import-batch-digest-mismatch",
+        "estate-import-batch-invalid",
+        "estate-import-content-mismatch",
+        "estate-import-count-mismatch",
+        "estate-import-duplicate-source",
+        "estate-import-invalid",
+        "estate-import-operator-required",
+        "estate-import-parity-signer-unavailable",
+        "estate-import-project-required",
+        "estate-import-row-invalid",
+        "estate-import-source-conflict",
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",

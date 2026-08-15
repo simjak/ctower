@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from uuid import UUID
 
+from ctower_kernel.record._event_encoding import (
+    _canonical,
+    _timestamp,
+)
 from ctower_kernel.record._event_types import EventKind, EventOrigin
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
@@ -697,28 +700,3 @@ def _require_uuid_fields(value: object, names: tuple[str, ...]) -> None:
 def _require_uuid_tuple(label: str, value: object) -> None:
     if not isinstance(value, tuple) or not all(isinstance(item, UUID) for item in value):
         raise TypeError(f"{label} must be a UUID tuple")
-
-
-def _canonical(value: object) -> str:
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-    if isinstance(value, Mapping):
-        if not all(isinstance(key, str) for key in value):
-            raise TypeError("canonical JSON object keys must be strings")
-        items = sorted(value.items(), key=lambda item: item[0].encode("utf-16be"))
-        return "{" + ",".join(f"{_canonical(key)}:{_canonical(item)}" for key, item in items) + "}"
-    if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray):
-        return "[" + ",".join(_canonical(item) for item in value) + "]"
-    raise TypeError(f"unsupported canonical event value: {type(value).__name__}")
-
-
-def _timestamp(value: datetime) -> str:
-    if value.tzinfo is None:
-        raise ValueError("event timestamps must be timezone-aware")
-    return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")

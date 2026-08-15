@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from support.catalog import FileSchemas, MemoryObjectStore
 
 from ctower_api.catalog_resolver import CatalogComponentResolver
+from ctower_api.estate_import_port import EstateImportPort
 from ctower_api.interface import create_app
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client import (
@@ -261,6 +262,7 @@ def application(
     workflow_graph: WorkflowGraph | None = None,
     proof_policy_override: ProofPolicy | None = None,
     execution_policy_digest: str | None = None,
+    estate_imports: EstateImportPort | None = None,
 ) -> FastAPI:
     recorder = _recorder(telemetry_capture, telemetry_failure)
     catalog_store = MemoryObjectStore()
@@ -311,6 +313,7 @@ def application(
         board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
         inbox=(Inbox(PostgresInbox(runtime_dsn)) if projection_dsn is not None else None),
         knowledge=_knowledge(runtime_dsn),
+        estate_imports=estate_imports,
         telemetry=recorder,
     )
 

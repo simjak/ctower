@@ -16,7 +16,6 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-import ctower_kernel.inbox._sql as inbox_sql
 import ctower_kernel.inbox.postgres as inbox_postgres
 from ctower_kernel.inbox import (
     InboxAcknowledgeCommand,
@@ -249,7 +248,7 @@ def test_import_message_commit_uses_supplied_identity_and_timestamp() -> None:
         origin=EventOrigin.MIGRATION_IMPORTER,
     )
 
-    result, commits, _ = inbox_sql._message_commits(
+    result, commits, _ = inbox_postgres.message_commits(
         actor,
         command,
         sender,

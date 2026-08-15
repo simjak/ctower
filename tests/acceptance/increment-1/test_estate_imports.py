@@ -11,18 +11,24 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from fastapi.testclient import TestClient
 from support.postgres import DatabaseFixture
+from support.server import application
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
+from ctower_api.estate_imports import PostgresEstateImports
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
-from ctower_kernel.record._estate_import_sql import PostgresEstateImports
 from ctower_kernel.record.postgres import apply_migrations, provision_database_roles
 from ctower_kernel.telemetry import TelemetryContext
-from ctowerctl._parser import parse_arguments
+from ctowerctl import parse_arguments
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
 from tools.migration.estate_imports import build_estate_manifest
 
 __all__: tuple[str, ...] = ()
+
+_HTTP_PENDING = 202
+_HTTP_UNPROCESSABLE_ENTITY = 422
 
 
 @pytest.mark.parametrize(
@@ -143,34 +149,90 @@ def test_estate_import_authority_is_operator_scoped_in_postgres(
     assert replay.parity["emitted_before_closure"] is True
 
 
+def test_company_records_import_is_reachable_through_http_contract(
+    tenant: TenantFixture,
+) -> None:
+    importer, manifest, rows = _signed_import_fixture(
+        tenant.database.runtime_dsn, "company_records"
+    )
+    command_id = uuid4()
+    request_rows = [
+        {key: value for key, value in row.items() if key not in {"_disposition", "source_seat"}}
+        for row in rows
+    ]
+    with TestClient(application(tenant.database.runtime_dsn, estate_imports=importer)) as client:
+        response = client.post(
+            "/v1/migrations/estate/company-records",
+            json={"batch_index": 0, "manifest": manifest, "rows": request_rows},
+            headers={
+                "Authorization": f"Bearer {tenant.operator_credential}",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id),
+            },
+        )
+
+    assert response.status_code == _HTTP_PENDING
+    assert response.json()["tier"] == "company_records"
+    assert response.json()["imported_count"] == 1
+
+
+def test_estate_import_http_refusal_uses_the_problem_contract(
+    tenant: TenantFixture,
+) -> None:
+    importer, manifest, rows = _signed_import_fixture(
+        tenant.database.runtime_dsn, "company_records"
+    )
+    manifest = {**manifest, "manifest_digest": _digest_text("tampered")}
+    request_rows = [
+        {key: value for key, value in row.items() if key not in {"_disposition", "source_seat"}}
+        for row in rows
+    ]
+    command_id = uuid4()
+    with TestClient(application(tenant.database.runtime_dsn, estate_imports=importer)) as client:
+        response = client.post(
+            "/v1/migrations/estate/company-records",
+            json={"batch_index": 0, "manifest": manifest, "rows": request_rows},
+            headers={
+                "Authorization": f"Bearer {tenant.operator_credential}",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id),
+            },
+        )
+
+    assert response.status_code == _HTTP_UNPROCESSABLE_ENTITY
+    assert response.json()["code"] == "estate-import-invalid"
+
+
+def _inbox_rows() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    message_id = str(uuid4())
+    subject = "Acceptance inbox message"
+    body = "The estate importer committed this source-only message."
+    content_digest = _digest_text(json.dumps({"subject": subject, "body": body}, sort_keys=True))
+    projection = {
+        "_disposition": "source_only",
+        "content_sha256": content_digest,
+        "source_ref": "inbox.jsonl#1",
+        "source_seat": "external-sender",
+        "target_seat_key": None,
+    }
+    return [projection], [
+        {
+            **projection,
+            "message_id": message_id,
+            "source_sender": "external-sender",
+            "source_recipient": "operator",
+            "sent_at": "2026-08-15T12:00:00+00:00",
+            "subject": subject,
+            "body": body,
+            "read_state": "delivered",
+        }
+    ]
+
+
 def _tier_rows(tier: str) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     digest = _digest_text(tier)
     if tier == "inbox_history":
-        message_id = str(uuid4())
-        subject = "Acceptance inbox message"
-        body = "The estate importer committed this source-only message."
-        content_digest = _digest_text(
-            json.dumps({"subject": subject, "body": body}, sort_keys=True)
-        )
-        projection = {
-            "_disposition": "source_only",
-            "content_sha256": content_digest,
-            "source_ref": "inbox.jsonl#1",
-            "source_seat": "external-sender",
-            "target_seat_key": None,
-        }
-        return [projection], [
-            {
-                **projection,
-                "message_id": message_id,
-                "source_sender": "external-sender",
-                "source_recipient": "operator",
-                "sent_at": "2026-08-15T12:00:00+00:00",
-                "subject": subject,
-                "body": body,
-                "read_state": "delivered",
-            }
-        ]
+        return _inbox_rows()
     if tier == "agreed_decisions":
         verbatim = "# Accepted decision\n\nKeep the project provenance."
         return _generic_rows(
@@ -217,6 +279,35 @@ def _tier_rows(tier: str) -> tuple[list[dict[str, object]], list[dict[str, objec
             },
         )
     raise AssertionError(f"unknown estate tier: {tier}")
+
+
+def _signed_import_fixture(
+    dsn: str, tier: str
+) -> tuple[PostgresEstateImports, dict[str, object], list[dict[str, object]]]:
+    private_key = Ed25519PrivateKey.generate()
+    signer = ArtifactSigner("signing-key-ref:acceptance", 1, private_key)
+    manifest_rows, rows = _tier_rows(tier)
+    manifest = build_estate_manifest(
+        tier=tier,
+        source_identity={
+            "namespace": "mission-control:estate",
+            "source_path": f"acceptance/{tier}.jsonl",
+            "source_sha256": _digest_text(tier),
+        },
+        rows=manifest_rows,
+        seat_mapping_digest=None,
+        project_key="ctower" if tier == "agreed_decisions" else None,
+        signer=signer,
+    )
+    return (
+        PostgresEstateImports(
+            dsn,
+            {("signing-key-ref:acceptance", 1): private_key.public_key()},
+            parity_signer=signer,
+        ),
+        manifest,
+        rows,
+    )
 
 
 def _generic_rows(
