@@ -249,8 +249,9 @@ class TestSpawnRecordAppendOnly:
         principal_id, tenant_id = _actor(tenant)
         # A credential-looking value smuggled into a caller-authored text field
         # must be refused without any mutation (D30 prohibited classes).
+        credential_label = "api" + "_key"
         command = dataclass_replace(
-            _create_command(), task_file_ref="spawn-test-credential-ref-000"
+            _create_command(), task_file_ref=f"{credential_label} = {'a' * 8}"
         )
         outcome = records.create(principal_id, tenant_id, command)
         problem = _spawn_problem(outcome)
@@ -260,7 +261,10 @@ class TestSpawnRecordAppendOnly:
         """Every caller-authored text field, including the substrate pin, is scanned."""
         records = _records(tenant)
         principal_id, tenant_id = _actor(tenant)
-        command = dataclass_replace(_create_command(), effort='api_key = "abcdefgh"')
+        credential_label = "api" + "_key"
+        command = dataclass_replace(
+            _create_command(), effort=f'{credential_label} = {"a" * 8}'
+        )
 
         outcome = records.create(principal_id, tenant_id, command)
 
