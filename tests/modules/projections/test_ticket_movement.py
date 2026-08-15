@@ -15,6 +15,7 @@ import pytest
 from ctower_kernel.projections.morning_digest import ReadingState, SourceReading, UnreachedScope
 from ctower_kernel.projections.ticket_movement import (
     MovementCountInput,
+    MovementDigestCount,
     derive_movement_summary,
 )
 
@@ -202,3 +203,51 @@ def test_movement_counts_use_the_vilnius_fall_back_boundary() -> None:
 def test_movement_count_input_refuses_a_naive_occurred_time() -> None:
     with pytest.raises(ValueError, match="timezone-aware"):
         _count_input("capture", "frame", occurred_at=datetime(2026, 8, 9, 12, 0))  # noqa: DTZ001
+
+
+@pytest.mark.parametrize(
+    ("project_key", "source_stage", "stage", "message"),
+    (
+        ("CTOWER", "capture", "frame", "project key"),
+        ("ctower", "", "frame", "source stage"),
+        ("ctower", "capture", "", "movement stage"),
+    ),
+)
+def test_movement_count_input_refuses_unstable_keys(
+    project_key: str, source_stage: str, stage: str, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        MovementCountInput(project_key, source_stage, stage, _OBSERVED_AT)
+
+
+@pytest.mark.parametrize(
+    ("project_key", "from_stage", "to_stage", "count", "message"),
+    (
+        ("ctower", "capture", "frame", 0, "positive"),
+        ("CTOWER", "capture", "frame", 1, "project key"),
+        ("ctower", "", "frame", 1, "source stage"),
+        ("ctower", "capture", "", 1, "to stage"),
+    ),
+)
+def test_movement_digest_count_refuses_invalid_buckets(
+    project_key: str, from_stage: str, to_stage: str, count: int, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        MovementDigestCount(project_key, from_stage, to_stage, count)
+
+
+def test_source_reading_rejects_invalid_watermark_and_state_shapes() -> None:
+    with pytest.raises(ValueError, match="negative"):
+        SourceReading.complete((), watermark=-1, observed_at=_OBSERVED_AT)
+    with pytest.raises(ValueError, match="complete"):
+        SourceReading(ReadingState.COMPLETE, (), 1, _OBSERVED_AT, (UnreachedScope("x", "gap"),))
+    with pytest.raises(ValueError, match="partial"):
+        SourceReading.partial((), watermark=1, observed_at=_OBSERVED_AT, unreached=())
+    with pytest.raises(ValueError, match="unknown"):
+        SourceReading(ReadingState.UNKNOWN, (_count_input("capture", "frame"),), 1, _OBSERVED_AT)
+
+    unknown: SourceReading[MovementCountInput] = SourceReading.unknown(
+        UnreachedScope("movement", "unavailable"), observed_at=_OBSERVED_AT
+    )
+    assert unknown.unreached[0].response_payload() == {"key": "movement", "reason": "unavailable"}
+    assert derive_movement_summary(unknown, digest_date=_DIGEST_DATE).source_state == "unavailable"

@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from uuid import UUID
 
 import feedparser  # type: ignore[import-untyped]
+import pytest
 
 from ctower_api import _project_feed_atom_routes as routes
-from ctower_kernel.record.movement_events import MovementEvent
+from ctower_api import _project_movement_routes as movement_routes
+from ctower_kernel.record.movement_events import MovementEvent, MovementEventPage
 
 __all__: tuple[str, ...] = ()
+
+_HTTP_OK = 200
 
 _EVENT = MovementEvent(
     event_id=UUID("00000000-0000-7000-8000-000000000001"),
@@ -74,3 +79,22 @@ def test_empty_atom_feed_has_a_deterministic_updated_timestamp() -> None:
     assert parsed.bozo is False
     assert parsed.feed.updated == "1970-01-01T00:00:00Z"
     assert parsed.entries == []
+
+
+def test_movement_route_helpers_validate_project_keys_and_encode_pages() -> None:
+    assert routes._project_key("ctower") == "ctower"
+    assert movement_routes._project_key("ctower") == "ctower"
+    with pytest.raises(ValueError, match="invalid project key"):
+        routes._project_key("CTOWER")
+    with pytest.raises(ValueError, match="invalid project key"):
+        movement_routes._project_key("ab")
+
+    response = movement_routes._read_response(
+        MovementEventPage(project_key="ctower", events=(), next_cursor=None)
+    )
+    assert response.status_code == _HTTP_OK
+    assert json.loads(bytes(response.body)) == {
+        "events": [],
+        "next_cursor": None,
+        "project_key": "ctower",
+    }
