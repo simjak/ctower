@@ -255,7 +255,7 @@ def _seat_text(seat: ProjectDeliverySeat) -> str:
 def mutation_command_names() -> frozenset[str]:
     """Return the exact online-only, unspoolable mutation inventory."""
 
-    return frozenset(_REQUEST_MODELS) - _REFUSAL_COMMANDS
+    return frozenset(_REQUEST_MODELS | _ESTATE_REQUEST_MODELS) - _REFUSAL_COMMANDS
 
 
 def refusal_command_names() -> frozenset[str]:

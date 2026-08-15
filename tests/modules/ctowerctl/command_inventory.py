@@ -91,6 +91,9 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         "credential seat issue",
         "credential seat revoke",
         "dream-lane bind",
+        "migration ctower-company-record import",
+        "migration ctower-inbox import",
+        "migration ctower-knowledge import",
         "migration ctower-project inventory",
         "migration ctower-project export",
         "migration ctower-project plan",
@@ -98,4 +101,5 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         "migration ctower-project reconcile",
         "migration ctower-project correction append",
         "migration ctower-project fence observe",
+        "migration ctower-ruling import",
     }
