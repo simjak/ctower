@@ -170,7 +170,7 @@
         },
         {
           "path": "contracts/domain/events/event-envelope.schema.json",
-          "sha256": "sha256:420fa5838ba55f9ce0696b5f85550bf9eda423bb4a420233336ad3f4c7dcdfa7"
+          "sha256": "sha256:69541e07d99b5339dd19530b098c6655669f401cb0f1724695dc859a393b9eda"
         },
         {
           "path": "contracts/domain/inbox/inbox-v2.schema.json",
@@ -548,7 +548,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:5fe11afc82cf1cf4f3ed513c747d32f2090cfe655753157ba23ed5f0179e30bf"
+          "sha256": "sha256:3a0bcf8d29da4617759eba9f1292a6f3c257010b5d97fe60eaef4264a6d98040"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",
