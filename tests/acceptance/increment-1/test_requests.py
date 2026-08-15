@@ -149,7 +149,7 @@ def test_request_list_hides_pending_change_facts_until_offhost_acceptance(
 def test_bound_humans_use_exact_project_grants_and_are_addressable_owners(
     tenant: TenantFixture,
 ) -> None:
-    """OR-01/05/07: human roles use binding grants, never principal-kind fleet shortcuts."""
+    """OR-01/05/07: human grants scope non-operators; operators retain fleet authority."""
 
     record = PostgresRecord(tenant.database.runtime_dsn)
     machine_operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
@@ -159,10 +159,11 @@ def test_bound_humans_use_exact_project_grants_and_are_addressable_owners(
 
     assert accepted.submitted_by == human_operator.principal_id
     assert accepted.owner_id == human_operator.principal_id
+    human_commander = _bound_human(record, tenant, machine_operator, "commander")
     denied = authority.capture(
-        human_operator,
+        human_commander,
         RequestCapture(uuid4(), "manibo", "Foreign project capture"),
-        telemetry=_telemetry(human_operator, uuid4()),
+        telemetry=_telemetry(human_commander, uuid4()),
     )
     assert isinstance(denied, RecordProblem)
     assert denied.code == "project-scope-denied"
