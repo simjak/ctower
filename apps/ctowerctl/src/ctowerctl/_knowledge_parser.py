@@ -27,6 +27,7 @@ def knowledge_parser(parser: argparse.ArgumentParser) -> None:
     content.add_argument("--body-file", type=Path)
     content.add_argument("--source-ref")
     add.add_argument("--title")
+    add.add_argument("--recorded-at", type=str)
     listing = actions.add_parser("list")
     listing.set_defaults(cli_name="knowledge list")
     listing.add_argument("--scope", required=True, choices=("org", "project"))

@@ -61,7 +61,8 @@ def register_document(
         if isinstance(resolved, RecordProblem):
             return _refuse(transaction, actor, command, request_digest, resolved, now)
         title, body = resolved
-        document_id = uuid7(now)
+        recorded_at = command.recorded_at if command.recorded_at is not None else now
+        document_id = uuid7(recorded_at)
         durable = transaction.require_durable_subjects(
             actor.tenant_id,
             actor.principal_id,
@@ -77,7 +78,7 @@ def register_document(
             command,
             document_id,
             request_digest,
-            now,
+            recorded_at,
             telemetry,
             body=body,
             title=title,
@@ -86,7 +87,7 @@ def register_document(
             command.client_command_id,
             document_id,
             event.event_id,
-            now,
+            recorded_at,
             command.scope,
             title,
             command.project_key,

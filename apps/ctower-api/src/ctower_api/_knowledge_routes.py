@@ -65,6 +65,7 @@ def _install_add_route(
                 scope=payload.scope.value,
                 body=payload.body,
                 project_key=payload.project_key,
+                recorded_at=payload.recorded_at,
                 source_ref=payload.source_ref,
                 title=payload.title,
             )

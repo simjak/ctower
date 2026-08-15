@@ -5111,6 +5111,7 @@
         "properties": {
           "body": {"type": ["string", "null"], "minLength": 1, "maxLength": 1048576},
           "project_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "recorded_at": {"type": ["string", "null"], "format": "date-time"},
           "scope": {"$ref": "#/components/schemas/KnowledgeScope"},
           "source_ref": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
           "title": {"type": ["string", "null"], "minLength": 1, "maxLength": 1024}

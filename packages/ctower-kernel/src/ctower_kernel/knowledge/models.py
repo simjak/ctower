@@ -63,6 +63,7 @@ class KnowledgeAddCommand:
     project_key: str | None = None
     source_ref: str | None = None
     title: str | None = None
+    recorded_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.client_command_id, UUID):

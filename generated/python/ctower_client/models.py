@@ -2298,6 +2298,7 @@ class KnowledgeAddRequest(_BoundaryModel):
     scope: KnowledgeScope
     source_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,127}$")] | None = None
     title: Annotated[str, Field(min_length=1, max_length=1024)] | None = None
+    recorded_at: _Rfc3339DateTime | None = None
 
 
 class KnowledgeAddResult(_BoundaryModel):

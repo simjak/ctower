@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 from typing import cast
 from uuid import UUID
@@ -26,10 +27,13 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
     project_key = cast(str | None, arguments.project_key)
     _validate_scope(scope, project_key)
     body, source_ref, title = _content(arguments)
+    recorded_at = cast(str | None, arguments.recorded_at)
+    recorded_at_dt = datetime.fromisoformat(recorded_at) if recorded_at is not None else None
     return MutationPayload(
         request=KnowledgeAddRequest(
             body=body,
             project_key=project_key,
+            recorded_at=recorded_at_dt,
             scope=KnowledgeScope(scope),
             source_ref=source_ref,
             title=title,
