@@ -9,6 +9,7 @@ from uuid import UUID
 import psycopg
 
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.transaction import project_scope_refusal
 from ctower_kernel.work import AssignmentInterval, AssignmentKind, ChangeAssignment
 
 __all__: tuple[str, ...] = ()
@@ -110,6 +111,14 @@ def list_assignments(
     ticket_id: UUID,
     project_key: str,
 ) -> tuple[AssignmentInterval, ...] | RecordProblem:
+    refusal = project_scope_refusal(
+        connection,
+        tenant_id=actor.tenant_id,
+        principal_id=actor.principal_id,
+        project_keys=(project_key,),
+    )
+    if refusal is not None:
+        return refusal
     exists = connection.execute(
         """
         SELECT 1 FROM tickets
