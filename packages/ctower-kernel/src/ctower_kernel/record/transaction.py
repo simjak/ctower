@@ -61,17 +61,14 @@ def project_scope_refusal(
     below resolves ticket ownership first and then asks exactly this question, so a
     read and a write can never disagree about who may see one project's facts. Read
     callers explicitly opt into persisted operator authority; mutation callers retain
-    the closed default. A portfolio-wide scope can require the operator explicitly
-    instead of treating an arbitrary collection of Project grants as fleet authority.
+    the closed default. A disabled principal never reaches either authority path.
     """
 
     principal = _scope_principal(connection, tenant_id, principal_id)
+    if principal is not None and bool(principal["disabled"]):
+        return _project_scope_denied(command_id)
     human_grants = _human_project_grants(principal)
-    if (
-        principal is not None
-        and principal["kind"] == "operator"
-        and (allow_operator_read or human_grants is None)
-    ):
+    if _operator_scope_allowed(principal, human_grants, allow_operator_read=allow_operator_read):
         return None
     requested = set(project_keys)
     if not requested and not operator_only:
@@ -79,6 +76,10 @@ def project_scope_refusal(
     grants = (human_grants or set()) | _seat_project_grants(connection, tenant_id, principal_id)
     if not operator_only and requested <= grants:
         return None
+    return _project_scope_denied(command_id)
+
+
+def _project_scope_denied(command_id: UUID | None) -> RecordProblem:
     return RecordProblem(
         code="project-scope-denied",
         detail="The authenticated project seat cannot reach a ticket from another project.",
@@ -93,7 +94,7 @@ def _scope_principal(
 ) -> dict[str, object] | None:
     return connection.execute(
         """
-        SELECT principal.kind,
+        SELECT principal.kind, principal.disabled,
                binding.project_keys AS human_project_keys
         FROM principals AS principal
         LEFT JOIN human_role_bindings AS binding
@@ -116,6 +117,19 @@ def _human_project_grants(principal: dict[str, object] | None) -> set[str] | Non
         set(cast(list[str], principal["human_project_keys"]))
         if principal is not None and principal["human_project_keys"] is not None
         else None
+    )
+
+
+def _operator_scope_allowed(
+    principal: dict[str, object] | None,
+    human_grants: set[str] | None,
+    *,
+    allow_operator_read: bool,
+) -> bool:
+    return (
+        principal is not None
+        and principal["kind"] == "operator"
+        and (allow_operator_read or human_grants is None)
     )
 
 

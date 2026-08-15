@@ -7,7 +7,7 @@ import json
 import secrets
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import TypeGuard, cast
 from uuid import UUID, uuid4
 
 import psycopg
@@ -92,6 +92,45 @@ def test_persisted_operator_with_empty_binding_reads_all_ticket_surfaces(
     assert actor.project_grants == frozenset()
     for outcome in _record_ticket_read_surfaces(record, work, actor, ticket_id):
         assert not isinstance(outcome, RecordProblem), outcome
+
+
+def test_disabled_persisted_operator_is_refused_on_all_ticket_surfaces(
+    tenant: TenantFixture,
+) -> None:
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    with _client(tenant) as client:
+        title = "R2-2 disabled operator canary"
+        created = _create_ticket(
+            client,
+            tenant.operator_credential,
+            command_id=uuid4(),
+            custodian_id=tenant.commander_id,
+            priority="P1",
+            title=title,
+        )
+    assert created.status_code == HTTP_PENDING
+    ticket_id = UUID(created.json()["ticket"]["ticket_id"])
+    actor = _persisted_operator_session(record, tenant)
+    assert actor.human_binding_id is not None
+    assert actor.human_session_id is not None
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            "UPDATE principals SET disabled = true WHERE tenant_id = %s AND principal_id = %s",
+            (tenant.tenant_id, actor.principal_id),
+        )
+
+    work = Work(record, writer=PostgresWork(tenant.database.runtime_dsn))
+    outcomes = _record_ticket_read_surfaces(record, work, actor, ticket_id)
+    for raw_outcome in outcomes:
+        if not _is_record_problem(raw_outcome):
+            raise AssertionError(raw_outcome)
+        outcome = raw_outcome
+        assert outcome.code == "project-scope-denied"
+        assert outcome.status == HTTP_FORBIDDEN
+        payload = json.dumps(outcome.response_payload())
+        assert str(ticket_id) not in payload
+        assert title not in payload
 
 
 def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixture) -> None:
@@ -468,6 +507,10 @@ def _read_record_audit(record: PostgresRecord, actor: Actor, ticket_id: UUID) ->
 
 def _read_record_assignments(work: Work, actor: Actor, ticket_id: UUID) -> object:
     return work.assignments(actor, ticket_id, "ctower")
+
+
+def _is_record_problem(value: object) -> TypeGuard[RecordProblem]:
+    return isinstance(value, RecordProblem)
 
 
 def _project_ticket_read_paths(ticket_id: UUID) -> tuple[tuple[str, dict[str, str]], ...]:
