@@ -25,6 +25,7 @@ from ctower_kernel.record.inbox_events import (
     InboxThreadPromotedToTicketPayload,
 )
 from ctower_kernel.record.work_events import WorkChangedPayload
+from ctower_kernel.record.workflow_validation import workflow_payload_for_read
 
 __all__: tuple[str, ...] = ()
 
@@ -174,15 +175,18 @@ def _participant(payload: Mapping[str, object]) -> InboxParticipant:
 
 
 def _validate_workflow_payload(payload: Mapping[str, object]) -> None:
+    normalized = workflow_payload_for_read(payload)
     WorkflowChangedPayload(
-        operation=str(payload["operation"]),
-        ticket_id=UUID(str(payload["ticket_id"])),
-        workflow_ref=str(payload["workflow_ref"]),
-        workflow_version=int(cast(int, payload["workflow_version"])),
-        stage=str(payload["stage"]),
-        lifecycle_facts=tuple(str(item) for item in cast(list[object], payload["lifecycle_facts"])),
-        source_stage=str(payload.get("source_stage", "")),
-        evaluation_ref=str(payload.get("evaluation_ref", "")),
+        operation=str(normalized["operation"]),
+        ticket_id=UUID(str(normalized["ticket_id"])),
+        workflow_ref=str(normalized["workflow_ref"]),
+        workflow_version=int(cast(int, normalized["workflow_version"])),
+        stage=str(normalized["stage"]),
+        lifecycle_facts=tuple(
+            str(item) for item in cast(list[object], normalized["lifecycle_facts"])
+        ),
+        source_stage=str(normalized["source_stage"]),
+        evaluation_ref=str(normalized["evaluation_ref"]),
     )
 
 

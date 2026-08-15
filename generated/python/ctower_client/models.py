@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:843259c9666038396cf0cd5f6fe7f8b3fb4ac058b2ca06439dc537af51917c3c
+Authored contract digest: sha256:16f9297291f8725b774ffbe563588b6a21de10f299fa78b1d8e08a07bd1a90c3
 """
 
 from __future__ import annotations
@@ -1477,9 +1477,9 @@ class MovementDigestCount(_BoundaryModel):
 
 
 class MovementEvent(_BoundaryModel):
-    evaluation_ref: UUID
+    evaluation_ref: Annotated[str, Field(pattern="^$|^[0-9a-f-]{36}$")]
     event_id: UUID
-    from_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    from_stage: Annotated[str, Field(pattern="^$|^[a-z][a-z0-9._-]*$")]
     occurred_at: _Rfc3339DateTime | None = None
     record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
     ticket_id: UUID

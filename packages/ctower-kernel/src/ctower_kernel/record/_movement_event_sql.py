@@ -17,6 +17,7 @@ from ctower_kernel.record.movement_events import (
     MovementEventPage,
 )
 from ctower_kernel.record.transaction import project_scope_refusal
+from ctower_kernel.record.workflow_validation import workflow_payload_for_read
 
 if TYPE_CHECKING:
     from ctower_kernel.record.interface import Actor
@@ -120,7 +121,7 @@ def movement_counts(
 
 
 def _count_row(row: dict[str, object]) -> MovementCountRow:
-    payload = cast(dict[str, object], row["payload"])
+    payload = workflow_payload_for_read(cast(dict[str, object], row["payload"]))
     return MovementCountRow(
         project_key=str(row["project_key"]),
         source_stage=str(payload.get("source_stage", "")),
@@ -130,7 +131,7 @@ def _count_row(row: dict[str, object]) -> MovementCountRow:
 
 
 def _event(row: dict[str, object]) -> MovementEvent:
-    payload = cast(dict[str, object], row["payload"])
+    payload = workflow_payload_for_read(cast(dict[str, object], row["payload"]))
     return MovementEvent(
         event_id=cast(UUID, row["event_id"]),
         record_position=int(cast(int, row["record_position"])),

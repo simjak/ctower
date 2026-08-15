@@ -16,6 +16,7 @@ from ctower_kernel.record.events import (
     WorkflowChangedPayload,
 )
 from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.workflow_validation import validate_workflow_provenance
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.workflow import WorkflowActor, WorkflowReceipt
 
@@ -84,6 +85,12 @@ def _workflow_event(
     source_stage: str = "",
     evaluation_ref: str = "",
 ) -> EventEnvelope:
+    validate_workflow_provenance(
+        operation,
+        source_stage,
+        evaluation_ref,
+        require_transition=True,
+    )
     sequence, previous = _next_event(connection, receipt.workflow_run_id)
     return EventEnvelope(
         actor_principal_id=actor.principal_id,

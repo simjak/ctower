@@ -12,6 +12,7 @@ from psycopg.rows import dict_row
 from ctower_kernel.record import Actor, AuditEvent, AuditPage, RecordProblem
 from ctower_kernel.record.events import EventKind
 from ctower_kernel.record.transaction import project_scope_refusal
+from ctower_kernel.record.workflow_validation import workflow_payload_for_read
 
 __all__: tuple[str, ...] = ()
 MAX_PAGE_SIZE = 100
@@ -74,14 +75,18 @@ def ticket_audit(
 
 
 def _event(row: dict[str, object]) -> AuditEvent:
+    kind = EventKind(str(row["kind"]))
+    payload = cast(dict[str, object], row["payload"])
+    if kind is EventKind.WORKFLOW_CHANGED:
+        payload = workflow_payload_for_read(payload)
     return AuditEvent(
         actor_principal_id=cast(UUID, row["actor_principal_id"]),
         command_id=cast(UUID, row["client_command_id"]),
         event_hash=f"sha256:{bytes(cast(bytes, row['event_hash'])).hex()}",
         event_id=cast(UUID, row["event_id"]),
-        kind=EventKind(str(row["kind"])),
+        kind=kind,
         occurred_at=cast(datetime, row["server_time"]),
-        payload=cast(dict[str, object], row["payload"]),
+        payload=payload,
         record_position=int(cast(int, row["record_position"])),
         sequence=int(cast(int, row["sequence"])),
         stream_id=str(row["stream_id"]),

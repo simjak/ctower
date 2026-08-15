@@ -176,6 +176,7 @@ def _movement_source_reading(
 
 
 def _movement_reading(outcome: MovementCountList) -> SourceReading[MovementCountInput]:
+    has_unknown_provenance = any(not row.source_stage or not row.stage for row in outcome.rows)
     rows = tuple(
         MovementCountInput(
             project_key=row.project_key,
@@ -186,6 +187,13 @@ def _movement_reading(outcome: MovementCountList) -> SourceReading[MovementCount
         for row in outcome.rows
         if row.source_stage and row.stage
     )
+    if has_unknown_provenance:
+        return SourceReading.partial(
+            rows,
+            watermark=outcome.watermark,
+            observed_at=outcome.observed_at,
+            unreached=(UnreachedScope("movement", "pre-enrichment-provenance"),),
+        )
     return SourceReading.complete(
         rows, watermark=outcome.watermark, observed_at=outcome.observed_at
     )

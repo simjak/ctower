@@ -14,7 +14,6 @@ from ctower_kernel.record._event_encoding import (
     _timestamp,
 )
 from ctower_kernel.record._event_types import EventKind, EventOrigin
-from ctower_kernel.record._workflow_validation import validate_workflow_provenance
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
     AttentionFindingDispositionRecordedPayload,
@@ -95,6 +94,7 @@ from ctower_kernel.record.ticket_events import (
     ticket_payload_from_mapping as _ticket_payload_from_mapping,
 )
 from ctower_kernel.record.work_events import WorkChangedPayload
+from ctower_kernel.record.workflow_validation import validate_workflow_provenance
 
 __all__ = [
     "BootstrapCreatedPayload",

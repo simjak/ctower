@@ -6900,9 +6900,9 @@
         "additionalProperties": false,
         "required": ["evaluation_ref", "event_id", "from_stage", "record_position", "ticket_id", "to_stage", "workflow_ref", "workflow_version"],
         "properties": {
-          "evaluation_ref": {"type": "string", "format": "uuid"},
+          "evaluation_ref": {"type": "string", "pattern": "^$|^[0-9a-f-]{36}$"},
           "event_id": {"type": "string", "format": "uuid"},
-          "from_stage": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+          "from_stage": {"type": "string", "pattern": "^$|^[a-z][a-z0-9._-]*$"},
           "occurred_at": {"type": "string", "format": "date-time"},
           "record_position": {"type": "integer", "minimum": 1},
           "ticket_id": {"type": "string", "format": "uuid"},

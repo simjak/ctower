@@ -10,6 +10,16 @@ __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
 OPENAPI = ROOT / "contracts/http/openapi.yaml"
+SPEC = ROOT / "docs/internal/SPEC.md"
+_PRIMARY_SURFACE_COUNT = 5
+_PRIMARY_SURFACE_HEADER = (
+    "| Primary screenshot surface | Included concepts from the research "
+    "inventory | Never a primary destination |"
+)
+_PRIMARY_SURFACE_END = (
+    "Members, invites, identities/access, secret bindings, execution environments, "
+    "image lifecycle, provider"
+)
 
 
 def _openapi() -> dict[str, Any]:
@@ -63,6 +73,31 @@ def test_movement_page_and_digest_pointer_name_the_same_view() -> None:
     assert (
         paths["/v1/projects/{project_key}/movement"]["get"]["operationId"] == "listTicketMovement"
     )
+
+
+def test_movement_stays_contextual_inside_the_exactly_five_primary_surfaces() -> None:
+    lines = SPEC.read_text(encoding="utf-8").splitlines()
+    start = lines.index(_PRIMARY_SURFACE_HEADER)
+    end = next(
+        index
+        for index, line in enumerate(lines[start:], start)
+        if line.startswith(_PRIMARY_SURFACE_END)
+    )
+    surfaces = tuple(
+        line.split("|", maxsplit=2)[1].strip()
+        for line in lines[start + 2 : end]
+        if line.startswith("| **")
+    )
+
+    assert surfaces == (
+        "**Home / Needs You**",
+        "**Board**",
+        "**Ticket detail**",
+        "**Fleet**",
+        "**Analytics**",
+    )
+    assert len(surfaces) == _PRIMARY_SURFACE_COUNT
+    assert all("movement" not in surface.lower() for surface in surfaces)
 
 
 def test_record_interface_owns_movement_read_types_without_importing_sql() -> None:

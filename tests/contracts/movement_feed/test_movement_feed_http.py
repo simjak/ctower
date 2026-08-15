@@ -15,6 +15,8 @@ import tomllib
 from pathlib import Path
 from typing import Any, cast
 
+from ctower_client.models import MovementEventPage
+
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
@@ -100,9 +102,39 @@ def test_movement_event_carries_only_transition_facts_and_never_a_ticket_snapsho
     assert "text" not in properties
     assert "summary" not in properties
     assert properties["record_position"] == {"type": "integer", "minimum": 1}
-    assert properties["from_stage"] == {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+    assert properties["from_stage"] == {
+        "type": "string",
+        "pattern": "^$|^[a-z][a-z0-9._-]*$",
+    }
     assert properties["to_stage"] == {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
     assert properties["evaluation_ref"]["type"] == "string"
+
+
+def test_movement_page_accepts_pre_enrichment_unknown_provenance() -> None:
+    page = MovementEventPage.model_validate_json(
+        json.dumps(
+            {
+                "events": (
+                    {
+                        "evaluation_ref": "",
+                        "event_id": "00000000-0000-7000-8000-000000000001",
+                        "from_stage": "",
+                        "occurred_at": "2026-08-15T00:00:00Z",
+                        "record_position": 1,
+                        "ticket_id": "00000000-0000-7000-8000-000000000002",
+                        "to_stage": "frame",
+                        "workflow_ref": "fixture.workflow@1",
+                        "workflow_version": 1,
+                    },
+                ),
+                "next_cursor": None,
+                "project_key": "ctower",
+            }
+        )
+    )
+
+    assert page.events[0].from_stage == ""
+    assert page.events[0].evaluation_ref == ""
 
 
 def test_movement_page_is_strict_and_reuses_cursor_paging() -> None:
