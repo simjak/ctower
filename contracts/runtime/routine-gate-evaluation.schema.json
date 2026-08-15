@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-gate-evaluation.schema.json",
+  "title": "RoutineGateEvaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evaluation_id", "routine_ref", "revision_digest", "scheduled_for",
+    "gate_kind", "result", "watermark_kind", "watermark_position",
+    "observed_count", "detail", "evaluated_at"
+  ],
+  "properties": {
+    "evaluation_id": {"type": "string", "format": "uuid"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "revision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "scheduled_for": {"type": "string", "format": "date-time"},
+    "gate_kind": {"enum": ["always", "new_movement_since_watermark", "open_tickets_above"]},
+    "result": {"enum": ["fired", "skipped", "degraded"]},
+    "watermark_kind": {
+      "enum": ["none", "events.server_time", "tickets.server_time", "tickets.nonterminal"]
+    },
+    "watermark_position": {
+      "oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]
+    },
+    "observed_count": {"type": "integer", "minimum": -1, "maximum": 1000000000},
+    "detail": {"type": "string", "minLength": 1, "maxLength": 500},
+    "evaluated_at": {"type": "string", "format": "date-time"}
+  }
+}

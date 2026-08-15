@@ -1,11 +1,12 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f6592acedac4a0ecfcca514f34a3487411a5f087b6d97e84116ee3da2e2c9944
+Authored contract digest: sha256:3c64910c84ef9419bf8fbaf219189b952ff287b7d6923a931706280886c071ee
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
 from ctower_client.models import (
     ActivityClass,
+    ActivityGate,
     AdmitIntent,
     AdmittedAuditData,
     AppendFindingRequest,
@@ -328,6 +329,7 @@ from ctower_client.models import (
 
 __all__ = [
     "ActivityClass",
+    "ActivityGate",
     "AdmitIntent",
     "AdmittedAuditData",
     "AppendFindingRequest",

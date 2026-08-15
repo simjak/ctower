@@ -1,0 +1,38 @@
+{
+  "schema_id": "ctower.routine/v4",
+  "routine_ref": "mc-cron.capacity-sentinel@1",
+  "schedule": {
+    "kind": "minute_hour_set",
+    "timezone": "Europe/Vilnius",
+    "minutes": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50
+    ],
+    "hours": null
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 600,
+  "handler_kind": "beat_dispatch",
+  "component_digests": [
+    "sha256:2be6be19fa8b1fd133f6b10e9074e3cb421c98b44197ba08c5ac4c220c6834cb"
+  ],
+  "activity_gate": {
+    "kind": "open_tickets_above",
+    "threshold": 0
+  },
+  "beat_dispatch": {
+    "beat_key": "capacity-sentinel",
+    "prompt_source": "crontab/capacity-sentinel.txt",
+    "prompt_sha256": "sha256:2be6be19fa8b1fd133f6b10e9074e3cb421c98b44197ba08c5ac4c220c6834cb",
+    "prompt": "Capacity sentinel (the never-stall watchtower, operator 2026-08-04; migrated from the */10 crontab twin): this gate fired because nonterminal work exists. Probe each substrate cheaply (real tiny request, never a status page), write state/capacity.json, page BY NAME on any substrate FLIP (P1) or <=1 alive coding substrate (P0). Probes are evidence, not vibes.",
+    "target_session": "commander"
+  },
+  "revision_digest": "sha256:6603a23bb7e7a2f0ba202c8e5eaf56689be79ccd4558022d84ad6f0e567a1f42"
+}

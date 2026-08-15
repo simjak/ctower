@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0072_restore_routine_retirement_kind.sql",
-    "schema_sha256": "sha256:06dc4aa9e2881f83ee5fee3b8cf3d3c6469f712b1e5137f7fffbca334f21fba8",
+    "through": "0074_restore_routine_retirement_kind.sql",
+    "schema_sha256": "sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:b0aa6739b9ab0be5345708e546086d3b4c34667569be5d217c83201f10818a15"
+    "schema_object_sum256": "sum256:b35533df20f94ae7eb67dfd9cdea4a15884de96213d6e43521c3413fb2a6732e"
   },
   "ledger_advance_transitions": [
     {
@@ -645,7 +645,16 @@
       "backup_checkpoint": "Before applying to a nonempty installation, capture Request, proposal, proposal-evidence, proposal-decision, event, event-link, command-result, outbox, and accepted-confirmation counts grouped by tenant plus a verified database backup; all three proposal tables start empty."
     },
     {
-      "path": "0068_company_records.sql",
+      "path": "0068_activity_gated_routines.sql",
+      "sha256": "sha256:a227e09115fdc6c427704b915e5a841523cb595850ebc0b5b41c480a847c63ee",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_routines.py::test_ac_rtn_02_gate_true_fires_one_dispatch_fact_with_evidence",
+      "rollback_or_forward_compensation": "Preserve every immutable registration, gate evaluation, dispatch effect, occurrence, and watermark; retirement stays append-only and mc-cron.* refs retire through the same operator path; never rewrite or delete an evaluation fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture routine_activity_gates, routine_gate_evaluations, routine_gate_watermarks, routine_revisions, runtime_beat_dispatch_effects, and routine_occurrences counts grouped by tenant plus a verified database backup; the three gate tables start empty."
+    },
+    {
+      "path": "0070_company_records.sql",
       "sha256": "sha256:a97c6a41f619c6b14507069bc680447b149e04bf1c8d2c31f2a921c61efb6ef5",
       "scope": "database",
       "minimum_service_version": "0.0.0",
@@ -655,7 +664,7 @@
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, and company-record counts plus a verified database backup; the new company-record table starts empty."
     },
     {
-      "path": "0069_estate_import_idempotency.sql",
+      "path": "0071_estate_import_idempotency.sql",
       "sha256": "sha256:d4693edf24abfd1a773f0e33b83afda0f233c1eb9ec0757c6b97b25c3ad756d1",
       "scope": "database",
       "minimum_service_version": "0.0.0",
@@ -665,7 +674,7 @@
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify inbox, ruling, knowledge, event, command-result, and outbox counts plus a verified database backup; all source identity columns start null on existing rows."
     },
     {
-      "path": "0070_estate_import_authority.sql",
+      "path": "0072_estate_import_authority.sql",
       "sha256": "sha256:7e51fd55661d4ebb14a79ea78ab8552e8fd65984b9f2a2c444f42ef78ffbfe28",
       "scope": "database",
       "minimum_service_version": "0.0.0",
@@ -675,7 +684,7 @@
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event-origin constraints, event counts, principal kinds, and a verified database backup; the estate-origin guard starts with no estate events."
     },
     {
-      "path": "0071_restore_request_proposal_constraints.sql",
+      "path": "0073_restore_request_proposal_constraints.sql",
       "sha256": "sha256:420c2fd682718bb51f4e8dd624e2a6639cbe6c4b7c6da154701cfdbdde12166b",
       "scope": "database",
       "minimum_service_version": "0.0.0",
@@ -685,7 +694,7 @@
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, proposal, proposal-evidence, proposal-decision, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no proposal rows."
     },
     {
-      "path": "0072_restore_routine_retirement_kind.sql",
+      "path": "0074_restore_routine_retirement_kind.sql",
       "sha256": "sha256:aa28c89b33661b8435ec85f040c3b544f43da1411c2e6b7f8c6d901ed3aba940",
       "scope": "database",
       "minimum_service_version": "0.0.0",

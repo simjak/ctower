@@ -11,6 +11,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
+from ctower_kernel.runtime.gates import ActivityGate
 from ctower_kernel.runtime.retirement import (
     BeatRoutineRetireCommand,
     BeatRoutineRetirementReceipt,
@@ -456,6 +457,7 @@ class RoutineRevision:
     minute_marks: tuple[int, ...] = ()
     hour_marks: tuple[int, ...] | None = None
     beat_dispatch: BeatDispatchSpec | None = None
+    activity_gate: ActivityGate | None = None
 
     def __post_init__(self) -> None:
         _validate_revision_identity(self)

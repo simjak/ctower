@@ -16,7 +16,7 @@ from urllib.parse import SplitResult, urlsplit
 __all__: tuple[str, ...] = ()
 
 _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
-_BEAT_ROUTINE_REF = re.compile(r"^ctower\.beat\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")
+_BEAT_ROUTINE_REF = re.compile(r"^(ctower\.beat|mc-cron)\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 
 
 def _positive_int(value: str) -> int:

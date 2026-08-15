@@ -81,18 +81,19 @@ _EXPECTED_MIGRATION_PATHS = [
     "0065_console_view_grants.sql",
     "0066_beat_routine_retirement.sql",
     "0067_request_maintenance_proposals.sql",
-    "0068_company_records.sql",
-    "0069_estate_import_idempotency.sql",
-    "0070_estate_import_authority.sql",
-    "0071_restore_request_proposal_constraints.sql",
-    "0072_restore_routine_retirement_kind.sql",
+    "0068_activity_gated_routines.sql",
+    "0070_company_records.sql",
+    "0071_estate_import_idempotency.sql",
+    "0072_estate_import_authority.sql",
+    "0073_restore_request_proposal_constraints.sql",
+    "0074_restore_routine_retirement_kind.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0072_restore_routine_retirement_kind.sql",
-    "schema_sha256": ("sha256:06dc4aa9e2881f83ee5fee3b8cf3d3c6469f712b1e5137f7fffbca334f21fba8"),
+    "through": "0074_restore_routine_retirement_kind.sql",
+    "schema_sha256": ("sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:b0aa6739b9ab0be5345708e546086d3b4c34667569be5d217c83201f10818a15"
+        "sum256:b35533df20f94ae7eb67dfd9cdea4a15884de96213d6e43521c3413fb2a6732e"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [

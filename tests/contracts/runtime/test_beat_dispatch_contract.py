@@ -111,7 +111,7 @@ def test_beat_retire_http_contract_is_strict_and_closed() -> None:
             "required": True,
             "schema": {
                 "type": "string",
-                "pattern": r"^ctower\.beat\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+                "pattern": r"^(ctower\.beat|mc-cron)\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
             },
         },
         {"$ref": "#/components/parameters/IdempotencyKey"},

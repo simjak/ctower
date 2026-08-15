@@ -131,7 +131,7 @@ def test_manifest_verification_rejects_a_batch_count_mismatch() -> None:
 
 def test_inbox_estate_migration_preserves_source_sender_and_recipient() -> None:
     migration_path = Path(__file__).parents[3] / (
-        "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
+        "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql"
     )
     migration = migration_path.read_text(encoding="utf-8")
 

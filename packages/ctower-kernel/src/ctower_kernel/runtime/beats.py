@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from ctower_kernel.runtime.gates import ActivityGate
+
 __all__ = ["BeatDispatchEffect", "BeatDispatchSpec", "BeatRoutine"]
 
 _MAX_PROMPT_BYTES = 16384
@@ -25,7 +27,10 @@ class BeatDispatchSpec:
     def __post_init__(self) -> None:
         if re.fullmatch(r"^[a-z][a-z0-9._-]*$", self.beat_key) is None:
             raise ValueError("beat key must be stable")
-        if self.prompt_source != f"state/beats/{self.beat_key}.txt":
+        if self.prompt_source not in (
+            f"state/beats/{self.beat_key}.txt",
+            f"crontab/{self.beat_key}.txt",
+        ):
             raise ValueError("beat prompt source must match its stable key")
         if not self.prompt or len(self.prompt.encode("utf-8")) > _MAX_PROMPT_BYTES:
             raise ValueError("beat prompt must be present and bounded")
@@ -75,6 +80,7 @@ class BeatRoutine:
     prompt_sha256: str
     target_session: str
     next_fire_at: datetime
+    activity_gate: ActivityGate | None = None
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -91,4 +97,7 @@ class BeatRoutine:
             "prompt_sha256": self.prompt_sha256,
             "target_session": self.target_session,
             "next_fire_at": self.next_fire_at.isoformat(),
+            "activity_gate": (
+                self.activity_gate.canonical_payload() if self.activity_gate else None
+            ),
         }

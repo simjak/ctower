@@ -1,7 +1,14 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f6592acedac4a0ecfcca514f34a3487411a5f087b6d97e84116ee3da2e2c9944
+// Authored contract digest: sha256:3c64910c84ef9419bf8fbaf219189b952ff287b7d6923a931706280886c071ee
 
 export type ActivityClass = "work" | "verification";
+
+export type ActivityGate = Readonly<{
+  readonly "kind": "always" | "new_movement_since_watermark" | "open_tickets_above";
+  readonly "project_key"?: string;
+  readonly "source"?: "events" | "tickets";
+  readonly "threshold"?: number;
+}>;
 
 export type AdmitIntent = Readonly<{
   readonly "expected_version": number;
@@ -117,6 +124,7 @@ export type BeatDispatchEffectList = Readonly<{
 }>;
 
 export type BeatRoutine = Readonly<{
+  readonly "activity_gate"?: null | ActivityGate;
   readonly "beat_key": string;
   readonly "next_fire_at": string;
   readonly "prompt_sha256": string;

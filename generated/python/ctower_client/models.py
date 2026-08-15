@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f6592acedac4a0ecfcca514f34a3487411a5f087b6d97e84116ee3da2e2c9944
+Authored contract digest: sha256:3c64910c84ef9419bf8fbaf219189b952ff287b7d6923a931706280886c071ee
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
     "ActivityClass",
+    "ActivityGate",
     "AdmitIntent",
     "AdmittedAuditData",
     "AppendFindingRequest",
@@ -633,6 +634,13 @@ class ActivityClass(StrEnum):
     VERIFICATION = "verification"
 
 
+class ActivityGate(_BoundaryModel):
+    kind: Literal["always", "new_movement_since_watermark", "open_tickets_above"]
+    source: Literal["events", "tickets"] | None = None
+    threshold: Annotated[int, Field(ge=0, le=1000000)] | None = None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None = None
+
+
 class AdmitIntent(_BoundaryModel):
     kind: Literal["admit"]
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -687,11 +695,11 @@ class AssignmentKind(StrEnum):
 class BeatDispatchEffect(_BoundaryModel):
     effect_id: UUID
     occurrence_id: UUID
-    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    routine_ref: Annotated[str, Field(pattern="^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     scheduled_for: _Rfc3339DateTime
     beat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    prompt_source: Annotated[str, Field(pattern="^state/beats/[a-z][a-z0-9._-]*\\.txt$")]
+    prompt_source: Annotated[str, Field(pattern="^(state/beats|crontab)/[a-z][a-z0-9._-]*\\.txt$")]
     prompt_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     prompt: Annotated[str, Field(min_length=1, max_length=16384)]
     target_session: Literal["commander", "mc-commander-manibo"]
@@ -1887,21 +1895,22 @@ class BeatDispatchEffectList(_BoundaryModel):
 
 
 class BeatRoutine(_BoundaryModel):
-    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    routine_ref: Annotated[str, Field(pattern="^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     schedule: BeatSchedule
     beat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    prompt_source: Annotated[str, Field(pattern="^state/beats/[a-z][a-z0-9._-]*\\.txt$")]
+    prompt_source: Annotated[str, Field(pattern="^(state/beats|crontab)/[a-z][a-z0-9._-]*\\.txt$")]
     prompt_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     target_session: Literal["commander", "mc-commander-manibo"]
     next_fire_at: _Rfc3339DateTime
+    activity_gate: None | ActivityGate = None
 
 
 class BeatRoutineRetirementReceipt(_BoundaryModel):
     command_id: UUID
     retirement_id: UUID
     event_id: UUID
-    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    routine_ref: Annotated[str, Field(pattern="^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     retired_at: _Rfc3339DateTime
     durability_state: DurabilityState

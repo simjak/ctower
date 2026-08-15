@@ -16,7 +16,7 @@ from ctower_kernel.runtime import RoutineRevision
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
-EXPECTED_ROUTINE_PACKS = 12
+EXPECTED_ROUTINE_PACKS = 17
 DIRECTOR_DRIVE_PROMPT_BYTES = 566
 
 
