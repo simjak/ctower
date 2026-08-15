@@ -816,3 +816,28 @@ class TestRegistryFailuresAreNamed:
         policy.write_text("schema: ctower.gate-policy/v1\ncriteria: []\n", encoding="utf-8")
         with pytest.raises(RegistryError, match=re.escape(str(policy))):
             gate_policy_criteria(tmp_path)
+
+
+class TestRequestCutoverOwnership:
+    """The one-way Request cutover has one canonical owner and one proof boundary."""
+
+    def test_estate_import_ticket_does_not_claim_request_cutover_execution(self) -> None:
+        spec = (ROOT / SPEC).read_text(encoding="utf-8")
+        rows = [line for line in spec.splitlines() if line.startswith("| CT-I1-032 |")]
+        assert len(rows) == 1
+        row = rows[0]
+        assert "manifest-generation and export handoff only" in row
+        assert "AC-REQ-06 execution remains CT-I1-015's separately gated proof" in row
+        assert "AC-REQ-06 execution evidence" not in row
+
+    def test_ac_req_06_fixture_owner_matches_request_authority_ticket(self) -> None:
+        rows = [
+            row
+            for row in _committed_manifest()["criteria"]
+            if row["criterion_source"] == ACCEPTANCE and row["criterion_key"] == "AC-REQ-06"
+        ]
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["owner"] == "ct-i1-015"
+        assert row["disposition"] == "deferred"
+        assert "CT-I1-015" in row["reason"]

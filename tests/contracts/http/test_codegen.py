@@ -209,6 +209,30 @@ def test_http_reference_operation_count_matches_the_authored_contract_inventory(
     assert int(match.group(1)) == _EXPECTED_OPERATION_COUNT
 
 
+def test_estate_import_operations_are_documented_in_the_http_reference() -> None:
+    reference = (ROOT / "docs/reference/http-api.md").read_text(encoding="utf-8")
+    rows = (
+        ("/v1/migrations/estate/inbox", "importEstateInbox", "migration ctower-inbox import"),
+        ("/v1/migrations/estate/rulings", "importEstateRulings", "migration ctower-ruling import"),
+        (
+            "/v1/migrations/estate/knowledge",
+            "importEstateKnowledge",
+            "migration ctower-knowledge import",
+        ),
+        (
+            "/v1/migrations/estate/company-records",
+            "importEstateCompanyRecords",
+            "migration ctower-company-record import",
+        ),
+    )
+    for path, operation, cli in rows:
+        row = (
+            f"| `POST` | `{path}` | `{operation}` | `{cli}` | mutation | forbidden | "
+            "`201`, `202`, `401`, `403`, `409`, `422` |"
+        )
+        assert row in reference, f"missing HTTP reference row: {row}"
+
+
 def test_generated_runtime_contracts_validate_offline_and_are_defensive() -> None:
     payload = YAML(typ="safe", pure=True).load(
         (ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")

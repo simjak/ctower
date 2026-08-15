@@ -112,6 +112,7 @@ def test_estate_import_authority_is_operator_scoped_in_postgres(
         signer=signer,
     )
     actor, command_id = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR), uuid4()
+    authority_inventory_before = _authority_inventory(tenant)
     importer = PostgresEstateImports(
         tenant.database.runtime_dsn,
         {("signing-key-ref:acceptance", 1): private_key.public_key()},
@@ -135,6 +136,7 @@ def test_estate_import_authority_is_operator_scoped_in_postgres(
         assert connection.execute(
             "SELECT origin FROM events WHERE event_id = %s", (result.event_ids[0],)
         ).fetchone() == ("estate_import",)
+    assert _authority_inventory(tenant) == authority_inventory_before
 
     replay = importer.import_batch(
         actor,
@@ -149,6 +151,7 @@ def test_estate_import_authority_is_operator_scoped_in_postgres(
     assert not isinstance(replay, RecordProblem), replay
     assert replay.manifest_digest == result.manifest_digest
     assert replay.parity["emitted_before_closure"] is True
+    assert _authority_inventory(tenant) == authority_inventory_before
 
 
 def test_inbox_import_refuses_and_counts_prohibited_rows_in_postgres(
@@ -447,6 +450,21 @@ def _provision_operator_project_seat(tenant: TenantFixture) -> None:
             """,
             (tenant.operator_id, tenant.tenant_id, tenant.operator_id, datetime.now(UTC)),
         )
+
+
+def _authority_inventory(tenant: TenantFixture) -> tuple[int, int, int]:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM principals WHERE tenant_id = %s),
+                (SELECT COUNT(*) FROM project_seats WHERE tenant_id = %s),
+                (SELECT COUNT(*) FROM seat_credential_issuances WHERE tenant_id = %s)
+            """,
+            (tenant.tenant_id, tenant.tenant_id, tenant.tenant_id),
+        ).fetchone()
+    assert row is not None
+    return (int(row[0]), int(row[1]), int(row[2]))
 
 
 def _telemetry(actor: Actor, command_id: UUID) -> TelemetryContext:

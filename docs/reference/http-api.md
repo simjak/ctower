@@ -386,6 +386,18 @@ request. Non-operators receive `dream-lane-binding-operator-required`; an alread
 | `POST` | `/v1/migrations/ctower-project/prepare` | `prepareCtowerProjectCutover` | `migration ctower-project prepare` | refusal-only | forbidden | `401`, `409`, `422` |
 | `POST` | `/v1/migrations/ctower-project/reconcile` | `finalizeCtowerProjectImportRun` | `migration ctower-project reconcile` | mutation | forbidden | `200`, `202`, `401`, `409`, `422` |
 
+### Migration (external estate)
+
+These operator-only, online operations accept signed, bounded estate batches. They are not spoolable; replay
+uses the manifest and batch identity to converge without appending duplicates.
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/migrations/estate/inbox` | `importEstateInbox` | `migration ctower-inbox import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/migrations/estate/rulings` | `importEstateRulings` | `migration ctower-ruling import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/migrations/estate/knowledge` | `importEstateKnowledge` | `migration ctower-knowledge import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+| `POST` | `/v1/migrations/estate/company-records` | `importEstateCompanyRecords` | `migration ctower-company-record import` | mutation | forbidden | `201`, `202`, `401`, `403`, `409`, `422` |
+
 ## Principals
 
 Some operations require a specific principal beyond ordinary authentication. From the registry:
