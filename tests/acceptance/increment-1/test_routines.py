@@ -7,7 +7,7 @@ import time
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import LiteralString, TypedDict, cast
+from typing import LiteralString, cast
 from uuid import uuid4
 
 import psycopg
@@ -39,18 +39,6 @@ _TABLE_COUNT_QUERIES: dict[str, LiteralString] = {
     "routine_revisions": "SELECT count(*) FROM routine_revisions",
     "runtime_beat_dispatch_effects": "SELECT count(*) FROM runtime_beat_dispatch_effects",
 }
-
-
-class ParityRoutine(TypedDict):
-    routine_ref: object
-    host_twin_active: bool
-    routine_fired_once: bool
-    host_crontab_deletion: str
-
-
-class ParityReport(TypedDict):
-    schema: str
-    routines: list[ParityRoutine]
 
 
 def _gated() -> dict[str, RoutineRevision]:
@@ -375,16 +363,8 @@ def test_ac_rtn_03_five_representative_schedules_register_and_fire(tenant: Tenan
         assert effect.routine_ref.startswith("mc-cron.")
         assert effect.spec.target_session in ("commander", "mc-commander-manibo")
 
-    # catch-parity artifact: every migrated schedule names both executions
-    parity = _parity_report(tenant)
-    assert parity["schema"] == "ctower.routine-catch-parity/v1"
-    assert {entry["routine_ref"] for entry in parity["routines"]} == {
-        revision.routine_ref for revision in gated.values()
-    }
-    for entry in parity["routines"]:
-        assert entry["host_twin_active"] is True, "host twin stays until director acts"
-        assert entry["routine_fired_once"] is True
-        assert entry["host_crontab_deletion"] == "external-custodian"
+    # Ctower owns only the queued occurrence evidence. Host-twin activity and
+    # crontab deletion remain external-custodian facts.
 
 
 def _due_mark(revision: RoutineRevision, now: datetime) -> datetime:
@@ -531,32 +511,3 @@ def _table_counts(tenant: TenantFixture, *tables: str) -> dict[str, int]:
 
 def _replace_ref(revision: RoutineRevision, routine_ref: str) -> RoutineRevision:
     return replace(revision, routine_ref=routine_ref)
-
-
-def _parity_report(tenant: TenantFixture) -> ParityReport:
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        rows = connection.execute(
-            """
-            SELECT revision.routine_ref,
-                   EXISTS (
-                       SELECT 1 FROM routine_occurrences AS occurrence
-                       WHERE occurrence.revision_digest = revision.revision_digest
-                         AND occurrence.tenant_id = %s AND occurrence.outcome = 'queued'
-                   ) AS fired_once
-            FROM routine_revisions AS revision
-            WHERE revision.routine_ref LIKE %s
-            """,
-            (tenant.tenant_id, "mc-cron.%"),
-        ).fetchall()
-    return {
-        "schema": "ctower.routine-catch-parity/v1",
-        "routines": [
-            {
-                "routine_ref": row[0],
-                "host_twin_active": True,
-                "routine_fired_once": bool(row[1]),
-                "host_crontab_deletion": "external-custodian",
-            }
-            for row in rows
-        ],
-    }

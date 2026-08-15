@@ -8,6 +8,13 @@
     "mc-cron.worktree-janitor-apply@1",
     "mc-cron.capacity-sentinel@1"
   ],
+  "admitted_backlog": [
+    {
+      "item": "routine-catch-parity-report-emitter",
+      "status": "admitted-shim-debt",
+      "reason": "Ctower records routine fire facts but cannot observe host crontab state; the parity-report emitter remains outside this candidate."
+    }
+  ],
   "unmigrated": [
     {
       "cron_tool": "ctower-feed-notify",

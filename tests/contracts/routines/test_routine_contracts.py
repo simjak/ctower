@@ -131,6 +131,17 @@ def test_unmigrated_schedules_are_enumerated_with_intended_gates() -> None:
     assert backlog["schema"] == "ctower.routine-migration-backlog/v1"
     migrated = cast(list[str], backlog["migrated"])
     assert set(migrated) == set(GATED_PACKS)
+    admitted_backlog = cast(list[dict[str, object]], backlog["admitted_backlog"])
+    assert admitted_backlog == [
+        {
+            "item": "routine-catch-parity-report-emitter",
+            "status": "admitted-shim-debt",
+            "reason": (
+                "Ctower records routine fire facts but cannot observe host crontab state; "
+                "the parity-report emitter remains outside this candidate."
+            ),
+        }
+    ]
     entries = cast(list[dict[str, object]], backlog["unmigrated"])
     assert len(entries) == EXPECTED_UNMIGRATED_SCHEDULES
     gates = {cast(dict[str, object], entry["activity_gate"])["kind"] for entry in entries}
