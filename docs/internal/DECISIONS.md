@@ -2902,3 +2902,37 @@ moving `ARCHITECTURE.md` or creating a second structural atlas (violates D16); o
 changing every strict consumer in the same candidate (creates an invalid tree). This relocation changes no
 accepted requirement, identifier, contract, generated output other than exact source paths and digests, or
 implementation sequence.
+
+## D66 — The Mission Control estate migrates into ctower under operator order R3000; the Request-ledger cutover activates for this window (product + authority, 2026-08-15, operator order R3000)
+
+The operator ordered the complete migration of the external Mission Control coordination
+estate into ctower with the source archived at the end of one bounded window ("move entire
+mission control to ctower and archive mission control in 12 hours; smooth migration"). This
+decision records the authority consequences. It supersedes no record shape; it activates
+dormant, already-specified machinery and admits three bounded feature candidates.
+
+1. **The OR-06 Request-ledger cutover activates for this window.** D-prior text and INV-86
+   gate the one-way Request cutover behind accepted CP3-D evidence and a separately accepted
+   portfolio authority epoch. The operator's R3000 order IS the accepted authority decision
+   for the external Request ledger: the sealed source ledger's complete import (R labels
+   preserved, allocator advanced past the high-water, fence observed on the source writer)
+   proceeds now under the existing signed-manifest, batched, denominator-complete machinery
+   of AC-REQ-06. Nothing else exits shadow-only: the `SHADOW_ONLY_CP3_D_NOT_PROVEN` posture
+   is unchanged for every GitHub/GitLab-derived record, and CP3-D itself remains red and
+   required for those. The cutover epoch fact names this decision and the operator order.
+2. **Three bounded candidates are admitted**: CT-I1-032 (external-estate record imports:
+   inbox history, agreed decisions as Rulings, board knowledge, and company accountability
+   records), CT-I1-033 (company/project-scoped activity-gated Routines with catch-parity
+   migration evidence), and CT-I1-034 (spawn-custody records: pre-dispatch commitment facts
+   with append-only lifecycle transitions, write-path authoritative, reconcile-read
+   parity-gated). Each lands per D62 discipline (one landable candidate, RED-first, docs in
+   the same candidate) and per its CT row.
+3. **Import authority is operator-tier.** Every import command runs under operator
+   authority, carries a signed manifest with source counts and digests, is idempotent by its
+   tier's natural key, maps unknown source owners to an explicit source-only state (never a
+   phantom principal, never a silent drop), and emits parity evidence before any source
+   path closes. Source freezes, fence observation ordering, host crontab deletion, and the
+   archive act belong to the external estate's custodian, not to ctower code.
+4. **Safe-degraded honesty.** Anything in the R3000 scope not product-grade inside the
+   window ships as a working shim plus an admitted backlog row named in this file's
+   successors — never as silent scope, never as a weakened gate. §5 gates bind unchanged.
