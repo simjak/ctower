@@ -67,3 +67,5 @@ decision and CSO gate.
 
 See the [CLI reference](../reference/cli.md#requests) and
 [HTTP API reference](../reference/http-api.md#requests) for exact commands and operations.
+Suggestions to duplicate, close, supersede, kill, or keep a Request use the separate
+[Request-maintenance proposal queue](request-maintenance-proposals.md); appending one never edits a Request.

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import UTC, date, datetime
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -19,6 +21,7 @@ from ctower_kernel.projections.morning_digest import (
     UnreachedScope,
     project_morning_digest,
 )
+from ctower_kernel.projections.request_proposals import ProposalSummaryInput
 
 __all__: tuple[str, ...] = ()
 
@@ -65,6 +68,7 @@ def test_digest_composes_three_sections_and_prior_day_ruling_execution() -> None
     digest = project_morning_digest(
         requests,
         rulings,
+        _proposal_source(ProposalSummaryInput("duplicate", "OPEN")),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -110,6 +114,7 @@ def test_unreached_request_source_is_unknown_never_a_zero() -> None:
     digest = project_morning_digest(
         requests,
         rulings,
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -138,6 +143,7 @@ def test_unreached_ruling_source_makes_the_proof_total_unknown_never_zero() -> N
     digest = project_morning_digest(
         requests,
         rulings,
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -163,6 +169,7 @@ def test_partial_source_preserves_visible_rows_and_withholds_the_total() -> None
     digest = project_morning_digest(
         requests,
         rulings,
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -192,6 +199,7 @@ def test_open_decisions_follow_the_authoritative_brief_status() -> None:
             (open_request, answered_request), watermark=41, observed_at=_OBSERVED_AT
         ),
         SourceReading.complete((), watermark=44, observed_at=_OBSERVED_AT),
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -206,6 +214,7 @@ def test_unknown_proof_count_marks_the_related_scope_partial() -> None:
     digest = project_morning_digest(
         SourceReading.complete((request,), watermark=41, observed_at=_OBSERVED_AT),
         SourceReading.complete((), watermark=44, observed_at=_OBSERVED_AT),
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -229,12 +238,14 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
     first = project_morning_digest(
         requests,
         rulings,
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
     second = project_morning_digest(
         requests,
         rulings,
+        _proposal_source(),
         digest_date=_DIGEST_DATE,
         observed_at=datetime(2026, 8, 10, 6, 0, tzinfo=UTC),
     )
@@ -246,6 +257,31 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
     assert first.artifact_sha256 == second.artifact_sha256
     assert first.observed_at != second.observed_at
     assert first.artifact_sha256.startswith("sha256:")
+
+
+def test_unreached_proposal_source_is_named_unavailable_without_rows_or_identity() -> None:
+    digest = project_morning_digest(
+        SourceReading.complete((), watermark=41, observed_at=_OBSERVED_AT),
+        SourceReading.complete((), watermark=44, observed_at=_OBSERVED_AT),
+        SourceReading.unknown(
+            UnreachedScope("request-proposals", "proposal-source-unavailable"),
+            observed_at=_OBSERVED_AT,
+        ),
+        digest_date=_DIGEST_DATE,
+        observed_at=_OBSERVED_AT,
+    )
+
+    summary = digest.request_maintenance.response_payload()
+    encoded = json.dumps(summary, sort_keys=True)
+    assert digest.state is ReadingState.PARTIAL
+    assert summary["source_state"] == "unavailable"
+    assert summary["unreached_scopes"] == ["request-proposals:proposal-source-unavailable"]
+    assert set(cast(dict[str, object], summary["by_kind"]).values()) == {None}
+    assert set(cast(dict[str, object], summary["by_state"]).values()) == {None}
+    assert summary["watermark"] is None
+    assert "request_id" not in encoded
+    assert "proposal_id" not in encoded
+    assert "target_text" not in encoded
 
 
 def test_prior_civil_day_uses_the_vilnius_fall_back_boundary() -> None:
@@ -283,6 +319,7 @@ def test_prior_civil_day_uses_the_vilnius_fall_back_boundary() -> None:
     digest = project_morning_digest(
         SourceReading.complete((), watermark=41, observed_at=_OBSERVED_AT),
         rulings,
+        _proposal_source(),
         digest_date=date(2026, 10, 26),
         observed_at=_OBSERVED_AT,
     )
@@ -305,11 +342,19 @@ def _assert_complete_digest(digest: MorningDigest) -> None:
     assert execution.state == "DONE"
     assert execution.ticket_ids == (_TICKET_ID,)
     assert digest.proof.total_count == _PROOF_ROW_COUNT
+    assert dict(digest.request_maintenance.by_kind)["duplicate"] == 1
+    assert digest.request_maintenance.pointer == "/v1/request-maintenance/review"
     proof = next(item for item in digest.proof.items if item.request_reference == "R102")
     assert proof.current_proof_count == 1
     assert proof.tickets[0].href == f"/v1/tickets/{_TICKET_ID}/timeline"
     assert proof.tickets[0].purpose == "required"
     assert all(item.request_id != _UNRELATED_REQUEST_ID for item in digest.proof.items)
+
+
+def _proposal_source(
+    *rows: ProposalSummaryInput,
+) -> SourceReading[ProposalSummaryInput]:
+    return SourceReading.complete(rows, watermark=46, observed_at=_OBSERVED_AT)
 
 
 def _open_decision() -> DigestRequestFact:

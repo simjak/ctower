@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/list.schema.json",
+  "title": "RequestMaintenanceProposalList",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observed_at", "rows", "unanswered_projects", "watermark"],
+  "properties": {
+    "rows": {"type": "array", "items": {"$ref": "https://ctower.dev/contracts/domain/request-proposals/proposal.schema.json"}},
+    "watermark": {"type": "integer", "minimum": 0},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "unanswered_projects": {"type": "array", "items": {"type": "string"}}
+  }
+}

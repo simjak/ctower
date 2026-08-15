@@ -86,6 +86,7 @@
         "attention.finding_disposition_recorded",
         "knowledge.document_registered",
         "request.changed",
+        "request.proposal_changed",
         "ruling.recorded"
       ]
     },
@@ -119,7 +120,7 @@
     },
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$"
     },
     "tenant_id": {
       "type": "string",
@@ -590,6 +591,22 @@
             },
             "payload": {
               "$ref": "#/$defs/requestChanged"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "request.proposal_changed"
+            },
+            "origin": {
+              "const": "api"
+            },
+            "stream_id": {
+              "pattern": "^request-proposal:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/requestProposalChanged"
             }
           }
         },
@@ -2225,6 +2242,24 @@
         "supersedes_ruling_id": {"type": ["string", "null"], "format": "uuid"},
         "verbatim": {"type": "string", "minLength": 1, "maxLength": 65536},
         "verbatim_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "requestProposalChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation", "proposal_id", "proposal_kind", "proposal_state",
+        "target_command_id", "target_outcome", "target_problem_code", "target_request_id"
+      ],
+      "properties": {
+        "operation": {"enum": ["appended", "confirmed", "rejected"]},
+        "proposal_id": {"type": "string", "format": "uuid"},
+        "proposal_kind": {"enum": ["duplicate", "completed-but-open", "supersession", "kill", "keep"]},
+        "proposal_state": {"enum": ["OPEN", "CONFIRMED", "REJECTED"]},
+        "target_command_id": {"type": ["string", "null"], "format": "uuid"},
+        "target_outcome": {"enum": ["accepted", "refused", null]},
+        "target_problem_code": {"type": ["string", "null"]},
+        "target_request_id": {"type": "string", "format": "uuid"}
       }
     }
   }

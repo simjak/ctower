@@ -20,8 +20,12 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, cast
+from uuid import UUID
+
+import pytest
 
 from ctower_kernel.record.events import EventKind, event_catalog
+from ctower_kernel.record.request_proposal_events import RequestProposalChangedPayload
 
 __all__: tuple[str, ...] = ()
 
@@ -88,6 +92,43 @@ def _project_event_branch_kinds() -> frozenset[str]:
 
 def test_the_catalog_covers_every_authored_kind_exactly_once() -> None:
     assert [entry.kind for entry in event_catalog()] == list(EventKind)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("operation", "merged", "operation"),
+        ("proposal_kind", "merge", "kind"),
+        ("proposal_state", "DONE", "state"),
+        ("target_outcome", "guessed", "outcome"),
+    ),
+)
+def test_request_proposal_event_refuses_every_closed_vocabulary_drift(
+    field: str, value: str, message: str
+) -> None:
+    values: dict[str, object] = {
+        "operation": "appended",
+        "proposal_id": UUID("00000000-0000-7000-8000-000000000101"),
+        "proposal_kind": "keep",
+        "proposal_state": "OPEN",
+        "target_request_id": UUID("00000000-0000-7000-8000-000000000102"),
+        "target_command_id": None,
+        "target_outcome": None,
+        "target_problem_code": None,
+    }
+    values[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        RequestProposalChangedPayload(
+            operation=cast(str, values["operation"]),
+            proposal_id=cast(UUID, values["proposal_id"]),
+            proposal_kind=cast(str, values["proposal_kind"]),
+            proposal_state=cast(str, values["proposal_state"]),
+            target_request_id=cast(UUID, values["target_request_id"]),
+            target_command_id=cast(UUID | None, values["target_command_id"]),
+            target_outcome=cast(str | None, values["target_outcome"]),
+            target_problem_code=cast(str | None, values["target_problem_code"]),
+        )
 
 
 def test_the_envelope_enum_matches_the_catalog() -> None:

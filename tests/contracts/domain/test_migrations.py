@@ -80,13 +80,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0064_console_output_reader_role.sql",
     "0065_console_view_grants.sql",
     "0066_beat_routine_retirement.sql",
+    "0067_request_maintenance_proposals.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0066_beat_routine_retirement.sql",
-    "schema_sha256": ("sha256:da7b6db4d7eb3f0acafe9395d8b76c90886dfcbb5bd4455f07f19c2a7278ee45"),
+    "through": "0067_request_maintenance_proposals.sql",
+    "schema_sha256": ("sha256:a469179f2e1f13cae2ab11325d1b764188e626124be3a0c0bc29079c2a7527a4"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:486b5ca6a4abcae26d71b54d91ab18da4ec7bbe2a1e03799bd132d4424477104"
+        "sum256:b38c6aa1eaef75e0a4904976b1656bde423d36bea1797022e875c4338ae6ab70"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [
@@ -107,7 +108,7 @@ _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [
             "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644"
         ),
         "pending_database_from": "0065_console_view_grants.sql",
-        "pending_database_through": "0066_beat_routine_retirement.sql",
+        "pending_database_through": "0067_request_maintenance_proposals.sql",
     }
 ]
 _DURABILITY_RECOVERY_CONTRACT = {

@@ -32,6 +32,7 @@ def test_morning_digest_is_one_strict_read_only_generated_surface() -> None:
         "observed_at",
         "open_decisions",
         "proof",
+        "request_maintenance",
         "request_watermark",
         "ruling_watermark",
         "state",

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3a985fad6955dbecd5cc3edb85dcbf361cff67bba3ae4859b08c282b57b3ce44
+Authored contract digest: sha256:2ccf3cff64e2fa9d8464e4417f0e916508b0bf7c63abdb55c09c68b718c02d0b
 """
 
 from __future__ import annotations
@@ -97,6 +97,13 @@ from ctower_client.models import (
     RequestChangeResult,
     RequestClosureEvaluationRequest,
     RequestList,
+    RequestMaintenanceProposalAppendRequest,
+    RequestMaintenanceProposalAppendResult,
+    RequestMaintenanceProposalConfirmRequest,
+    RequestMaintenanceProposalDecisionResult,
+    RequestMaintenanceProposalList,
+    RequestMaintenanceProposalRejectRequest,
+    RequestMaintenanceReview,
     RequestOwnerRequest,
     RequestPriorityRequest,
     RequestTicketRelationRequest,
@@ -331,6 +338,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: CtowerProjectMigrationReceipt, 202: CtowerProjectMigrationReceipt}, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def append_request_maintenance_proposal(
+        self,
+        request: RequestMaintenanceProposalAppendRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestMaintenanceProposalAppendResult:
+        response = self._http.post(
+            "/v1/request-maintenance/proposals",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: RequestMaintenanceProposalAppendResult, 202: RequestMaintenanceProposalAppendResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def append_ruling(
@@ -634,6 +662,28 @@ class CtowerClient:
         _refusal(response, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def confirm_request_maintenance_proposal(
+        self,
+        proposal_id: UUID,
+        request: RequestMaintenanceProposalConfirmRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestMaintenanceProposalDecisionResult:
+        response = self._http.post(
+            f"/v1/request-maintenance/proposals/{quote(str(proposal_id), safe='')}/confirm",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestMaintenanceProposalDecisionResult, 202: RequestMaintenanceProposalDecisionResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def consume_dream_dispatch_effect(
         self,
         effect_id: UUID,
@@ -926,6 +976,21 @@ class CtowerClient:
         return _response(response, {200: ProjectDeliveryView}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_request_maintenance_review(
+        self,
+    ) -> RequestMaintenanceReview:
+        response = self._http.get(
+            "/v1/request-maintenance/review",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: RequestMaintenanceReview}, {401: Problem, 403: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ruling(
         self,
         ruling_id: UUID,
@@ -1173,6 +1238,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: ProjectSessionPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_request_maintenance_proposals(
+        self,
+        *,
+        proposal_id: UUID | None = None,
+        project_key: str | None = None,
+        kind: str | None = None,
+        state: str | None = None,
+    ) -> RequestMaintenanceProposalList:
+        response = self._http.get(
+            "/v1/request-maintenance/proposals",
+            params={**({"proposal_id": str(proposal_id)} if proposal_id is not None else {}), **({"project_key": project_key} if project_key is not None else {}), **({"kind": kind} if kind is not None else {}), **({"state": state} if state is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: RequestMaintenanceProposalList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_requests(
@@ -1554,6 +1640,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: SessionReceipt, 202: SessionReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def reject_request_maintenance_proposal(
+        self,
+        proposal_id: UUID,
+        request: RequestMaintenanceProposalRejectRequest,
+        *,
+        command_id: UUID,
+    ) -> RequestMaintenanceProposalDecisionResult:
+        response = self._http.post(
+            f"/v1/request-maintenance/proposals/{quote(str(proposal_id), safe='')}/reject",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: RequestMaintenanceProposalDecisionResult, 202: RequestMaintenanceProposalDecisionResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def relate_request_ticket(

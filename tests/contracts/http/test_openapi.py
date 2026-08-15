@@ -5,7 +5,12 @@ import json
 from pathlib import Path
 from typing import cast
 
+from ._ast_support import function_definitions
 from ._beat_inventory import BEAT_OPERATION_METADATA, BEAT_PROBLEM_CODES
+from ._request_proposal_inventory import (
+    REQUEST_PROPOSAL_OPERATION_METADATA,
+    REQUEST_PROPOSAL_PROBLEM_CODES,
+)
 from ._ruling_inventory import RULING_OPERATION_METADATA, RULING_PROBLEM_CODES
 
 ROOT, MAX_IMPORT_ITEMS = Path(__file__).parents[3], 64
@@ -16,6 +21,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "addTicketRelation": ("ticket relation add", True, "allowed", None, False),
     "allowConsoleSession": (None, True, "forbidden", None, False),
     "appendAttentionFinding": ("attention finding append", True, "allowed", None, False),
+    **REQUEST_PROPOSAL_OPERATION_METADATA,
     "appendCtowerProjectImportCorrection": (
         "migration ctower-project correction append",
         True,
@@ -348,6 +354,7 @@ _EXPECTED_PROBLEM_CODES = {
     "migration-source-selection-drift",
     "migration-source-tainted",
     "poison-not-found",
+    *REQUEST_PROPOSAL_PROBLEM_CODES,
     "prohibited-data-class",
     "project-delivery-unavailable",
     "project-grant-required",
@@ -424,18 +431,6 @@ _EXPECTED_PROBLEM_CODES = {
 }
 
 
-def _function_definitions(root: Path, name: str) -> set[str]:
-    definitions: set[str] = set()
-    for path in root.rglob("*.py"):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        if any(
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name == name
-            for node in ast.walk(tree)
-        ):
-            definitions.add(path.relative_to(root).as_posix())
-    return definitions
-
-
 def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
@@ -486,8 +481,8 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
 def test_project_and_credential_refusals_have_one_definition_each() -> None:
     kernel = ROOT / "packages/ctower-kernel/src/ctower_kernel"
 
-    assert _function_definitions(kernel, "project_mutation_refusal") == {"record/transaction.py"}
-    assert _function_definitions(kernel, "credential_scope_refusal") == {"record/interface.py"}
+    assert function_definitions(kernel, "project_mutation_refusal") == {"record/transaction.py"}
+    assert function_definitions(kernel, "credential_scope_refusal") == {"record/interface.py"}
 
 
 def test_http_authentication_requires_scope_or_the_named_opt_out() -> None:

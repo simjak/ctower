@@ -483,6 +483,90 @@
         }
       }
     },
+    "/v1/request-maintenance/proposals": {
+      "post": {
+        "operationId": "appendRequestMaintenanceProposal",
+        "x-ctower-cli": "request proposal append",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalAppendRequest"}}}},
+        "responses": {
+          "201": {"description": "Request-maintenance proposal accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalAppendResult"}}}},
+          "202": {"description": "Request-maintenance proposal committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalAppendResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      },
+      "get": {
+        "operationId": "listRequestMaintenanceProposals",
+        "x-ctower-cli": "request proposal list",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "proposal_id", "in": "query", "required": false, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "project_key", "in": "query", "required": false, "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}},
+          {"name": "kind", "in": "query", "required": false, "schema": {"type": "string", "enum": ["duplicate", "completed-but-open", "supersession", "kill", "keep"]}},
+          {"name": "state", "in": "query", "required": false, "schema": {"type": "string", "enum": ["OPEN", "CONFIRMED", "REJECTED"]}}
+        ],
+        "responses": {
+          "200": {"description": "Accepted-only Request-maintenance proposal facts", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalList"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/request-maintenance/review": {
+      "get": {
+        "operationId": "getRequestMaintenanceReview",
+        "x-ctower-cli": "request proposal review",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {"description": "Operator-only deterministic top-20 proposal review", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceReview"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/request-maintenance/proposals/{proposal_id}/confirm": {
+      "post": {
+        "operationId": "confirmRequestMaintenanceProposal",
+        "x-ctower-cli": "request proposal confirm",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "proposal_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalConfirmRequest"}}}},
+        "responses": {
+          "200": {"description": "Proposal decision and linked Request outcome accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalDecisionResult"}}}},
+          "202": {"description": "Proposal decision committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalDecisionResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/request-maintenance/proposals/{proposal_id}/reject": {
+      "post": {
+        "operationId": "rejectRequestMaintenanceProposal",
+        "x-ctower-cli": "request proposal reject",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"name": "proposal_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalRejectRequest"}}}},
+        "responses": {
+          "200": {"description": "Immutable proposal rejection accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalDecisionResult"}}}},
+          "202": {"description": "Proposal rejection committed; durability pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RequestMaintenanceProposalDecisionResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}, "403": {"$ref": "#/components/responses/ProblemResponse"}, "404": {"$ref": "#/components/responses/ProblemResponse"}, "409": {"$ref": "#/components/responses/ProblemResponse"}, "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/requests": {
       "post": {
         "operationId": "captureRequest",
@@ -3955,6 +4039,25 @@
               "migration-source-selection-drift",
               "migration-source-tainted",
               "poison-not-found",
+              "proposal-already-decided",
+              "proposal-append-forbidden",
+              "proposal-credential-invalid",
+              "proposal-decision-forbidden",
+              "proposal-evidence-invalid",
+              "proposal-evidence-unavailable",
+              "proposal-invalid",
+              "proposal-kind-invalid",
+              "proposal-not-found",
+              "proposal-project-invalid",
+              "proposal-project-unavailable",
+              "proposal-quote-invalid",
+              "proposal-quote-mismatch",
+              "proposal-reason-invalid",
+              "proposal-related-not-found",
+              "proposal-state-invalid",
+              "proposal-target-not-found",
+              "proposal-version-conflict",
+              "proposal-watermark-invalid",
               "prohibited-data-class",
               "project-delivery-unavailable",
               "project-grant-required",
@@ -4305,7 +4408,7 @@
         "additionalProperties": false,
         "required": [
           "artifact_key", "artifact_sha256", "digest_date", "observed_at", "open_decisions",
-          "proof", "request_watermark", "ruling_watermark", "state", "timezone", "yesterday_rulings"
+          "proof", "request_maintenance", "request_watermark", "ruling_watermark", "state", "timezone", "yesterday_rulings"
         ],
         "properties": {
           "artifact_key": {"type": "string", "pattern": "^morning-digest:[0-9]{4}-[0-9]{2}-[0-9]{2}:Europe/Vilnius$"},
@@ -4314,6 +4417,7 @@
           "observed_at": {"type": "string", "format": "date-time"},
           "open_decisions": {"$ref": "#/components/schemas/MorningDigestDecisionSection"},
           "proof": {"$ref": "#/components/schemas/MorningDigestProofSection"},
+          "request_maintenance": {"$ref": "#/components/schemas/RequestMaintenanceProposalSummary"},
           "request_watermark": {"type": ["integer", "null"], "minimum": 0},
           "ruling_watermark": {"type": ["integer", "null"], "minimum": 0},
           "state": {"$ref": "#/components/schemas/DigestReadingState"},
@@ -4393,6 +4497,218 @@
           "rows": {"type": "array", "items": {"$ref": "#/components/schemas/RulingRow"}},
           "unanswered_projects": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}},
           "watermark": {"type": "integer", "minimum": 0}
+        }
+      },
+      "RequestMaintenanceProposalKind": {
+        "type": "string",
+        "enum": ["duplicate", "completed-but-open", "supersession", "kill", "keep"]
+      },
+      "RequestMaintenanceProposalState": {
+        "type": "string",
+        "enum": ["OPEN", "CONFIRMED", "REJECTED"]
+      },
+      "RequestMaintenanceProposalAmbiguity": {
+        "type": "string",
+        "enum": [
+          "evidence-conflicting-or-incomplete", "duplicate-uncertain",
+          "supersession-unclear", "target-version-stale", "completion-unproven"
+        ]
+      },
+      "RequestProposalRecordEventEvidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event_digest", "event_id", "event_kind", "kind"],
+        "properties": {
+          "event_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "event_kind": {"type": "string", "minLength": 1, "maxLength": 128},
+          "kind": {"const": "record-event"}
+        }
+      },
+      "RequestProposalProofEvidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_digest", "evidence_id", "kind", "proof_id", "ticket_id"],
+        "properties": {
+          "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "evidence_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "proof-evidence"},
+          "proof_id": {"type": "string", "format": "uuid"},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "RequestProposalEvidence": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/RequestProposalRecordEventEvidence"},
+          {"$ref": "#/components/schemas/RequestProposalProofEvidence"}
+        ]
+      },
+      "RequestMaintenanceProposalAppendRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["basis", "evidence", "kind", "project_key", "source_record_position", "target_expected_version", "target_request_id", "target_text"],
+        "properties": {
+          "ambiguity_reason": {"oneOf": [{"$ref": "#/components/schemas/RequestMaintenanceProposalAmbiguity"}, {"type": "null"}]},
+          "basis": {"type": "string", "enum": ["recorded-evidence", "similarity"]},
+          "evidence": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/components/schemas/RequestProposalEvidence"}},
+          "kind": {"$ref": "#/components/schemas/RequestMaintenanceProposalKind"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "related_expected_version": {"type": ["integer", "null"], "minimum": 1},
+          "related_request_id": {"type": ["string", "null"], "format": "uuid"},
+          "related_text": {"type": ["string", "null"], "minLength": 1, "maxLength": 65536},
+          "source_record_position": {"type": "integer", "minimum": 0},
+          "target_expected_version": {"type": "integer", "minimum": 1},
+          "target_request_id": {"type": "string", "format": "uuid"},
+          "target_text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "RequestMaintenanceProposalAppendResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accepted_position", "ambiguity_reason", "command_id", "durability_state", "event_ids", "kind", "project_key", "proposal_id", "proposal_version", "proposer_principal_id", "source_record_position", "state", "target_request_id"],
+        "properties": {
+          "accepted_position": {"type": ["integer", "null"], "minimum": 1},
+          "ambiguity_reason": {"oneOf": [{"$ref": "#/components/schemas/RequestMaintenanceProposalAmbiguity"}, {"type": "null"}]},
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "kind": {"$ref": "#/components/schemas/RequestMaintenanceProposalKind"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "proposal_id": {"type": "string", "format": "uuid"},
+          "proposal_version": {"const": 1},
+          "proposer_principal_id": {"type": "string", "format": "uuid"},
+          "source_record_position": {"type": "integer", "minimum": 0},
+          "state": {"const": "OPEN"},
+          "target_request_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "RequestMaintenanceProposalConfirmRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_proposal_version"],
+        "properties": {"expected_proposal_version": {"const": 1}}
+      },
+      "RequestMaintenanceProposalRejectRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_proposal_version"],
+        "properties": {
+          "expected_proposal_version": {"const": 1},
+          "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RequestMaintenanceProposalDecisionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accepted_position", "command_id", "decided_at", "decided_by", "decision_id", "durability_state", "event_ids", "expected_proposal_version", "operation", "proposal_id", "reason", "target_command_id", "target_outcome", "target_problem_code", "target_request_version"],
+        "properties": {
+          "accepted_position": {"type": ["integer", "null"], "minimum": 1},
+          "command_id": {"type": "string", "format": "uuid"},
+          "decided_at": {"type": "string", "format": "date-time"},
+          "decided_by": {"type": "string", "format": "uuid"},
+          "decision_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "expected_proposal_version": {"const": 1},
+          "operation": {"type": "string", "enum": ["confirmed", "rejected"]},
+          "proposal_id": {"type": "string", "format": "uuid"},
+          "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 500},
+          "target_command_id": {"type": ["string", "null"], "format": "uuid"},
+          "target_outcome": {
+            "oneOf": [
+              {"type": "string", "enum": ["accepted", "refused"]},
+              {"type": "null"}
+            ]
+          },
+          "target_problem_code": {"type": ["string", "null"]},
+          "target_request_version": {"type": ["integer", "null"], "minimum": 2}
+        }
+      },
+      "RequestMaintenanceProposalRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ambiguity_reason", "basis", "created_at", "decision", "evidence", "kind", "project_key", "proposal_id", "proposal_version", "proposer_principal_id", "related_expected_version", "related_request_id", "related_text", "seat_credential_id", "source_record_position", "state", "target_expected_version", "target_request_id", "target_text"],
+        "properties": {
+          "ambiguity_reason": {"oneOf": [{"$ref": "#/components/schemas/RequestMaintenanceProposalAmbiguity"}, {"type": "null"}]},
+          "basis": {"type": "string", "enum": ["recorded-evidence", "similarity"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "decision": {"oneOf": [{"$ref": "#/components/schemas/RequestMaintenanceProposalDecisionResult"}, {"type": "null"}]},
+          "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/RequestProposalEvidence"}},
+          "kind": {"$ref": "#/components/schemas/RequestMaintenanceProposalKind"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "proposal_id": {"type": "string", "format": "uuid"},
+          "proposal_version": {"const": 1},
+          "proposer_principal_id": {"type": "string", "format": "uuid"},
+          "related_expected_version": {"type": ["integer", "null"], "minimum": 1},
+          "related_request_id": {"type": ["string", "null"], "format": "uuid"},
+          "related_text": {"type": ["string", "null"]},
+          "seat_credential_id": {"type": ["string", "null"], "format": "uuid"},
+          "source_record_position": {"type": "integer", "minimum": 0},
+          "state": {"$ref": "#/components/schemas/RequestMaintenanceProposalState"},
+          "target_expected_version": {"type": "integer", "minimum": 1},
+          "target_request_id": {"type": "string", "format": "uuid"},
+          "target_text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "RequestMaintenanceProposalList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["observed_at", "rows", "unanswered_projects", "watermark"],
+        "properties": {
+          "observed_at": {"type": "string", "format": "date-time"},
+          "rows": {"type": "array", "items": {"$ref": "#/components/schemas/RequestMaintenanceProposalRow"}},
+          "unanswered_projects": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}},
+          "watermark": {"type": "integer", "minimum": 0}
+        }
+      },
+      "RequestMaintenanceReviewRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["created_at", "goal_relevance", "operator_decision_required", "proposal_id", "request_id"],
+        "properties": {
+          "created_at": {"type": "string", "format": "date-time"},
+          "goal_relevance": {"type": "string", "enum": ["relevant", "not-relevant", "unknown"]},
+          "operator_decision_required": {"type": "boolean"},
+          "proposal_id": {"type": "string", "format": "uuid"},
+          "request_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "RequestMaintenanceReview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["observed_at", "partial", "pointer", "rows", "unanswered_sources", "watermark"],
+        "properties": {
+          "observed_at": {"type": "string", "format": "date-time"},
+          "partial": {"type": "boolean"},
+          "pointer": {"const": "/v1/request-maintenance/review"},
+          "rows": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/RequestMaintenanceReviewRow"}},
+          "unanswered_sources": {"type": "array", "items": {"type": "string"}},
+          "watermark": {"type": "integer", "minimum": 0}
+        }
+      },
+      "RequestMaintenanceProposalKindCounts": {
+        "type": "object", "additionalProperties": false,
+        "required": ["completed_but_open", "duplicate", "keep", "kill", "supersession"],
+        "properties": {
+          "completed_but_open": {"type": ["integer", "null"], "minimum": 0}, "duplicate": {"type": ["integer", "null"], "minimum": 0},
+          "keep": {"type": ["integer", "null"], "minimum": 0}, "kill": {"type": ["integer", "null"], "minimum": 0}, "supersession": {"type": ["integer", "null"], "minimum": 0}
+        }
+      },
+      "RequestMaintenanceProposalStateCounts": {
+        "type": "object", "additionalProperties": false,
+        "required": ["CONFIRMED", "OPEN", "REJECTED"],
+        "properties": {"CONFIRMED": {"type": ["integer", "null"], "minimum": 0}, "OPEN": {"type": ["integer", "null"], "minimum": 0}, "REJECTED": {"type": ["integer", "null"], "minimum": 0}}
+      },
+      "RequestMaintenanceProposalSummary": {
+        "type": "object", "additionalProperties": false,
+        "required": ["by_kind", "by_state", "pointer", "source_state", "unreached_scopes", "watermark"],
+        "properties": {
+          "by_kind": {"$ref": "#/components/schemas/RequestMaintenanceProposalKindCounts"},
+          "by_state": {"$ref": "#/components/schemas/RequestMaintenanceProposalStateCounts"},
+          "pointer": {"const": "/v1/request-maintenance/review"},
+          "source_state": {"type": "string", "enum": ["complete", "partial", "unavailable"]},
+          "unreached_scopes": {"type": "array", "items": {"type": "string"}},
+          "watermark": {"type": ["integer", "null"], "minimum": 0}
         }
       },
       "RequestCaptureRequest": {

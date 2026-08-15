@@ -146,6 +146,9 @@ def _authorized_request(
     )
     if scope is not None:
         return _refuse(transaction, actor, command, request_digest, scope, now)
+    authority = _authority_refusal(connection, actor, command, project_key)
+    if isinstance(command, RequestTriage) and authority is not None:
+        return _refuse(transaction, actor, command, request_digest, authority, now)
     pending = transaction.require_durable_subjects(
         actor.tenant_id,
         actor.principal_id,
@@ -157,19 +160,26 @@ def _authorized_request(
     if pending is not None:
         return pending
     current_version = int(cast(int, request["version"]))
+    problem = _version_or_authority_problem(command, current_version, authority)
+    if problem is not None:
+        return _refuse(transaction, actor, command, request_digest, problem, now)
+    return request, current_version
+
+
+def _version_or_authority_problem(
+    command: RequestChange,
+    current_version: int,
+    authority: RecordProblem | None,
+) -> RecordProblem | None:
     if command.expected_version != current_version:
-        problem = request_problem(
+        return request_problem(
             command,
             "version-conflict",
             409,
             "Request version is stale",
             current_version=current_version,
         )
-        return _refuse(transaction, actor, command, request_digest, problem, now)
-    authority = _authority_refusal(connection, actor, command, project_key)
-    if authority is not None:
-        return _refuse(transaction, actor, command, request_digest, authority, now)
-    return request, current_version
+    return authority
 
 
 def _lock_in_mutation_epoch(
@@ -293,7 +303,7 @@ def _authority_decision(
 ) -> tuple[bool, str]:
     commander = exact_commander or human_commander
     if isinstance(command, RequestTriage):
-        return commander, "request-triage-forbidden"
+        return operator or commander, "request-triage-forbidden"
     if isinstance(command, RequestPriority):
         return operator or commander, "request-transition-forbidden"
     if isinstance(command, RequestOwner):

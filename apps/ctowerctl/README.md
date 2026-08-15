@@ -81,6 +81,11 @@ Request capture and the explicit priority, triage, owner, Ticket-relation, block
 commands use the same protected generated-client/spool path. Request list is online-only. The CLI supplies
 neither Actor nor owner/source/state authority and creates no Ticket implicitly.
 
+Request maintenance is the closed `request proposal append|list|review|confirm|reject` family. Append loads
+one bounded strict JSON file through the generated boundary. Mutations are spool-protected; list and the
+operator-only top-20 review are online reads. A proposal is never writable Request state, and confirmation
+reports the separately identified ordinary Request command outcome.
+
 `digest morning [--date YYYY-MM-DD] [--output text|json]` is an online-only operator read. Text is the
 default deterministic STE projection; JSON is the exact generated boundary. Both keep unknown totals,
 unreached scopes, and unresolved relation targets explicit. The command sends no notification and enters no

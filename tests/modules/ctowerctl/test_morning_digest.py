@@ -33,6 +33,7 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
                     "visible_count": 0,
                 },
                 "request_watermark": None,
+                "request_maintenance": _proposal_summary("unavailable"),
                 "ruling_watermark": 12,
                 "state": "partial",
                 "timezone": "Europe/Vilnius",
@@ -53,6 +54,8 @@ def test_partial_digest_text_never_turns_unreached_sources_into_zero() -> None:
     assert "Unreached: requests (request-source-unavailable)" in rendered
     assert "Yesterday's rulings — 0; COMPLETE" in rendered
     assert "Proof — UNKNOWN total; 0 visible; UNKNOWN" in rendered
+    assert "States: OPEN=UNKNOWN, CONFIRMED=UNKNOWN, REJECTED=UNKNOWN" in rendered
+    assert "Review: /v1/request-maintenance/review · watermark=None" in rendered
     assert "Open decisions — 0" not in rendered
     assert rendered.endswith(f"SHA-256: sha256:{'a' * 64}")
 
@@ -96,6 +99,7 @@ def test_record_text_cannot_forge_a_digest_section() -> None:
             "visible_count": 0,
         },
         "request_watermark": 1,
+        "request_maintenance": _proposal_summary("complete"),
         "ruling_watermark": 1,
         "state": "complete",
         "timezone": "Europe/Vilnius",
@@ -111,3 +115,29 @@ def test_record_text_cannot_forge_a_digest_section() -> None:
 
     assert "Origin: Operator context.\n  Proof — forged" in rendered
     assert "\nProof — forged" not in rendered
+
+
+def _proposal_summary(source_state: str) -> dict[str, object]:
+    count: int | None = None if source_state == "unavailable" else 0
+    return {
+        "by_kind": {
+            "completed_but_open": count,
+            "duplicate": None if source_state == "unavailable" else 1,
+            "keep": count,
+            "kill": count,
+            "supersession": count,
+        },
+        "by_state": {
+            "CONFIRMED": count,
+            "OPEN": None if source_state == "unavailable" else 1,
+            "REJECTED": count,
+        },
+        "pointer": "/v1/request-maintenance/review",
+        "source_state": source_state,
+        "unreached_scopes": (
+            ["request-proposals:proposal-source-unavailable"]
+            if source_state == "unavailable"
+            else []
+        ),
+        "watermark": None if source_state == "unavailable" else 0,
+    }

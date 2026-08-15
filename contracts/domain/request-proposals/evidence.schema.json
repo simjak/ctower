@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/evidence.schema.json",
+  "title": "RequestMaintenanceEvidencePointer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind"],
+  "properties": {
+    "kind": {"type": "string", "enum": ["record-event", "proof-evidence"]},
+    "event_id": {"type": "string", "format": "uuid"},
+    "event_kind": {"type": "string", "minLength": 1, "maxLength": 128},
+    "event_digest": {"$ref": "#/$defs/sha256"},
+    "ticket_id": {"type": "string", "format": "uuid"},
+    "proof_id": {"type": "string", "format": "uuid"},
+    "evidence_id": {"type": "string", "format": "uuid"},
+    "artifact_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "oneOf": [
+    {
+      "required": ["event_id", "event_kind", "event_digest"],
+      "properties": {"kind": {"const": "record-event"}},
+      "not": {
+        "anyOf": [
+          {"required": ["ticket_id"]},
+          {"required": ["proof_id"]},
+          {"required": ["evidence_id"]},
+          {"required": ["artifact_digest"]}
+        ]
+      }
+    },
+    {
+      "required": ["ticket_id", "proof_id", "evidence_id", "artifact_digest"],
+      "properties": {"kind": {"const": "proof-evidence"}},
+      "not": {
+        "anyOf": [
+          {"required": ["event_id"]},
+          {"required": ["event_kind"]},
+          {"required": ["event_digest"]}
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

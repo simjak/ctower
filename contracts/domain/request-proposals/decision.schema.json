@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/request-proposals/decision.schema.json",
+  "title": "RequestMaintenanceProposalDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accepted_position", "command_id", "decided_at", "decided_by", "decision_id",
+    "durability_state", "event_ids", "expected_proposal_version", "operation", "proposal_id",
+    "reason", "target_command_id", "target_outcome", "target_problem_code",
+    "target_request_version"
+  ],
+  "properties": {
+    "command_id": {"type": "string", "format": "uuid"},
+    "decision_id": {"type": "string", "format": "uuid"},
+    "proposal_id": {"type": "string", "format": "uuid"},
+    "expected_proposal_version": {"const": 1},
+    "operation": {"type": "string", "enum": ["confirmed", "rejected"]},
+    "decided_by": {"type": "string", "format": "uuid"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 500},
+    "target_command_id": {"type": ["string", "null"], "format": "uuid"},
+    "target_outcome": {
+      "oneOf": [
+        {"type": "string", "enum": ["accepted", "refused"]},
+        {"type": "null"}
+      ]
+    },
+    "target_problem_code": {"type": ["string", "null"]},
+    "target_request_version": {"type": ["integer", "null"], "minimum": 2},
+    "event_ids": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "string", "format": "uuid"}},
+    "durability_state": {"type": "string", "enum": ["durability_pending", "accepted"]},
+    "accepted_position": {"type": ["integer", "null"], "minimum": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"operation": {"const": "rejected"}}},
+      "then": {
+        "properties": {
+          "target_command_id": {"const": null},
+          "target_outcome": {"const": null},
+          "target_problem_code": {"const": null},
+          "target_request_version": {"const": null}
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": {"const": null},
+          "target_command_id": {"type": "string", "format": "uuid"},
+          "target_outcome": {"type": "string", "enum": ["accepted", "refused"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"target_outcome": {"const": "accepted"}}, "required": ["target_outcome"]},
+      "then": {
+        "properties": {
+          "target_problem_code": {"const": null},
+          "target_request_version": {"type": "integer", "minimum": 2}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"target_outcome": {"const": "refused"}}, "required": ["target_outcome"]},
+      "then": {
+        "properties": {
+          "target_problem_code": {"type": "string", "minLength": 1},
+          "target_request_version": {"const": null}
+        }
+      }
+    }
+  ]
+}
