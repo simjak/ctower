@@ -1166,6 +1166,7 @@
             }
           },
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -1190,6 +1191,7 @@
             }
           },
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -1332,6 +1334,7 @@
         "responses": {
           "200": {"description": "Assignment interval history", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AssignmentList"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -1423,6 +1426,7 @@
         "responses": {
           "200": {"description": "Cursor page of linked canonical events", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuditPage"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -2311,6 +2315,7 @@
         "responses": {
           "200": {"description": "Ordered recorded work sessions for one ticket", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketSessionList"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
