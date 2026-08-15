@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
-from ctower_kernel.record._estate_import_sql import CompanyRecordAppend, _same_record
 from tools.migration.company_records.main import (
     _parse_escapes,
     analyze_escapes_import,
@@ -136,31 +133,3 @@ def test_execute_posts_bounded_company_estate_batch_with_idempotency_key(tmp_pat
     assert isinstance(headers, dict)
     assert headers["Idempotency-Key"]
     assert call["timeout"] == 60
-
-
-def test_company_record_replay_ignores_new_import_timestamp() -> None:
-    command = CompanyRecordAppend(
-        uuid4(),
-        "escape",
-        "escape:one",
-        "2026-07-27",
-        "commander",
-        (("defect", "example"),),
-        "state/escapes.jsonl#1",
-        datetime(2026, 8, 15, 12, 0, tzinfo=UTC),
-    )
-
-    assert (
-        _same_record(
-            {
-                "occurred_on": "2026-07-27",
-                "seat": "commander",
-                "payload_sha256": bytes.fromhex("0" * 64),
-                "source_ref": "state/escapes.jsonl#1",
-                "imported_at": datetime(2026, 8, 14, 12, 0, tzinfo=UTC),
-            },
-            command,
-            "0" * 64,
-        )
-        is True
-    )

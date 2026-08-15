@@ -17,11 +17,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from ctower_kernel.inbox.models import InboxAcknowledgementState
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record._estate_import_sql import (
+    CompanyRecordAppend,
     _inbox_acknowledge_command,
     _inbox_batch_header,
     _inbox_send_command,
     _knowledge_import_command,
     _ruling_import_command,
+    _same_record,
 )
 from ctower_kernel.record.events import EventOrigin
 from ctower_kernel.record.inbox_events import InboxParticipant
@@ -225,6 +227,34 @@ def test_estate_batch_header_refuses_negative_batch_index() -> None:
 
     assert isinstance(problem, RecordProblem)
     assert problem.code == "estate-import-batch-invalid"
+
+
+def test_company_record_replay_ignores_new_import_timestamp() -> None:
+    command = CompanyRecordAppend(
+        uuid4(),
+        "escape",
+        "escape:one",
+        "2026-07-27",
+        "commander",
+        (("defect", "example"),),
+        "state/escapes.jsonl#1",
+        datetime(2026, 8, 15, 12, 0, tzinfo=UTC),
+    )
+
+    assert (
+        _same_record(
+            {
+                "occurred_on": "2026-07-27",
+                "seat": "commander",
+                "payload_sha256": bytes.fromhex("0" * 64),
+                "source_ref": "state/escapes.jsonl#1",
+                "imported_at": datetime(2026, 8, 14, 12, 0, tzinfo=UTC),
+            },
+            command,
+            "0" * 64,
+        )
+        is True
+    )
 
 
 def test_parity_report_rejects_more_imports_than_source_rows() -> None:
