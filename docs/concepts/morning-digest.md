@@ -50,3 +50,12 @@ watermark, and source completeness. No proposal or Request identity, text, row, 
 digest. If the proposal source is partial or unavailable, its counts render as `UNKNOWN`, never measured
 zero; an unavailable source also has no claimed watermark. See
 [Request-maintenance proposals](request-maintenance-proposals.md).
+
+## Movement counts
+
+The digest also carries a compact movement summary for the prior Europe/Vilnius
+civil day. It groups accepted Ticket stage transitions by Project and exact
+from/to stage, then names the authorized movement view and its source watermark.
+The summary contains no movement event row, Ticket identity, or Ticket text.
+Unavailable or partial movement input remains explicitly unknown and names its
+unreached scope. See [Ticket movement](ticket-movement.md).
