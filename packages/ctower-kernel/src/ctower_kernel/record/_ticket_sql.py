@@ -191,6 +191,7 @@ def get_ticket(
             tenant_id=actor.tenant_id,
             principal_id=actor.principal_id,
             project_keys=(project_key,),
+            allow_operator_read=True,
         )
         if refusal is not None:
             return refusal
@@ -238,6 +239,7 @@ def ticket_timeline(
             tenant_id=actor.tenant_id,
             principal_id=actor.principal_id,
             project_keys=(project_key,),
+            allow_operator_read=True,
         )
         if refusal is not None:
             return refusal

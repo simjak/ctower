@@ -189,6 +189,7 @@ def review_dispatches(
             tenant_id=actor.tenant_id,
             principal_id=actor.principal_id,
             project_keys=(str(ticket["project_key"]),),
+            allow_operator_read=True,
         )
         if refusal is not None:
             return refusal

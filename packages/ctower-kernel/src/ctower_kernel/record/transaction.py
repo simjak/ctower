@@ -53,19 +53,25 @@ def project_scope_refusal(
     project_keys: tuple[str, ...],
     command_id: UUID | None = None,
     operator_only: bool = False,
+    allow_operator_read: bool = False,
 ) -> RecordProblem | None:
     """Refuse a non-operator principal reaching outside its persisted project grants.
 
     This is the one place `project-scope-denied` is constructed. The mutation seam
     below resolves ticket ownership first and then asks exactly this question, so a
-    read and a write can never disagree about who may see one project's facts. A
-    portfolio-wide scope can require the operator explicitly instead of treating an
-    arbitrary collection of Project grants as fleet authority.
+    read and a write can never disagree about who may see one project's facts. Read
+    callers explicitly opt into persisted operator authority; mutation callers retain
+    the closed default. A portfolio-wide scope can require the operator explicitly
+    instead of treating an arbitrary collection of Project grants as fleet authority.
     """
 
     principal = _scope_principal(connection, tenant_id, principal_id)
     human_grants = _human_project_grants(principal)
-    if principal is not None and principal["kind"] == "operator":
+    if (
+        principal is not None
+        and principal["kind"] == "operator"
+        and (allow_operator_read or human_grants is None)
+    ):
         return None
     requested = set(project_keys)
     if not requested and not operator_only:
