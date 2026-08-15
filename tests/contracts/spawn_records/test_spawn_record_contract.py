@@ -29,13 +29,22 @@ from ctower_kernel.record.spawn_events import (
     spawn_transition_allowed,
 )
 from ctower_kernel.runtime import (
+    SpawnDriveContext,
+    SpawnDurabilityState,
+    SpawnRecordGet,
     SpawnRecordList,
+    SpawnRecordProblem,
     SpawnRecordRow,
     SpawnRecordTransitionRow,
     SpawnSpool,
+    SpawnSpoolRefusalError,
+    build_parity_proof,
     derive_initial_running_set,
+    history_parity_report,
     latest_status_effective,
     reconcile_source,
+    record_before_drive,
+    record_parity_proof,
     replay_spool,
 )
 from ctower_kernel.runtime._spawn_record_types import SpawnRecordCreate
@@ -52,6 +61,10 @@ _SPAWN_OPERATIONS = {
 _IMMUTABLE_TABLES = 2
 _SPOOL_MODE = 0o600
 _NEVER_TERMINATED = 2
+_SOURCE_ROWS = 3
+_DISTINCT_SOURCE_IDS = 2
+_DUPLICATE_SOURCE_ROWS = 1
+_IMPORTED_RECORDS = 1
 
 _RUNNING_ONE = UUID("11111111-1111-1111-1111-111111111111")
 _TERMINATED = UUID("22222222-2222-2222-2222-222222222222")
@@ -331,6 +344,115 @@ def test_spool_replay_removes_only_a_typed_create_ack(tmp_path: Path) -> None:
     assert len(spool.pending()) == 1
 
 
+def test_record_before_drive_orders_record_then_host_drive(tmp_path: Path) -> None:
+    """The external driver cannot invoke its host substrate before custody."""
+    events: list[str] = []
+    command = SpawnRecordCreate(
+        client_command_id=uuid4(),
+        project_key="ctower",
+        seat_key="engineer",
+        crew_name="mc-engineer-contract",
+        task_file_ref="coordination/contract.md",
+        worktree_path="/srv/worktrees/contract",
+        harness="codex-crew",
+        model="gpt-5-codex",
+        effort=None,
+        workspace_id=None,
+    )
+
+    def record(_command: SpawnRecordCreate) -> SpawnRecordGet:
+        events.append("record")
+        now = datetime.now(UTC)
+        return SpawnRecordGet(
+            record=SpawnRecordRow(
+                spawn_id=uuid4(),
+                project_key="ctower",
+                seat_key="engineer",
+                crew_name="mc-engineer-contract",
+                task_file_ref="coordination/contract.md",
+                worktree_path="/srv/worktrees/contract",
+                harness="codex-crew",
+                model="gpt-5-codex",
+                effort=None,
+                workspace_id=None,
+                status="requested",
+                principal_id=uuid4(),
+                created_at=now,
+                updated_at=now,
+                transitions=(),
+            )
+        )
+
+    def drive(_context: SpawnDriveContext) -> None:
+        events.append("drive")
+
+    result = record_before_drive(
+        command,
+        record=record,
+        drive=drive,
+        spool=SpawnSpool(tmp_path / "spawn-spool.jsonl"),
+    )
+
+    assert result.context.durability_state is SpawnDurabilityState.RECORDED
+    assert events == ["record", "drive"]
+
+
+def test_unreachable_record_is_spooled_and_then_driven(tmp_path: Path) -> None:
+    """Degrade-with-fact still drives, but only after pending custody is durable."""
+    events: list[str] = []
+    command = SpawnRecordCreate(
+        client_command_id=uuid4(),
+        project_key="ctower",
+        seat_key="engineer",
+        crew_name="mc-engineer-contract",
+        task_file_ref="coordination/contract.md",
+        worktree_path="/srv/worktrees/contract",
+        harness="codex-crew",
+        model="gpt-5-codex",
+        effort=None,
+        workspace_id=None,
+    )
+    spool = SpawnSpool(tmp_path / "spawn-spool.jsonl")
+
+    def record(_command: SpawnRecordCreate) -> SpawnRecordProblem:
+        events.append("record")
+        raise ConnectionError("ctower unavailable")
+
+    def drive(context: SpawnDriveContext) -> None:
+        assert context.durability_state is SpawnDurabilityState.DURABILITY_PENDING
+        assert context.spool_entry_id is not None
+        events.append("drive")
+
+    result = record_before_drive(command, record=record, drive=drive, spool=spool)
+
+    assert result.context.durability_state is SpawnDurabilityState.DURABILITY_PENDING
+    assert result.context.record is None
+    assert len(spool.pending()) == 1
+    assert events == ["record", "drive"]
+
+
+def test_spool_refuses_prohibited_data_before_writing(tmp_path: Path) -> None:
+    """An outage must not turn the local durability spool into a secret sink."""
+    credential_label = "api" + "_key"
+    command = SpawnRecordCreate(
+        client_command_id=uuid4(),
+        project_key="ctower",
+        seat_key="engineer",
+        crew_name="mc-engineer-contract",
+        task_file_ref=f"{credential_label} = {'a' * 8}",
+        worktree_path="/srv/worktrees/contract",
+        harness="codex-crew",
+        model="gpt-5-codex",
+        effort=None,
+        workspace_id=None,
+    )
+    path = tmp_path / "spawn-spool.jsonl"
+
+    with pytest.raises(SpawnSpoolRefusalError):
+        SpawnSpool(path).append(command)
+    assert not path.exists()
+
+
 def test_import_derivation_is_latest_status_effective() -> None:
     """AC-SPWN-03 boundary: latest status wins; running set = never-terminated."""
     rows = [
@@ -349,8 +471,30 @@ def test_import_derivation_is_latest_status_effective() -> None:
     assert [row.uuid for row in running] == [_RUNNING_ONE, _REVIVED]
 
 
+def test_history_parity_report_names_missing_and_extra_source_identities() -> None:
+    rows = [
+        {"uuid": str(_RUNNING_ONE), "status": "running"},
+        {"uuid": str(_TERMINATED), "status": "completed"},
+        {"uuid": str(_RUNNING_ONE), "status": "working"},
+    ]
+
+    report = history_parity_report(rows, imported_source_ids=(_RUNNING_ONE,))
+
+    assert report.source_row_count == _SOURCE_ROWS
+    assert report.distinct_source_count == _DISTINCT_SOURCE_IDS
+    assert report.duplicate_source_row_count == _DUPLICATE_SOURCE_ROWS
+    assert report.imported_record_count == _IMPORTED_RECORDS
+    assert report.missing_source_ids == (_TERMINATED,)
+    assert report.parity_ok is False
+    assert report.initial_running_ids == (_RUNNING_ONE,)
+
+
 def test_reconcile_reads_twin_until_recorded_parity_proof() -> None:
     """AC-SPWN-04 boundary: the swap needs one recorded proof, nothing less."""
     assert reconcile_source() == "external-twin"
-    assert reconcile_source(parity_proof_recorded=False) == "external-twin"
-    assert reconcile_source(parity_proof_recorded=True) == "ctower-spawn-reads"
+    twin = [{"uuid": str(_RUNNING_ONE), "status": "running"}]
+    candidate = build_parity_proof(twin, twin, window="2026-08-15T00:00Z/2026-08-15T01:00Z")
+    assert reconcile_source(parity_proof=candidate) == "external-twin"
+    recorded = record_parity_proof(candidate)
+    assert recorded.parity_ok is True
+    assert reconcile_source(parity_proof=recorded) == "ctower-spawn-reads"
