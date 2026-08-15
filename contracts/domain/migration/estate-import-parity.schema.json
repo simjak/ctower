@@ -11,6 +11,8 @@
     "manifest_digest",
     "source_count",
     "imported_count",
+    "refused_prohibited_count",
+    "refused_prohibited_rows",
     "batches",
     "sampled_content_hashes",
     "source_only_owners",
@@ -26,18 +28,49 @@
     "manifest_digest": { "$ref": "#/$defs/sha256" },
     "source_count": { "type": "integer", "minimum": 0 },
     "imported_count": { "type": "integer", "minimum": 0 },
+    "refused_prohibited_count": { "type": "integer", "minimum": 0 },
+    "refused_prohibited_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_ref", "content_sha256", "disposition", "problem_code", "prohibited_classes"],
+        "properties": {
+          "source_ref": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "content_sha256": { "$ref": "#/$defs/sha256" },
+          "disposition": { "const": "refused_prohibited" },
+          "problem_code": { "const": "prohibited-data-class" },
+          "prohibited_classes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "credential_material",
+                "live_incident_indicator",
+                "phi_hipaa_covered",
+                "pii_beyond_staff_identity",
+                "production_customer_data"
+              ]
+            }
+          }
+        }
+      }
+    },
     "batches": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["batch_index", "batch_digest", "source_count", "imported_count"],
+        "required": ["batch_index", "batch_digest", "source_count", "imported_count", "refused_prohibited_count", "refused_prohibited_rows"],
         "properties": {
           "batch_index": { "type": "integer", "minimum": 0 },
           "batch_digest": { "$ref": "#/$defs/sha256" },
           "source_count": { "type": "integer", "minimum": 0 },
-          "imported_count": { "type": "integer", "minimum": 0 }
+          "imported_count": { "type": "integer", "minimum": 0 },
+          "refused_prohibited_count": { "type": "integer", "minimum": 0 },
+          "refused_prohibited_rows": { "$ref": "#/properties/refused_prohibited_rows" }
         }
       }
     },

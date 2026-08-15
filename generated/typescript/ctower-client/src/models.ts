@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:2045322bb916d57528c58ea0d80467a54510d7ac0259dfa29d19dbd1bbd971ca
+// Authored contract digest: sha256:f6592acedac4a0ecfcca514f34a3487411a5f087b6d97e84116ee3da2e2c9944
 
 export type ActivityClass = "work" | "verification";
 
@@ -911,12 +911,28 @@ export type EstateImportParity = Readonly<{
     readonly "batch_digest": string;
     readonly "batch_index": number;
     readonly "imported_count": number;
+    readonly "refused_prohibited_count": number;
+    readonly "refused_prohibited_rows": ReadonlyArray<Readonly<{
+      readonly "content_sha256": string;
+      readonly "disposition": "refused_prohibited";
+      readonly "problem_code": "prohibited-data-class";
+      readonly "prohibited_classes": ReadonlyArray<"credential_material" | "live_incident_indicator" | "phi_hipaa_covered" | "pii_beyond_staff_identity" | "production_customer_data">;
+      readonly "source_ref": string;
+    }>>;
     readonly "source_count": number;
   }>>;
   readonly "emitted_before_closure": true;
   readonly "imported_count": number;
   readonly "manifest_digest": string;
   readonly "parity_digest": string;
+  readonly "refused_prohibited_count": number;
+  readonly "refused_prohibited_rows": ReadonlyArray<Readonly<{
+    readonly "content_sha256": string;
+    readonly "disposition": "refused_prohibited";
+    readonly "problem_code": "prohibited-data-class";
+    readonly "prohibited_classes": ReadonlyArray<"credential_material" | "live_incident_indicator" | "phi_hipaa_covered" | "pii_beyond_staff_identity" | "production_customer_data">;
+    readonly "source_ref": string;
+  }>>;
   readonly "sampled_content_hashes": ReadonlyArray<Readonly<{
     readonly "content_sha256": string;
     readonly "source_ref": string;

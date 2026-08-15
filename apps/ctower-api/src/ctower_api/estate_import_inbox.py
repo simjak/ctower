@@ -9,7 +9,6 @@ from uuid import UUID
 import psycopg
 
 from ctower_api.estate_import_contracts import (
-    _EstateImportPlan,
     _inbox_acknowledge_command,
     _inbox_send_command,
     _InboxImportPlan,
@@ -77,6 +76,17 @@ def prepare_inbox_row(
 
     problem = _validate_inbox_row(row, command_id)
     if problem is not None:
+        if problem.code == "prohibited-data-class":
+            return _InboxImportPlan(
+                row=row,
+                source_sender=_required_text(row, "source_sender"),
+                source_recipient=_required_text(row, "source_recipient"),
+                sender=None,
+                recipient=None,
+                command=None,
+                source_only=True,
+                prohibited=problem,
+            )
         return problem
     source_sender = _required_text(row, "source_sender")
     source_recipient = _required_text(row, "source_recipient")
@@ -101,35 +111,6 @@ def prepare_inbox_row(
     )
 
 
-def apply_inbox_plans(
-    inbox: PostgresInbox,
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    plans: Sequence[_EstateImportPlan],
-    *,
-    command_id: UUID,
-    now: datetime,
-    telemetry: TelemetryContext,
-) -> int | RecordProblem:
-    """Apply mapped inbox plans through the inbox Module Interface."""
-
-    for plan in plans:
-        if not isinstance(plan, _InboxImportPlan):
-            continue
-        problem = apply_inbox_plan(
-            inbox,
-            connection,
-            actor,
-            plan,
-            command_id=command_id,
-            now=now,
-            telemetry=telemetry,
-        )
-        if problem is not None:
-            return problem
-    return len(plans)
-
-
 def apply_inbox_plan(
     inbox: PostgresInbox,
     connection: psycopg.Connection[dict[str, object]],
@@ -142,6 +123,8 @@ def apply_inbox_plan(
 ) -> RecordProblem | None:
     """Append one mapped inbox message and its acknowledgement."""
 
+    if plan.prohibited is not None:
+        return None
     if plan.source_only:
         return _persist_source_only_message(connection, actor, plan, command_id, now)
     if plan.command is None:

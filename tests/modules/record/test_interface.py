@@ -13,6 +13,10 @@ from uuid import UUID, uuid4
 import pytest
 
 from ctower_kernel.record import CustodyCommand, RecordProblem, TimelineEvent
+from ctower_kernel.record.estate_import_events import (
+    CompanyRecordAppendedPayload,
+    EstateImportChangedPayload,
+)
 from ctower_kernel.record.events import (
     BootstrapCreatedPayload,
     CustodyTransferredPayload,
@@ -125,6 +129,83 @@ def test_event_payloads_reject_authored_enum_and_length_violations() -> None:
         CustodyTransferredPayload(uuid4(), "", uuid4())
     with pytest.raises(ValueError, match="tenant_slug"):
         BootstrapCreatedPayload(uuid4(), "vault", "credential", uuid4(), "vault", uuid4(), "x")
+
+
+def test_estate_import_payloads_serialize_the_authored_shape() -> None:
+    manifest = EstateImportChangedPayload(
+        "company_records",
+        "sha256:" + "1" * 64,
+        "batch_applied",
+        "state/escapes.jsonl#1",
+    )
+    company = CompanyRecordAppendedPayload(
+        uuid4(),
+        "escape",
+        "escape:one",
+        "2026-08-15",
+        "unknown-owner",
+        "sha256:" + "2" * 64,
+        "state/escapes.jsonl#1",
+        datetime(2026, 8, 15, 12, 0, tzinfo=UTC),
+    )
+
+    assert manifest.to_mapping()["operation"] == "batch_applied"
+    assert company.to_mapping()["record_type"] == "escape"
+
+
+@pytest.mark.parametrize(
+    ("tier", "operation", "digest", "source_ref", "message"),
+    [
+        ("unknown", "batch_applied", "sha256:" + "1" * 64, "source", "tier"),
+        ("company_records", "unknown", "sha256:" + "1" * 64, "source", "operation"),
+        ("company_records", "batch_applied", "invalid", "source", "manifest digest"),
+        ("company_records", "batch_applied", "sha256:" + "1" * 64, "", "source reference"),
+        (
+            "company_records",
+            "batch_applied",
+            "sha256:" + "1" * 64,
+            "x" * 513,
+            "source reference",
+        ),
+    ],
+)
+def test_estate_import_changed_payload_rejects_contract_violations(
+    tier: str, operation: str, digest: str, source_ref: str, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        EstateImportChangedPayload(tier, digest, operation, source_ref)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error"),
+    [
+        ("record_id", cast(UUID, "not-a-uuid"), TypeError),
+        ("record_type", "ticket", ValueError),
+        ("natural_key", "", ValueError),
+        ("occurred_on", "15-08-2026", ValueError),
+        ("seat", "Unknown Owner", ValueError),
+        ("payload_digest", "sha256:bad", ValueError),
+        ("source_ref", "", ValueError),
+        ("imported_at", datetime(2026, 8, 15, 12, tzinfo=UTC).replace(tzinfo=None), ValueError),
+    ],
+)
+def test_company_record_payload_rejects_contract_violations(
+    field: str, value: object, error: type[Exception]
+) -> None:
+    values: dict[str, object] = {
+        "record_id": uuid4(),
+        "record_type": "escape",
+        "natural_key": "escape:one",
+        "occurred_on": "2026-08-15",
+        "seat": "unknown-owner",
+        "payload_digest": "sha256:" + "2" * 64,
+        "source_ref": "state/escapes.jsonl#1",
+        "imported_at": datetime(2026, 8, 15, 12, 0, tzinfo=UTC),
+    }
+    values[field] = value
+
+    with pytest.raises(error):
+        CompanyRecordAppendedPayload(**values)  # type: ignore[arg-type]
 
 
 def test_event_envelope_rejects_origin_and_stream_identity_mismatch() -> None:

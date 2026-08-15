@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:2045322bb916d57528c58ea0d80467a54510d7ac0259dfa29d19dbd1bbd971ca
+Authored contract digest: sha256:f6592acedac4a0ecfcca514f34a3487411a5f087b6d97e84116ee3da2e2c9944
 """
 
 from __future__ import annotations
@@ -2245,6 +2245,8 @@ class EstateImportParity(_BoundaryModel):
     manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     source_count: Annotated[int, Field(ge=0, le=9007199254740991)]
     imported_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    refused_prohibited_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    refused_prohibited_rows: tuple[dict[str, object], ...]
     batches: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
     sampled_content_hashes: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
     source_only_owners: tuple[dict[str, object], ...]

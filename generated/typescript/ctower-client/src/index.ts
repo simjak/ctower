@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:2045322bb916d57528c58ea0d80467a54510d7ac0259dfa29d19dbd1bbd971ca
+// Authored contract digest: sha256:f6592acedac4a0ecfcca514f34a3487411a5f087b6d97e84116ee3da2e2c9944
 
 export { CtowerClient, CtowerProblemError } from "./client.js";
 export type { ClientOptions, OperationInputs, OperationResults } from "./client.js";

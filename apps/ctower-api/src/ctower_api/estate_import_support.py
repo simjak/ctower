@@ -301,6 +301,18 @@ def _persist_source_only_message(
     return None
 
 
+def _inbox_owner_counts(plans: Sequence[_InboxImportPlan]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for plan in plans:
+        if plan.source_only and plan.prohibited is None:
+            counts[plan.source_sender] = counts.get(plan.source_sender, 0) + 1
+    return counts
+
+
+def _refused_prohibited_rows(plans: Sequence[_InboxImportPlan]) -> list[dict[str, object]]:
+    return [_refused_prohibited_row(plan) for plan in plans if plan.prohibited is not None]
+
+
 def _inbox_parity(
     *,
     tier: str,
@@ -309,22 +321,25 @@ def _inbox_parity(
     plans: Sequence[_InboxImportPlan],
     signer: _EstateParitySigner,
 ) -> dict[str, object]:
-    owner_counts: dict[str, int] = {}
-    for plan in plans:
-        if plan.source_only:
-            owner_counts[plan.source_sender] = owner_counts.get(plan.source_sender, 0) + 1
+    owner_counts = _inbox_owner_counts(plans)
+    refused_prohibited_rows = _refused_prohibited_rows(plans)
+    imported_count = len(plans) - len(refused_prohibited_rows)
     report: dict[str, object] = {
         "schema": _PARITY_SCHEMA,
         "tier": tier,
         "manifest_digest": manifest_digest,
         "source_count": len(plans),
-        "imported_count": len(plans),
+        "imported_count": imported_count,
+        "refused_prohibited_count": len(refused_prohibited_rows),
+        "refused_prohibited_rows": refused_prohibited_rows,
         "batches": [
             {
                 "batch_index": batch_index,
                 "batch_digest": _digest_json([_manifest_projection(plan) for plan in plans]),
                 "source_count": len(plans),
-                "imported_count": len(plans),
+                "imported_count": imported_count,
+                "refused_prohibited_count": len(refused_prohibited_rows),
+                "refused_prohibited_rows": refused_prohibited_rows,
             }
         ],
         "sampled_content_hashes": [
@@ -347,6 +362,25 @@ def _inbox_parity(
     return signer.seal(report, "parity_digest")
 
 
+def _refused_prohibited_row(plan: _InboxImportPlan) -> dict[str, object]:
+    refusal = plan.prohibited
+    if refusal is None:
+        raise RuntimeError("inbox parity row is not a prohibited-data refusal")
+    return {
+        "content_sha256": _required_text(plan.row, "content_sha256"),
+        "disposition": "refused_prohibited",
+        "problem_code": refusal.code,
+        "prohibited_classes": [
+            getattr(item, "value", str(item)) for item in refusal.prohibited_classes
+        ],
+        "source_ref": _required_text(plan.row, "source_ref"),
+    }
+
+
+def _empty_prohibited_counts() -> dict[str, object]:
+    return {"refused_prohibited_count": 0, "refused_prohibited_rows": []}
+
+
 def _generic_parity(
     *,
     tier: str,
@@ -366,6 +400,7 @@ def _generic_parity(
         "manifest_digest": manifest_digest,
         "source_count": len(rows),
         "imported_count": imported_count,
+        **_empty_prohibited_counts(),
         "batches": [
             {
                 "batch_index": batch_index,
@@ -374,6 +409,7 @@ def _generic_parity(
                 ),
                 "source_count": len(rows),
                 "imported_count": imported_count,
+                **_empty_prohibited_counts(),
             }
         ],
         "sampled_content_hashes": [

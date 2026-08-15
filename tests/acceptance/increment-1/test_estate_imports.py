@@ -6,6 +6,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
@@ -17,7 +18,9 @@ from support.server import application
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
+from ctower_api.estate_import_contracts import EstateImportBatchResult
 from ctower_api.estate_imports import PostgresEstateImports
+from ctower_client.models import EstateImportParity
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.postgres import apply_migrations, provision_database_roles
 from ctower_kernel.telemetry import TelemetryContext
@@ -108,8 +111,7 @@ def test_estate_import_authority_is_operator_scoped_in_postgres(
         project_key="ctower" if tier == "agreed_decisions" else None,
         signer=signer,
     )
-    actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
-    command_id = uuid4()
+    actor, command_id = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR), uuid4()
     importer = PostgresEstateImports(
         tenant.database.runtime_dsn,
         {("signing-key-ref:acceptance", 1): private_key.public_key()},
@@ -149,6 +151,81 @@ def test_estate_import_authority_is_operator_scoped_in_postgres(
     assert replay.parity["emitted_before_closure"] is True
 
 
+def test_inbox_import_refuses_and_counts_prohibited_rows_in_postgres(
+    tenant: TenantFixture,
+) -> None:
+    private_key = Ed25519PrivateKey.generate()
+    signer = ArtifactSigner("signing-key-ref:acceptance", 1, private_key)
+    manifest_rows, rows = _inbox_rows_with_prohibited()
+    manifest = build_estate_manifest(
+        tier="inbox_history",
+        source_identity={
+            "namespace": "mission-control:estate",
+            "source_path": "acceptance/inbox_history.jsonl",
+            "source_sha256": _digest_text("inbox-history-with-prohibited-row"),
+        },
+        rows=manifest_rows,
+        seat_mapping_digest=None,
+        signer=signer,
+    )
+    actor, command_id = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR), uuid4()
+    importer = PostgresEstateImports(
+        tenant.database.runtime_dsn,
+        {("signing-key-ref:acceptance", 1): private_key.public_key()},
+        parity_signer=signer,
+    )
+
+    result = importer.import_batch(
+        actor,
+        tier="inbox_history",
+        batch_index=0,
+        command_id=command_id,
+        manifest=manifest,
+        rows=rows,
+        now=datetime.now(UTC),
+        telemetry=_telemetry(actor, command_id),
+    )
+
+    assert not isinstance(result, RecordProblem), result
+    _assert_refused_prohibited_parity(result, rows)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM estate_import_source_only_messages WHERE source_ref = %s",
+            ("inbox.jsonl#credential",),
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT COUNT(*) FROM inbox_messages WHERE source_ref = %s",
+            ("inbox.jsonl#credential",),
+        ).fetchone() == (0,)
+
+
+def _assert_refused_prohibited_parity(
+    result: EstateImportBatchResult, rows: list[dict[str, object]]
+) -> None:
+    validated_parity = EstateImportParity.model_validate_json(json.dumps(result.parity))
+    assert validated_parity.refused_prohibited_count == 1
+    assert result.source_count == len(rows)
+    assert result.imported_count == 1
+    assert result.parity["source_count"] == len(rows)
+    assert result.parity["imported_count"] == 1
+    assert result.parity["refused_prohibited_count"] == 1
+    assert result.parity["refused_prohibited_rows"] == [
+        {
+            "content_sha256": rows[1]["content_sha256"],
+            "disposition": "refused_prohibited",
+            "problem_code": "prohibited-data-class",
+            "prohibited_classes": ["credential_material"],
+            "source_ref": "inbox.jsonl#credential",
+        }
+    ]
+    parity = cast(dict[str, object], result.parity)
+    batches = cast(list[dict[str, object]], parity["batches"])
+    assert batches[0]["source_count"] == len(rows)
+    assert batches[0]["imported_count"] == 1
+    assert batches[0]["refused_prohibited_count"] == 1
+    assert batches[0]["refused_prohibited_rows"] == parity["refused_prohibited_rows"]
+
+
 def test_company_records_import_is_reachable_through_http_contract(
     tenant: TenantFixture,
 ) -> None:
@@ -174,6 +251,11 @@ def test_company_records_import_is_reachable_through_http_contract(
     assert response.status_code == _HTTP_PENDING
     assert response.json()["tier"] == "company_records"
     assert response.json()["imported_count"] == 1
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        assert connection.execute(
+            "SELECT natural_key FROM company_records WHERE source_ref = %s",
+            ("state/escapes.jsonl#1",),
+        ).fetchone() == ("escape:acceptance-1",)
 
 
 def test_estate_import_http_refusal_uses_the_problem_contract(
@@ -227,6 +309,31 @@ def _inbox_rows() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
             "read_state": "delivered",
         }
     ]
+
+
+def _inbox_rows_with_prohibited() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    manifest_rows, rows = _inbox_rows()
+    subject = "Leaked session"
+    body = "session_token=not-a-real-super-admin-token"
+    content_digest = _digest_text(json.dumps({"subject": subject, "body": body}, sort_keys=True))
+    manifest_rows.append(
+        {
+            **manifest_rows[0],
+            "content_sha256": content_digest,
+            "source_ref": "inbox.jsonl#credential",
+        }
+    )
+    rows.append(
+        {
+            **rows[0],
+            "body": body,
+            "content_sha256": content_digest,
+            "message_id": str(uuid4()),
+            "source_ref": "inbox.jsonl#credential",
+            "subject": subject,
+        }
+    )
+    return manifest_rows, rows
 
 
 def _tier_rows(tier: str) -> tuple[list[dict[str, object]], list[dict[str, object]]]:

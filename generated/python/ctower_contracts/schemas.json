@@ -11419,6 +11419,13 @@
                 "minimum": 0,
                 "type": "integer"
               },
+              "refused_prohibited_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "refused_prohibited_rows": {
+                "$ref": "#/properties/refused_prohibited_rows"
+              },
               "source_count": {
                 "minimum": 0,
                 "type": "integer"
@@ -11428,7 +11435,9 @@
               "batch_index",
               "batch_digest",
               "source_count",
-              "imported_count"
+              "imported_count",
+              "refused_prohibited_count",
+              "refused_prohibited_rows"
             ],
             "type": "object"
           },
@@ -11447,6 +11456,54 @@
         },
         "parity_digest": {
           "$ref": "#/$defs/sha256"
+        },
+        "refused_prohibited_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refused_prohibited_rows": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "disposition": {
+                "const": "refused_prohibited"
+              },
+              "problem_code": {
+                "const": "prohibited-data-class"
+              },
+              "prohibited_classes": {
+                "items": {
+                  "enum": [
+                    "credential_material",
+                    "live_incident_indicator",
+                    "phi_hipaa_covered",
+                    "pii_beyond_staff_identity",
+                    "production_customer_data"
+                  ]
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "source_ref": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_ref",
+              "content_sha256",
+              "disposition",
+              "problem_code",
+              "prohibited_classes"
+            ],
+            "type": "object"
+          },
+          "type": "array"
         },
         "sampled_content_hashes": {
           "items": {
@@ -11521,6 +11578,8 @@
         "manifest_digest",
         "source_count",
         "imported_count",
+        "refused_prohibited_count",
+        "refused_prohibited_rows",
         "batches",
         "sampled_content_hashes",
         "source_only_owners",
@@ -19218,7 +19277,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json",
       "path": "contracts/domain/migration/estate-import-parity.schema.json",
-      "sha256": "sha256:365ed5c274de8b9edb9e80bb01e6e6ae472ebcf8c1a537d880e972d17691f928"
+      "sha256": "sha256:85ccd0d6c18a001e7c7fe1432d762b91d5e780cc02089ed0ed66fa6497ac6b3a"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json",

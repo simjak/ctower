@@ -28,7 +28,6 @@ from ctower_api.estate_import_contracts import (
 )
 from ctower_api.estate_import_inbox import (
     apply_inbox_plan,
-    apply_inbox_plans,
     prepare_inbox_batch,
 )
 from ctower_api.estate_import_support import (
@@ -340,17 +339,23 @@ class PostgresEstateImports:
         signer = self._require_parity_signer(transaction, actor, command_id, request_digest, now)
         if isinstance(signer, RecordProblem):
             return signer
-        imported = apply_inbox_plans(
-            self._inbox,
-            connection,
-            actor,
-            plans,
-            command_id=command_id,
-            now=now,
-            telemetry=telemetry,
-        )
-        if isinstance(imported, RecordProblem):
-            return self._refuse_batch(transaction, actor, command_id, request_digest, imported, now)
+        imported = 0
+        for plan in plans:
+            if isinstance(plan, _InboxImportPlan) and plan.prohibited is not None:
+                continue
+            problem = self._apply_plan(
+                actor,
+                plan,
+                command_id=command_id,
+                now=now,
+                telemetry=telemetry,
+                connection=connection,
+            )
+            if problem is not None:
+                return self._refuse_batch(
+                    transaction, actor, command_id, request_digest, problem, now
+                )
+            imported += 1
         parity = self._parity_report(
             tier=tier,
             manifest_digest=manifest_digest,

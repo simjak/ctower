@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from ctower_kernel.inbox import InboxAcknowledgeCommand, InboxAcknowledgementState, InboxSendCommand
 from ctower_kernel.knowledge import KnowledgeAddCommand
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.artifacts import ArtifactError, parse_artifact, verify_signed_artifact
 from ctower_kernel.record.events import EventOrigin
 from ctower_kernel.record.inbox_events import InboxParticipant
@@ -317,6 +317,7 @@ class _InboxImportPlan:
     recipient: InboxParticipant | None
     command: InboxSendCommand | None
     source_only: bool
+    prohibited: RecordProblem | None = None
 
 
 @dataclass(frozen=True, slots=True)
