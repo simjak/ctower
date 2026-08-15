@@ -12,7 +12,6 @@ import type {
   TelemetryContext,
 } from "@ctower/client";
 import { boundedRead, ReadRefused } from "./bounded";
-import { NO_WORK_SESSIONS } from "./futureSources";
 import { issueReferenceOf } from "./issueRef";
 import { reading } from "./outcome";
 import { seatNameOf, seatNames } from "./sources/seatNames";
@@ -107,7 +106,15 @@ function telemetry(): TelemetryContext {
   };
 }
 
-async function read(path: string): Promise<unknown> {
+/**
+ * One authenticated GET against the instance, under the bounded policy.
+ *
+ * Exported so a read that belongs to another module — the runtime reads in
+ * `runtimeReads.ts` — reaches the instance through this one request shape
+ * rather than assembling its own headers, and so the credential is still read
+ * in exactly one place.
+ */
+export async function read(path: string): Promise<unknown> {
   const credential = process.env.CTOWER_UI_API_TOKEN;
   if (credential === undefined || credential === "") {
     throw new ReadRefused({
@@ -528,6 +535,4 @@ export const httpRecordAdapter: RecordApiReads = {
   inboxCorrespondents: async (): Promise<Reading<InboxCorrespondents>> =>
     await reading(loadInboxCorrespondents),
   inboxPromotionPicker: loadInboxPromotionPicker,
-  workSessions: (): Promise<Reading<never>> =>
-    Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };

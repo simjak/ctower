@@ -15,33 +15,32 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Files</h1>
-      <p>
-        Souls, skills, harness guides, project rules and repo files, browsed at the revision the
-        repository actually holds. There is no quiet write path: saving would open a branch and a
-        pull request, and the same review and CSO gates that hold for code hold for a soul.
-      </p>
     </div>
   );
 }
 
+/** The caveat both inert controls carry, in a hover rather than on the page. */
+const SAVE_GATE =
+  "a save would open a branch off main, one commit and a pull request against protected main, and nothing is written until that pull request merges under cross-family review — this surface opens none of it";
+
 function EditorFoot(): ReactElement {
   return (
     <>
-      <div className="gate-note show">
-        a save would open a branch off main, one commit, and a pull request against protected main ·
-        requires: review sign-off (cross-family) · nothing is written until that pull request merges
-        — and read-only v1 opens none of it
-      </div>
       <div className="editor-foot">
-        <button className="btn" type="button" disabled style={INERT_CONTROL}>
-          Save — commit via review
+        <button className="btn" disabled style={INERT_CONTROL} title={SAVE_GATE} type="button">
+          Save
         </button>
-        <button className="btn ghost" type="button" disabled style={INERT_CONTROL}>
+        <button
+          className="btn ghost"
+          disabled
+          style={INERT_CONTROL}
+          title={SAVE_GATE}
+          type="button"
+        >
           Revert
         </button>
-        <span className="note">
-          Read-only v1: this surface browses a committed revision and holds no authority to write,
-          so both controls are inert by design.
+        <span className="verdict v-held" title={SAVE_GATE}>
+          read-only
         </span>
       </div>
     </>

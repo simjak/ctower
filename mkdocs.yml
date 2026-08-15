@@ -65,6 +65,7 @@ nav:
   - Guides:
       - Protected CLI and spool: guides/protected-cli.md
       - CompanyBundle: guides/company-bundle.md
+      - Operator surface: guides/operator-surface.md
   - Security:
       - Secret handling: security/secret-handling.md
   - Development:

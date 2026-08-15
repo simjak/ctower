@@ -66,8 +66,11 @@ class InboxProjectionWiringTests(unittest.TestCase):
         inbox = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
         ticket = (_SURFACE / "surfaces/ticket/TicketScreen.tsx").read_text(encoding="utf-8")
 
+        head = (_SURFACE / "surfaces/chat/ThreadHead.tsx").read_text(encoding="utf-8")
+
         self.assertIn("thread.promotedTicketId", inbox)
-        self.assertIn("ticketHref(ticketId)", inbox)
+        self.assertIn("thread.promotedTicketId", head)
+        self.assertIn("/ticket/${encodeURIComponent(thread.promotedTicketId)}", head)
         self.assertIn("row.inboxThreadIds", ticket)
         self.assertIn("/inbox?thread=${encodeURIComponent(threadId)}", ticket)
 

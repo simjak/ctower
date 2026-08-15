@@ -1,15 +1,24 @@
 import type { ReactElement } from "react";
-import { KnownValue } from "@/frame/Declared";
-import type { Accountability, CrewProfile, DeliveredChange, LadderStep } from "@/read/interface";
+import { KnownValue, Resolved } from "@/frame/Declared";
+import { spanText } from "@/read/elapsed";
+import type {
+  Accountability,
+  CrewProfile,
+  DeliveredChange,
+  LadderStep,
+  Reading,
+  WorkSession,
+} from "@/read/interface";
 import { mapKnown } from "@/read/sources/maybe";
 
 /**
  * The rail: where this crew works, what it delivered, what it is trusted with,
  * and what its work cost.
  *
- * Three of the four are read. The fourth is not recorded at all, and that panel
- * says so on its face and names the work that would record it — an invented
- * cost is the one number an operator would believe without checking.
+ * All four are read now. Cost was the one panel with no record behind it; the
+ * instance carries per-session duration and tokens, so it adds up the sessions
+ * the record files under this crew's name instead of naming work that would
+ * land them.
  */
 
 const VERDICT_TONE = {
@@ -215,30 +224,50 @@ export function CrewAccountability({
   );
 }
 
-export function CrewCost({ profile }: { readonly profile: CrewProfile }): ReactElement {
+/**
+ * What this crew's work cost, from the record.
+ *
+ * This panel printed `— · —` and cited the work that would land a per-session
+ * cost for as long as ctower recorded none. The record carries sessions now, so
+ * the panel adds up the ones whose `crew_name` is this crew's. A crew the record
+ * holds no session for reads `— · —` still — but as an emptiness the record was
+ * asked about, not as a capability it lacks.
+ */
+export function CrewCost({
+  sessions,
+}: {
+  readonly sessions: Reading<readonly WorkSession[]>;
+}): ReactElement {
   return (
     <section className="panel">
       <header>
         <h2>Session cost</h2>
         <span className="sub">time · tokens</span>
       </header>
-      <div className="gap">
-        <span className="big">— · —</span>
-        <span className="why">
-          Not recorded. <b>ctower emits no per-session duration or token event</b>, so this panel
-          would have to invent both — and an invented cost is the one number an operator would
-          believe without checking.
-        </span>
-        <span className="src">
-          {profile.cost.absence === "silence" ? null : (
-            <span>
-              lands with <b>{profile.cost.lands}</b> — {profile.cost.what}
+      <Resolved reading={sessions} brief subject="this crew's recorded sessions">
+        {(recorded) => (
+          <div className="gap">
+            <span className="big">{costText(recorded)}</span>
+            <span className="src">
+              {recorded.length} recorded {recorded.length === 1 ? "session" : "sessions"}
             </span>
-          )}
-        </span>
-      </div>
+          </div>
+        )}
+      </Resolved>
     </section>
   );
+}
+
+/** `4h 34m · 1.73M tok`, or `— · —` when the record holds no session for this crew. */
+function costText(sessions: readonly WorkSession[]): string {
+  if (sessions.length === 0) {
+    return "— · —";
+  }
+  const timed = sessions.filter((session) => session.durationSeconds !== null);
+  const seconds = timed.reduce((sum, session) => sum + (session.durationSeconds ?? 0), 0);
+  const tokens = sessions.reduce((sum, session) => sum + session.totalTokens, 0);
+  const time = timed.length === 0 ? "—" : spanText(seconds * 1000);
+  return `${time} · ${tokens.toLocaleString("en-US")} tok`;
 }
 
 export function CrewRepair({ profile }: { readonly profile: CrewProfile }): ReactElement {

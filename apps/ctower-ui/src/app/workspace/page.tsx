@@ -14,10 +14,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Workspace</h1>
-      <p>
-        Everything a session is handed at the moment it starts, in one card. If a seat cannot say
-        which ticket it is bound to and which worktree it is standing in, it should not be writing.
-      </p>
     </div>
   );
 }

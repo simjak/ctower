@@ -2,11 +2,12 @@
  * Where the interim sources live, and the one rule about them.
  *
  * Wave 2 wires the remaining screens against control-plane sources that already
- * exist: Mission Control's append-only state files, the crontab, the systemd
- * user timers, this repository's git tree and worktrees, and the tmux capture
- * bridge. They are **interim**: each screen swaps to its native source when one
- * lands, and nothing outside `src/read/sources/` knows any of these paths
- * exist.
+ * exist: Mission Control's append-only state files, this repository's git tree
+ * and worktrees, and the tmux capture bridge. They are **interim**: each screen
+ * swaps to its native source when one lands, and nothing outside
+ * `src/read/sources/` knows any of these paths exist. Heartbeats already made
+ * that swap — its cadence comes from the instance now, so the crontab and the
+ * systemd timers it used to read are gone rather than kept beside the record.
  *
  * Every one is read-only. This app opens these files for reading and runs
  * inspection commands; it never writes, locks, truncates, renames or appends to
@@ -27,17 +28,6 @@ export function missionControlRoot(): string {
 
 export function inboxPath(): string {
   return environment("CTOWER_UI_INBOX_PATH", `${missionControlRoot()}/state/inbox.jsonl`);
-}
-
-export function heartbeatPath(): string {
-  return environment("CTOWER_UI_HEARTBEAT_PATH", `${missionControlRoot()}/state/heartbeat.json`);
-}
-
-export function watchdogLogPath(): string {
-  return environment(
-    "CTOWER_UI_WATCHDOG_LOG_PATH",
-    `${missionControlRoot()}/state/logs/ctower-beat-watchdog.log`
-  );
 }
 
 export function crewLogPath(): string {
@@ -82,9 +72,4 @@ export function filesRoot(): string {
  */
 export function repositoryRoot(): string {
   return environment("CTOWER_UI_REPO_ROOT", ".");
-}
-
-/** Which cadence source Heartbeats reads: the swap seam proven by the drivers. */
-export function cadenceSourceName(): "cron" | "systemd" {
-  return environment("CTOWER_UI_CADENCE_SOURCE", "cron") === "systemd" ? "systemd" : "cron";
 }

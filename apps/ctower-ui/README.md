@@ -9,7 +9,7 @@ operator dogfood surface over the running shadow instance, ordered by the operat
 |        |                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Is     | A Next.js server that reads the shadow instance's existing read API and renders the approved screen set.                                                                                                                              |
-| Is     | Three Inbox controls that ask existing server-authoritative operations: a compose box over `POST /v1/inbox/notifications`, a send box over `POST /v1/inbox/messages`, and a promote control over `POST /v1/inbox/threads/{thread_id}/promotion`. |
+| Is     | A chat workspace with three controls that ask existing server-authoritative operations: a composer over `POST /v1/inbox/messages`, a new-conversation control over `POST /v1/inbox/notifications`, and a link control over `POST /v1/inbox/threads/{thread_id}/promotion`. |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
 
@@ -100,10 +100,10 @@ and no screen knows a URL.
 
 | Screen              | Source today                                                                                                                                   | Swaps to                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`)                                                                                    | a typed feed, through `adapter.ts` alone                                       |
+| Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`, `/sessions`)                                                                       | a typed feed, through `adapter.ts` alone                                       |
 | Portfolio           | ctower read API (`/v1/board` once per configured project, `/v1/inbox/threads`)                                                                 | the same typed feed, through `adapter.ts` alone                                |
 | Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`, `/v1/inbox/correspondents`)                                                    | —                                                                              |
-| Heartbeats          | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers`                                                                  | a native cadence registry                                                      |
+| Heartbeats          | ctower read API (`/v1/runtime/beat-routines`, `/v1/runtime/beat-dispatches`)                                                                   | —                                                                              |
 | Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
 | Workspace · Feed    | tmux `list-sessions` / `list-panes` / `capture-pane -p -J`                                                                                     | recorded session facts                                                         |
 | Explorer            | `git worktree list` + `git diff <resolved trunk>...HEAD`                                                                                       | recorded worktree facts                                                        |
@@ -242,11 +242,17 @@ this view carries none, which the suite asserts rather than assumes.
 
 ### Honest empty states — and the difference between empty and unreachable
 
-Board, Ticket and Inbox render live record facts. Heartbeats, Feed session facts, Files, Workspace
+Board, Ticket, Inbox and Heartbeats render live record facts. Feed session facts, Files, Workspace
 and Explorer have no source in ctower today, so each renders its approved layout and
 an explicit block naming what is missing. No screen invents a number, a name, a duration or a
-token count. The ticket work timeline in particular reads `no session data yet` and totals `—`
-until #200's per-session work facts exist.
+token count.
+
+Three panels stopped citing future work in this round, because the record began answering for
+them: the ticket **work timeline** reads `/v1/tickets/{id}/sessions`, the crew profile's
+**session cost** reads `/v1/projects/{key}/sessions` filtered by the crew's own name, and
+**Heartbeats** reads the instance's cadence registry instead of the host's crontab. A ticket, a
+crew or a routine that holds none of those is now a *silence* — the record answered and holds
+none — which is a different claim from the missing capability those panels used to declare.
 
 The block also says **which kind of nothing** it is. `ticket.comment_added`, `proof.changed`,
 `workflow.changed` and `work.changed` are recorded kinds: a ticket carrying none of them is a
@@ -272,18 +278,38 @@ failure and the bounded attempts that were spent. A `Reading` is unwrapped only 
 flatten a failed read into an empty one, and the structural test above fails closed if one tries.
 Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
-### Controls still unavailable in v1
+### The chat workspace, and the controls that stay inert
 
-The Inbox compose box, send box and promote control are live and ask existing authenticated server
-operations — though the compose box can only offer what the record can deliver to, so under a
-credential holding no project seat it draws itself switched off and says so (see `unaddressable`
-above). The steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
-render as visibly disabled affordances — a real `disabled` control, the shared
-`read-only v1 · disabled` chip, and the reason printed on the control itself, never as a page
-banner, never in a hover alone, and never as a dead-looking control. `New ticket` names what the
-operator can do instead: capture through `ctowerctl ticket capture`, and the board shows it on the
-next read. View switches — Chat/Raw, File/Diff, the board source filter — choose a reading rather
-than issue a command, so they stay live.
+`/inbox` is the surface's write screen and is laid out as the operator's approved shape:
+conversations on the left with unread carried by an accent bar rather than a word, the transcript in
+the middle with the operator's own turns on their own side of the column, the work the conversation
+is about on the right — the promoted ticket's state, its recorded change references, its labels and
+attention finding — and that seat's live pane under it. Below 1100px the three panes become one at a
+time, chosen by the route, and the frame's back link returns to the list; no pane is dropped at any
+width.
+
+Its three controls are live and ask existing authenticated server operations. The composer can only
+offer what the record can deliver to, so under a credential holding no project seat it draws itself
+switched off and names the command that mints one (see `unaddressable` above).
+
+The steering composer (Feed), the Save/Revert controls (Files), the define-metric save (Metrics) and
+the sidebar's `New ticket` render as visibly disabled affordances — a real `disabled` control and a
+short verdict chip on the control itself, never as a page banner and never as a dead-looking
+control. `New ticket` shows the command that does work, `ctowerctl ticket capture`, as the command
+rather than as a sentence about it; the fuller caveat is the control's hover, which is where a
+caveat belongs. View switches — Chat/Raw, File/Diff, the board source filter, the work pane's tabs —
+choose a reading rather than issue a command, so they stay live.
+
+### Meaning by element, not by prose
+
+The operator's binding amendment to the approved set is that a screen must be understandable through
+its elements, not through text: *remove unnecessary text; a screen that needs a paragraph to explain
+itself fails the gate*. Applied here that means the per-screen explanatory lede is gone, the declared
+absence blocks are a mark plus the fact plus a citation chip rather than a repeated paragraph, the
+derivation notes that explain a number are the hover of the number they explain, and a control's
+caveat lives on the control. Nothing was removed from the record's side of the screen: every datum
+the approved set carries is still rendered, and the reduction is measured per screen as prose text
+nodes rather than as total text.
 
 Counts carry their unit. `surfaces/Count.tsx` is the only place the `.n` pill is written and its
 type pairs every number with what it counts, so Inbox unread-message counts and Board card counts

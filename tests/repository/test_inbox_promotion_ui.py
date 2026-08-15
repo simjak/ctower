@@ -123,29 +123,37 @@ class InboxPromotionTransportTests(unittest.TestCase):
 
 class InboxPromotionComponentTests(unittest.TestCase):
     def test_the_client_has_local_action_state_but_no_credential_or_network_client(self) -> None:
-        component = (_SURFACE / "surfaces/inbox/PromoteThread.tsx").read_text(encoding="utf-8")
+        component = (_SURFACE / "surfaces/chat/LinkTicket.tsx").read_text(encoding="utf-8")
         action = (_SURFACE / "app/inbox/actions.ts").read_text(encoding="utf-8")
         page = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
 
         self.assertIn('"use client"', component)
         self.assertIn("useActionState", component)
-        self.assertIn("Promote thread", component)
-        self.assertIn("Create a new ticket from this thread", component)
+        self.assertIn("new ticket from this conversation", component)
+        self.assertIn("link an existing ticket", component)
         self.assertNotIn("fetch(", component)
         self.assertNotIn("Authorization", component)
         self.assertIn('"use server"', action)
         self.assertIn("promoteInboxThread(threadId, ticketId)", action)
-        self.assertIn("<PromoteThread", page)
+        self.assertIn("<LinkTicket", page)
         self.assertIn("thread.promotedTicketId === null", page)
 
-    def test_inbox_copy_scopes_read_only_to_the_disabled_new_ticket_affordance(self) -> None:
+    def test_no_read_only_claim_survives_outside_the_control_that_earns_it(self) -> None:
+        """This surface writes. Only the one action it cannot honour says otherwise.
+
+        The provenance foot once carried an authority sentence on every screen
+        and the rail called its inert action `read-only v1`. Both were app-wide
+        claims about a surface that sends messages, starts conversations and
+        links tickets. What is actually true is narrower: ctower captures a
+        ticket through its CLI, so that one control is the only thing that says
+        it cannot be pressed, and it says why in two words.
+        """
         foot = (_SURFACE / "frame/RecordFoot.tsx").read_text(encoding="utf-8")
         rail = (_SURFACE / "frame/rail.ts").read_text(encoding="utf-8")
 
-        self.assertNotIn("read-only v1 · no mutation path exists on this surface", foot)
-        self.assertIn("server-authorized Inbox compose, send and promotion paths", foot)
+        self.assertNotIn("read-only", foot)
         self.assertIn('label: "New ticket"', rail)
-        self.assertIn('verdict: "read-only v1 · disabled"', rail)
+        self.assertIn('verdict: "cli only"', rail)
 
 
 if __name__ == "__main__":

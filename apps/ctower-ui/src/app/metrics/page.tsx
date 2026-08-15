@@ -17,11 +17,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Metrics</h1>
-      <p>
-        How fast each factory ships, how often it breaks, and how long it takes to recover — over
-        the backlog it is burning down and the merges that burned it. Every number names the record
-        it is read from, and a measure with no record says so instead of showing a zero.
-      </p>
     </div>
   );
 }
@@ -55,6 +50,10 @@ function Unread({ metrics }: { readonly metrics: DeliveryMetrics }): ReactElemen
     </div>
   );
 }
+
+/** The caveat the inert save carries, in a hover rather than on the page. */
+const DEFINE_GATE =
+  "a saved metric would open a branch and a pull request through the same cross-family review as code; this surface opens none of it";
 
 /**
  * The define-metric disclosure, inert in read-only v1.
@@ -96,12 +95,11 @@ function DefineMetric(): ReactElement {
           ].join("\n")}
         </div>
         <div className="mtsave">
-          <button className="btn" type="button" disabled style={INERT_CONTROL}>
-            Save — commit via review
+          <button className="btn" disabled style={INERT_CONTROL} title={DEFINE_GATE} type="button">
+            Save
           </button>
-          <span className="note">
-            A saved metric would open a branch and a pull request through the same cross-family
-            review as code. Read-only v1 opens none of it, so the control is inert by design.
+          <span className="verdict v-held" title={DEFINE_GATE}>
+            read-only
           </span>
         </div>
       </div>

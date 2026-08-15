@@ -150,23 +150,25 @@ class CrewProjectTests(unittest.TestCase):
 class CadenceTests(unittest.TestCase):
     """#238 — a beat that can go neither green nor red carries no signal."""
 
-    def test_a_registered_beat_is_looked_for_where_it_actually_writes(self) -> None:
-        candidates = _outcomes()["registeredBeatCarriesItsOwnMarker"]
-        self.assertEqual(
-            candidates[0],
-            "/state/ctower-feed-cursor.json",
-            "the beat QA found rendered as never-fired is still not looked for where it writes",
-        )
-        self.assertIn("/state/logs/ctower-feed-notify.log", candidates)
+    def test_an_evenly_spaced_schedule_states_its_own_gap(self) -> None:
+        self.assertEqual(_outcomes()["evenScheduleIntervalIsItsGap"], 15 * 60 * 1000)
 
-    def test_an_unregistered_beat_still_gets_the_conventional_names(self) -> None:
+    def test_an_unevenly_spaced_schedule_takes_the_widest_gap(self) -> None:
         self.assertEqual(
-            _outcomes()["unregisteredBeatFallsBackToTheConvention"],
-            [
-                "/state/logs/idle-alarm.log",
-                "/state/.idle-alarm.last",
-                "/state/.idle-alarm.heartbeat",
-            ],
+            _outcomes()["unevenScheduleTakesTheWidestGap"],
+            55 * 60 * 1000,
+            "the shortest gap was taken as the interval, which marks a beat late "
+            "through a stretch it was never scheduled to fire in",
+        )
+
+    def test_a_once_daily_schedule_is_allowed_a_day(self) -> None:
+        self.assertEqual(_outcomes()["dailyScheduleIsADay"], 24 * 60 * 60 * 1000)
+
+    def test_the_gap_across_midnight_is_counted_like_any_other(self) -> None:
+        self.assertEqual(
+            _outcomes()["wrapAroundGapIsCounted"],
+            23 * 60 * 60 * 1000,
+            "the wrap from the last fire of one day to the first of the next was dropped",
         )
 
     def test_every_registered_beat_lands_in_exactly_one_tile(self) -> None:

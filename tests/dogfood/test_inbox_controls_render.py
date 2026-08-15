@@ -55,20 +55,18 @@ __all__ = ()
 
 _WIDTHS = stub.WIDTHS
 _RETIRED_CLAIM = "no mutation path exists on this surface"
-_SCOPED_FOOT = (
-    "server-authorized Inbox compose, send and promotion paths · browser holds no write authority"
-)
-_NEW_TICKET_VERDICT = "read-only v1 · disabled"
+_NEW_TICKET_VERDICT = "cli only"
+_NEW_TICKET_COMMAND = "ctowerctl ticket capture"
 _UNCONFIRMED_SENTENCE = (
     "The server has not confirmed this message, so it is not sent yet. "
-    "Press Retry to send the same message again."
+    "Press send again to send the same message."
 )
 # what the line under the box reads, chip included; the chip's own stylesheet
 # upper-cases it on screen
 _UNCONFIRMED_NOTICE = f"not confirmed {_UNCONFIRMED_SENTENCE}"
 _UNCONFIRMED_COMPOSE_SENTENCE = (
     "The server has not confirmed this message, so the thread is not started yet. "
-    "Press Retry to send the same message again."
+    "Press send again to send the same message."
 )
 _UNCONFIRMED_COMPOSE_NOTICE = f"not confirmed {_UNCONFIRMED_COMPOSE_SENTENCE}"
 _SEND_FIELDS = ("text", "thread_id", "to")
@@ -134,37 +132,62 @@ class InboxSurfaceRenderTests(unittest.TestCase):
             [(route, width) for width in _WIDTHS for route in ("list", "thread")],
         )
 
-    def test_the_rendered_surface_carries_no_global_read_only_claim(self) -> None:
+    def test_the_rendered_surface_makes_no_read_only_claim_at_all(self) -> None:
+        """This surface writes, and nothing on it says otherwise any more.
+
+        The foot used to carry an authority sentence on every screen and the
+        rail called its inert action `read-only v1`. Both were app-wide claims
+        about a surface whose composer sends a real message. What survives is
+        narrower and true: one control ctower answers through its CLI instead.
+        """
         for capture in self.captures:
             with self.subTest(route=capture["route"], width=capture["width"]):
                 self.assertNotIn(_RETIRED_CLAIM, capture["rendered"])
-                self.assertIn(_SCOPED_FOOT, capture["foot"])
+                self.assertNotIn("read-only", capture["rendered"])
                 self.assertNotIn("read-only", capture["foot"])
 
-    def test_the_only_surviving_read_only_claim_names_the_disabled_affordance(self) -> None:
+    def test_the_one_action_this_surface_cannot_take_shows_the_command_that_can(self) -> None:
+        """De-texted: a disabled control, a two-word verdict, and the command.
+
+        Round-3 QA (#240) got the reason printed under the button; the operator's
+        de-texting amendment moved that sentence into the control's hover and put
+        the thing that *does* work — the command itself — on the rail instead.
+        """
         for capture in self.captures:
             with self.subTest(route=capture["route"], width=capture["width"]):
                 affordance = cast("dict[str, Any]", capture["newTicket"])
                 self.assertEqual(affordance["label"], "New ticket")
                 self.assertTrue(affordance["disabled"])
                 self.assertEqual(affordance["verdict"], _NEW_TICKET_VERDICT)
-                self.assertIn("ctowerctl ticket capture", affordance["reason"])
-                self.assertEqual(capture["rendered"].count("read-only"), 1)
+                self.assertEqual(affordance["command"], _NEW_TICKET_COMMAND)
+                # the caveat is reachable, and it is not on the screen
+                self.assertNotEqual(affordance["reason"], "")
+                self.assertNotIn(affordance["reason"], capture["visible"])
 
     def test_the_surface_rendered_the_recorded_threads_and_both_controls(self) -> None:
         for capture in self.captures:
             with self.subTest(route=capture["route"], width=capture["width"]):
-                self.assertIn(stub.PREVIEW, capture["visible"])
+                # the provenance rule holds on the workspace too: the instance
+                # and the origin it was read from, on every route and width
                 self.assertIn(f"ctower · {stub.INSTANCE_LABEL} instance", capture["foot"])
-                if capture["route"] == "thread":
-                    self.assertIn("Promote thread", capture["visible"])
-                    self.assertIn("Create a new ticket from this thread", capture["visible"])
-                    # the design system upper-cases this label, so the assertion
-                    # is on the words a reader actually sees
-                    self.assertIn(f"SEND TO {stub.OTHER_SEAT.upper()}", capture["visible"])
+                if capture["route"] == "list":
+                    # the conversation column carries the record's own preview
+                    self.assertIn(stub.PREVIEW, capture["visible"])
+                else:
+                    # the transcript carries the message the preview came from
+                    self.assertIn(stub.PREVIEW, capture["visible"])
+                    # the link control, which fills the work pane beside the
+                    # conversation, and the reply box under it
+                    self.assertIn("new ticket from this conversation", capture["rendered"])
+                    # the transcript names whose turn it is once per group,
+                    # rather than repeating from/to on every message row
+                    self.assertIn(stub.OTHER_SEAT, capture["visible"])
+                    # who a reply goes out as is a chip, not a sentence about
+                    # authority; the seat is its own element inside it, so the
+                    # words are read with their layout whitespace collapsed
                     self.assertIn(
-                        f"as {stub.SELF_SEAT} · the server authorizes and records every message",
-                        capture["visible"],
+                        f"as {stub.SELF_SEAT}",
+                        " ".join(cast("str", capture["visible"]).split()),
                     )
 
     def test_a_typed_message_appears_in_the_thread_without_a_reload(self) -> None:
@@ -213,7 +236,7 @@ class InboxSurfaceRenderTests(unittest.TestCase):
                 self.assertEqual(drive["refusal"], "")
                 # the draft survives, and the control names the retry it offers
                 self.assertEqual(drive["fieldAfter"], drive["typed"])
-                self.assertEqual(drive["button"], "Retry")
+                self.assertEqual(drive["button"], "Send again")
                 self.assertTrue(drive["sameDocument"])
                 self.assertNotIn(drive["typed"], drive["messagesReloaded"])
 
@@ -224,7 +247,7 @@ class InboxSurfaceRenderTests(unittest.TestCase):
                 retried = cast("dict[str, Any]", drive["retried"])
                 self.assertEqual(retried["notice"], _UNCONFIRMED_NOTICE)
                 self.assertEqual(retried["fieldAfter"], drive["typed"])
-                self.assertEqual(retried["button"], "Retry")
+                self.assertEqual(retried["button"], "Send again")
                 self.assertNotIn(drive["typed"], retried["messages"])
 
         keys = [
@@ -259,7 +282,7 @@ class InboxSurfaceRenderTests(unittest.TestCase):
         self.assertEqual([drive["width"] for drive in refusals], list(_WIDTHS))
         for drive in refusals:
             with self.subTest(width=drive["width"]):
-                self.assertEqual(drive["refusal"], stub.REFUSAL_DETAIL)
+                self.assertEqual(drive["refusal"], f"refused {stub.REFUSAL_DETAIL}")
                 self.assertNotIn(drive["typed"], drive["messages"])
                 self.assertNotIn(drive["typed"], drive["messagesReloaded"])
                 self.assertTrue(drive["sameDocument"])
@@ -367,7 +390,7 @@ class InboxComposeRenderTests(unittest.TestCase):
                 self.assertEqual(compose["refusal"], "")
                 self.assertEqual(compose["fieldAfter"], compose["typed"])
                 self.assertEqual(compose["seatAfter"], stub.UNDURABLE_SEAT)
-                self.assertEqual(compose["button"], "Retry")
+                self.assertEqual(compose["button"], "Send again")
                 self.assertTrue(compose["sameDocument"])
                 self.assertNotIn(compose["typed"], compose["listedReloaded"])
 
@@ -376,7 +399,7 @@ class InboxComposeRenderTests(unittest.TestCase):
         self.assertEqual([item["width"] for item in refusals], list(_WIDTHS))
         for compose in refusals:
             with self.subTest(width=compose["width"]):
-                self.assertEqual(compose["refusal"], stub.REFUSAL_DETAIL)
+                self.assertEqual(compose["refusal"], f"refused {stub.REFUSAL_DETAIL}")
                 self.assertEqual(compose["composed"], [])
                 self.assertEqual(compose["notice"], "")
                 # the words and the seat survive the refusal

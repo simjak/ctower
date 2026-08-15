@@ -206,6 +206,41 @@ export interface BoardSnapshot extends BoardRead {
   readonly entries: readonly BoardEntry[];
 }
 
+/**
+ * One recorded work session on a ticket: who worked, for how long, at what
+ * token cost, with what outcome.
+ *
+ * This is the fact the approved work timeline was shaped for. It was rendered
+ * as a missing *capability* for as long as the record carried no such class;
+ * `GET /v1/tickets/{id}/sessions` now answers, so a ticket with none is a
+ * record that answered and holds none, which is a different claim and gets the
+ * different block.
+ *
+ * `outcome`, `closedAt` and `durationSeconds` are null while a session is still
+ * open — an unfinished session is not a session with no duration, so they stay
+ * nullable rather than defaulting to a zero the record never wrote.
+ */
+export interface WorkSession {
+  readonly sessionId: string;
+  readonly crewName: string;
+  readonly seatKey: string;
+  readonly projectKey: string;
+  readonly modelRef: string;
+  readonly harnessRef: string;
+  readonly branchRef: string;
+  readonly worktreeRef: string;
+  readonly state: string;
+  readonly outcome: string | null;
+  readonly startedAt: string;
+  readonly closedAt: string | null;
+  readonly durationSeconds: number | null;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly totalTokens: number;
+  readonly transitionCount: number;
+  readonly evidenceRef: string | null;
+}
+
 export interface RecordEvent {
   readonly eventId: string;
   readonly sequence: number;
@@ -701,8 +736,6 @@ export interface CrewProfile {
   readonly signatures: number;
   readonly claimsNote: string;
   readonly accountability: Accountability;
-  /** What would record this crew's cost. Always absent; never a number. */
-  readonly cost: FutureSource;
   readonly observedAt: string;
   readonly sourceNote: string;
   readonly tail: TailNote;
@@ -940,7 +973,7 @@ export interface RecordAdapter {
   ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;
   ticketAudit: (ticketId: string, projectKey: string) => Promise<Reading<readonly RecordEvent[]>>;
   /** Per-session work facts: who, duration, tokens, outcome. */
-  workSessions: (ticketId: string) => Promise<Reading<never>>;
+  workSessions: (ticketId: string, projectKey: string) => Promise<Reading<readonly WorkSession[]>>;
   /** Registered scheduled wakes and their fire history. */
   cadenceRegistry: () => Promise<Reading<CadenceRegistry>>;
   /** The authenticated principal's durable inbox threads projection. */
@@ -972,7 +1005,14 @@ export interface RecordAdapter {
   crewProfile: (crew: string) => Promise<Reading<CrewLookup>>;
 }
 
-/** The subset of reads the ctower read API answers today. */
+/**
+ * The reads `read/httpRecordAdapter.ts` implements against the instance.
+ *
+ * It is not every read the API answers: the ticket work sessions and the
+ * cadence registry are instance reads too, and they live in
+ * `read/runtimeReads.ts` so that module can hold their folding without this one
+ * growing a second subject. `read/adapter.ts` binds both.
+ */
 export type RecordApiReads = Pick<
   RecordAdapter,
   | "instance"
@@ -980,7 +1020,6 @@ export type RecordApiReads = Pick<
   | "boardCards"
   | "ticket"
   | "ticketAudit"
-  | "workSessions"
   | "inbox"
   | "inboxThread"
   | "inboxCorrespondent"

@@ -16,8 +16,8 @@
 import { chooseBase } from "../../apps/ctower-ui/src/read/sources/worktrees.ts";
 import type { BaseProbe } from "../../apps/ctower-ui/src/read/sources/worktrees.ts";
 import { projectOf } from "../../apps/ctower-ui/src/read/sources/crewRoster.ts";
-import { markerCandidates } from "../../apps/ctower-ui/src/read/sources/cadenceCron.ts";
 import { healthOf, registryOf } from "../../apps/ctower-ui/src/read/sources/cadenceHealth.ts";
+import { scheduleIntervalMs } from "../../apps/ctower-ui/src/read/beatRegistry.ts";
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
 import { reclassified } from "../../apps/ctower-ui/src/read/bounded.ts";
@@ -86,17 +86,27 @@ results.projectFromTheTagWhenTheLogIsUnreadable = projectOf(null, "bh-loop", log
 results.projectStaysUnreadWhenNothingAnswered = projectOf(null, null, logUnread);
 results.projectNotRecordedWhenThereIsNoLogFile = projectOf(null, null, logMissing);
 
-/* ── #238 · a beat's fire marker, and the tiles ───────────────────────────
-   `ctower-feed-notify` writes `state/ctower-feed-cursor.json` on every run and
-   none of the three guessed filenames, so its row could go neither green nor
-   red — and the four tiles counted four of five registered beats. */
+/* ── #238 · how long silence is allowed to last, and the tiles ────────────
+   The registry is the record's now, so lateness is decided by the routine's own
+   minute/hour set rather than by a guessed marker file. A set is not necessarily
+   evenly spaced: `0,5 * * * *` fires twice an hour with gaps of five minutes and
+   fifty-five, and calling the interval five would mark that beat late for most
+   of every hour it was never scheduled to fire in. */
 
-results.registeredBeatCarriesItsOwnMarker = markerCandidates("ctower-feed-notify").map((path) =>
-  path.slice(path.indexOf("/state/"))
-);
-results.unregisteredBeatFallsBackToTheConvention = markerCandidates("idle-alarm").map((path) =>
-  path.slice(path.indexOf("/state/"))
-);
+const schedule = (minutes: readonly number[], hours: readonly number[] | null) => ({
+  routineRef: "ctower.beat.fixture@1",
+  beatKey: "fixture",
+  targetSession: "commander",
+  nextFireAt: "2026-08-14T23:09:00Z",
+  minutes,
+  hours,
+  timezone: "UTC",
+});
+
+results.evenScheduleIntervalIsItsGap = scheduleIntervalMs(schedule([9, 24, 39, 54], null));
+results.unevenScheduleTakesTheWidestGap = scheduleIntervalMs(schedule([0, 5], null));
+results.dailyScheduleIsADay = scheduleIntervalMs(schedule([12], [7]));
+results.wrapAroundGapIsCounted = scheduleIntervalMs(schedule([0], [0, 1]));
 
 const beat = (name: string, health: Beat["health"]): Beat => ({
   seat: "agent",
@@ -116,12 +126,12 @@ results.tilesCountEveryRegisteredBeat = registryOf(
     beat("d", "dead"),
     beat("e", "unknown"),
   ],
-  "crontab -l",
+  "/v1/runtime/beat-routines",
   "2026-08-04T08:00:00.000Z",
   "rule"
 );
 
-// the exact live shape QA found: five registered, four resolvable
+// the exact live shape QA found: five registered, four with a dispatch on record
 results.tilesOnTheObservedRegistry = registryOf(
   [
     beat("ctower-migration-drive", "alive"),
@@ -130,7 +140,7 @@ results.tilesOnTheObservedRegistry = registryOf(
     beat("wip-alarm", "alive"),
     beat("ctower-feed-notify", "unknown"),
   ],
-  "crontab -l",
+  "/v1/runtime/beat-routines",
   "2026-08-04T08:00:00.000Z",
   "rule"
 );

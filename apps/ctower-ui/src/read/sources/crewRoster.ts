@@ -1,7 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { boundedProcess } from "../bounded";
 import { stampText } from "../elapsed";
-import { NO_WORK_SESSIONS as COST_SOURCE } from "../futureSources";
 import { readAccountability } from "./escapesLedger";
 import { scanJsonl } from "./jsonl";
 import { readLandedChanges } from "./landedChanges";
@@ -667,7 +666,6 @@ export async function readCrewProfile(crew: string): Promise<CrewLookup> {
             ? records.outcome.why
             : records.outcome.reason,
       accountability,
-      cost: COST_SOURCE,
       observedAt: new Date(nowMs).toISOString(),
       sourceNote:
         "identity and liveness from the live tmux session; model, task, status and project from the crew log; the seat from the crew name against the personas directory",

@@ -100,12 +100,19 @@ class InertAffordanceTests(unittest.TestCase):
             "user reaches",
         )
 
-    def test_the_reason_names_what_the_operator_can_do_instead(self) -> None:
+    def test_the_inert_action_shows_the_command_that_does_work(self) -> None:
+        """De-texted: the command is an element on the rail, not a sentence about one."""
         rail = (_SURFACE / "frame/rail.ts").read_text(encoding="utf-8")
-        reason = re.search(r"reason:\s*\n?\s*\"([^\"]+)\"", rail)
-        self.assertIsNotNone(reason, "the inert primary action declares no reason")
-        assert reason is not None
-        self.assertIn("ctowerctl ticket capture", reason.group(1))
+        command = re.search(r"command:\s*\n?\s*\"([^\"]+)\"", rail)
+        self.assertIsNotNone(command, "the inert primary action names no working command")
+        assert command is not None
+        self.assertEqual(command.group(1), "ctowerctl ticket capture")
+        self.assertIn(
+            "NEW_TICKET_INERT.command",
+            _code(_SURFACE / "frame/Sidebar.tsx"),
+            "the rail declares the command and the sidebar never renders it, so the only "
+            "thing on screen is a control that cannot be pressed",
+        )
 
 
 class LabelledCountTests(unittest.TestCase):
@@ -155,16 +162,23 @@ class LabelledCountTests(unittest.TestCase):
         ]
         self.assertEqual(missing, [], "a count was rendered without naming what it counts")
 
-    def test_the_inbox_tab_counts_unread_and_says_so(self) -> None:
-        inbox = _code(_SURFACE / "app/inbox/page.tsx")
-        self.assertIn('unit="unread"', inbox)
+    def test_the_conversation_list_counts_unread_and_says_so(self) -> None:
+        """#239 still binds the chat workspace: the tally names what it counts."""
+        rows = _code(_SURFACE / "surfaces/chat/ThreadList.tsx")
+        self.assertIn('unit="unread"', rows)
+        self.assertEqual(
+            rows.count('unit="unread"'),
+            2,
+            "the list head and the row tally are two numbers, and both must carry the unit",
+        )
 
-    def test_the_inbox_panel_names_thread_and_unread_counts(self) -> None:
-        inbox = _code(_SURFACE / "app/inbox/page.tsx")
+    def test_the_conversation_list_marks_unread_without_a_word_for_it(self) -> None:
+        """The de-texting amendment: presence is the mark, not a label beside it."""
         self.assertIn(
-            "threads ·",
-            inbox,
-            "the panel prints an unread count without saying it is a thread projection",
+            '.cw-row.unread .bar',
+            (_SURFACE / "app/conductor.css").read_text(encoding="utf-8"),
+            "an unread conversation carries no element of its own, so the list can only "
+            "say so in words",
         )
 
     def test_the_tab_row_wraps_rather_than_clipping_its_last_tab(self) -> None:
