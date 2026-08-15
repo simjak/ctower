@@ -49,44 +49,43 @@ function Lands({ source }: { readonly source: FutureSource }): ReactElement | nu
 }
 
 /**
- * The design audit found this block's full sentence repeating verbatim eight
- * times on one page: honest, and unreadable by the third repeat. The rule for
- * a page is now say-it-once — the first block on a screen carries the whole
- * explanation, every later one carries the fact and the source alone. Callers
- * mark the later ones with `brief`.
+ * A fact this surface has nothing to show for, said without a sentence.
  *
- * The block says which of the two absences it is. "ctower does not record this"
- * and "the record answered and holds none for this ticket" are different claims,
- * and the second needs no roadmap pointer at all — the fact arrives the moment
- * someone appends one.
+ * The design audit found this block's full explanation repeating verbatim eight
+ * times on one page — honest, and unreadable by the third repeat — so a `brief`
+ * flag dropped the tail on every block after the first. The operator's
+ * de-texting amendment finishes the job: the paragraph is gone entirely, and the
+ * three things a reader needs are three elements. The glyph and the heading say
+ * *which kind of nothing* it is, the subject line is the recorded fact itself
+ * rather than a sentence about it, and the citation is a chip.
+ *
+ * The two absences stay different claims with different headings. "ctower does
+ * not record this" and "the record answered and holds none of it" are opposite
+ * things to tell an operator, and only the first has anything to wait for.
+ *
+ * `brief` is kept because callers pass it, but there is no longer a longer
+ * form for it to suppress — every block is now the short one.
  */
 export function NoSourceYet({
   source,
   title,
-  brief = false,
 }: {
   readonly source: FutureSource;
   readonly title?: string;
+  /** Retained for callers; every block is now the brief form. */
   readonly brief?: boolean;
 }): ReactElement {
   const silent = source.absence === "silence";
-  const heading = title ?? (silent ? "the record holds none here" : "no data source yet");
-  const said = silent
-    ? `The record answered and holds no ${source.what}.`
-    : `ctower does not record ${source.what}.`;
-  const whole = silent
-    ? " The layout above is the shape this panel takes the moment one is appended; nothing below it is filled in from a guess."
-    : " The layout above is the approved shape this screen takes the moment that record exists; nothing below it is filled in from a guess.";
+  const heading = title ?? (silent ? "the record holds none" : "not recorded");
   return (
     <Frame>
       <div className="slot open">
         <StateGlyph name="open" />
         <div className="e">
           <div className="k">{heading}</div>
-          <div className="d">{brief ? said : `${said}${whole}`}</div>
+          <div className="d">{source.what}</div>
           <div className="f">
             <Lands source={source} />
-            {brief ? null : <span>read-only v1</span>}
           </div>
         </div>
       </div>
@@ -102,6 +101,14 @@ export function NoSourceYet({
  * from the typed failure rather than from matching prose in `reason`.
  */
 const REFUSED_STATUS = new Set([401, 403]);
+
+/**
+ * The one thing a reader can act on when the instance refuses, carried by the
+ * chip's hover rather than by a paragraph: this is not an outage and not an
+ * empty board, and no amount of retrying reaches it.
+ */
+const REFUSAL_HINT =
+  "a refusal, not an outage and not an empty board — there may be work here this surface's credential cannot see, and issuing a scoped one is operator-only";
 
 /**
  * A source that exists and did not answer. This is deliberately loud and
@@ -132,34 +139,19 @@ export function ReadUnavailable({
       >
         <StateGlyph name="attn" />
         <div className="e">
-          <div className="k">
-            {refused ? `not allowed to read ${named}` : "the record was not reached"}
-          </div>
-          <div className="d">
-            {refused ? (
-              <>
-                The instance answered {String(failure.status)}: the credential this surface holds is
-                not authorized for {named}. This is a refusal, not an outage and not an empty board
-                — there may be work here that you cannot see from this surface. Issuing a scoped
-                credential is operator-only, so it unblocks when the operator issues one; no amount
-                of retrying reaches it.
-              </>
-            ) : (
-              <>
-                This source exists — this read did not reach it, so nothing is shown here. Do not
-                read this screen as evidence that the record is empty; it is evidence that the read
-                failed.
-              </>
-            )}
-          </div>
+          <div className="k">{refused ? "not allowed to read" : "not reached"}</div>
+          <div className="d">{named}</div>
           <div className="f" style={{ overflowWrap: "anywhere" }}>
+            {failure.status === null ? null : (
+              <span className="req">{failure.status.toString()}</span>
+            )}
             <span className="req">{failure.reason}</span>
-            <span>{failure.failureClass} failure</span>
+            <span>{failure.failureClass}</span>
             <span>
-              {failure.attempts.toString()} bounded{" "}
-              {failure.attempts === 1 ? "attempt" : "attempts"} over {failure.elapsedMs.toString()}
-              ms
+              {failure.attempts.toString()} {failure.attempts === 1 ? "attempt" : "attempts"} ·{" "}
+              {failure.elapsedMs.toString()}ms
             </span>
+            {refused ? <span title={REFUSAL_HINT}>operator-issued credential</span> : null}
           </div>
         </div>
       </div>
@@ -340,11 +332,12 @@ export function UnknownSet({
       >
         <StateGlyph name="attn" />
         <div className="e">
-          <div className="k">{what} is not known here</div>
-          <div className="d">
-            This is not an empty set. The sources named below did not answer, so nothing here is
-            evidence that there are none — the ones that did answer hold none, and what the rest
-            hold was not read.
+          <div className="k">{what} is not known</div>
+          <div
+            className="d"
+            title="not an empty set: the sources below did not answer, so nothing here is evidence that there are none"
+          >
+            {scopes.length} of the sources it is folded from did not answer
           </div>
           <div className="f" style={{ overflowWrap: "anywhere" }}>
             {scopes.map((scope) => (

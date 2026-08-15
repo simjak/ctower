@@ -10,6 +10,12 @@ import type { DeliveryMeasure } from "@/read/interface";
  * believed, so a card either states a measurement and names the derivation it
  * came from, or it states that there is nothing to measure. There is no third
  * rendering, and in particular there is no zero standing in for absence.
+ *
+ * The de-texting amendment moved the measure's `note` off the card: four cards
+ * on one screenful each carried two or three sentences of it, repeated once per
+ * project tab. The card still says everything it said — the value or
+ * `not recorded`, the target, the work that would land it, and the derivation
+ * it is read from — and the sentence behind that derivation is the card's hover.
  */
 function Card({ measure }: { readonly measure: DeliveryMeasure }): ReactElement {
   const missing = measure.value === null;
@@ -32,8 +38,9 @@ function Card({ measure }: { readonly measure: DeliveryMeasure }): ReactElement 
         </div>
       ) : null}
       <span className={missing ? "mttgt na" : "mttgt ok"}>{measure.target}</span>
-      <div className="d">{measure.note}</div>
-      <div className="src">{measure.source}</div>
+      <div className="src" title={measure.note}>
+        {measure.source}
+      </div>
     </div>
   );
 }

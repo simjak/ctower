@@ -19,7 +19,7 @@ _THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000600"
 _EXPECTED_BODY = '{"text":"open the conversation","to":"director"}'
 _UNCONFIRMED_SENTENCE = (
     "The server has not confirmed this message, so the thread is not started yet. "
-    "Press Retry to send the same message again."
+    "Press send again to send the same message."
 )
 _UNLISTED_SENTENCE = (
     "That seat is not one the record lists, so nothing was sent. "
@@ -190,7 +190,7 @@ class InboxComposeDurabilityTests(unittest.TestCase):
 
 class InboxComposeComponentTests(unittest.TestCase):
     def test_the_compose_box_offers_a_closed_list_and_holds_no_credential(self) -> None:
-        component = (_SURFACE / "surfaces/inbox/ComposeThread.tsx").read_text(encoding="utf-8")
+        component = (_SURFACE / "surfaces/chat/NewThread.tsx").read_text(encoding="utf-8")
         action = (_SURFACE / "app/inbox/actions.ts").read_text(encoding="utf-8")
         page = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
 
@@ -214,12 +214,12 @@ class InboxComposeComponentTests(unittest.TestCase):
         self.assertIn("composeInboxThread(", action)
         self.assertIn('revalidatePath("/inbox")', action)
 
-        self.assertIn("<ComposeThread", page)
+        self.assertIn("<NewThread", page)
         self.assertIn("action={composeThreadAction}", page)
         self.assertIn("recordAdapter.inboxCorrespondents()", page)
 
     def test_three_answers_get_three_renderings_and_the_pending_one_retries(self) -> None:
-        component = (_SURFACE / "surfaces/inbox/ComposeThread.tsx").read_text(encoding="utf-8")
+        component = (_SURFACE / "surfaces/chat/NewThread.tsx").read_text(encoding="utf-8")
 
         # a refusal is an alert; an unconfirmed compose is a status, not an error
         self.assertIn('role="status"', component)
@@ -227,7 +227,7 @@ class InboxComposeComponentTests(unittest.TestCase):
         # only an accepted answer draws the message row and offers the thread
         self.assertIn('state.kind === "started"', component)
         self.assertIn("state.threadId", component)
-        self.assertIn('"Retry"', component)
+        self.assertIn('"Send again"', component)
         # an empty closed world does not invite a compose it cannot honor
         self.assertIn("seats.length === 0", component)
         self.assertIn("disabled={idle}", component)
@@ -242,14 +242,14 @@ class InboxComposeComponentTests(unittest.TestCase):
         principal's own to write from — which get two different sentences,
         because naming the wrong one tells the operator to fix the wrong thing.
         """
-        component = (_SURFACE / "surfaces/inbox/ComposeThread.tsx").read_text(encoding="utf-8")
+        component = (_SURFACE / "surfaces/chat/NewThread.tsx").read_text(encoding="utf-8")
 
         self.assertIn("correspondents.choices.map", component)
         self.assertNotIn("new Set", component)
         self.assertNotIn("choices.filter", component)
         self.assertIn('"unaddressable"', component)
         self.assertIn("no registered seat", component)
-        self.assertIn("no other seat this server can write to", component)
+        self.assertIn("no seat this server can write to", component)
 
     def test_a_control_this_surface_switched_off_is_drawn_switched_off(self) -> None:
         """A dead control that looks live is an invitation the page cannot honor.
@@ -270,13 +270,22 @@ class InboxComposeComponentTests(unittest.TestCase):
                 self.assertIn("cursor: not-allowed", match.group(1))
                 self.assertIn("var(--ink-3)", match.group(1))
 
-    def test_the_control_is_on_the_list_screen_where_no_thread_exists_yet(self) -> None:
-        """A new thread starts where there is no thread: the Inbox list."""
-        page = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
-        list_screen, thread_screen = page.split("function InboxThreadBody", maxsplit=1)
+    def test_the_control_is_where_no_thread_exists_yet_and_not_inside_one(self) -> None:
+        """A new conversation starts where there is no conversation.
 
-        self.assertIn("<ComposeThread", list_screen)
-        self.assertNotIn("<ComposeThread", thread_screen)
+        The chat workspace makes it a state of its own, reached from the
+        conversation list's one action, so an open thread's middle pane carries
+        the reply box and never a second box that would start a different
+        conversation with the same words.
+        """
+        page = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
+        compose_slot, open_thread = page.split("async function OpenThread(", maxsplit=1)
+        open_thread = open_thread.split("function Middle(", maxsplit=1)[0]
+
+        self.assertIn("<NewThread", page)
+        self.assertNotIn("<NewThread", open_thread)
+        self.assertIn("<ChatComposer", open_thread)
+        self.assertNotIn("<ChatComposer", compose_slot)
 
 
 if __name__ == "__main__":

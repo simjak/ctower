@@ -214,39 +214,40 @@ export function Sidebar({ here }: { readonly here: string }): ReactElement {
         </div>
 
         {/* the one action that starts work, and the surface cannot honour it.
-            A real disabled button, the same verdict chip the Feed composer
-            carries, and the reason printed here rather than hidden in a hover
-            (#240) — the operator sees it is unavailable before clicking, not
-            after nothing happens */}
+            A real disabled button so it is visibly unpressable (#240), the
+            verdict chip that says why in two words, and the command that does
+            work — shown as the command, not described in a sentence about it.
+            The fuller caveat is the control's hover, which is where the craft
+            rules put a caveat. */}
         <div className="side-act">
           <button
+            aria-describedby="new-ticket-cli"
             className="sact"
-            type="button"
             disabled
             style={INERT_CONTROL}
-            aria-describedby="new-ticket-readonly"
+            title={NEW_TICKET_INERT.reason}
+            type="button"
           >
             <span className="plus" />
             {NEW_TICKET_INERT.label}
           </button>
-          <span
-            className="verdict v-held"
-            style={{ display: "inline-flex", marginTop: "8px" }}
-            aria-hidden
-          >
+          <span className="verdict v-held" style={{ display: "inline-flex", marginTop: "8px" }}>
             {NEW_TICKET_INERT.verdict}
           </span>
-          <p
-            id="new-ticket-readonly"
+          <code
+            className="mono"
+            id="new-ticket-cli"
             style={{
-              margin: "6px 0 0",
-              fontSize: "11.5px",
-              lineHeight: 1.45,
+              display: "block",
+              marginTop: "6px",
+              fontSize: "11px",
               color: "var(--ink-3)",
+              overflowWrap: "anywhere",
             }}
+            title={NEW_TICKET_INERT.reason}
           >
-            {NEW_TICKET_INERT.reason}
-          </p>
+            {NEW_TICKET_INERT.command}
+          </code>
         </div>
 
         <nav className="side-nav">

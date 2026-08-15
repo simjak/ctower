@@ -5,8 +5,15 @@ import { Chrome } from "@/frame/Chrome";
 import { KnownValue, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { StateGlyph } from "@/frame/StateGlyph";
-import { crewTerminalStream, recordAdapter, SOURCE_LABELS } from "@/read/adapter";
-import type { CrewProfile, CrewUnknown, Reading, SessionStream, TailNote } from "@/read/interface";
+import { crewSessions, crewTerminalStream, recordAdapter, SOURCE_LABELS } from "@/read/adapter";
+import type {
+  CrewProfile,
+  CrewUnknown,
+  Reading,
+  SessionStream,
+  TailNote,
+  WorkSession,
+} from "@/read/interface";
 import { redacted } from "@/read/sources/redact";
 import { CrewCurrent } from "@/surfaces/crew/CrewCurrent";
 import { CrewHead } from "@/surfaces/crew/CrewHead";
@@ -49,9 +56,11 @@ function Foot({ tail }: { readonly tail: TailNote }): ReactElement {
 function Profile({
   profile,
   stream,
+  sessions,
 }: {
   readonly profile: CrewProfile;
   readonly stream: Reading<SessionStream>;
+  readonly sessions: Reading<readonly WorkSession[]>;
 }): ReactElement {
   const identity = {
     crew: profile.row.name,
@@ -94,7 +103,7 @@ function Profile({
               <CrewWhere profile={profile} />
               <CrewDelivered profile={profile} />
               <CrewAccountability accountability={profile.accountability} />
-              <CrewCost profile={profile} />
+              <CrewCost sessions={sessions} />
               <CrewRepair profile={profile} />
             </div>
           </div>
@@ -240,7 +249,6 @@ function Frame({
         <div className="wrap">
           <div className="lede">
             <h1>Crew</h1>
-            <p>One engagement of one seat, read from the fleet&rsquo;s own records.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
@@ -277,12 +285,12 @@ export default async function CrewPage({
 }): Promise<ReactNode> {
   const { crewName } = await params;
   const lookup = await recordAdapter.crewProfile(crewName);
-  const stream = await crewTerminalStream(lookup);
+  const [stream, sessions] = await Promise.all([crewTerminalStream(lookup), crewSessions(lookup)]);
   return (
     <Resolved reading={lookup} frame={(declared) => <Frame crew={crewName} declared={declared} />}>
       {(value) =>
         value.found === "crew" ? (
-          <Profile profile={value.profile} stream={stream} />
+          <Profile profile={value.profile} stream={stream} sessions={sessions} />
         ) : (
           <NotFound missing={value.missing} />
         )

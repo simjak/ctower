@@ -216,7 +216,6 @@ function BoardFrame({
         <div className="wrap">
           <div className="lede">
             <h1>Board</h1>
-            <p>The ticket board for {project}, read from the instance record.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>

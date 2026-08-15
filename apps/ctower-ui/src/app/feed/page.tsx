@@ -17,11 +17,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Live feed</h1>
-      <p>
-        The session as a conversation: what it decided, what it ran, and every turn an operator or
-        commander put into it. Tool calls collapse into the flow so the reasoning stays readable,
-        and the raw view is one switch away when something needs debugging.
-      </p>
     </div>
   );
 }

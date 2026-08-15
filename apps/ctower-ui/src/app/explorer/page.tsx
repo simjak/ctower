@@ -16,12 +16,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Explorer</h1>
-      <p>
-        The session&rsquo;s own worktree, as it stands right now — and what it has actually changed
-        against the trunk. A branch that claims work exists is not the same as a diff that shows it,
-        and a diff is only as honest as the base it is measured from, so the base and its own commit
-        are printed beside the branch.
-      </p>
     </div>
   );
 }

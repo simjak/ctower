@@ -1,11 +1,16 @@
 import "../../design-reference/app.css";
+import "./conductor.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
 
 /**
- * The stylesheet is imported straight from `design-reference/`, the vendored
- * approved mockup set. There is no second copy to fall out of step with it:
- * the rendered app and the design reference read the same bytes.
+ * The first stylesheet is imported straight from `design-reference/`, the
+ * vendored approved mockup set. There is no second copy to fall out of step
+ * with it: the rendered app and the design reference read the same bytes.
+ *
+ * The second adds the one shape that set has no rule for — the chat workspace
+ * the operator's north star asks for — and is built only from the first's own
+ * variables, so it inherits both themes and can introduce no token of its own.
  */
 
 export const metadata: Metadata = {

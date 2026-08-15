@@ -39,12 +39,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Three projects, one sweep</h1>
-      <p>
-        Every registered project&rsquo;s tickets by lane, the escalations waiting on a human, and
-        the seat comms this surface&rsquo;s principal has unread — folded from one board read per
-        project and one inbox read, at the moment this page rendered. A project appears here when
-        its scope registers; nothing on this page is entered by hand.
-      </p>
     </div>
   );
 }
@@ -188,10 +182,8 @@ function CommsSource({ portfolio }: { readonly portfolio: Portfolio }): ReactEle
         </span>
       ))}
       {comms.known === "value" ? <UnlinkedSplit comms={comms.value} /> : null}
-      <span>
-        a thread belongs to a project only where that project&rsquo;s board card names it; mail on
-        threads no card links is counted apart, never spread across projects — and while a board is
-        unread, that split is withheld rather than guessed
+      <span title="a thread belongs to a project only where that project's board card names it; mail on threads no card links is counted apart, never spread across projects, and while a board is unread that split is withheld rather than guessed">
+        attributed by the board card&rsquo;s own thread links
       </span>
     </div>
   );

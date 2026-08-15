@@ -35,9 +35,11 @@ __all__ = (
     "COMPOSED_THREAD_ID",
     "COMPOSE_SEAT",
     "CREDENTIAL",
+    "DELIVERED_AT",
     "INSTANCE_LABEL",
     "OTHER_SEAT",
     "PREVIEW",
+    "READ_AT",
     "REFUSAL_DETAIL",
     "REFUSED_THREAD_ID",
     "SELF_SEAT",
@@ -104,6 +106,34 @@ def _thread(thread_id: str, other: str) -> dict[str, Any]:
         ],
         "read_through_position": 1,
         "promoted_ticket_id": None,
+    }
+
+
+#: The delivery facts the record holds for the message in every stub thread.
+#: `read` is the fully-marked case, so the surface has to draw all three dots
+#: and the exact times behind them; a mark this suite cannot see is a mark the
+#: operator cannot see either.
+DELIVERED_AT = "2026-08-08T12:00:01Z"
+READ_AT = "2026-08-08T12:09:11Z"
+
+
+def _read_state(thread_id: str, other: str) -> dict[str, Any]:
+    """One thread's append-only per-message delivery truth."""
+    del other
+    return {
+        "thread_id": thread_id,
+        "messages": [
+            {
+                "message_id": "018f0d5e-7b9a-7c01-8000-000000000601",
+                "position": 1,
+                "recipient": SELF_SEAT,
+                "state": "read",
+                "delivered_at": DELIVERED_AT,
+                "delivered_event_id": "018f0d5e-7b9a-7c01-8000-0000000006d1",
+                "read_at": READ_AT,
+                "read_event_id": "018f0d5e-7b9a-7c01-8000-0000000006d2",
+            }
+        ],
     }
 
 
@@ -211,6 +241,20 @@ class Record:
             self._fold()
             return answer
 
+    def read_state(self, thread_id: str) -> dict[str, Any] | None:
+        """The delivery truth for a thread, read the way the surface reads it.
+
+        Deliberately *not* folded from the send path: delivery and read are
+        their own recorded events, and the surface must draw a mark only where
+        the record holds one. A message this stub has appended but recorded no
+        delivery event for therefore carries no mark, which is the honest case.
+        """
+        with self._lock:
+            if thread_id not in self._threads:
+                return None
+            other = cast("list[str]", self._threads[thread_id]["participants"])[1]
+            return _read_state(thread_id, other)
+
     def _fold(self) -> None:
         """Move everything accepted since the last read into the projection."""
         for thread_id, message in self._unfolded:
@@ -313,22 +357,27 @@ class _RecordStub(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     record: ClassVar[Record]
 
+    def _read(self, path: str) -> dict[str, Any] | None:
+        """What one read path answers with, or `None` for a path holding nothing."""
+        if path == "/v1/inbox/threads":
+            return self.record.projection()
+        if path == "/v1/inbox/correspondents":
+            return self.record.correspondents()
+        if path == "/v1/board":
+            return _BOARD
+        if path.endswith("/read-state") and path.startswith("/v1/inbox/threads/"):
+            return self.record.read_state(path.split("/")[4])
+        if path.startswith("/v1/inbox/threads/"):
+            return self.record.thread(path.rsplit("/", 1)[-1])
+        return None
+
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path == "/v1/inbox/threads":
-            self._answer(_OK, self.record.projection())
-        elif path == "/v1/inbox/correspondents":
-            self._answer(_OK, self.record.correspondents())
-        elif path.startswith("/v1/inbox/threads/"):
-            thread = self.record.thread(path.rsplit("/", 1)[-1])
-            if thread is None:
-                self._answer(_NOT_FOUND, {"detail": "the stub record source holds no such thread"})
-            else:
-                self._answer(_OK, thread)
-        elif path == "/v1/board":
-            self._answer(_OK, _BOARD)
-        else:
+        found = self._read(path)
+        if found is None:
             self._answer(_NOT_FOUND, {"detail": f"the stub record source holds no {path}"})
+            return
+        self._answer(_OK, found)
 
     def do_POST(self) -> None:
         path = self.path.split("?", 1)[0]

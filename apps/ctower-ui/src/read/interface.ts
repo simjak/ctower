@@ -9,7 +9,6 @@ import type {
   ProjectionHealth,
 } from "@ctower/client";
 import type { ReadFailure } from "./bounded";
-import type { InboxPromotionTicketChoice } from "@/mutate/types";
 import type { Known } from "./sources/maybe";
 
 /**
@@ -26,6 +25,36 @@ import type { Known } from "./sources/maybe";
  */
 
 export type { BoardLane, DurabilityState, Priority, ProjectionHealth };
+
+/**
+ * The durable-inbox family, re-exported where it has always been imported from.
+ *
+ * It lives in `inboxInterface.ts` now — one cohesive subject, and the only
+ * subject the chat workspace reads — but `RecordAdapter` below still declares
+ * those reads beside every other, so this file stays the one contract a screen
+ * speaks.
+ */
+export type {
+  InboxCorrespondent,
+  InboxCorrespondentChoice,
+  InboxCorrespondents,
+  InboxDelivery,
+  InboxMessageDelivery,
+  InboxProjection,
+  InboxPromotionPicker,
+  InboxThread,
+  InboxThreadMessage,
+  InboxThreadSummary,
+} from "./inboxInterface";
+
+import type {
+  InboxCorrespondent,
+  InboxCorrespondents,
+  InboxDelivery,
+  InboxProjection,
+  InboxPromotionPicker,
+  InboxThread,
+} from "./inboxInterface";
 
 export const LANES: readonly BoardLane[] = [
   "backlog",
@@ -206,6 +235,41 @@ export interface BoardSnapshot extends BoardRead {
   readonly entries: readonly BoardEntry[];
 }
 
+/**
+ * One recorded work session on a ticket: who worked, for how long, at what
+ * token cost, with what outcome.
+ *
+ * This is the fact the approved work timeline was shaped for. It was rendered
+ * as a missing *capability* for as long as the record carried no such class;
+ * `GET /v1/tickets/{id}/sessions` now answers, so a ticket with none is a
+ * record that answered and holds none, which is a different claim and gets the
+ * different block.
+ *
+ * `outcome`, `closedAt` and `durationSeconds` are null while a session is still
+ * open — an unfinished session is not a session with no duration, so they stay
+ * nullable rather than defaulting to a zero the record never wrote.
+ */
+export interface WorkSession {
+  readonly sessionId: string;
+  readonly crewName: string;
+  readonly seatKey: string;
+  readonly projectKey: string;
+  readonly modelRef: string;
+  readonly harnessRef: string;
+  readonly branchRef: string;
+  readonly worktreeRef: string;
+  readonly state: string;
+  readonly outcome: string | null;
+  readonly startedAt: string;
+  readonly closedAt: string | null;
+  readonly durationSeconds: number | null;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly totalTokens: number;
+  readonly transitionCount: number;
+  readonly evidenceRef: string | null;
+}
+
 export interface RecordEvent {
   readonly eventId: string;
   readonly sequence: number;
@@ -229,91 +293,6 @@ export interface TailNote {
   readonly malformed: number;
   readonly partialTail: boolean;
   readonly sourcePath: string;
-}
-
-/** One recipient-scoped row from the inbox threads projection. */
-export interface InboxThreadSummary {
-  readonly threadId: string;
-  readonly otherAgent: string;
-  readonly lastMessagePreview: string;
-  readonly lastMessageAt: string;
-  readonly unreadCount: number;
-  /** The immutable ticket link, when this thread was promoted. */
-  readonly promotedTicketId: string | null;
-}
-
-/** One ordered, durable message returned when the thread is opened. */
-export interface InboxThreadMessage {
-  readonly messageId: string;
-  readonly position: number;
-  readonly from: string;
-  readonly to: string;
-  readonly text: string;
-  readonly sentAt: string;
-}
-
-/** The full thread projection. Reading it advances only the recipient's read cursor. */
-export interface InboxThread {
-  readonly threadId: string;
-  readonly participants: readonly string[];
-  readonly messages: readonly InboxThreadMessage[];
-  readonly readThroughPosition: number;
-  /** The immutable ticket link, when this thread was promoted. */
-  readonly promotedTicketId: string | null;
-}
-
-/** The authenticated principal's inbox projection. */
-export interface InboxProjection {
-  readonly recipient: string;
-  readonly threads: readonly InboxThreadSummary[];
-  readonly totalUnread: number;
-  readonly unreadOnly: boolean;
-}
-
-/**
- * Who one thread is between, as the recipient-scoped projection itself names
- * them — never as this surface infers them.
- *
- * A message needs an address, and the address is an identity. So it is read
- * back from the server rather than assembled here or accepted from a form: the
- * projection says which seat the authenticated principal holds and which seat
- * is on the other end of this thread, and the send path asks for that answer
- * again at submit time rather than trusting one a browser round-tripped.
- */
-export interface InboxCorrespondent {
-  /** The seat this surface's authenticated principal holds. */
-  readonly sender: string;
-  /** The other participant: where a message on this thread is addressed. */
-  readonly recipient: string;
-}
-
-/** One registered seat a new thread can be addressed to. */
-export interface InboxCorrespondentChoice {
-  readonly seatKey: string;
-  readonly projectKey: string;
-}
-
-/**
- * Who this principal may open a new thread to, as the record itself lists them.
- *
- * A compose control has nobody to read a recipient back from — the thread it
- * addresses does not exist yet — so the address has to be chosen. What keeps it
- * from being a claimed identity is that the choices are the record's own
- * registered seats: the same closed world the send command resolves against, so
- * this picker can offer no address the record would not accept, and a seat it
- * does not list is refused server-side rather than created.
- */
-export interface InboxCorrespondents {
-  /** The seat this surface's authenticated principal holds. */
-  readonly sender: string;
-  readonly choices: readonly InboxCorrespondentChoice[];
-}
-
-/** Ticket choices the current principal's Board read made available for Inbox linking. */
-export interface InboxPromotionPicker {
-  readonly choices: readonly InboxPromotionTicketChoice[];
-  /** A failed Board read never becomes an empty ticket list without this explanation. */
-  readonly notice: string | null;
 }
 
 export type BeatHealth = "alive" | "late" | "dead" | "unknown";
@@ -701,8 +680,6 @@ export interface CrewProfile {
   readonly signatures: number;
   readonly claimsNote: string;
   readonly accountability: Accountability;
-  /** What would record this crew's cost. Always absent; never a number. */
-  readonly cost: FutureSource;
   readonly observedAt: string;
   readonly sourceNote: string;
   readonly tail: TailNote;
@@ -940,13 +917,15 @@ export interface RecordAdapter {
   ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;
   ticketAudit: (ticketId: string, projectKey: string) => Promise<Reading<readonly RecordEvent[]>>;
   /** Per-session work facts: who, duration, tokens, outcome. */
-  workSessions: (ticketId: string) => Promise<Reading<never>>;
+  workSessions: (ticketId: string, projectKey: string) => Promise<Reading<readonly WorkSession[]>>;
   /** Registered scheduled wakes and their fire history. */
   cadenceRegistry: () => Promise<Reading<CadenceRegistry>>;
   /** The authenticated principal's durable inbox threads projection. */
   inbox: () => Promise<Reading<InboxProjection>>;
   /** One durable inbox thread; this recipient read advances its own cursor. */
   inboxThread: (threadId: string) => Promise<Reading<InboxThread>>;
+  /** Per-message sent/delivered/read truth for one thread, as recorded events. */
+  inboxDelivery: (threadId: string) => Promise<Reading<InboxDelivery>>;
   /** The two seats one thread is between, for addressing a message on it. */
   inboxCorrespondent: (threadId: string) => Promise<Reading<InboxCorrespondent>>;
   /** The registered seats a new thread may be opened to. */
@@ -972,7 +951,14 @@ export interface RecordAdapter {
   crewProfile: (crew: string) => Promise<Reading<CrewLookup>>;
 }
 
-/** The subset of reads the ctower read API answers today. */
+/**
+ * The reads `read/httpRecordAdapter.ts` implements against the instance.
+ *
+ * It is not every read the API answers: the ticket work sessions and the
+ * cadence registry are instance reads too, and they live in
+ * `read/runtimeReads.ts` so that module can hold their folding without this one
+ * growing a second subject. `read/adapter.ts` binds both.
+ */
 export type RecordApiReads = Pick<
   RecordAdapter,
   | "instance"
@@ -980,9 +966,9 @@ export type RecordApiReads = Pick<
   | "boardCards"
   | "ticket"
   | "ticketAudit"
-  | "workSessions"
   | "inbox"
   | "inboxThread"
+  | "inboxDelivery"
   | "inboxCorrespondent"
   | "inboxCorrespondents"
   | "inboxPromotionPicker"
