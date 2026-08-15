@@ -84,10 +84,11 @@ _EXPECTED_MIGRATION_PATHS = [
     "0068_company_records.sql",
     "0069_estate_import_idempotency.sql",
     "0070_estate_import_authority.sql",
+    "0071_restore_request_proposal_constraints.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0070_estate_import_authority.sql",
-    "schema_sha256": ("sha256:ac1b4fc5b36a8efd8e7219fcb3cd5bcb875f136a60c3a954ef65e0dcc21f8b04"),
+    "through": "0071_restore_request_proposal_constraints.sql",
+    "schema_sha256": ("sha256:8fe46826f152634ef16c876e06c72a692b47542e42758d9fb12067adf84673b4"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:b0aa6739b9ab0be5345708e546086d3b4c34667569be5d217c83201f10818a15"

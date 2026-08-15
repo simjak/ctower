@@ -303,17 +303,20 @@
       "contracts/domain/migration/estate-import-manifest.schema.json",
       "contracts/domain/migration/estate-seat-mapping.schema.json",
       "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql"
+      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-IMP-02": [
       "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql"
+      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-IMP-03": [
       "contracts/domain/migration/company-record-import.schema.json",
       "packages/ctower-kernel/migrations/0068_company_records.sql",
       "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql"
+      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-IMP-04": [
       "contracts/domain/migration/estate-import-manifest.schema.json",
@@ -321,7 +324,8 @@
       "contracts/domain/migration/estate-seat-mapping.schema.json",
       "packages/ctower-kernel/migrations/0068_company_records.sql",
       "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql"
+      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-INBOX-01": [
       "contracts/domain/events/canonical-vectors.json",
@@ -594,24 +598,28 @@
       "contracts/domain/request-proposals/append.schema.json",
       "contracts/domain/request-proposals/list.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-PROP-02": [
       "contracts/domain/request-proposals/append.schema.json",
       "contracts/domain/request-proposals/evidence.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-PROP-03": [
       "contracts/domain/request-proposals/decision.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-PROP-04": [
       "contracts/domain/request-proposals/decision.schema.json",
       "contracts/domain/request-proposals/list.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-PROP-05": [
       "contracts/domain/request-proposals/append.schema.json",
@@ -619,17 +627,20 @@
       "contracts/domain/request-proposals/list.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
       "contracts/domain/request-proposals/review.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-PROP-06": [
       "contracts/domain/request-proposals/review.schema.json",
-      "contracts/domain/request-proposals/summary.schema.json"
+      "contracts/domain/request-proposals/summary.schema.json",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-PROP-07": [
       "contracts/domain/request-proposals/append.schema.json",
       "contracts/domain/request-proposals/decision.schema.json",
       "contracts/domain/request-proposals/proposal.schema.json",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "AC-QUAL-01": [
       "contracts/compatibility/matrix-input.schema.json",
@@ -1584,7 +1595,8 @@
       "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
       "packages/ctower-kernel/migrations/0068_company_records.sql",
       "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql",
-      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql"
+      "packages/ctower-kernel/migrations/0070_estate_import_authority.sql",
+      "packages/ctower-kernel/migrations/0071_restore_request_proposal_constraints.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

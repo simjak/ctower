@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0070_estate_import_authority.sql",
-    "schema_sha256": "sha256:ac1b4fc5b36a8efd8e7219fcb3cd5bcb875f136a60c3a954ef65e0dcc21f8b04",
+    "through": "0071_restore_request_proposal_constraints.sql",
+    "schema_sha256": "sha256:8fe46826f152634ef16c876e06c72a692b47542e42758d9fb12067adf84673b4",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:b0aa6739b9ab0be5345708e546086d3b4c34667569be5d217c83201f10818a15"
   },
@@ -673,6 +673,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_estate_imports.py::test_estate_import_authority_is_operator_scoped_in_postgres",
       "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event-origin constraints, event counts, principal kinds, and a verified database backup; the estate-origin guard starts with no estate events."
+    },
+    {
+      "path": "0071_restore_request_proposal_constraints.sql",
+      "sha256": "sha256:420c2fd682718bb51f4e8dd624e2a6639cbe6c4b7c6da154701cfdbdde12166b",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_request_maintenance_proposals.py::test_append_is_separate_and_similarity_preserves_both_requests_until_operator_confirm",
+      "rollback_or_forward_compensation": "Preserve every immutable proposal, evidence pointer, terminal decision, canonical event, command result, outbox row, and ordinary Request command result; append a reviewed forward compensation rather than editing, deleting, reopening, merging, or reusing an accepted proposal fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, proposal, proposal-evidence, proposal-decision, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no proposal rows."
     }
   ]
 }
