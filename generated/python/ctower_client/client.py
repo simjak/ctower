@@ -1,14 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-Authored contract digest: sha256:4208ed95a16a9bcec349edcf1c8d002f135665367ad1de4131be5b93c46de71e
-=======
-Authored contract digest: sha256:b15cd812b396627a264217134e14b9138e5a476ff2652f93594e7c958de52818
->>>>>>> 650210f4 (feat(spawn): publish generated HTTP and CLI surfaces)
-=======
-Authored contract digest: sha256:c5017acc0c01b4e53c25d466d9877d9ce39feb51f017f901bfe78400bf37c782
->>>>>>> 9fe6d5c4 (fix(spawn): align seat custody boundary and transition conflicts)
+Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
 """
 
 from __future__ import annotations
@@ -152,11 +144,10 @@ from ctower_client.models import (
     WorkflowTransitionRequest,
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey", "TicketId"]
+__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey"]
 
 
 type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-type TicketId = Annotated[str, Field(pattern="^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$")] | UUID
 
 
 class _ProblemModel(Protocol):
@@ -251,7 +242,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_comment(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: TicketCommentRequest,
         *,
         command_id: UUID,
@@ -273,7 +264,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_relation(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: RelationRequest,
         *,
         command_id: UUID,
@@ -461,7 +452,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_intent(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: TicketIntentRequest,
         *,
         command_id: UUID,
@@ -483,7 +474,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_label(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: ApplyLabelRequest,
         *,
         command_id: UUID,
@@ -634,7 +625,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_assignment(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: AssignmentChangeRequest,
         *,
         command_id: UUID,
@@ -656,7 +647,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_priority(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: PriorityChangeRequest,
         *,
         command_id: UUID,
@@ -743,7 +734,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def consume_review_dispatch_effect(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         effect_id: UUID,
         request: ReviewDispatchConsumeRequest,
         *,
@@ -887,7 +878,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def freeze_proof_criteria(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: FreezeCriteriaRequest,
         *,
         command_id: UUID,
@@ -1097,7 +1088,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         *,
         project_key: str,
     ) -> TicketResource:
@@ -1116,7 +1107,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket_timeline(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         *,
         project_key: str,
     ) -> TimelineResponse:
@@ -1353,7 +1344,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_review_dispatch_effects(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
     ) -> ReviewDispatchEffectList:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/workflow/review-dispatches",
@@ -1387,15 +1378,15 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_spawn_records(
         self,
-        project_key: ProjectKey,
         *,
+        project_key: str,
         status: str | None = None,
         limit: Annotated[int, Field(ge=1, le=1000)] | None = None,
         offset: Annotated[int, Field(ge=0)] | None = None,
     ) -> SpawnRecordListResult:
         response = self._http.get(
-            f"/v1/spawn-records",
-            params={**({"status": status} if status is not None else {}), **({"limit": limit} if limit is not None else {}), **({"offset": offset} if offset is not None else {})},
+            "/v1/spawn-records",
+            params={"project_key": project_key, **({"status": status} if status is not None else {}), **({"limit": limit} if limit is not None else {}), **({"offset": offset} if offset is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {
@@ -1408,7 +1399,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         *,
         project_key: str,
     ) -> AssignmentList:
@@ -1427,7 +1418,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_audit_events(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         *,
         project_key: str,
         cursor: Annotated[int, Field(ge=0)] | None = None,
@@ -1448,7 +1439,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_sessions(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         *,
         project_key: str,
     ) -> TicketSessionList:
@@ -1648,7 +1639,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_evidence(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: EvidenceRequest,
         *,
         command_id: UUID,
@@ -1670,7 +1661,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_verdict(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: VerdictRequest,
         *,
         command_id: UUID,
@@ -1692,7 +1683,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_ticket_change_reference(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: ChangeReferenceRequest,
         *,
         command_id: UUID,
@@ -1714,7 +1705,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_ticket_session_fact(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         session_id: UUID,
         request: SessionFactRequest,
         *,
@@ -1802,7 +1793,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def resolve_close_workflow(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: ResolveCloseRequest,
         *,
         command_id: UUID,
@@ -1929,7 +1920,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_session(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: SessionStartRequest,
         *,
         command_id: UUID,
@@ -1951,7 +1942,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_workflow(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: WorkflowStartRequest,
         *,
         command_id: UUID,
@@ -1994,7 +1985,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transfer_ticket_custody(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: CustodyTransferRequest,
         *,
         command_id: UUID,
@@ -2016,7 +2007,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transition_workflow(
         self,
-        ticket_id: TicketId,
+        ticket_id: UUID,
         request: WorkflowTransitionRequest,
         *,
         command_id: UUID,
@@ -2083,13 +2074,11 @@ class CtowerClient:
             "Authorization": f"Bearer {self._credential}",
         }
 
-    def _context(
-        self, command_id: UUID, *, ticket_id: UUID | str | None = None
-    ) -> TelemetryContext:
+    def _context(self, command_id: UUID, *, ticket_id: UUID | None = None) -> TelemetryContext:
         if self._telemetry is not None:
             payload = self._telemetry.model_dump(mode="json", by_alias=True, exclude_none=True)
             payload["command_id"] = str(command_id)
-            payload["ticket_id"] = str(ticket_id) if isinstance(ticket_id, UUID) else None
+            payload["ticket_id"] = str(ticket_id) if ticket_id is not None else None
             return TelemetryContext.model_validate(payload)
         return TelemetryContext(
             schema_id="ctower.telemetry-context/v1",
@@ -2101,7 +2090,7 @@ class CtowerClient:
             tenant_id="unresolved",
             actor_id="unresolved",
             command_id=str(command_id),
-            ticket_id=str(ticket_id) if isinstance(ticket_id, UUID) else None,
+            ticket_id=str(ticket_id) if ticket_id is not None else None,
         )
 
     def _telemetry_headers(

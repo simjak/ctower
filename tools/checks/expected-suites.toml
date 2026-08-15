@@ -1206,3 +1206,13 @@ path = "tests/acceptance/increment-1"
 patterns = ["test_spawn_records.py"]
 command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_spawn_records.py", "-q"]
 timeout_seconds = 900
+
+[[suite]]
+id = "spawn-product-surfaces"
+owner = "CT-I1-034"
+phase = "CT-I1-034"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_spawn_product_surfaces.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_spawn_product_surfaces.py", "-q"]
+timeout_seconds = 900
