@@ -14,6 +14,7 @@ from ctower_kernel.record._event_encoding import (
     _timestamp,
 )
 from ctower_kernel.record._event_types import EventKind, EventOrigin
+from ctower_kernel.record._workflow_validation import validate_workflow_provenance
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
     AttentionFindingDispositionRecordedPayload,
@@ -188,10 +189,7 @@ class WorkflowChangedPayload:
             raise ValueError("workflow reference must be versioned")
         if _STABLE_KEY.fullmatch(self.stage) is None:
             raise ValueError("workflow stage must be stable")
-        if self.source_stage and _STABLE_KEY.fullmatch(self.source_stage) is None:
-            raise ValueError("workflow source stage must be stable or empty")
-        if self.operation == "transition" and (not self.source_stage or not self.evaluation_ref):
-            raise ValueError("workflow transitions require source stage and evaluation reference")
+        validate_workflow_provenance(self.operation, self.source_stage, self.evaluation_ref)
         if self.lifecycle_facts not in {(), ("resolved", "closed")}:
             raise ValueError("workflow lifecycle facts must preserve terminal order")
 

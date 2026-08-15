@@ -321,6 +321,10 @@ def project_morning_digest(
         movement=movement_summary,
         movement_watermark=movement.watermark,
     )
+    return _with_artifact_digest(digest)
+
+
+def _with_artifact_digest(digest: MorningDigest) -> MorningDigest:
     canonical = json.dumps(
         digest.artifact_payload(),
         ensure_ascii=False,

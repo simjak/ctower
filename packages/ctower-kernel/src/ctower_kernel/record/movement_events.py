@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from ctower_kernel.record.interface import Actor, RecordProblem
+    from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = [
     "MovementCountList",
     "MovementCountRow",
     "MovementEvent",
     "MovementEventPage",
+    "MovementEventStore",
 ]
 
 
@@ -75,3 +81,21 @@ class MovementEventPage:
             "next_cursor": self.next_cursor,
             "project_key": self.project_key,
         }
+
+
+class MovementEventStore(Protocol):
+    """Record boundary for project movement reads and digest counts."""
+
+    def movement_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> MovementEventPage | RecordProblem: ...
+
+    def movement_counts(
+        self, actor: Actor, *, telemetry: TelemetryContext
+    ) -> MovementCountList | RecordProblem: ...

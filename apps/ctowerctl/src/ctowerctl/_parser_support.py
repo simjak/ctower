@@ -6,7 +6,10 @@ import argparse
 from typing import Never
 from uuid import UUID
 
-from ctowerctl._argument_types import _positive_int
+from pydantic import TypeAdapter
+
+from ctower_client.client import ProjectKey
+from ctowerctl._argument_types import _nonnegative_int, _positive_int
 
 __all__: tuple[str, ...] = ()
 
@@ -115,10 +118,23 @@ AUTHORED_COMMAND_NAMES = frozenset(
     }
 )
 
+_PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
+
 
 class _Parser(argparse.ArgumentParser):
     def error(self, message: str) -> Never:
         raise ValueError(f"usage: {message}")
+
+
+def _project_key(value: str) -> str:
+    return _PROJECT_KEY.validate_python(value)
+
+
+def _project_cursor_parser(parser: argparse.ArgumentParser, cli_name: str) -> None:
+    parser.set_defaults(cli_name=cli_name)
+    parser.add_argument("project_key", type=_project_key)
+    parser.add_argument("--cursor", type=_nonnegative_int)
+    parser.add_argument("--limit", type=_positive_int)
 
 
 def _ticket_id(parser: argparse.ArgumentParser) -> None:
