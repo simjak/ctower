@@ -299,6 +299,7 @@ def _get_payload(result: SpawnRecordGet) -> dict[str, object]:
         "transitions": [
             {
                 "transition_id": str(t.transition_id),
+                "spawn_id": str(r.spawn_id),
                 "from_status": t.from_status,
                 "to_status": t.to_status,
                 "reason": t.reason,

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:c5017acc0c01b4e53c25d466d9877d9ce39feb51f017f901bfe78400bf37c782
+Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
 """
 
 from __future__ import annotations
@@ -2496,6 +2496,8 @@ class Problem(_BoundaryModel):
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
+        "invalid-status",
+        "invalid-transition",
         "invalid-ruling",
         "inbox-already-promoted",
         "inbox-acknowledgement-not-advancing",
@@ -2600,7 +2602,10 @@ class Problem(_BoundaryModel):
         "session-ineligible",
         "session-not-found",
         "session-transition-invalid",
+        "spawn-not-found",
+        "tenant-not-found",
         "tenant-scope-denied",
+        "transition-conflict",
         "ticket-comment-ineligible",
         "ticket-comment-invalid",
         "unauthorized",

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:c5017acc0c01b4e53c25d466d9877d9ce39feb51f017f901bfe78400bf37c782
+Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
 """
 
 from __future__ import annotations
@@ -1378,15 +1378,15 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_spawn_records(
         self,
-        project_key: ProjectKey,
         *,
+        project_key: str,
         status: str | None = None,
         limit: Annotated[int, Field(ge=1, le=1000)] | None = None,
         offset: Annotated[int, Field(ge=0)] | None = None,
     ) -> SpawnRecordListResult:
         response = self._http.get(
-            f"/v1/spawn-records",
-            params={**({"status": status} if status is not None else {}), **({"limit": limit} if limit is not None else {}), **({"offset": offset} if offset is not None else {})},
+            "/v1/spawn-records",
+            params={"project_key": project_key, **({"status": status} if status is not None else {}), **({"limit": limit} if limit is not None else {}), **({"offset": offset} if offset is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {

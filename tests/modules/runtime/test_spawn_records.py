@@ -12,6 +12,8 @@ import pytest
 from ctower_kernel.record.spawn_events import (
     SpawnRecordedPayload,
     SpawnState,
+    SpawnTransitionedPayload,
+    spawn_payload_from_mapping,
     spawn_transition_allowed,
 )
 from ctower_kernel.runtime.spawn_driver import (
@@ -435,6 +437,62 @@ def test_spawn_event_accepts_the_authored_one_character_seat_key() -> None:
         effort=None,
         workspace_id=None,
     )
+
+
+def test_spawn_record_mapping_rebuilds_the_authored_payload() -> None:
+    payload = SpawnRecordedPayload(
+        spawn_id=uuid4(),
+        project_key="ctower",
+        seat_key="engineer",
+        crew_name="mc-engineer-r3000-spawn",
+        task_file_ref="coordination/task.md",
+        worktree_path="/srv/worktrees/crew",
+        harness="codex-crew",
+        model="gpt-5-codex",
+        effort="high",
+        workspace_id=uuid4(),
+    )
+
+    assert spawn_payload_from_mapping("spawn.recorded", payload.to_mapping()) == payload
+
+
+def test_spawn_transition_mapping_rebuilds_the_authored_payload() -> None:
+    payload = SpawnTransitionedPayload(
+        spawn_id=uuid4(),
+        from_state=SpawnState.REQUESTED,
+        to_state=SpawnState.ACCEPTED,
+        transition_number=1,
+        reason="operator accepted dispatch",
+    )
+
+    assert spawn_payload_from_mapping("spawn.transitioned", payload.to_mapping()) == payload
+
+
+@pytest.mark.parametrize(
+    ("kind", "payload", "message"),
+    [
+        ("spawn.unknown", {}, "not a spawn-custody event"),
+        ("spawn.recorded", {"spawn_id": str(uuid4())}, "fields do not match"),
+        (
+            "spawn.transitioned",
+            {
+                "spawn_id": str(uuid4()),
+                "from_state": "requested",
+                "to_state": "bogus",
+                "transition_number": 1,
+                "reason": None,
+            },
+            "outside the authored event contract",
+        ),
+    ],
+)
+def test_spawn_mapping_refuses_unknown_or_malformed_payload(
+    kind: str,
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        spawn_payload_from_mapping(kind, payload)
 
 
 def test_spool_discipline_is_mode_0600_and_ack_only_removal(tmp_path: Path) -> None:
