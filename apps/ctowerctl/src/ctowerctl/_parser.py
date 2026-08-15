@@ -596,6 +596,20 @@ def _migration_parser(parser: argparse.ArgumentParser) -> None:
     fence_observe.add_argument("--request-file", required=True, type=Path)
     actions.add_parser("verify").set_defaults(cli_name="migration ctower-project verify")
 
+    for subject in (
+        "ctower-inbox",
+        "ctower-ruling",
+        "ctower-knowledge",
+        "ctower-company-record",
+    ):
+        estate_actions = projects.add_parser(subject).add_subparsers(
+            dest="migration_action", required=True, parser_class=_Parser
+        )
+        import_command = estate_actions.add_parser("import")
+        import_command.set_defaults(cli_name=f"migration {subject} import")
+        _command_id(import_command)
+        import_command.add_argument("--request-file", required=True, type=Path)
+
 
 def _session_parser(parser: argparse.ArgumentParser) -> None:
     actions = parser.add_subparsers(dest="session_action", required=True, parser_class=_Parser)
