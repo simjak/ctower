@@ -186,8 +186,20 @@ paths = [
   "tools/migration/__init__.py",
   "tools/migration/ctower_project/**",
   "tools/migration/operator_requests/**",
+  "tools/migration/operator_inbox/**",
+  "tools/migration/operator_rulings/**",
+  "tools/migration/company_records/**",
 ]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
+
+[[ownership]]
+name = "migration-import-tests"
+paths = [
+  "tests/migration/__init__.py",
+  "tests/migration/**",
+  "tests/test_manifest_generation.py",
+]
+allowed_dependencies = ["control-api", "kernel-migration", "kernel-record"]
 
 [[ownership]]
 name = "kernel-work"

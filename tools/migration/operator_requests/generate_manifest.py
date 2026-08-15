@@ -133,28 +133,11 @@ def generate_manifest(
     ledger_digest = _sha256(source_bytes)
     physical = _parse_jsonl(source_bytes)
 
-    # Keep the latest version per R-id, tracking the latest line number
-    latest: dict[str, dict[str, object]] = {}
-    latest_line: dict[str, int] = {}
-    for entry, line_number in physical:
-        rid = _request_id(entry)
-        if rid is not None:
-            latest[rid] = entry
-            latest_line[rid] = line_number
-
+    latest, latest_line = _latest_entries(physical)
     if not latest:
         raise ValueError("no request rows found in ledger")
 
-    physical_count = len(physical)
-    logical_count = len(latest)
-
-    # Extract open (non-terminal) requests
-    open_rows = {
-        rid: entry
-        for rid, entry in latest.items()
-        if _normalized_status(entry.get("status")) in _STATUS_OPEN
-    }
-
+    open_rows = _open_rows(latest)
     if not open_rows:
         raise ValueError("no open request rows in ledger")
 
@@ -162,16 +145,66 @@ def generate_manifest(
         int(rid[1:]) for rid in open_rows if rid.startswith("R") and rid[1:].isdigit()
     )
 
-    # Build manifest rows
     owner_mappings, map_digest = _load_owner_map(owner_map_path)
+    rows = _build_rows(open_rows, latest_line, owner_mappings, ledger_digest)
+    rows_digest = _canonical_rows_digest(rows)
+    counts = _build_counts(len(physical), len(latest), open_rows)
+    batches = _build_batches(rows, rows_digest)
 
+    result = _manifest_payload(
+        source_metadata,
+        ledger_digest=ledger_digest,
+        rows=rows,
+        rows_digest=rows_digest,
+        counts=counts,
+        batches=batches,
+        maximum_number=maximum_number,
+        fence_digest=fence_digest,
+        map_digest=map_digest,
+        target_tenant_id=target_tenant_id,
+        target_authority_digest=target_authority_digest,
+    )
+
+    if signer is not None:
+        return signer.seal(result, "manifest_digest")
+    return result
+
+
+def _latest_entries(
+    physical: list[tuple[dict[str, object], int]],
+) -> tuple[dict[str, dict[str, object]], dict[str, int]]:
+    """Keep the latest version per R-id, tracking the latest line number."""
+    latest: dict[str, dict[str, object]] = {}
+    latest_line: dict[str, int] = {}
+    for entry, line_number in physical:
+        rid = _request_id(entry)
+        if rid is not None:
+            latest[rid] = entry
+            latest_line[rid] = line_number
+    return latest, latest_line
+
+
+def _open_rows(latest: dict[str, dict[str, object]]) -> dict[str, dict[str, object]]:
+    """Extract open (non-terminal) requests."""
+    return {
+        rid: entry
+        for rid, entry in latest.items()
+        if _normalized_status(entry.get("status")) in _STATUS_OPEN
+    }
+
+
+def _build_rows(
+    open_rows: dict[str, dict[str, object]],
+    latest_line: dict[str, int],
+    owner_mappings: dict[tuple[str | None, str | None], dict[str, str]],
+    ledger_digest: str,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for rid in sorted(open_rows, key=lambda r: int(r[1:])):
         entry = open_rows[rid]
         owner = _optional_text(entry.get("owner")) or ""
         project = _optional_text(entry.get("project"))
         mapping = owner_mappings.get((project, owner))
-
         rows.append(
             _manifest_row(
                 rid,
@@ -181,14 +214,24 @@ def generate_manifest(
                 ledger_digest=ledger_digest,
             )
         )
+    return rows
 
-    rows_digest = _canonical_rows_digest(rows)
 
-    counts = _build_counts(physical_count, logical_count, open_rows)
-
-    batches = _build_batches(rows, rows_digest)
-
-    result: dict[str, object] = {
+def _manifest_payload(
+    source_metadata: os.stat_result,
+    *,
+    ledger_digest: str,
+    rows: list[dict[str, Any]],
+    rows_digest: str,
+    counts: dict[str, object],
+    batches: list[dict[str, object]],
+    maximum_number: int,
+    fence_digest: str | None,
+    map_digest: str | None,
+    target_tenant_id: str | None,
+    target_authority_digest: str | None,
+) -> dict[str, object]:
+    return {
         "schema": "ctower.request-import-manifest/v1",
         "archive_ref": f"restricted-archive:{ledger_digest.removeprefix('sha256:')}",
         "batch_size": _BATCH_SIZE,
@@ -212,10 +255,6 @@ def generate_manifest(
         "target_authority_digest": target_authority_digest or _DEFAULT_DIGEST,
         "target_tenant_id": target_tenant_id or _DEFAULT_TENANT_ID,
     }
-
-    if signer is not None:
-        return signer.seal(result, "manifest_digest")
-    return result
 
 
 def main(argv: list[str] | None = None) -> int:

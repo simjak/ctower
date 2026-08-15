@@ -83,16 +83,7 @@ def register_document(
             body=body,
             title=title,
         )
-        result = KnowledgeAddResult(
-            command.client_command_id,
-            document_id,
-            event.event_id,
-            recorded_at,
-            command.scope,
-            title,
-            command.project_key,
-            command.source_ref,
-        )
+        result = _add_result(command, document_id, event.event_id, recorded_at, title)
         transaction.commit_batch(
             (EventCommit(event, uuid7(now)),),
             response_body=result.response_payload(),
@@ -185,6 +176,25 @@ def _document_from_row(row: dict[str, object]) -> KnowledgeDocument:
         UUID(str(row["registered_by"])),
         str(project_key) if project_key is not None else None,
         str(source_ref) if source_ref is not None else None,
+    )
+
+
+def _add_result(
+    command: KnowledgeAddCommand,
+    document_id: UUID,
+    event_id: UUID,
+    recorded_at: datetime,
+    title: str,
+) -> KnowledgeAddResult:
+    return KnowledgeAddResult(
+        command.client_command_id,
+        document_id,
+        event_id,
+        recorded_at,
+        command.scope,
+        title,
+        command.project_key,
+        command.source_ref,
     )
 
 
