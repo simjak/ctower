@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
 from tools.migration.operator_rulings.main import (
     _parse_agreed_files,
     analyze_rulings_import,
+    execute_rulings_import,
 )
 
 __all__: tuple[str, ...] = ()
@@ -66,3 +70,56 @@ def test_analyze_dry_run_produces_manifest(tmp_path: Path) -> None:
     assert manifest["schema"] == "ctower.ruling-import-manifest/v1"
     assert len(manifest["rulings"]) == 1
     assert manifest["rulings"][0]["filename"] == "agreed-test.md"
+
+
+def test_execute_posts_signed_estate_batch_with_source_identity(tmp_path: Path) -> None:
+    source = tmp_path / "agreed-test.md"
+    source.write_text("# Test\n\nBody.\n", encoding="utf-8")
+    client = _RecordingClient()
+    signer = ArtifactSigner("signing-key-ref:test-rulings", 1, Ed25519PrivateKey.generate())
+
+    result = execute_rulings_import(
+        client,
+        agreed_dir=tmp_path,
+        base_url="https://ctower.test",
+        evidence_dir=tmp_path / "evidence",
+        signer=signer,
+    )
+
+    assert result["source_count"] == result["imported_count"] == 1
+    assert client.url == "https://ctower.test/v1/migrations/estate/rulings"
+    assert client.payload["batch_index"] == 0
+    assert client.payload["rows"][0]["source_ref"] == "agreed-test.md"
+    assert client.payload["rows"][0]["recorded_at"]
+    assert client.headers["Idempotency-Key"]
+
+
+class _Response:
+    status_code = 201
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, object]:
+        return {"imported_count": 1}
+
+
+class _RecordingClient:
+    def __init__(self) -> None:
+        self.url = ""
+        self.payload: dict[str, object] = {}
+        self.headers: dict[str, str] = {}
+
+    def post(
+        self,
+        url: str,
+        *,
+        json: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> _Response:
+        self.url = url
+        self.payload = json
+        self.headers = headers
+        assert timeout == 60
+        return _Response()
