@@ -9,8 +9,10 @@ implementation.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace as dataclass_replace
 from pathlib import Path
+from threading import Barrier
 from uuid import UUID, uuid4
 
 import psycopg
@@ -36,6 +38,7 @@ __all__: tuple[str, ...] = ()
 _HARNESS = "codex-crew"
 _SPOOL_MODE = 0o600
 _MODEL = "gpt-5-codex"
+_STATUS_409 = 409
 
 
 def _create_command(*, effort: str | None = "high") -> SpawnRecordCreate:
@@ -131,6 +134,50 @@ class TestSpawnRecordAppendOnly:
             ).fetchone()
         assert row is not None
         assert row[0] == "accepted"
+
+    def test_same_instant_duplicate_transition_returns_typed_conflict(
+        self, tenant: TenantFixture
+    ) -> None:
+        records = _records(tenant)
+        principal_id, tenant_id = _actor(tenant)
+        created = _spawn_get(records.create(principal_id, tenant_id, _create_command()))
+        spawn_id = created.record.spawn_id
+        commands = tuple(
+            SpawnRecordTransitionCommand(
+                client_command_id=uuid4(),
+                spawn_id=spawn_id,
+                to_status="accepted",
+                reason=None,
+            )
+            for _ in range(2)
+        )
+        start = Barrier(2)
+
+        def transition(
+            command: SpawnRecordTransitionCommand,
+        ) -> SpawnRecordGet | SpawnRecordProblem:
+            start.wait()
+            return records.transition(principal_id, tenant_id, command)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = tuple(executor.map(transition, commands))
+
+        successful = tuple(outcome for outcome in outcomes if isinstance(outcome, SpawnRecordGet))
+        problems = tuple(outcome for outcome in outcomes if isinstance(outcome, SpawnRecordProblem))
+        assert len(successful) == 1
+        assert len(problems) == 1
+        assert problems[0].code == "transition-conflict"
+        assert problems[0].status == _STATUS_409
+
+        with psycopg.connect(tenant.database.admin_dsn) as connection:
+            row = connection.execute(
+                """
+                SELECT count(*) FROM spawn_record_transitions
+                WHERE tenant_id = %s AND spawn_id = %s
+                """,
+                (tenant_id, spawn_id),
+            ).fetchone()
+        assert row == (1,)
 
     def test_derived_status_follows_latest_transition(self, tenant: TenantFixture) -> None:
         """AC-SPWN-01: no in-place mutation — status derives from latest fact."""
