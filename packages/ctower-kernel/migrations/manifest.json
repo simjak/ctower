@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0071_restore_request_proposal_constraints.sql",
-    "schema_sha256": "sha256:8fe46826f152634ef16c876e06c72a692b47542e42758d9fb12067adf84673b4",
+    "through": "0072_restore_routine_retirement_kind.sql",
+    "schema_sha256": "sha256:06dc4aa9e2881f83ee5fee3b8cf3d3c6469f712b1e5137f7fffbca334f21fba8",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:b0aa6739b9ab0be5345708e546086d3b4c34667569be5d217c83201f10818a15"
   },
@@ -683,6 +683,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_request_maintenance_proposals.py::test_append_is_separate_and_similarity_preserves_both_requests_until_operator_confirm",
       "rollback_or_forward_compensation": "Preserve every immutable proposal, evidence pointer, terminal decision, canonical event, command result, outbox row, and ordinary Request command result; append a reviewed forward compensation rather than editing, deleting, reopening, merging, or reusing an accepted proposal fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, proposal, proposal-evidence, proposal-decision, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no proposal rows."
+    },
+    {
+      "path": "0072_restore_routine_retirement_kind.sql",
+      "sha256": "sha256:aa28c89b33661b8435ec85f040c3b544f43da1411c2e6b7f8c6d901ed3aba940",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_operator_retires_active_beat_append_only_and_future_ticks_do_not_reactivate",
+      "rollback_or_forward_compensation": "Preserve every immutable Routine retirement, beat effect, canonical event, command result, and outbox row; append a reviewed forward compensation rather than editing or deleting an accepted runtime fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify routine-trigger, routine-retirement, event, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no runtime rows."
     }
   ]
 }
