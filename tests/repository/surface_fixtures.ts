@@ -18,6 +18,7 @@ import type { BaseProbe } from "../../apps/ctower-ui/src/read/sources/worktrees.
 import { projectOf } from "../../apps/ctower-ui/src/read/sources/crewRoster.ts";
 import { healthOf, registryOf } from "../../apps/ctower-ui/src/read/sources/cadenceHealth.ts";
 import { scheduleIntervalMs } from "../../apps/ctower-ui/src/read/beatRegistry.ts";
+import { toWorkSession } from "../../apps/ctower-ui/src/read/runtimeReads.ts";
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
 import { reclassified } from "../../apps/ctower-ui/src/read/bounded.ts";
@@ -307,6 +308,62 @@ results.boardCardExplicitEmptyContextSet = boardCardContextFor({
   humanWaiting: { state: "not_waiting" },
   deliverySurfaceAvailability: { state: "no_qualifying_checkpoint" },
 } as unknown as BoardCard);
+
+/* ── the contract's nullable session fields ───────────────────────────────
+   `TicketSession.tokens` is `oneOf: [SessionTokenUsage, null]` and the kernel
+   emits null for a session that has recorded no usage yet. Reading it with a
+   non-null reader threw, the throw escaped the `.map` over every row, and one
+   legal row blanked BOTH the ticket work timeline and the crew cost panel.
+
+   So every nullable field on the contract is driven here at once, in the same
+   payload: each must arrive as its own absence and none may take the row — or
+   any other row — down with it. */
+
+const nulled = {
+  session_id: "018f0d5e-7b9a-7c01-8000-0000000009a1",
+  crew_name: "designer-r2988-ctower-ui",
+  seat_key: "designer",
+  project_key: "ctower",
+  model_ref: "claude-opus-5",
+  harness_ref: "claude-code",
+  branch_ref: "feat/r2988-ui-wired",
+  worktree_ref: "/srv/worktrees/r2988",
+  state: "working",
+  started_at: "2026-08-15T00:15:00Z",
+  transition_count: 2,
+  // every nullable member of the contract, null at once
+  tokens: null,
+  outcome: null,
+  closed_at: null,
+  duration_seconds: null,
+  evidence_ref: null,
+};
+
+results.sessionWithEveryNullableNulled = toWorkSession(nulled);
+
+// the non-null branch stays strict: a usage object is still read field by field
+results.sessionWithRecordedTokens = toWorkSession({
+  ...nulled,
+  tokens: { input_tokens: 1200, output_tokens: 340, total_tokens: 1540 },
+  outcome: "delivered",
+  closed_at: "2026-08-15T01:15:00Z",
+  duration_seconds: 3600,
+  evidence_ref: "pr-500",
+});
+
+// one null-token row among recorded ones must not cost the others their values
+results.sessionsMixedNullAndRecorded = [
+  nulled,
+  { ...nulled, tokens: { input_tokens: 5, output_tokens: 6, total_tokens: 11 } },
+].map(toWorkSession);
+
+// a malformed usage object is still refused rather than defaulted to zeroes
+try {
+  toWorkSession({ ...nulled, tokens: { input_tokens: "many" } });
+  results.malformedTokensRefused = false;
+} catch {
+  results.malformedTokensRefused = true;
+}
 
 // `noneOf` is exercised so the driver fails loudly if the Known constructors
 // ever stop being importable from this module

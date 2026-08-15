@@ -86,6 +86,7 @@ export const recordAdapter: RecordAdapter = {
   workSessions: readWorkSessions,
   inbox: httpRecordAdapter.inbox,
   inboxThread: httpRecordAdapter.inboxThread,
+  inboxDelivery: httpRecordAdapter.inboxDelivery,
   inboxCorrespondent: httpRecordAdapter.inboxCorrespondent,
   inboxCorrespondents: httpRecordAdapter.inboxCorrespondents,
   inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,

@@ -190,6 +190,45 @@ class InboxSurfaceRenderTests(unittest.TestCase):
                         " ".join(cast("str", capture["visible"]).split()),
                     )
 
+    def test_the_transcript_draws_the_records_own_delivery_marks(self) -> None:
+        """The approved chat surface marks every message sent / delivered / read.
+
+        These are three recorded events with their own ids, served by
+        `/v1/inbox/threads/{id}/read-state` — not something derivable from the
+        thread read's cursor. They are also composed at render time from a
+        separate read, so only a browser can show whether the marks arrived: a
+        surface whose delivery read quietly 404s still renders every message,
+        just without the truth on it.
+        """
+        for capture in self.captures:
+            if capture["route"] != "thread":
+                continue
+            with self.subTest(width=capture["width"]):
+                marks = cast("list[dict[str, Any]]", capture["delivery"])
+                self.assertEqual(
+                    len(marks), 1, "the transcript drew no delivery mark for its one message"
+                )
+                mark = marks[0]
+                # the record says this message was read, so all three dots fill
+                self.assertEqual(mark["filled"], 3)
+                # the dots are the element; the exact times are their hover
+                self.assertIn("sent ", mark["title"])
+                self.assertIn("delivered ", mark["title"])
+                self.assertIn("read ", mark["title"])
+                self.assertNotIn("not recorded", mark["title"])
+                # and none of those timestamps is on the screen as prose
+                self.assertNotIn(mark["title"], capture["visible"])
+
+    def test_the_thread_head_teaches_the_three_marks_once(self) -> None:
+        """One legend, in the head — the approved surface's own placement."""
+        for capture in self.captures:
+            if capture["route"] != "thread":
+                continue
+            with self.subTest(width=capture["width"]):
+                legend = cast("str", capture["legend"])
+                for state in ("sent", "delivered", "read"):
+                    self.assertIn(state, legend)
+
     def test_a_typed_message_appears_in_the_thread_without_a_reload(self) -> None:
         """The claim the send box exists to make, made in a browser at every width.
 

@@ -601,3 +601,57 @@ a.cw-file:hover {
   color: var(--ink-4);
   overflow-wrap: anywhere;
 }
+
+/* ── delivery truth ────────────────────────────────────────────────────────
+   The approved chat surface draws sent/delivered/read as three progressive
+   dots per message, plus one legend in the thread head. The dots ARE the
+   de-texted element: three recorded facts in six pixels, with the exact
+   timestamps on the hover for anyone who needs them. Values are the approved
+   surface's own. */
+
+.fx {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fx i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  display: inline-block;
+}
+
+.fx i.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cw-turn.mine .fx i.on {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+}
+
+.cw-turn .audit {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.cw-legend-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cw-legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  flex-wrap: wrap;
+}

@@ -147,6 +147,48 @@ class CrewProjectTests(unittest.TestCase):
         self.assertEqual(_case("projectNotRecordedWhenThereIsNoLogFile")["known"], "none")
 
 
+class SessionPayloadTests(unittest.TestCase):
+    """A legal null in one row must not cost every row its panel."""
+
+    def test_every_nullable_session_field_reads_as_its_own_absence(self) -> None:
+        session = _case("sessionWithEveryNullableNulled")
+        self.assertIsNone(session["outcome"])
+        self.assertIsNone(session["closedAt"])
+        self.assertIsNone(session["durationSeconds"])
+        self.assertIsNone(session["evidenceRef"])
+        # tokens is the nullable *object*: an absence, not a refusal
+        self.assertEqual(session["inputTokens"], 0)
+        self.assertEqual(session["outputTokens"], 0)
+        self.assertEqual(session["totalTokens"], 0)
+        # the row still carries everything the record did state
+        self.assertEqual(session["crewName"], "designer-r2988-ctower-ui")
+        self.assertEqual(session["state"], "working")
+
+    def test_recorded_usage_is_read_field_by_field(self) -> None:
+        session = _case("sessionWithRecordedTokens")
+        self.assertEqual(session["inputTokens"], 1200)
+        self.assertEqual(session["outputTokens"], 340)
+        self.assertEqual(session["totalTokens"], 1540)
+        self.assertEqual(session["outcome"], "delivered")
+        self.assertEqual(session["durationSeconds"], 3600)
+
+    def test_one_unrecorded_usage_does_not_blank_the_rows_beside_it(self) -> None:
+        rows = _outcomes()["sessionsMixedNullAndRecorded"]
+        self.assertEqual(
+            [row["totalTokens"] for row in rows],
+            [0, 11],
+            "a session with no recorded usage took the recorded one down with it, which is "
+            "how one legal row blanked both session panels",
+        )
+
+    def test_a_malformed_usage_object_is_still_refused(self) -> None:
+        self.assertTrue(
+            _outcomes()["malformedTokensRefused"],
+            "the null branch was widened into a catch-all, so a malformed usage object now "
+            "defaults to zeroes instead of refusing",
+        )
+
+
 class CadenceTests(unittest.TestCase):
     """#238 — a beat that can go neither green nor red carries no signal."""
 

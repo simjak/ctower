@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { recordAdapter } from "@/read/adapter";
 import { shortId } from "@/read/elapsed";
+import { DeliveryLegend } from "./Delivery";
 import { TicketGlyph } from "./glyphs";
 import type { InboxThread } from "@/read/interface";
 
@@ -17,6 +18,11 @@ import type { InboxThread } from "@/read/interface";
  * this conversation was read from, on the head of the one screen that has no
  * page foot. A capture from one instance must never be mistakable for a capture
  * from another.
+ *
+ * It also carries the delivery legend, once, where the approved chat surface
+ * puts it: three dot groups teaching the marks under every message below. The
+ * legend is drawn only when there are messages to mark, so an empty
+ * conversation does not explain a vocabulary nothing on screen is using.
  */
 export function ThreadHead({ thread }: { readonly thread: InboxThread }): ReactElement {
   return (
@@ -36,6 +42,7 @@ export function ThreadHead({ thread }: { readonly thread: InboxThread }): ReactE
         </Link>
       )}
       <span className="grow" />
+      {thread.messages.length === 0 ? null : <DeliveryLegend />}
       <span
         className="cw-as"
         title={`read from ${recordAdapter.instance.baseUrl} · ${recordAdapter.instance.posture}`}

@@ -67,11 +67,23 @@ interface NewTicketAffordance {
   readonly reason: string;
 }
 
+/** One message's delivery mark, as the document actually drew it. */
+interface DeliveryMark {
+  /** The hover, which carries the three exact times. */
+  readonly title: string;
+  /** How many of the three dots are filled: 1 sent, 2 delivered, 3 read. */
+  readonly filled: number;
+}
+
 interface Surface {
   readonly visible: string;
   readonly rendered: string;
   readonly foot: string;
   readonly newTicket: NewTicketAffordance | null;
+  /** The per-message sent/delivered/read marks under the turns. */
+  readonly delivery: readonly DeliveryMark[];
+  /** Whether the thread head teaches the three marks, once. */
+  readonly legend: string;
 }
 
 interface Capture extends Surface {
@@ -167,10 +179,16 @@ async function surfaceOf(page: Page): Promise<Surface> {
     while (walker.nextNode() !== null) {
       spoken.push(walker.currentNode.nodeValue ?? "");
     }
+    const marks = [...document.querySelectorAll(".cw-turn .audit .fx")].map((node) => ({
+      title: node.getAttribute("title") ?? "",
+      filled: node.querySelectorAll("i.on").length,
+    }));
     return {
       visible: document.body.innerText,
       rendered: spoken.join("\n"),
       foot: text(foot),
+      delivery: marks,
+      legend: text(document.querySelector(".cw-legend")),
       newTicket:
         button instanceof HTMLButtonElement
           ? {

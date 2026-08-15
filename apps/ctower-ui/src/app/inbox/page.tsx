@@ -16,7 +16,13 @@ import { NothingGlyph } from "@/surfaces/chat/glyphs";
 import { readParam } from "@/surfaces/screenParams";
 import { composeThreadAction, promoteThreadAction, sendMessageAction } from "./actions";
 import type { WorkTab } from "@/surfaces/chat/WorkPanel";
-import type { InboxCorrespondents, InboxProjection, InboxThread, Reading } from "@/read/interface";
+import type {
+  InboxCorrespondents,
+  InboxDelivery,
+  InboxProjection,
+  InboxThread,
+  Reading,
+} from "@/read/interface";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +54,15 @@ const NO_SEATS = "the record lists no seat this server can write to";
 const UNADDRESSABLE = "unaddressable";
 /** What mints a principal with a seat row — the one action that gives it an address. */
 const SEAT_COMMAND = "ctowerctl credential seat issue";
+/**
+ * A conversation with no message has no delivery truth to read, and the record
+ * refuses a read-state request for one. That is an answered emptiness, not a
+ * failed read, so it is declared as a silence rather than sent to the instance.
+ */
+const EMPTY_DELIVERY: Reading<InboxDelivery> = {
+  state: "absent",
+  source: { absence: "silence", what: "delivery event on a conversation holding no message" },
+};
 
 function tabOf(requested: string | null): WorkTab {
   return TABS.find((tab) => tab === requested) ?? "changes";
@@ -139,12 +154,17 @@ async function OpenThread({
 }): Promise<ReactElement> {
   const send = sendMessageAction.bind(null, thread.threadId);
   const promote = promoteThreadAction.bind(null, thread.threadId);
-  const [correspondent, picker, board] = await Promise.all([
+  const [correspondent, picker, board, delivery] = await Promise.all([
     recordAdapter.inboxCorrespondent(thread.threadId),
     recordAdapter.inboxPromotionPicker(),
     thread.promotedTicketId === null
       ? Promise.resolve(null)
       : recordAdapter.board(defaultProjectKey()),
+    // the record refuses a read-state read on a thread holding no message, so
+    // an empty conversation is an answered absence rather than a failed read
+    thread.messages.length === 0
+      ? Promise.resolve(EMPTY_DELIVERY)
+      : recordAdapter.inboxDelivery(thread.threadId),
   ]);
   const settled = thread.messages.map((message) => message.messageId);
   const card =
@@ -157,7 +177,7 @@ async function OpenThread({
       frame={(declared) => (
         <div className="cw-main">
           <ThreadHead thread={thread} />
-          <Transcript messages={thread.messages} self={null} />
+          <Transcript delivery={delivery} messages={thread.messages} self={null} />
           {declared}
         </div>
       )}
@@ -168,7 +188,7 @@ async function OpenThread({
         <>
           <div className="cw-main">
             <ThreadHead thread={thread} />
-            <Transcript messages={thread.messages} self={value.sender} />
+            <Transcript delivery={delivery} messages={thread.messages} self={value.sender} />
             <ChatComposer action={send} correspondent={value} settled={settled} />
           </div>
           <WorkPanel
