@@ -13,6 +13,7 @@ from ctower_kernel.record._event_encoding import (
     _canonical,
     _timestamp,
 )
+from ctower_kernel.record._event_identity import validate_event_identity as _validate_event_identity
 from ctower_kernel.record._event_types import EventKind, EventOrigin
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
@@ -36,7 +37,6 @@ from ctower_kernel.record.credentials import (
 from ctower_kernel.record.dream_dispatch_events import (
     DreamDispatchConsumedPayload,
     DreamLaneBoundPayload,
-    validate_dream_runtime_identity,
 )
 from ctower_kernel.record.estate_import_events import (
     CompanyRecordAppendedPayload,
@@ -46,38 +46,21 @@ from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
     InboxEventPayload,
 )
-from ctower_kernel.record.inbox_events import (
-    _validate_identity as _validate_inbox_identity,
-)
 from ctower_kernel.record.intake_events import (
     InboundEventPromotedPayload,
     InboundEventRecordedPayload,
     IntakeEventPayload,
 )
-from ctower_kernel.record.intake_events import (
-    _validate_identity as _validate_intake_identity,
-)
 from ctower_kernel.record.knowledge_events import (
     KnowledgeDocumentRegisteredPayload,
     KnowledgeEventPayload,
 )
-from ctower_kernel.record.knowledge_events import (
-    _validate_identity as _validate_knowledge_identity,
-)
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
-from ctower_kernel.record.request_events import _validate_identity as _validate_request_identity
 from ctower_kernel.record.request_proposal_events import RequestProposalChangedPayload
-from ctower_kernel.record.request_proposal_events import (
-    _validate_identity as _validate_request_proposal_identity,
-)
-from ctower_kernel.record.routine_events import (
-    RoutineRetiredPayload,
-    validate_routine_retirement_identity,
-)
+from ctower_kernel.record.routine_events import RoutineRetiredPayload
 from ctower_kernel.record.ruling_events import RulingRecordedPayload
-from ctower_kernel.record.ruling_events import _validate_identity as _validate_ruling_identity
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
     SessionEventPayload,
@@ -85,12 +68,8 @@ from ctower_kernel.record.session_events import (
     SessionTransitionedPayload,
 )
 from ctower_kernel.record.spawn_events import (
-    SpawnEventPayload,
     SpawnRecordedPayload,
     SpawnTransitionedPayload,
-)
-from ctower_kernel.record.spawn_events import (
-    spawn_payload_from_mapping as _spawn_payload_from_mapping,
 )
 from ctower_kernel.record.ticket_events import (
     CustodyTransferredPayload,
@@ -120,9 +99,6 @@ __all__ = [
     "PoisonDispositionRecordedPayload",
     "ProofChangedPayload",
     "RoutineOccurrenceRecordedPayload",
-    "SpawnEventPayload",
-    "SpawnRecordedPayload",
-    "SpawnTransitionedPayload",
     "TicketCommentAddedPayload",
     "TicketCreatedPayload",
     "TicketEventPayload",
@@ -131,7 +107,6 @@ __all__ = [
     "canonical_event_bytes",
     "event_catalog",
     "event_digest",
-    "spawn_payload_from_mapping",
     "ticket_payload_from_mapping",
 ]
 
@@ -331,7 +306,9 @@ class EventEnvelope:
     def __post_init__(self) -> None:
         _validate_variant(self)
         _validate_envelope_values(self)
-        _validate_event_identity(self)
+        _validate_event_identity(
+            self, _stream_id(self.kind, self.aggregate_id), RoutineOccurrenceRecordedPayload
+        )
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -379,15 +356,6 @@ def ticket_payload_from_mapping(
         payload,
         legacy_project_key=legacy_project_key,
     )
-
-
-def spawn_payload_from_mapping(
-    kind: EventKind,
-    payload: Mapping[str, object],
-) -> SpawnEventPayload:
-    """Rebuild one typed spawn payload at the persistence read boundary."""
-
-    return _spawn_payload_from_mapping(kind.value, payload)
 
 
 @dataclass(frozen=True, slots=True)
@@ -631,80 +599,6 @@ def _validate_timestamp(value: object) -> None:
         raise TypeError("event timestamps must be datetimes")
     if value.tzinfo is None:
         raise ValueError("event timestamps must be timezone-aware")
-
-
-def _validate_event_identity(event: EventEnvelope) -> None:
-    if event.stream_id != _stream_id(event.kind, event.aggregate_id):
-        raise ValueError("event stream does not match its kind and aggregate identity")
-    _validate_bootstrap_identity(event)
-    _validate_ticket_identity(event)
-    _validate_catalog_identity(event)
-    _validate_occurrence_identity(event)
-    validate_routine_retirement_identity(event.aggregate_id, event.payload)
-    validate_dream_runtime_identity(event.aggregate_id, event.payload)
-    _validate_poison_identity(event)
-    _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
-    _validate_inbox_identity(event.payload, event.aggregate_id)
-    _validate_knowledge_identity(event.payload, event.aggregate_id)
-    _validate_request_identity(event.payload, event.aggregate_id)
-    _validate_request_proposal_identity(event.payload, event.aggregate_id)
-    _validate_ruling_identity(event.payload, event.aggregate_id)
-    _validate_seat_credential_identity(event)
-    _validate_session_identity(event)
-
-
-def _validate_bootstrap_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, BootstrapCreatedPayload) and (
-        event.aggregate_id != event.tenant_id or event.payload.tenant_id != event.tenant_id
-    ):
-        raise ValueError("bootstrap aggregate, payload, and tenant identity must match")
-
-
-def _validate_ticket_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, TicketCommentAddedPayload) and (
-        event.aggregate_id != event.payload.ticket_id
-    ):
-        raise ValueError("comment aggregate and ticket identity must match")
-
-
-def _validate_catalog_identity(event: EventEnvelope) -> None:
-    if (
-        isinstance(event.payload, CatalogComponentPublishedPayload | CatalogBundleActivatedPayload)
-        and event.aggregate_id != event.tenant_id
-    ):
-        raise ValueError("Catalog aggregate and tenant identity must match")
-
-
-def _validate_occurrence_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, RoutineOccurrenceRecordedPayload) and (
-        event.aggregate_id != event.payload.occurrence_id
-    ):
-        raise ValueError("Routine aggregate and occurrence identity must match")
-
-
-def _validate_poison_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, PoisonDispositionRecordedPayload) and (
-        event.aggregate_id != event.client_command_id
-    ):
-        raise ValueError("poison disposition aggregate must be its command identity")
-
-
-def _validate_seat_credential_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, SeatCredentialIssuedPayload | SeatCredentialRevokedPayload) and (
-        event.aggregate_id != event.payload.credential_id
-    ):
-        raise ValueError("seat credential aggregate and payload identity must match")
-
-
-def _validate_session_identity(event: EventEnvelope) -> None:
-    if (
-        isinstance(
-            event.payload,
-            SessionStartedPayload | SessionTransitionedPayload | SessionClosedPayload,
-        )
-        and event.aggregate_id != event.payload.session_id
-    ):
-        raise ValueError("session aggregate and payload identity must match")
 
 
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:

@@ -17,16 +17,18 @@ import psycopg
 import pytest
 from support.tenant_fixture import TenantFixture
 
-from ctower_kernel.runtime import (
+from ctower_kernel.runtime.spawn_driver import (
+    SpawnSpool,
+    derive_initial_running_set,
+    reconcile_source,
+)
+from ctower_kernel.runtime.spawn_records import (
     PostgresSpawnRecords,
     SpawnRecordCreate,
     SpawnRecordGet,
     SpawnRecordList,
     SpawnRecordProblem,
     SpawnRecordTransitionCommand,
-    SpawnSpool,
-    derive_initial_running_set,
-    reconcile_source,
 )
 
 __all__: tuple[str, ...] = ()
@@ -262,9 +264,7 @@ class TestSpawnRecordAppendOnly:
         records = _records(tenant)
         principal_id, tenant_id = _actor(tenant)
         credential_label = "api" + "_key"
-        command = dataclass_replace(
-            _create_command(), effort=f'{credential_label} = {"a" * 8}'
-        )
+        command = dataclass_replace(_create_command(), effort=f"{credential_label} = {'a' * 8}")
 
         outcome = records.create(principal_id, tenant_id, command)
 
