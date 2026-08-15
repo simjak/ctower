@@ -73,7 +73,7 @@ def _opened_event(
         correlation_id=telemetry.correlation_uuid(command.client_command_id),
         event_id=uuid7(now),
         kind=EventKind.INBOX_THREAD_OPENED,
-        origin=EventOrigin.API,
+        origin=command.origin,
         payload=InboxThreadOpenedPayload(sender, recipient, thread_id),
         prev_hash=_ZERO_HASH,
         request_sha256=request_digest,
@@ -107,7 +107,7 @@ def _message_event(
         correlation_id=telemetry.correlation_uuid(command.client_command_id),
         event_id=message_id,
         kind=EventKind.INBOX_MESSAGE_APPENDED,
-        origin=EventOrigin.API,
+        origin=command.origin,
         payload=InboxMessageAppendedPayload(
             message_id, position, recipient, sender, command.text, thread_id
         ),

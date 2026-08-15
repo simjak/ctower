@@ -81,6 +81,8 @@ _EXPECTED_MIGRATION_PATHS = [
     "0065_console_view_grants.sql",
     "0066_beat_routine_retirement.sql",
     "0067_request_maintenance_proposals.sql",
+    "0068_company_records.sql",
+    "0069_estate_import_idempotency.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0067_request_maintenance_proposals.sql",

@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
+from ctower_kernel.record.events import EventOrigin
+
 __all__ = [
     "InboxAcknowledgeCommand",
     "InboxAcknowledgeResult",
@@ -34,6 +36,8 @@ class InboxAcknowledgeCommand:
     client_command_id: UUID
     message_id: UUID
     state: InboxAcknowledgementState
+    recorded_at: datetime | None = None
+    origin: EventOrigin = EventOrigin.API
 
     def request_payload(self) -> dict[str, object]:
         return {"message_id": str(self.message_id), "state": self.state.value}
@@ -70,6 +74,14 @@ class InboxSendCommand:
     to: str
     text: str
     thread_id: UUID | None = None
+    message_id: UUID | None = None
+    sent_at: datetime | None = None
+    source_ref: str | None = None
+    source_sender: str | None = None
+    source_recipient: str | None = None
+    sender_principal_id: UUID | None = None
+    sender_seat: str | None = None
+    origin: EventOrigin = EventOrigin.API
 
     def request_payload(self) -> dict[str, object]:
         return {

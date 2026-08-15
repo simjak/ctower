@@ -646,12 +646,23 @@
     },
     {
       "path": "0068_company_records.sql",
-      "sha256": "sha256:deb7429a00c9907b5e5255fe9599d83faab284b766ec9ee07ed503f086edfcef",
+      "sha256": "sha256:a97c6a41f619c6b14507069bc680447b149e04bf1c8d2c31f2a921c61efb6ef5",
       "scope": "database",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/modules/migration/test_estate_imports.py",
-      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration."
+      "forward_test": "pytest:tests/modules/migration/test_estate_imports.py::test_inbox_estate_migration_preserves_source_sender_and_recipient",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, and company-record counts plus a verified database backup; the new company-record table starts empty."
+    },
+    {
+      "path": "0069_estate_import_idempotency.sql",
+      "sha256": "sha256:d4693edf24abfd1a773f0e33b83afda0f233c1eb9ec0757c6b97b25c3ad756d1",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_estate_imports.py::test_inbox_estate_migration_preserves_source_sender_and_recipient",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify inbox, ruling, knowledge, event, command-result, and outbox counts plus a verified database backup; all source identity columns start null on existing rows."
     }
   ]
 }

@@ -35,6 +35,10 @@ from ctower_kernel.record.dream_dispatch_events import (
     DreamLaneBoundPayload,
     validate_dream_runtime_identity,
 )
+from ctower_kernel.record.estate_import_events import (
+    CompanyRecordAppendedPayload,
+    EstateImportChangedPayload,
+)
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
     InboxEventPayload,
@@ -70,8 +74,6 @@ from ctower_kernel.record.routine_events import (
     validate_routine_retirement_identity,
 )
 from ctower_kernel.record.ruling_events import RulingRecordedPayload
-from ctower_kernel.record.estate_import_events import CompanyRecordAppendedPayload
-from ctower_kernel.record.estate_import_events import EstateImportChangedPayload
 from ctower_kernel.record.ruling_events import _validate_identity as _validate_ruling_identity
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
@@ -452,7 +454,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             EventKind.INBOUND_EVENT_PROMOTED, InboundEventPromotedPayload, "inbound-thread"
         ),
         *(
-            EventCatalogEntry(EventKind(kind), payload_type, "inbox-thread")
+            EventCatalogEntry(EventKind(kind), payload_type, "inbox-thread", _API_OR_IMPORT)
             for kind, payload_type in INBOX_EVENT_TYPES
         ),
         EventCatalogEntry(

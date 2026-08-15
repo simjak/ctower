@@ -14,8 +14,8 @@ from ctower_kernel.inbox.models import (
     InboxAcknowledgementState,
     InboxAcknowledgeResult,
 )
-from ctower_kernel.record import Actor, RecordProblem
-from ctower_kernel.record.events import EventEnvelope, EventKind, event_digest
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record.events import EventEnvelope, EventKind, EventOrigin, event_digest
 from ctower_kernel.record.identifiers import uuid7
 from ctower_kernel.record.inbox_events import (
     InboxMessageDeliveredPayload,
@@ -116,7 +116,7 @@ def _advance_acknowledgement(
         now=now,
         subjects=(("inbox_thread", thread_id),),
     )
-    _persist(connection, actor, result, events)
+    _persist(connection, actor, command, result, events)
     return result
 
 
@@ -147,7 +147,9 @@ def _acknowledgement_problem(
         message.get("participant_b_id"),
     }:
         return _unavailable(command.client_command_id)
-    if actor.principal_id != message.get("recipient_id"):
+    if actor.principal_id != message.get("recipient_id") and not (
+        actor.kind is PrincipalKind.OPERATOR and command.origin is EventOrigin.MIGRATION_IMPORTER
+    ):
         return _problem(
             command.client_command_id,
             "inbox-message-recipient-mismatch",
@@ -180,13 +182,14 @@ def _result(
     facts: dict[str, tuple[UUID, datetime]],
     now: datetime,
 ) -> InboxAcknowledgeResult:
-    delivered_at = facts.get("delivered", (events[0].event_id, now))[1]
+    recorded_at = command.recorded_at or now
+    delivered_at = facts.get("delivered", (events[0].event_id, recorded_at))[1]
     return InboxAcknowledgeResult(
         command.client_command_id,
         delivered_at,
         tuple(event.event_id for event in events),
         command.message_id,
-        now if command.state is InboxAcknowledgementState.READ else None,
+        recorded_at if command.state is InboxAcknowledgementState.READ else None,
         command.state,
         thread_id,
         events[-1].sequence,
@@ -196,6 +199,7 @@ def _result(
 def _persist(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
+    command: InboxAcknowledgeCommand,
     result: InboxAcknowledgeResult,
     events: tuple[EventEnvelope, ...],
 ) -> None:
@@ -205,6 +209,9 @@ def _persist(
             if event.kind is EventKind.INBOX_MESSAGE_DELIVERED
             else InboxAcknowledgementState.READ
         )
+        recipient = cast(
+            InboxMessageDeliveredPayload | InboxMessageReadPayload, event.payload
+        ).recipient
         connection.execute(
             """
             INSERT INTO inbox_message_delivery_facts (
@@ -217,13 +224,11 @@ def _persist(
                 actor.tenant_id,
                 result.thread_id,
                 result.message_id,
-                actor.principal_id,
-                cast(
-                    InboxMessageDeliveredPayload | InboxMessageReadPayload, event.payload
-                ).recipient.seat_key,
+                recipient.principal_id,
+                recipient.seat_key,
                 state.value,
                 actor.principal_id,
-                event.server_time,
+                command.recorded_at or event.server_time,
             ),
         )
     connection.execute(
