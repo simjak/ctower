@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1370b8427780ce29193c6bb9b84f37979fa5e3c4e70210e8101c81e10c852b3e
+Authored contract digest: sha256:3cf181879f7367018d252f3e6ba6cf59c1192acf32f86d3551c6494157cf367e
 """
 
 from __future__ import annotations
@@ -3233,6 +3233,7 @@ class DreamDispatchEffect(_BoundaryModel):
 
 
 class EstateCompanyRecordsImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
     manifest: EstateImportManifest
     rows: Annotated[tuple[EstateCompanyRecordImportRow, ...], Field(min_length=1, max_length=100)]
 
@@ -3249,16 +3250,19 @@ class EstateImportResult(_BoundaryModel):
 
 
 class EstateInboxImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
     manifest: EstateImportManifest
     rows: Annotated[tuple[EstateInboxImportRow, ...], Field(min_length=1, max_length=100)]
 
 
 class EstateKnowledgeImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
     manifest: EstateImportManifest
     rows: Annotated[tuple[EstateKnowledgeImportRow, ...], Field(min_length=1, max_length=100)]
 
 
 class EstateRulingsImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
     manifest: EstateImportManifest
     rows: Annotated[tuple[EstateRulingImportRow, ...], Field(min_length=1, max_length=100)]
 

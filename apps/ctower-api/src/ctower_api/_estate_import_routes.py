@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Protocol, cast
 from uuid import UUID
@@ -45,6 +45,7 @@ class EstateImportPort(Protocol):
         actor: Actor,
         *,
         tier: str,
+        batch_index: int,
         command_id: UUID,
         manifest: Mapping[str, object],
         rows: Sequence[Mapping[str, object]],
@@ -89,9 +90,11 @@ def _handler(
     recorder: TelemetryRecorder,
     tier: str,
     model: type[BaseModel],
-):
+) -> Callable[[Request], Awaitable[JSONResponse]]:
     async def import_batch(request: Request) -> JSONResponse:
-        actor = authenticate(access, recorder, request, required_scope=UnscopedAuthentication.ALLOWED)
+        actor = authenticate(
+            access, recorder, request, required_scope=UnscopedAuthentication.ALLOWED
+        )
         if isinstance(actor, RecordProblem):
             return problem_response(actor)
         if actor.kind is not PrincipalKind.OPERATOR:
@@ -117,12 +120,14 @@ def _handler(
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        payload_data = payload.model_dump(mode="json", by_alias=True)
         result = estate_imports.import_batch(
             actor,
             tier=tier,
+            batch_index=cast(int, payload_data["batch_index"]),
             command_id=command_id,
-            manifest=cast(Mapping[str, object], payload.model_dump(mode="json", by_alias=True)["manifest"]),
-            rows=cast(Sequence[Mapping[str, object]], payload.model_dump(mode="json", by_alias=True)["rows"]),
+            manifest=cast(Mapping[str, object], payload_data["manifest"]),
+            rows=cast(Sequence[Mapping[str, object]], payload_data["rows"]),
             now=datetime.now(UTC),
             telemetry=telemetry,
         )

@@ -184,6 +184,7 @@ def create_app(
     board_context: BoardContextFacts | None = None,
     inbox: Inbox | None = None,
     knowledge: Knowledge | None = None,
+    estate_imports: EstateImportPort | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
@@ -224,6 +225,7 @@ def create_app(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        estate_imports=estate_imports,
         catalog=catalog,
     )
     _install_cutover_boundary(app, access, record, projections, migration, recorder)
@@ -255,6 +257,7 @@ def _install_application_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
 ) -> None:
     work_module = work or Work(record, telemetry=recorder)
@@ -284,6 +287,7 @@ def _install_application_routes(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        estate_imports=estate_imports,
         catalog=catalog,
         recorder=recorder,
     )
@@ -341,6 +345,7 @@ def _install_optional_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -359,6 +364,8 @@ def _install_optional_routes(
         install_inbox_routes(app, access, record, inbox, projections, recorder)
     if knowledge is not None:
         install_knowledge_routes(app, access, record, knowledge, recorder)
+    if estate_imports is not None:
+        install_estate_import_routes(app, access, record, estate_imports, recorder)
 
 
 def _install_synthetic_boundary(

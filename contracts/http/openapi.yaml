@@ -4627,8 +4627,9 @@
       "EstateInboxImportRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["manifest", "rows"],
+        "required": ["batch_index", "manifest", "rows"],
         "properties": {
+          "batch_index": {"type": "integer", "minimum": 0},
           "manifest": {"$ref": "#/components/schemas/EstateImportManifest"},
           "rows": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/components/schemas/EstateInboxImportRow"}}
         }
@@ -4636,8 +4637,9 @@
       "EstateRulingsImportRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["manifest", "rows"],
+        "required": ["batch_index", "manifest", "rows"],
         "properties": {
+          "batch_index": {"type": "integer", "minimum": 0},
           "manifest": {"$ref": "#/components/schemas/EstateImportManifest"},
           "rows": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/components/schemas/EstateRulingImportRow"}}
         }
@@ -4645,8 +4647,9 @@
       "EstateKnowledgeImportRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["manifest", "rows"],
+        "required": ["batch_index", "manifest", "rows"],
         "properties": {
+          "batch_index": {"type": "integer", "minimum": 0},
           "manifest": {"$ref": "#/components/schemas/EstateImportManifest"},
           "rows": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/components/schemas/EstateKnowledgeImportRow"}}
         }
@@ -4654,8 +4657,9 @@
       "EstateCompanyRecordsImportRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["manifest", "rows"],
+        "required": ["batch_index", "manifest", "rows"],
         "properties": {
+          "batch_index": {"type": "integer", "minimum": 0},
           "manifest": {"$ref": "#/components/schemas/EstateImportManifest"},
           "rows": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/components/schemas/EstateCompanyRecordImportRow"}}
         }
