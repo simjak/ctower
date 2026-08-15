@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, time
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -19,23 +19,21 @@ from ctower_kernel.record.events import (
 )
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.runtime import (
-    CatchUpPolicy,
-    ConcurrencyPolicy,
     DreamDispatchEffect,
-    DreamDispatchSpec,
     FixedOperationJob,
     OccurrenceOutcome,
     OccurrencePlan,
     RoutineOccurrence,
     RoutineRevision,
-    ScheduleKind,
     SchedulerScan,
+    _gate_sql,
+    _routine_rows,
 )
 from ctower_kernel.runtime._beat_dispatch_sql import insert_effect as _insert_beat_dispatch
 from ctower_kernel.runtime._beat_dispatch_sql import register_spec as _register_beat_spec
 from ctower_kernel.runtime._retirement_guard import lock_routine_tenant, routine_is_retired
 from ctower_kernel.runtime._routine_ids import stable_uuid7 as _stable_uuid7
-from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
+from ctower_kernel.runtime.beats import BeatDispatchEffect
 
 __all__: tuple[str, ...] = ()
 _MAX_DUE_PER_SCAN = 400
@@ -87,6 +85,7 @@ def register(
         )
         _register_dream_spec(connection, revision)
         _register_beat_spec(connection, revision)
+        _gate_sql.register_gate(connection, revision)
         stored = connection.execute(
             """
             SELECT revision.*, dream.scope_kind, dream.project_key, dream.skill_path,
@@ -94,17 +93,20 @@ def register(
                 dream.fallback_model_ref, dream.fallback_reasoning_effort,
                 dream.minimum_model_tier, dream.excluded_model_families,
                 beat.beat_key, beat.prompt_source, beat.prompt_sha256,
-                beat.prompt, beat.target_session
+                beat.prompt, beat.target_session,
+                gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_revisions AS revision
             LEFT JOIN routine_dream_dispatch_specs AS dream
               ON dream.revision_digest = revision.revision_digest
             LEFT JOIN routine_beat_dispatch_specs AS beat
               ON beat.revision_digest = revision.revision_digest
+            LEFT JOIN routine_activity_gates AS gate
+              ON gate.revision_digest = revision.revision_digest
             WHERE revision.revision_digest = %s
             """,
             (_digest(revision.revision_digest),),
         ).fetchone()
-        if stored is None or _revision(stored) != revision:
+        if stored is None or _routine_rows.revision(cast(dict[str, object], stored)) != revision:
             raise ValueError("Routine revision digest conflicts with stored content")
         connection.execute(
             """
@@ -148,7 +150,8 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                 dream.fallback_model_ref, dream.fallback_reasoning_effort,
                 dream.minimum_model_tier, dream.excluded_model_families,
                 beat.beat_key, beat.prompt_source, beat.prompt_sha256,
-                beat.prompt, beat.target_session
+                beat.prompt, beat.target_session,
+                gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_triggers AS trigger
             JOIN routine_revisions AS revision
               ON revision.revision_digest = trigger.revision_digest
@@ -156,6 +159,8 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
               ON dream.revision_digest = revision.revision_digest
             LEFT JOIN routine_beat_dispatch_specs AS beat
               ON beat.revision_digest = revision.revision_digest
+            LEFT JOIN routine_activity_gates AS gate
+              ON gate.revision_digest = revision.revision_digest
             WHERE trigger.tenant_id = %s AND trigger.next_fire_at <= %s
             ORDER BY trigger.next_fire_at, revision.revision_digest
             FOR UPDATE OF trigger
@@ -167,8 +172,9 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         dream_dispatches: list[DreamDispatchEffect] = []
         beat_dispatches: list[BeatDispatchEffect] = []
         for row in rows:
-            revision = _revision(row)
+            revision = _routine_rows.revision(row)
             plans, next_fire = _plans(connection, tenant_id, revision, row, now)
+            plans = _gate_sql.apply_gate_decisions(connection, tenant_id, revision, plans, now)
             for plan in plans:
                 occurrence, job, dream_dispatch, beat_dispatch = _persist_plan(
                     connection,
@@ -685,58 +691,6 @@ def _scheduler_watermark(
         (tenant_id, watermark, now),
     )
     return watermark
-
-
-def _revision(row: dict[str, object]) -> RoutineRevision:
-    local_time = row["local_time"]
-    if local_time is not None and not isinstance(local_time, time):
-        raise TypeError("stored Routine local time is invalid")
-    dream_dispatch = None
-    if row.get("scope_kind") is not None:
-        dream_dispatch = DreamDispatchSpec(
-            scope_kind=str(row["scope_kind"]),
-            project_key=str(row["project_key"]) if row["project_key"] is not None else None,
-            skill_path=str(row["skill_path"]),
-            primary_model_ref=str(row["primary_model_ref"]),
-            primary_reasoning_effort=str(row["primary_reasoning_effort"]),
-            fallback_model_ref=str(row["fallback_model_ref"]),
-            fallback_reasoning_effort=str(row["fallback_reasoning_effort"]),
-            minimum_model_tier=str(row["minimum_model_tier"]),
-            excluded_model_families=tuple(cast(list[str], row["excluded_model_families"])),
-        )
-    beat_dispatch = None
-    if row.get("beat_key") is not None:
-        beat_dispatch = BeatDispatchSpec(
-            beat_key=str(row["beat_key"]),
-            prompt_source=str(row["prompt_source"]),
-            prompt_sha256="sha256:" + bytes(cast(bytes, row["prompt_sha256"])).hex(),
-            prompt=str(row["prompt"]),
-            target_session=str(row["target_session"]),
-        )
-    return RoutineRevision(
-        routine_ref=str(row["routine_ref"]),
-        revision_digest="sha256:" + bytes(cast(bytes, row["revision_digest"])).hex(),
-        schedule_kind=ScheduleKind(str(row["schedule_kind"])),
-        timezone=str(row["timezone"]),
-        local_time=local_time,
-        concurrency=ConcurrencyPolicy(str(row["concurrency"])),
-        catch_up=CatchUpPolicy(str(row["catch_up"])),
-        catch_up_cap=int(cast(int, row["catch_up_cap"])),
-        handler_kind=str(row["handler_kind"]),
-        timeout_seconds=int(cast(int, row["timeout_seconds"])),
-        component_digests=tuple(
-            "sha256:" + bytes(cast(bytes, item)).hex()
-            for item in cast(list[object], row["component_digests"])
-        ),
-        dream_dispatch=dream_dispatch,
-        minute_marks=tuple(cast(list[int] | None, row["schedule_minutes"]) or ()),
-        hour_marks=(
-            tuple(cast(list[int], row["schedule_hours"]))
-            if row["schedule_hours"] is not None
-            else None
-        ),
-        beat_dispatch=beat_dispatch,
-    )
 
 
 def _database_now(connection: psycopg.Connection[dict[str, object]]) -> datetime:

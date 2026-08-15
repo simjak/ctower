@@ -33,6 +33,7 @@ from ctower_kernel.runtime import (
     FixedOperationCompletion,
     FixedOperations,
     Routine,
+    RoutineRevision,
 )
 from ctower_kernel.runtime.postgres import PostgresRuntime
 
@@ -180,6 +181,7 @@ def build_worker(
     projections: Projections,
     *,
     pack_root: Path,
+    routine_revisions: tuple[RoutineRevision, ...] | None = None,
     fixed_operations: FixedOperations | None = None,
     synthetic_handler: _SyntheticHandler | None = None,
     durability_finalizer: DurabilityFinalizer | None = None,
@@ -188,9 +190,12 @@ def build_worker(
 ) -> ControlWorker:
     """Compose the same worker around public kernel Interfaces."""
 
+    revisions = (
+        load_routine_revisions(pack_root) if routine_revisions is None else routine_revisions
+    )
     return ControlWorker(
         runtime,
-        RoutineLoop(runtime, load_routine_revisions(pack_root)),
+        RoutineLoop(runtime, revisions),
         OutboxLoop(projections),
         ProjectDeliveryLoop(projections),
         durability_finalizer,

@@ -81,13 +81,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0065_console_view_grants.sql",
     "0066_beat_routine_retirement.sql",
     "0067_request_maintenance_proposals.sql",
+    "0068_activity_gated_routines.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0067_request_maintenance_proposals.sql",
-    "schema_sha256": ("sha256:a469179f2e1f13cae2ab11325d1b764188e626124be3a0c0bc29079c2a7527a4"),
+    "through": "0068_activity_gated_routines.sql",
+    "schema_sha256": ("sha256:a31778cb4f87c595359e29c877ff81d8c4212809f7df45915a0b78a9e6365728"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:b38c6aa1eaef75e0a4904976b1656bde423d36bea1797022e875c4338ae6ab70"
+        "sum256:b6373747523db4e35ba1206b394748b87e56b9ab4b91f7368db5e5542d0b9489"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [

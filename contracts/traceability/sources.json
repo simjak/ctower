@@ -2134,6 +2134,88 @@
       ]
     },
     {
+      "path": "contracts/runtime/routine-v4.schema.json",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "AC-RTN-01",
+        "AC-RTN-04"
+      ]
+    },
+    {
+      "path": "contracts/runtime/routine-gate-evaluation.schema.json",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "AC-RTN-02"
+      ]
+    },
+    {
+      "path": "contracts/runtime/routine-migration-backlog.json",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "AC-RTN-03",
+        "AC-RTN-04"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0068_activity_gated_routines.sql",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-01",
+        "AC-RTN-02"
+      ]
+    },
+    {
+      "path": "packs/routines/mc-cron.capacity-sentinel/v1.yaml",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-01",
+        "AC-RTN-03",
+        "AC-RTN-04"
+      ]
+    },
+    {
+      "path": "packs/routines/mc-cron.manibo-merge-watch/v1.yaml",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-01",
+        "AC-RTN-03",
+        "AC-RTN-04"
+      ]
+    },
+    {
+      "path": "packs/routines/mc-cron.manibo-report/v1.yaml",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-01",
+        "AC-RTN-03",
+        "AC-RTN-04"
+      ]
+    },
+    {
+      "path": "packs/routines/mc-cron.structural-report/v1.yaml",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-01",
+        "AC-RTN-03",
+        "AC-RTN-04"
+      ]
+    },
+    {
+      "path": "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-01",
+        "AC-RTN-03",
+        "AC-RTN-04"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "references": [
         "SPEC#persistence-authority",

@@ -13,6 +13,7 @@ from ctower_kernel.record import Actor
 from ctower_kernel.runtime import OccurrenceOutcome, OccurrencePlan, RoutineRevision
 from ctower_kernel.runtime._routine_ids import stable_uuid7
 from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec, BeatRoutine
+from ctower_kernel.runtime.gates import ActivityGate
 
 __all__: tuple[str, ...] = ()
 
@@ -123,12 +124,15 @@ def list_beat_routines(dsn: str, actor: Actor) -> tuple[BeatRoutine, ...]:
             SELECT revision.routine_ref, revision.revision_digest, revision.timezone,
                 revision.schedule_minutes, revision.schedule_hours,
                 spec.beat_key, spec.prompt_source, spec.prompt_sha256,
-                spec.target_session, trigger.next_fire_at
+                spec.target_session, trigger.next_fire_at,
+                gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_triggers AS trigger
             JOIN routine_revisions AS revision
               ON revision.revision_digest = trigger.revision_digest
             JOIN routine_beat_dispatch_specs AS spec
               ON spec.revision_digest = revision.revision_digest
+            LEFT JOIN routine_activity_gates AS gate
+              ON gate.revision_digest = revision.revision_digest
             WHERE trigger.tenant_id = %s
               AND EXISTS (
                   SELECT 1 FROM principals AS principal
@@ -156,6 +160,16 @@ def list_beat_routines(dsn: str, actor: Actor) -> tuple[BeatRoutine, ...]:
             prompt_sha256=_digest(cast(bytes, row["prompt_sha256"])),
             target_session=str(row["target_session"]),
             next_fire_at=cast(datetime, row["next_fire_at"]),
+            activity_gate=(
+                ActivityGate(
+                    kind=str(row["gate_kind"]),
+                    source=cast(str | None, row["gate_source"]),
+                    threshold=cast(int | None, row["gate_threshold"]),
+                    project_key=cast(str | None, row["gate_project_key"]),
+                )
+                if row.get("gate_kind") is not None
+                else None
+            ),
         )
         for row in rows
     )

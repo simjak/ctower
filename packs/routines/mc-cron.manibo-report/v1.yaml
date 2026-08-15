@@ -1,0 +1,33 @@
+{
+  "schema_id": "ctower.routine/v4",
+  "routine_ref": "mc-cron.manibo-report@1",
+  "schedule": {
+    "kind": "minute_hour_set",
+    "timezone": "Europe/Vilnius",
+    "minutes": [
+      0,
+      30
+    ],
+    "hours": null
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 1800,
+  "handler_kind": "beat_dispatch",
+  "component_digests": [
+    "sha256:fc875875ec8142a0ad86c6d390b38d6841d5bdeb00b77fddd9e4cb0cd130abb5"
+  ],
+  "activity_gate": {
+    "kind": "always"
+  },
+  "beat_dispatch": {
+    "beat_key": "manibo-report",
+    "prompt_source": "crontab/manibo-report.txt",
+    "prompt_sha256": "sha256:fc875875ec8142a0ad86c6d390b38d6841d5bdeb00b77fddd9e4cb0cd130abb5",
+    "prompt": "30-MIN OPERATOR REPORT (operator standing order 2026-08-15, R2996; migrated from the inject-or-inbox 0,30 crontab twin): compose and send ONE update in STE with a context line: DONE since last report / IN PROGRESS / NEXT, then counters: open requests (tools/req list | your project), gh -R jakit-labs/manibo open PRs + issues, GitLab call-center open issues + MRs (token ~/.mc/gitlab-tokens/lastmachines-issues.token), ctower tickets for manibo. Counts and tasks, never ETAs.",
+    "target_session": "mc-commander-manibo"
+  },
+  "revision_digest": "sha256:f07efbe58a48ceccda753a4c08895ea153a1d77f41d87d4303d2f67be679c2ad"
+}

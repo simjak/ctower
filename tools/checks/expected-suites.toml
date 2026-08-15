@@ -29,6 +29,7 @@ phase_order = [
   "CT-I1-020",
   "CT-I1-021",
   "CT-I1-024",
+  "CT-I1-033",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -1070,3 +1071,39 @@ path = "tests/acceptance/increment-2"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/acceptance/increment-2", "-q"]
 timeout_seconds = 1800
+
+[[suite]]
+id = "activity-gated-routine-contracts"
+owner = "CT-I1-033"
+phase = "CT-I1-033"
+status = "deferred"
+path = "tests/contracts/routines"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/routines", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "activity-gated-routine-modules"
+owner = "CT-I1-033"
+phase = "CT-I1-033"
+status = "deferred"
+path = "tests/modules/runtime"
+patterns = ["test_routines.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/runtime/test_routines.py", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "activity-gated-routine-acceptance"
+owner = "CT-I1-033"
+phase = "CT-I1-033"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_routines.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_routines.py",
+  "-q",
+]
+timeout_seconds = 900
