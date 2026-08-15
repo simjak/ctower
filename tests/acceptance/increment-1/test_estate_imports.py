@@ -208,7 +208,7 @@ def _inbox_rows() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     subject = "Acceptance inbox message"
     body = "The estate importer committed this source-only message."
     content_digest = _digest_text(json.dumps({"subject": subject, "body": body}, sort_keys=True))
-    projection = {
+    projection: dict[str, object] = {
         "_disposition": "source_only",
         "content_sha256": content_digest,
         "source_ref": "inbox.jsonl#1",

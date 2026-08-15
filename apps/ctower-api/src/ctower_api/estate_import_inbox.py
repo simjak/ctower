@@ -13,6 +13,7 @@ from ctower_api.estate_import_contracts import (
     _inbox_acknowledge_command,
     _inbox_send_command,
     _InboxImportPlan,
+    _required_text,
 )
 from ctower_api.estate_import_support import (
     _digest_json,
@@ -21,7 +22,6 @@ from ctower_api.estate_import_support import (
     _inbox_batch_header,
     _manifest_projection,
     _persist_source_only_message,
-    _required_text,
     _seat_for_source,
     _validate_inbox_row,
 )

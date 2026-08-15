@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from ctower_client.models import EstateImportResult
+from ctower_api.estate_import_contracts import EstateImportBatchResult
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -28,4 +28,4 @@ class EstateImportPort(Protocol):
         rows: Sequence[Mapping[str, object]],
         now: datetime,
         telemetry: TelemetryContext,
-    ) -> EstateImportResult | Mapping[str, object] | RecordProblem: ...
+    ) -> EstateImportBatchResult | Mapping[str, object] | RecordProblem: ...

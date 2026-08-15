@@ -21,6 +21,7 @@ from ctower_api.estate_import_contracts import (
     _InboxImportPlan,
     _knowledge_import_command,
     _KnowledgeImportPlan,
+    _required_text,
     _ruling_import_command,
     _RulingImportPlan,
     verify_estate_manifest,
@@ -39,7 +40,6 @@ from ctower_api.estate_import_support import (
     _inbox_batch_header,
     _inbox_parity,
     _operator_refusal,
-    _required_text,
     _validate_generic_batch_digest,
 )
 from ctower_kernel.inbox import PostgresInbox
@@ -240,9 +240,11 @@ class PostgresEstateImports:
                 )
             seen.add(source_ref)
             plans.append(_RulingImportPlan(row, command))
-        problem = _validate_generic_batch_digest(header, "agreed_decisions", rows, command_id)
-        if problem is not None:
-            return problem
+        digest_problem = _validate_generic_batch_digest(
+            header, "agreed_decisions", rows, command_id
+        )
+        if digest_problem is not None:
+            return digest_problem
         return tuple(plans)
 
     def _prepare_knowledge_batch(
@@ -277,9 +279,11 @@ class PostgresEstateImports:
                 )
             seen.add(source_ref)
             plans.append(_KnowledgeImportPlan(row, command))
-        problem = _validate_generic_batch_digest(header, "knowledge_documents", rows, command_id)
-        if problem is not None:
-            return problem
+        digest_problem = _validate_generic_batch_digest(
+            header, "knowledge_documents", rows, command_id
+        )
+        if digest_problem is not None:
+            return digest_problem
         return tuple(plans)
 
     def _prepare_company_batch(
@@ -309,9 +313,9 @@ class PostgresEstateImports:
                 )
             seen.add(source_ref)
             plans.append(_CompanyImportPlan(row, command))
-        problem = _validate_generic_batch_digest(header, "company_records", rows, command_id)
-        if problem is not None:
-            return problem
+        digest_problem = _validate_generic_batch_digest(header, "company_records", rows, command_id)
+        if digest_problem is not None:
+            return digest_problem
         return tuple(plans)
 
     def _commit_inbox_batch(

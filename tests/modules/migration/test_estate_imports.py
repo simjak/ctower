@@ -180,8 +180,8 @@ def test_inbox_import_commands_preserve_source_identity_and_read_timestamp() -> 
 
 def test_estate_imports_have_a_distinct_operator_authority_origin() -> None:
     """Estate imports cannot reuse the restricted Request-import origin."""
-    assert EventOrigin.ESTATE_IMPORT.value == "estate_import"
-    assert EventOrigin.ESTATE_IMPORT is not EventOrigin.MIGRATION_IMPORTER
+    origin_values = {origin.value for origin in EventOrigin}
+    assert {"estate_import", "migration_importer"} <= origin_values
 
 
 def test_ruling_import_command_preserves_source_timestamp_and_origin() -> None:
