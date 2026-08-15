@@ -12,7 +12,6 @@ import type {
   TelemetryContext,
 } from "@ctower/client";
 import { boundedRead, ReadRefused } from "./bounded";
-import { NO_WORK_SESSIONS } from "./futureSources";
 import { issueReferenceOf } from "./issueRef";
 import { reading } from "./outcome";
 import { seatNameOf, seatNames } from "./sources/seatNames";
@@ -38,6 +37,8 @@ import type {
   InboxCorrespondent,
   InboxCorrespondentChoice,
   InboxCorrespondents,
+  InboxDelivery,
+  InboxMessageDelivery,
   InboxProjection,
   InboxPromotionPicker,
   InboxThread,
@@ -107,7 +108,15 @@ function telemetry(): TelemetryContext {
   };
 }
 
-async function read(path: string): Promise<unknown> {
+/**
+ * One authenticated GET against the instance, under the bounded policy.
+ *
+ * Exported so a read that belongs to another module — the runtime reads in
+ * `runtimeReads.ts` — reaches the instance through this one request shape
+ * rather than assembling its own headers, and so the credential is still read
+ * in exactly one place.
+ */
+export async function read(path: string): Promise<unknown> {
   const credential = process.env.CTOWER_UI_API_TOKEN;
   if (credential === undefined || credential === "") {
     throw new ReadRefused({
@@ -437,6 +446,39 @@ async function loadInboxThread(threadId: string): Promise<InboxThread> {
   return inboxThreadFrom(await read(`/v1/inbox/threads/${encodeURIComponent(threadId)}`));
 }
 
+const DELIVERY_STATES = ["sent", "delivered", "read"] as const;
+
+function toMessageDelivery(value: unknown): InboxMessageDelivery {
+  const row = asRecord(value, "inbox.read-state.messages[]");
+  return {
+    messageId: asString(row.message_id, "inbox.read-state.messages[].message_id"),
+    position: asInteger(row.position, "inbox.read-state.messages[].position"),
+    recipient: asString(row.recipient, "inbox.read-state.messages[].recipient"),
+    state: asMember(row.state, "inbox.read-state.messages[].state", DELIVERY_STATES),
+    deliveredAt: asStringOrNull(row.delivered_at, "inbox.read-state.messages[].delivered_at"),
+    readAt: asStringOrNull(row.read_at, "inbox.read-state.messages[].read_at"),
+  };
+}
+
+/**
+ * One thread's append-only delivery truth, keyed by message.
+ *
+ * The approved chat surface draws a sent/delivered/read mark on every message,
+ * and those are three *recorded* facts with their own event ids — not something
+ * derivable from the thread read's own cursor. So this is a second request
+ * beside the thread, kept as its own reading: a transcript whose delivery read
+ * did not answer draws no marks and says so, rather than drawing every message
+ * as merely sent, which would be a claim the record never made.
+ */
+export async function loadInboxDelivery(threadId: string): Promise<InboxDelivery> {
+  const row = asRecord(
+    await read(`/v1/inbox/threads/${encodeURIComponent(threadId)}/read-state`),
+    "inbox.read-state"
+  );
+  const messages = asArray(row.messages, "inbox.read-state.messages").map(toMessageDelivery);
+  return new Map(messages.map((message) => [message.messageId, message]));
+}
+
 /**
  * The two seats one thread is between, taken from the server's own answer.
  *
@@ -523,11 +565,11 @@ export const httpRecordAdapter: RecordApiReads = {
   inbox: async (): Promise<Reading<InboxProjection>> => await reading(loadInbox),
   inboxThread: async (threadId: string): Promise<Reading<InboxThread>> =>
     await reading(async () => await loadInboxThread(threadId)),
+  inboxDelivery: async (threadId: string): Promise<Reading<InboxDelivery>> =>
+    await reading(async () => await loadInboxDelivery(threadId)),
   inboxCorrespondent: async (threadId: string): Promise<Reading<InboxCorrespondent>> =>
     await reading(async () => await loadInboxCorrespondent(threadId)),
   inboxCorrespondents: async (): Promise<Reading<InboxCorrespondents>> =>
     await reading(loadInboxCorrespondents),
   inboxPromotionPicker: loadInboxPromotionPicker,
-  workSessions: (): Promise<Reading<never>> =>
-    Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };

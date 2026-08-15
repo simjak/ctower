@@ -249,7 +249,6 @@ function Frame({
         <div className="wrap">
           <div className="lede">
             <h1>Seat</h1>
-            <p>A durable seat&rsquo;s live engagements, each showing its own real pane.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>

@@ -1,17 +1,19 @@
+import {
+  CADENCE_SOURCE_LABEL,
+  readCadenceRegistry,
+  readCrewSessions,
+  readWorkSessions,
+} from "./runtimeReads";
 import { httpRecordAdapter } from "./httpRecordAdapter";
-import { readCronCadence } from "./sources/cadenceCron";
 import { readCrewProfile, readCrewRoster } from "./sources/crewRoster";
 import { readDeliveryMetrics } from "./sources/delivery";
-import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
-import { cadenceSourceName } from "./sources/paths";
 import { readPortfolio } from "./portfolio";
 import { readSessionStream, readSessionWorkspace } from "./sources/tmuxBridge";
 import { readSessionWorktree } from "./sources/worktrees";
 import { reading } from "./outcome";
 import type {
   AuthoredFiles,
-  CadenceRegistry,
   CrewLookup,
   CrewRoster,
   CrewRow,
@@ -20,6 +22,7 @@ import type {
   Reading,
   SessionWorkspace,
   SessionWorktree,
+  WorkSession,
 } from "./interface";
 
 /**
@@ -61,8 +64,7 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   inbox:
     "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/correspondents" +
     " + /v1/inbox/messages + /v1/inbox/notifications + /promotion",
-  heartbeats:
-    cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
+  heartbeats: CADENCE_SOURCE_LABEL,
   files: "git tree",
   workspace: "live tmux sessions + git",
   explorer: "git worktree list + diff",
@@ -71,10 +73,6 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   team: "live tmux sessions + mission-control state/crew-log.jsonl + personas/",
   crew: "the team sources + mission-control coordination/*.status.md + state/escapes.jsonl + trunk history",
 };
-
-function cadenceSource(): () => Promise<CadenceRegistry> {
-  return cadenceSourceName() === "systemd" ? readSystemdCadence : readCronCadence;
-}
 
 export const recordAdapter: RecordAdapter = {
   instance: httpRecordAdapter.instance,
@@ -85,14 +83,15 @@ export const recordAdapter: RecordAdapter = {
   portfolio: readPortfolio,
   ticket: httpRecordAdapter.ticket,
   ticketAudit: httpRecordAdapter.ticketAudit,
-  workSessions: httpRecordAdapter.workSessions,
+  workSessions: readWorkSessions,
   inbox: httpRecordAdapter.inbox,
   inboxThread: httpRecordAdapter.inboxThread,
+  inboxDelivery: httpRecordAdapter.inboxDelivery,
   inboxCorrespondent: httpRecordAdapter.inboxCorrespondent,
   inboxCorrespondents: httpRecordAdapter.inboxCorrespondents,
   inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,
 
-  cadenceRegistry: async (): Promise<Reading<CadenceRegistry>> => await reading(cadenceSource()),
+  cadenceRegistry: readCadenceRegistry,
   authoredFiles: async (path: string | null): Promise<Reading<AuthoredFiles>> =>
     await reading(async () => await readAuthoredFiles(path)),
   sessionWorkspace: async (crew: string | null): Promise<Reading<SessionWorkspace>> =>
@@ -133,6 +132,37 @@ export async function crewTerminalStream(
     };
   }
   return await recordAdapter.sessionStream(lookup.value.profile.sessionName);
+}
+
+/**
+ * The recorded sessions behind one crew's cost panel.
+ *
+ * The record scopes sessions by project, so a crew whose project no source
+ * established has nothing to scope a read by — that is an answered absence, not
+ * a failure, and it says which of the two it is rather than reading the wrong
+ * project's sessions to have something to show. `Reading` is unwrapped here,
+ * inside the read boundary, so the screen never branches on a read's state.
+ */
+export async function crewSessions(
+  lookup: Reading<CrewLookup>
+): Promise<Reading<readonly WorkSession[]>> {
+  if (lookup.state !== "present" || lookup.value.found !== "crew") {
+    return {
+      state: "absent",
+      source: { absence: "silence", what: "session for a crew this lookup did not find" },
+    };
+  }
+  const project = lookup.value.profile.row.project;
+  if (project.known !== "value") {
+    return {
+      state: "absent",
+      source: {
+        absence: "silence",
+        what: "recorded session this surface could scope — no source established this crew's project, and sessions are recorded per project",
+      },
+    };
+  }
+  return await readCrewSessions(project.value, lookup.value.profile.row.name);
 }
 
 /**

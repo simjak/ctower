@@ -224,12 +224,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Who is working, on what, right now</h1>
-      <p>
-        A <b>seat</b> is durable — one accountable persona that outlives every job it does. A{" "}
-        <b>crew</b> is one engagement of that seat: a live session with a model, a project and one
-        task. The grid below counts seats across projects; the roster under it is every crew alive
-        on the fleet.
-      </p>
     </div>
   );
 }
@@ -300,8 +294,8 @@ function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
             </header>
             <Matrix roster={roster} />
             <div className="src-line">
-              <span>{roster.sourceNote}</span>
-              <span>{roster.seatSource}</span>
+              <span title={roster.sourceNote}>tmux + crew log + personas</span>
+              <span title={roster.seatSource}>seats as declared</span>
               {roster.unseated === 0 ? null : (
                 <span>
                   {roster.unseated} live {roster.unseated === 1 ? "crew is" : "crews are"} in the
@@ -364,10 +358,9 @@ function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
               </div>
             </div>
             <div className="src-line">
-              <span>{roster.activityRule}</span>
-              <span>
-                model strings are the log&rsquo;s own, unnormalised: two spellings of one family
-                stay two rows rather than being merged into a number nobody recorded
+              <span title={roster.activityRule}>marks from the log&rsquo;s own status word</span>
+              <span title="two spellings of one family stay two rows rather than being merged into a number nobody recorded">
+                models as the log spells them
               </span>
               {roster.unrecorded === 0 ? null : (
                 <span>

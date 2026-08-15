@@ -16,7 +16,14 @@ import {
 } from "@/read/futureSources";
 import { shortId, stampText } from "@/read/elapsed";
 import { namesAnIssueTracker } from "@/read/issueRef";
-import type { BoardCard, Reading, RecordEvent, RecordSource, TicketRecord } from "@/read/interface";
+import type {
+  BoardCard,
+  Reading,
+  RecordEvent,
+  RecordSource,
+  TicketRecord,
+  WorkSession,
+} from "@/read/interface";
 import { mapReading } from "@/read/reading";
 import { isComment, isRelation, stagesFrom, workflowRefOf } from "@/surfaces/record/events";
 import { CommentsPanel, EvidencePanel, RecordStreamPanel } from "./RecordPanels";
@@ -342,11 +349,13 @@ function TicketBody({
   ticket,
   card,
   audit,
+  sessions,
   note,
 }: {
   readonly ticket: TicketRecord;
   readonly card: Reading<BoardCard>;
   readonly audit: EventsReading;
+  readonly sessions: Reading<readonly WorkSession[]>;
   readonly note: ReactNode;
 }): ReactElement {
   return (
@@ -379,7 +388,7 @@ function TicketBody({
                 <NoSourceYet brief source={NO_ACCEPTANCE_CRITERIA} />
               </section>
 
-              <WorkTimeline />
+              <WorkTimeline sessions={sessions} />
               <EvidencePanel audit={audit} />
               <RecordStreamPanel audit={audit} />
               <CommentsPanel audit={audit} select={(events) => events.filter(isComment)} />
@@ -389,7 +398,7 @@ function TicketBody({
           </div>
 
           <RecordFoot
-            readPath={`/v1/tickets/${shortId(ticket.ticketId)} + /audit + /v1/board`}
+            readPath={`/v1/tickets/${shortId(ticket.ticketId)} + /audit + /sessions + /v1/board`}
             watermark={<AuditNote audit={audit} />}
           />
         </div>
@@ -412,7 +421,6 @@ function TicketFrame({
         <div className="wrap">
           <div className="lede">
             <h1>Ticket</h1>
-            <p>One ticket in full, read from the instance record.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
@@ -465,10 +473,11 @@ export async function TicketScreen({
   readonly projectKey: string;
   readonly note?: ReactNode;
 }): Promise<ReactNode> {
-  const [ticket, audit, board] = await Promise.all([
+  const [ticket, audit, board, sessions] = await Promise.all([
     recordAdapter.ticket(ticketId, projectKey),
     recordAdapter.ticketAudit(ticketId, projectKey),
     recordAdapter.board(projectKey),
+    recordAdapter.workSessions(ticketId, projectKey),
   ]);
   const card = cardFor(board, ticketId);
 
@@ -477,7 +486,9 @@ export async function TicketScreen({
       reading={ticket}
       frame={(declared) => <TicketFrame ticketId={ticketId} declared={declared} />}
     >
-      {(value) => <TicketBody ticket={value} card={card} audit={audit} note={note} />}
+      {(value) => (
+        <TicketBody ticket={value} card={card} audit={audit} sessions={sessions} note={note} />
+      )}
     </Resolved>
   );
 }

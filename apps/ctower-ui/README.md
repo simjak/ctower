@@ -1,29 +1,31 @@
-# ctower-ui boundary — phase-1 operator surface
+# ctower-ui — the operator surface
 
-This is **not** `apps/ctower-web`. It is a separate, explicitly non-product boundary: a
-operator dogfood surface over the running shadow instance, ordered by the operator
-(R2710) and built against the approved mockup set vendored under `design-reference/`.
+This is **not** `apps/ctower-web`. It is a separate, explicitly non-product boundary: an
+operator surface over a running development instance, built against the approved screen set
+vendored under `design-reference/`.
+
+Reader's guide to this file: it is the boundary's own engineering notes — why each screen reads
+what it reads, and which claims it refuses to make. For how to run and use the surface, see
+[the operator surface guide](../../docs/guides/operator-surface.md).
 
 ## What it is, and what it is not
 
 |        |                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Is     | A Next.js server that reads the shadow instance's existing read API and renders the approved screen set.                                                                                                                              |
-| Is     | Three Inbox controls that ask existing server-authoritative operations: a compose box over `POST /v1/inbox/notifications`, a send box over `POST /v1/inbox/messages`, and a promote control over `POST /v1/inbox/threads/{thread_id}/promotion`. |
-| Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
+| Is     | A chat workspace with three controls that ask existing server-authoritative operations: a composer over `POST /v1/inbox/messages`, a new-conversation control over `POST /v1/inbox/notifications`, and a link control over `POST /v1/inbox/threads/{thread_id}/promotion`. |
+| Is not | The browser product. `apps/ctower-web` remains untouched, and its own stack selection (React Router + Vite, static, no SSR) still governs it.                                                                                         |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
 
-Two repository facts this boundary deliberately does **not** decide, and which need an operator
-decision entry before it merges as anything other than a dogfood surface:
+Two repository facts this boundary deliberately does **not** decide, and which need a recorded
+decision before it counts as anything more than an operator surface:
 
-- [`docs/internal/SPEC.md`](../../docs/internal/SPEC.md) `CT-I1-005` reads _"No I1 browser implementation, route, placeholder, or browser
-  evidence is authorized."_ This boundary is a browser implementation. It exists because the
-  operator dispatched it; it does not consume `CT-I1-005`/`CT-I2-005`, and it claims none of
-  their evidence.
-- [`docs/internal/DECISIONS.md`](../../docs/internal/DECISIONS.md) D22 §1 selected React Router 7 + Vite for `ctower-web`. Next.js here is a
-  second frontend stack in the repository. D22 is not rewritten by this boundary — it is not
-  `ctower-web` — but a second stack is a real fact that belongs in an append-only entry the
-  operator locks.
+- The planned increment authorizes no browser implementation, route or placeholder. This boundary
+  is a browser implementation. It exists because the operator asked for one; it consumes no
+  browser acceptance criterion and claims none of their evidence.
+- The browser product selected React Router + Vite. Next.js here is a **second** frontend stack in
+  the repository. That selection is not rewritten by this boundary — this is not the browser
+  product — but a second stack is a real fact that belongs in a recorded decision.
 
 ## Layout
 
@@ -100,26 +102,26 @@ and no screen knows a URL.
 
 | Screen              | Source today                                                                                                                                   | Swaps to                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`)                                                                                    | a typed feed, through `adapter.ts` alone                                       |
+| Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`, `/sessions`)                                                                       | a typed feed, through `adapter.ts` alone                                       |
 | Portfolio           | ctower read API (`/v1/board` once per configured project, `/v1/inbox/threads`)                                                                 | the same typed feed, through `adapter.ts` alone                                |
 | Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`, `/v1/inbox/correspondents`)                                                    | —                                                                              |
-| Heartbeats          | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers`                                                                  | a native cadence registry                                                      |
+| Heartbeats          | ctower read API (`/v1/runtime/beat-routines`, `/v1/runtime/beat-dispatches`)                                                                   | —                                                                              |
 | Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
 | Workspace · Feed    | tmux `list-sessions` / `list-panes` / `capture-pane -p -J`                                                                                     | recorded session facts                                                         |
 | Explorer            | `git worktree list` + `git diff <resolved trunk>...HEAD`                                                                                       | recorded worktree facts                                                        |
 | Metrics (S9)        | `git log --first-parent` per project trunk                                                                                                     | a recorded deploy event, incident pair and metric-definition file              |
-| Org (the who layer) | live `tmux list-sessions` (liveness and `@project`) + Mission Control `state/crew-log.jsonl` + `personas/`                                     | recorded session facts and a seat registry                                     |
-| Crew profile        | the Org sources for one name, plus that crew's `coordination/*.status.md`, `state/escapes.jsonl` and each project's first-parent trunk history | G5 session facts, a recorded ladder state, and a per-session cost event (#200) |
+| Org (the who layer) | live `tmux list-sessions` (liveness and `@project`) + the fleet's append-only session log + its declared seat directory                        | recorded session facts and a seat registry                                     |
+| Crew profile        | the Org sources for one name, plus that crew's own status files, the escape ledger, and each project's first-parent trunk history              | a recorded ladder state                                                        |
 
 Nothing in the "swaps to" column is cited as a work item unless one is filed for it; see
 **Citations are facts** below.
 
-These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
-does not otherwise cross: [`docs/internal/SPEC.md`](../../docs/internal/SPEC.md) calls Mission Control _migration or research provenance
-only, not a runtime dependency_. Wiring Heartbeats, Workspace, Feed and Org to its live
-state makes it one for those four screens. It exists because the operator escalated (R2710 wave 2), every
-path is overridable, and nothing outside `src/read/sources/` knows any of them — but it belongs in
-the operator's decision entry beside the two boundaries above.
+These are **interim** adapters, and they name a third boundary this repository does not otherwise
+cross: the fleet's own coordination state is migration or research provenance, not a runtime
+dependency. Wiring Workspace, Feed and Org to its live state makes it one for those screens. It
+exists because the operator asked for it, every path is overridable, and nothing outside
+`src/read/sources/` knows any of them — but it belongs in a recorded decision beside the two
+boundaries above.
 
 Three hard lines hold across all of them, and each is enforced structurally rather than promised:
 
@@ -131,7 +133,7 @@ Three hard lines hold across all of them, and each is enforced structurally rath
 
 ### The frame, and the who layer
 
-The navigation is the operator-approved R2736 sidebar: a 244px rail on the desk, a drawer behind the
+The navigation is the operator-approved sidebar: a 244px rail on the desk, a drawer behind the
 menu button on the phone, both CSS-only so they work with scripting off. It **replaced** the
 horizontal section nav rather than joining it — two navigations for one set of pages is the
 duplication a frame exists to remove. `design-reference/app.css` is re-vendored from the approved
@@ -146,7 +148,7 @@ claims a number.**
 Org joins three sources and keeps their failures apart. `tmux` says who is alive — if it does not
 answer there is no roster at all, because an empty roster reads as "nobody is working", which is the
 opposite claim. The crew log says what each crew is doing; a crew it has never mentioned is `none`,
-and a log that could not be read makes those fields `unread`. The personas directory declares the
+and a log that could not be read makes those fields `unread`. The seat directory declares the
 seats; a crew whose name matches no declared seat is counted and still shown, never filed under a
 seat this surface invented. The grid sums to the rows beneath it, the summary strip counts those
 same rows, and the crew log's status vocabulary is someone else's, so the classification into the
@@ -185,8 +187,9 @@ read` are three different claims and are never drawn as each other. No forge is 
   counting `state/escapes.jsonl` against the ladder's own entry thresholds, and a seat the ledger
   charges nothing is TRUSTED **by default** — the panel names that, because the ladder is entered by
   five consecutive verified-clean ships and no record on this fleet counts ships.
-- **Session cost is the one panel with no record at all.** It reads `— · —` and names `#200` (G5).
-  An invented cost is the one number an operator would believe without checking.
+- **Session cost is read, and a crew with none says so.** It sums the sessions the record files
+  under this crew's own name; a crew the record holds none for reads `— · —` as an answered
+  emptiness. An invented cost is the one number an operator would believe without checking.
 
 ### Metrics, and the rule about numbers
 
@@ -207,8 +210,8 @@ a number can never belong to a project the tab does not name.
 
 ### Portfolio, and the three ways a zero can lie
 
-The per-project Board answers one project's question; the director supervises three and was reading
-git, gh and tmux to get the fleet's. `/portfolio` asks the same record the Board asks — one
+The per-project Board answers one project's question; an operator supervising several was reading
+git, the forge and tmux to get the fleet's. `/portfolio` asks the same record the Board asks — one
 card-only board read per configured project, plus one inbox read — and folds the answers into
 tickets by lane per project, the escalations waiting on a human, and the unread seat comms. The
 project list is `read/projects.ts` and nowhere else, so a fourth project is one entry there and one
@@ -242,11 +245,17 @@ this view carries none, which the suite asserts rather than assumes.
 
 ### Honest empty states — and the difference between empty and unreachable
 
-Board, Ticket and Inbox render live record facts. Heartbeats, Feed session facts, Files, Workspace
+Board, Ticket, Inbox and Heartbeats render live record facts. Feed session facts, Files, Workspace
 and Explorer have no source in ctower today, so each renders its approved layout and
 an explicit block naming what is missing. No screen invents a number, a name, a duration or a
-token count. The ticket work timeline in particular reads `no session data yet` and totals `—`
-until #200's per-session work facts exist.
+token count.
+
+Three panels stopped citing future work in this round, because the record began answering for
+them: the ticket **work timeline** reads `/v1/tickets/{id}/sessions`, the crew profile's
+**session cost** reads `/v1/projects/{key}/sessions` filtered by the crew's own name, and
+**Heartbeats** reads the instance's cadence registry instead of the host's crontab. A ticket, a
+crew or a routine that holds none of those is now a *silence* — the record answered and holds
+none — which is a different claim from the missing capability those panels used to declare.
 
 The block also says **which kind of nothing** it is. `ticket.comment_added`, `proof.changed`,
 `workflow.changed` and `work.changed` are recorded kinds: a ticket carrying none of them is a
@@ -255,12 +264,12 @@ naming work that would land something already landed.
 
 ### Citations are facts
 
-Every `lands with …` line comes from `src/read/futureSources.ts` and nowhere else. Round-3 QA
-found nine panels across three screens all citing **#186**, which is the operator-channel feed and
-covers none of them — a pointer that points everywhere points nowhere, and these panels are only
-worth something if the pointer is right. So each entry carries the sentence saying how that work
-item covers _that exact fact_, and that sentence is the chip's hover; where nothing is filed, the
-panel reads **no work item is filed for this yet** rather than borrowing the nearest number.
+Every `lands with …` line comes from `src/read/futureSources.ts` and nowhere else. A review of an
+earlier revision found nine panels across three screens all citing one work item that covered none
+of them — a pointer that points everywhere points nowhere, and these panels are only worth
+something if the pointer is right. So each entry carries the sentence saying how that work item
+covers _that exact fact_, and that sentence is the chip's hover; where nothing is filed, the panel
+reads **no work item is filed for this yet** rather than borrowing the nearest number.
 `tests/repository/test_declared_sources.py` fails closed on a citation minted outside the table
 and on one work item standing behind two unrelated facts.
 
@@ -272,18 +281,38 @@ failure and the bounded attempts that were spent. A `Reading` is unwrapped only 
 flatten a failed read into an empty one, and the structural test above fails closed if one tries.
 Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
-### Controls still unavailable in v1
+### The chat workspace, and the controls that stay inert
 
-The Inbox compose box, send box and promote control are live and ask existing authenticated server
-operations — though the compose box can only offer what the record can deliver to, so under a
-credential holding no project seat it draws itself switched off and says so (see `unaddressable`
-above). The steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
-render as visibly disabled affordances — a real `disabled` control, the shared
-`read-only v1 · disabled` chip, and the reason printed on the control itself, never as a page
-banner, never in a hover alone, and never as a dead-looking control. `New ticket` names what the
-operator can do instead: capture through `ctowerctl ticket capture`, and the board shows it on the
-next read. View switches — Chat/Raw, File/Diff, the board source filter — choose a reading rather
-than issue a command, so they stay live.
+`/inbox` is the surface's write screen and is laid out as the operator's approved shape:
+conversations on the left with unread carried by an accent bar rather than a word, the transcript in
+the middle with the operator's own turns on their own side of the column, the work the conversation
+is about on the right — the promoted ticket's state, its recorded change references, its labels and
+attention finding — and that seat's live pane under it. Below 1100px the three panes become one at a
+time, chosen by the route, and the frame's back link returns to the list; no pane is dropped at any
+width.
+
+Its three controls are live and ask existing authenticated server operations. The composer can only
+offer what the record can deliver to, so under a credential holding no project seat it draws itself
+switched off and names the command that mints one (see `unaddressable` above).
+
+The steering composer (Feed), the Save/Revert controls (Files), the define-metric save (Metrics) and
+the sidebar's `New ticket` render as visibly disabled affordances — a real `disabled` control and a
+short verdict chip on the control itself, never as a page banner and never as a dead-looking
+control. `New ticket` shows the command that does work, `ctowerctl ticket capture`, as the command
+rather than as a sentence about it; the fuller caveat is the control's hover, which is where a
+caveat belongs. View switches — Chat/Raw, File/Diff, the board source filter, the work pane's tabs —
+choose a reading rather than issue a command, so they stay live.
+
+### Meaning by element, not by prose
+
+The operator's binding amendment to the approved set is that a screen must be understandable through
+its elements, not through text: *remove unnecessary text; a screen that needs a paragraph to explain
+itself fails the gate*. Applied here that means the per-screen explanatory lede is gone, the declared
+absence blocks are a mark plus the fact plus a citation chip rather than a repeated paragraph, the
+derivation notes that explain a number are the hover of the number they explain, and a control's
+caveat lives on the control. Nothing was removed from the record's side of the screen: every datum
+the approved set carries is still rendered, and the reduction is measured per screen as prose text
+nodes rather than as total text.
 
 Counts carry their unit. `surfaces/Count.tsx` is the only place the `.n` pill is written and its
 type pairs every number with what it counts, so Inbox unread-message counts and Board card counts
@@ -325,8 +354,8 @@ the phase-1 status note; the two structural ones are:
    `/v1/board` read is scoped by required `project_key`, every returned card carries that same project
    fact, and the adapter refuses a mismatched card instead of rendering it under the selected tab.
 
-The section nav carries every screen this phase built, and only those. `Workflow` (R2707) is not
-built here, and a nav entry that leads nowhere would be a dead control.
+The section nav carries every screen this phase built, and only those. `Workflow` is not built
+here, and a nav entry that leads nowhere would be a dead control.
 
 3. **The rail's ticket entry is `Latest ticket`**, not `Tickets`. `/ticket` opens the most
    recently created ticket on record: that is one record, not a list, and the previous label
@@ -334,11 +363,11 @@ built here, and a nav entry that leads nowhere would be a dead control.
    rule and the ticket's own stable link stated above it, rather than redirecting to an id the
    operator never chose. The board is the list. `src/frame/rail.ts` is the contract, and
    `tests/repository/test_declared_sources.py` reads it.
-4. **The true-empty-project block no longer promises a portfolio view "below" it** (gh#319). The
-   only portfolio-view element on this page is the link in `src/surfaces/board/TrueEmptyProject.tsx`
-   — nothing renders below the banner — so the copy now describes that link instead of claiming an
-   embedded view the DOM never carried. gh#115's project-fact work has not landed (no PR as of this
-   fix), so wiring the promised embedded view was not yet composable; this is the honest fallback
-   the ticket names, not the preferred direction. That block's link still points at `/board`, and
-   its panel still renders the default project's entries rather than the fleet's; the cross-project
-   view now lives at `/portfolio` and repointing that block is gh#319's to settle, not this one's.
+4. **The true-empty-project block no longer promises a portfolio view "below" it.** The only
+   portfolio-view element on this page is the link in `src/surfaces/board/TrueEmptyProject.tsx` —
+   nothing renders below the banner — so the copy now describes that link instead of claiming an
+   embedded view the DOM never carried. The project-fact work that would make an embedded view
+   composable has not landed, so this is the honest fallback rather than the preferred direction.
+   That block's link still points at `/board`, and its panel still renders the default project's
+   entries rather than the fleet's; the cross-project view lives at `/portfolio`, and repointing
+   that block is its own change to settle.

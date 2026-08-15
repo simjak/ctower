@@ -64,19 +64,6 @@ export function landsText(source: FutureSource): string {
    plausible number. */
 
 /**
- * #200 — *"Every ticket work session records who, duration, tokens, and
- * outcome"* — is the work timeline, field for field. It is the item Mission
- * Control's ctower checkpoint calls G5.
- */
-export const NO_WORK_SESSIONS = capability(
-  "per-session work facts — seat, duration, tokens and outcome",
-  [
-    "#200",
-    "#200 records a session event per ticket work session carrying actor, duration, tokens and outcome — the four columns this panel is shaped for",
-  ]
-);
-
-/**
  * Applied labels are one of the five members of the Board card context set.
  * D29 §1/§3 grant it and name #115 as the contract issue that carries it;
  * SPEC AC-TM-07 is the acceptance criterion.
@@ -163,7 +150,6 @@ export const NO_THREADS_HERE = silence("durable thread addressed to this princip
 
 /** Every declared source, so a test can assert the table without scraping. */
 export const DECLARED_SOURCES: Readonly<Record<string, FutureSource>> = {
-  NO_WORK_SESSIONS,
   NO_LABELS,
   NO_SEAT_NAME,
   NO_TICKET_BRIEF,

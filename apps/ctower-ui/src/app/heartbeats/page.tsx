@@ -27,7 +27,7 @@ const HEALTH_LABEL: Readonly<Record<BeatHealth, string>> = {
   alive: "arriving",
   late: "late",
   dead: "not arriving",
-  unknown: "liveness unestablished",
+  unknown: "unestablished",
 };
 
 function stamp(value: string | null): string {
@@ -58,11 +58,10 @@ function BeatRow({ beat }: { readonly beat: Beat }): ReactElement {
         <span className="mono">{stamp(beat.nextFire)}</span>
       </div>
       <div className="cell c-health">
-        <span className={HEALTH_CLASS[beat.health]}>{HEALTH_LABEL[beat.health]}</span>
+        <span className={HEALTH_CLASS[beat.health]} title={beat.why ?? undefined}>
+          {HEALTH_LABEL[beat.health]}
+        </span>
       </div>
-      {beat.why === null ? null : (
-        <div className={beat.health === "dead" ? "why dead" : "why"}>{beat.why}</div>
-      )}
     </div>
   );
 }
@@ -79,7 +78,7 @@ function Totals({ registry }: { readonly registry: CadenceRegistry }): ReactElem
     ["Arriving", registry.arriving],
     ["Late", registry.late],
     ["Not arriving", registry.notArriving],
-    ["Liveness unestablished", registry.unaccounted],
+    ["Unestablished", registry.unaccounted],
   ];
   return (
     <div className="totals" style={{ padding: "16px 0 0" }}>
@@ -92,18 +91,10 @@ function Totals({ registry }: { readonly registry: CadenceRegistry }): ReactElem
         ))}
       </div>
       <div className="src-line">
-        <span>
-          the last four add up to the registry: {registry.arriving} arriving + {registry.late} late
-          + {registry.notArriving} not arriving + {registry.unaccounted} unestablished ={" "}
-          {registry.registered} registered
+        <span title="every registered beat lands in exactly one mark, so the four add up to the registry rather than leaving one for the reader to find by subtraction">
+          {registry.arriving} + {registry.late} + {registry.notArriving} + {registry.unaccounted} ={" "}
+          {registry.registered}
         </span>
-        {registry.unaccounted === 0 ? null : (
-          <span>
-            {registry.unaccounted} of these {registry.registered} write no fire marker this source
-            reads, so they can go neither green nor red here — that is a gap in the marker registry,
-            not a verdict on the beat
-          </span>
-        )}
       </div>
     </div>
   );
@@ -113,12 +104,6 @@ function Lede(): ReactElement {
   return (
     <div className="lede">
       <h1>Heartbeats</h1>
-      <p>
-        Every scheduled wake this source registers: who owns it, the schedule it is registered
-        under, when it last fired, when it fires next, and whether it is still arriving. A beat that
-        stops arriving is how a seat goes quiet without anyone noticing. The source is named under
-        the registry — it is one host&rsquo;s schedule, not yet the whole portfolio&rsquo;s.
-      </p>
     </div>
   );
 }
@@ -141,7 +126,9 @@ function Registry({ registry }: { readonly registry: CadenceRegistry }): ReactEl
             <div className="tbl">
               <div className="tbl-head">
                 {COLUMNS.map((column) => (
-                  <div key={column}>{column}</div>
+                  <div key={column} title={column === "Health" ? registry.healthRule : undefined}>
+                    {column}
+                  </div>
                 ))}
               </div>
               {registry.beats.map((beat) => (
@@ -149,7 +136,7 @@ function Registry({ registry }: { readonly registry: CadenceRegistry }): ReactEl
               ))}
             </div>
           </section>
-          <RecordFoot readPath={SOURCE_LABELS.heartbeats} watermark={registry.healthRule} />
+          <RecordFoot readPath={SOURCE_LABELS.heartbeats} />
         </div>
       </main>
     </>

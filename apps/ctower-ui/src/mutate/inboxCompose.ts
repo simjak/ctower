@@ -12,7 +12,7 @@ const LONGEST_MESSAGE = 65536;
 
 const UNCONFIRMED =
   "The server has not confirmed this message, so the thread is not started yet. " +
-  "Press Retry to send the same message again.";
+  "Press send again to send the same message.";
 const LOST_REPLAY =
   "This retry lost track of the message waiting for confirmation. " +
   "Reload the page and send it again.";

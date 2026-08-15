@@ -36,19 +36,25 @@ export const RAIL: readonly RailItem[] = [
 ];
 
 /**
- * The one action that starts work, and why this surface cannot honour it.
+ * The one action that starts work, and how it is actually done.
  *
- * Read-only v1 holds no write authority. Round-3 QA (#240) found this rendered
- * as a styled `<span>` in the primary call-to-action slot — 219×34px, bordered,
- * filled, clickable-looking, doing nothing, with its only excuse in a native
- * `title` that is invisible on the screen, absent on touch and unreachable by
- * keyboard. The Feed composer and the Files Save/Revert controls already do this
- * correctly, so the fix is to stop breaking a pattern this app has right: a real
- * disabled control, the shared verdict chip, and the reason printed on screen.
+ * Round-3 QA (#240) found this rendered as a styled `<span>` in the primary
+ * call-to-action slot — bordered, filled, clickable-looking, doing nothing,
+ * with its only excuse in a native `title` that is invisible on screen, absent
+ * on touch and unreachable by keyboard. The fix then was a real disabled
+ * control, a verdict chip and the reason printed under it.
+ *
+ * The reason was three lines of prose on every screen in the app. The operator's
+ * de-texting amendment retires it: the disabled control says it cannot be
+ * pressed, the verdict chip says why in two words, and `command` is the thing
+ * that *does* work — shown as the command itself rather than described in a
+ * sentence about it. `reason` survives as the control's hover, which is where
+ * the craft rules put a caveat.
  */
 export const NEW_TICKET_INERT = {
   label: "New ticket",
-  verdict: "read-only v1 · disabled",
-  reason:
-    "New ticket is unavailable here. Capture it with ctowerctl ticket capture; it appears on this board on the next read.",
+  verdict: "cli only",
+  /** What captures a ticket, printed as the command rather than narrated. */
+  command: "ctowerctl ticket capture",
+  reason: "capture it with the CLI; the board shows it on the next read",
 } as const;

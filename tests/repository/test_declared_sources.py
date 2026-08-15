@@ -128,8 +128,20 @@ class DeclaredSourceTests(unittest.TestCase):
             "#186 is the operator-channel feed; it lands none of these facts",
         )
 
-    def test_the_work_timeline_cites_the_item_that_records_a_work_session(self) -> None:
-        self.assertEqual(_sources()["NO_WORK_SESSIONS"]["lands"], "#200")
+    def test_the_work_timeline_reads_the_record_rather_than_citing_a_future_one(self) -> None:
+        """The record answers `/v1/tickets/{id}/sessions`, so nothing may cite a future one."""
+        self.assertNotIn(
+            "NO_WORK_SESSIONS",
+            _sources(),
+            "a per-session work fact is still declared as a missing capability; the record "
+            "carries seat, duration, tokens and outcome, so a ticket holding none is a silence",
+        )
+        timeline = (_SURFACE / "surfaces/ticket/WorkTimeline.tsx").read_text(encoding="utf-8")
+        self.assertIn(
+            "Reading<readonly WorkSession[]>",
+            timeline,
+            "the work timeline takes no reading, so it cannot be showing the record",
+        )
 
     def test_labels_cite_the_context_set_contract_and_the_decision_granting_it(self) -> None:
         self.assertEqual(_sources()["NO_LABELS"]["lands"], "#115 · D29")

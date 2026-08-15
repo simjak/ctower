@@ -23,10 +23,12 @@ export function Provisional<T>({ ranked }: { readonly ranked: Ranked<T> }): Reac
       >
         <StateGlyph name="attn" />
         <div className="e">
-          <div className="k">this choice is provisional</div>
-          <div className="d">
-            {ranked.unread.toString()} of {ranked.considered.toString()} candidates did not answer,
-            so the one shown may not be the most recent. It is the most recent of those that did.
+          <div className="k">provisional</div>
+          <div
+            className="d"
+            title="the one shown is the most recent of the candidates that answered, which may not be the most recent there is"
+          >
+            {ranked.unread.toString()} of {ranked.considered.toString()} candidates did not answer
           </div>
           {ranked.reason === null ? null : (
             <div className="f" style={{ overflowWrap: "anywhere" }}>

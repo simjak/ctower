@@ -35,7 +35,6 @@ function IndexFrame({ declared }: { readonly declared: ReactElement }): ReactEle
         <div className="wrap">
           <div className="lede">
             <h1>Latest ticket</h1>
-            <p>This section opens {RULE}.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>

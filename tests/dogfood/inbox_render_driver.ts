@@ -50,16 +50,29 @@ const HEIGHT = 900;
 const NAVIGATION_TIMEOUT_MS = 30_000;
 const SETTLE_TIMEOUT_MS = 30_000;
 const STAMP = "kept";
-/** The send box, told from the promote form it shares a page and a class with. */
-const SEND_BOX = "form.steer-box:has(textarea[name='text'])";
-/** The compose panel: its own section, so its rows are never the list's rows. */
-const COMPOSE = "section[aria-labelledby='compose-heading']";
+/** The reply box, told from the link form it shares a page and a class with. */
+const SEND_BOX = "form.cw-box:has(textarea[name='text'])";
+/** The box and the one line it puts under itself, which is the form's sibling. */
+const COMPOSER = ".cw-composer:has(textarea[name='text'])";
+/** The new-conversation pane: its own region, so its turns are never the list's rows. */
+const COMPOSE = "[aria-labelledby='compose-heading']";
 
 interface NewTicketAffordance {
   readonly label: string;
   readonly disabled: boolean;
   readonly verdict: string;
+  /** The working command, printed as an element on the rail. */
+  readonly command: string;
+  /** The fuller caveat, which is the control's own hover. */
   readonly reason: string;
+}
+
+/** One message's delivery mark, as the document actually drew it. */
+interface DeliveryMark {
+  /** The hover, which carries the three exact times. */
+  readonly title: string;
+  /** How many of the three dots are filled: 1 sent, 2 delivered, 3 read. */
+  readonly filled: number;
 }
 
 interface Surface {
@@ -67,6 +80,10 @@ interface Surface {
   readonly rendered: string;
   readonly foot: string;
   readonly newTicket: NewTicketAffordance | null;
+  /** The per-message sent/delivered/read marks under the turns. */
+  readonly delivery: readonly DeliveryMark[];
+  /** Whether the thread head teaches the three marks, once. */
+  readonly legend: string;
 }
 
 interface Capture extends Surface {
@@ -146,8 +163,8 @@ interface Composed extends ComposeState {
 
 async function surfaceOf(page: Page): Promise<Surface> {
   return await page.evaluate(() => {
-    const button = document.querySelector("button[aria-describedby='new-ticket-readonly']");
-    const reason = document.getElementById("new-ticket-readonly");
+    const button = document.querySelector("button[aria-describedby='new-ticket-cli']");
+    const command = document.getElementById("new-ticket-cli");
     const verdict = button?.parentElement?.querySelector(".verdict");
     const foot = document.querySelector(".foot");
     const text = (node: Element | null | undefined): string => node?.textContent?.trim() ?? "";
@@ -162,17 +179,26 @@ async function surfaceOf(page: Page): Promise<Surface> {
     while (walker.nextNode() !== null) {
       spoken.push(walker.currentNode.nodeValue ?? "");
     }
+    const marks = [...document.querySelectorAll(".cw-turn .audit .fx")].map((node) => ({
+      title: node.getAttribute("title") ?? "",
+      filled: node.querySelectorAll("i.on").length,
+    }));
     return {
       visible: document.body.innerText,
       rendered: spoken.join("\n"),
       foot: text(foot),
+      delivery: marks,
+      legend: text(document.querySelector(".cw-legend")),
       newTicket:
         button instanceof HTMLButtonElement
           ? {
               label: text(button),
               disabled: button.disabled,
               verdict: text(verdict),
-              reason: text(reason),
+              // de-texted: the command is the element on screen, and the
+              // fuller caveat is the control's own hover
+              command: text(command),
+              reason: button.title,
             }
           : null,
     };
@@ -198,11 +224,11 @@ async function boxState(page: Page): Promise<BoxState> {
     return {
       sameDocument: document.documentElement.dataset.visit === mark,
       fieldAfter: field instanceof HTMLTextAreaElement ? field.value : "",
-      button: text(box?.querySelector("button[type='submit']")),
-      messages: said(".panel .msg .subj"),
-      unfolded: said(".panel .msg:has(.verdict) .subj"),
-      notice: text(box?.querySelector("p[role='status']")),
-      refusal: text(box?.querySelector("p[role='alert']")),
+      button: box?.querySelector("button[type='submit']")?.getAttribute("aria-label") ?? "",
+      messages: said(".cw-turn .said"),
+      unfolded: said(".cw-fresh .said"),
+      notice: text(box?.parentElement?.querySelector("p[role='status']")),
+      refusal: text(box?.parentElement?.querySelector("p[role='alert']")),
     };
   }, STAMP);
 }
@@ -217,7 +243,7 @@ async function composeState(page: Page): Promise<ComposeState> {
         [...document.querySelectorAll(rows)].map((node) => node.textContent ?? "");
       const text = (node: Element | null | undefined): string => node?.textContent?.trim() ?? "";
       const link = document.querySelector(`${panel} a[href*='thread=']`);
-      const composed = said(`${panel} .msg .subj`);
+      const composed = said(`${panel} .cw-turn .said`);
       return {
         sameDocument: document.documentElement.dataset.visit === mark,
         fieldAfter: field instanceof HTMLTextAreaElement ? field.value : "",
@@ -226,13 +252,13 @@ async function composeState(page: Page): Promise<ComposeState> {
           picker instanceof HTMLSelectElement
             ? [...picker.options].map((option) => option.value).filter((value) => value !== "")
             : [],
-        button: text(box?.querySelector("button[type='submit']")),
+        button: box?.querySelector("button[type='submit']")?.getAttribute("aria-label") ?? "",
         composed,
         opened: link instanceof HTMLAnchorElement ? link.search : "",
-        // the list is every message row that is not the compose panel's own
-        listed: said(".panel .msg .subj").filter((row) => !composed.includes(row)),
-        notice: text(box?.querySelector("p[role='status']")),
-        refusal: text(box?.querySelector("p[role='alert']")),
+        // the list is the conversation column, which is never this pane's turns
+        listed: said(".cw-row .last"),
+        notice: text(box?.parentElement?.querySelector("p[role='status']")),
+        refusal: text(box?.parentElement?.querySelector("p[role='alert']")),
       };
     },
     [STAMP, COMPOSE] as const
@@ -263,13 +289,14 @@ async function composeDrive(
   baseUrl: string
 ): Promise<Composed> {
   const inbox = `${baseUrl}/inbox`;
-  await page.goto(inbox, { waitUntil: "networkidle" });
+  const composeRoute = `${inbox}?compose=1`;
+  await page.goto(composeRoute, { waitUntil: "networkidle" });
   await stamp(page);
   await page.locator(`${COMPOSE} select[name='to']`).selectOption(seat);
   await page.locator(`${COMPOSE} textarea[name='text']`).fill(typed);
   await page.locator(COMPOSE).getByRole("button", { name: "Send" }).click();
   if (outcome === "started") {
-    await page.locator(`${COMPOSE} .msg .subj`, { hasText: typed }).first().waitFor({
+    await page.locator(`${COMPOSE} .cw-turn .said`, { hasText: typed }).first().waitFor({
       timeout: SETTLE_TIMEOUT_MS,
     });
   } else {
@@ -287,7 +314,7 @@ async function composeDrive(
     await page.goto(`${inbox}${state.opened}`, { waitUntil: "networkidle" });
     threadMessages = (await boxState(page)).messages;
   }
-  await page.goto(inbox, { waitUntil: "networkidle" });
+  await page.goto(composeRoute, { waitUntil: "networkidle" });
   const reloaded = await composeState(page);
   return {
     width,
@@ -304,13 +331,14 @@ async function composeDrive(
 /** Wait for the one thing this outcome puts on the screen. */
 async function settle(page: Page, outcome: string, typed: string): Promise<void> {
   if (outcome === "sent") {
-    await page.locator(".msg .subj", { hasText: typed }).first().waitFor({
+    await page.locator(".cw-turn .said", { hasText: typed }).first().waitFor({
       timeout: SETTLE_TIMEOUT_MS,
     });
     return;
   }
   const role = outcome === "refused" ? "alert" : "status";
-  await page.locator(`${SEND_BOX} p[role='${role}']`).waitFor({ timeout: SETTLE_TIMEOUT_MS });
+  // the line the box put on screen is a sibling of the form, not a child of it
+  await page.locator(`${COMPOSER} p[role='${role}']`).waitFor({ timeout: SETTLE_TIMEOUT_MS });
 }
 
 /**
@@ -325,7 +353,7 @@ async function retry(page: Page): Promise<BoxState> {
   const answered = page.waitForResponse((response) => response.request().method() === "POST", {
     timeout: SETTLE_TIMEOUT_MS,
   });
-  await page.locator(SEND_BOX).getByRole("button", { name: "Retry" }).click();
+  await page.locator(SEND_BOX).getByRole("button", { name: "Send again" }).click();
   await answered;
   await settle(page, "unconfirmed", "");
   return await boxState(page);
