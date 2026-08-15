@@ -5,13 +5,23 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
+from uuid import uuid4
 
 import pytest
 import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from ctower_kernel.inbox.models import InboxAcknowledgementState
+from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record._estate_import_sql import (
+    _inbox_acknowledge_command,
+    _inbox_send_command,
+)
+from ctower_kernel.record.events import EventOrigin
+from ctower_kernel.record.inbox_events import InboxParticipant
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
 from tools.migration.estate_imports import (
     EstateImportWorkflow,
@@ -69,9 +79,9 @@ def test_seat_mapping_digest_is_verified_before_rows_are_accepted(tmp_path: Path
     }
     unsigned = dict(mapping)
     unsigned.pop("mapping_digest", None)
-    mapping["mapping_digest"] = "sha256:" + hashlib.sha256(
-        rfc8785.dumps(cast(Any, unsigned))
-    ).hexdigest()
+    mapping["mapping_digest"] = (
+        "sha256:" + hashlib.sha256(rfc8785.dumps(cast(Any, unsigned))).hexdigest()
+    )
     path = tmp_path / "seat-map.json"
     path.write_text(json.dumps(mapping), encoding="utf-8")
     loaded = load_seat_mapping(path)
@@ -110,6 +120,55 @@ def test_manifest_verification_rejects_a_batch_count_mismatch() -> None:
             public_key=private_key.public_key(),
         )
     assert raised.value.code == "manifest-count-mismatch"
+
+
+def test_inbox_estate_migration_preserves_source_sender_and_recipient() -> None:
+    migration_path = Path(__file__).parents[3] / (
+        "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
+    )
+    migration = migration_path.read_text(encoding="utf-8")
+
+    assert "ADD COLUMN source_sender text" in migration
+    assert "ADD COLUMN source_recipient text" in migration
+    assert "length(source_sender) BETWEEN 1 AND 128" in migration
+    assert "length(source_recipient) BETWEEN 1 AND 128" in migration
+    assert "CREATE TABLE estate_import_source_only_messages" in migration
+    assert (
+        "source_only_disposition text NOT NULL CHECK (source_only_disposition = 'source_only')"
+        in migration
+    )
+
+
+def test_inbox_import_commands_preserve_source_identity_and_read_timestamp() -> None:
+    actor = Actor(uuid4(), uuid4(), PrincipalKind.OPERATOR)
+    sender = InboxParticipant(uuid4(), "mapped-sender")
+    recipient = InboxParticipant(uuid4(), "operator")
+    sent_at = datetime(2026, 8, 14, 20, 30, tzinfo=UTC)
+    message_id = uuid4()
+    row = {
+        "message_id": str(message_id),
+        "source_ref": "inbox.jsonl#17",
+        "source_sender": "mapped-sender",
+        "source_recipient": "operator",
+        "sent_at": sent_at.isoformat(),
+        "subject": "subject",
+        "body": "body",
+        "read_state": "read",
+        "content_sha256": "sha256:" + "1" * 64,
+    }
+
+    send = _inbox_send_command(actor, row, sender=sender, recipient=recipient)
+    acknowledge = _inbox_acknowledge_command(send)
+
+    assert send.message_id == message_id
+    assert send.sent_at == sent_at
+    assert send.source_ref == "inbox.jsonl#17"
+    assert send.source_sender == "mapped-sender"
+    assert send.source_recipient == "operator"
+    assert send.origin is EventOrigin.MIGRATION_IMPORTER
+    assert acknowledge.state is InboxAcknowledgementState.READ
+    assert acknowledge.recorded_at == sent_at
+    assert acknowledge.origin is EventOrigin.MIGRATION_IMPORTER
 
 
 def test_parity_report_rejects_more_imports_than_source_rows() -> None:

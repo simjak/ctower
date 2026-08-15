@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 from uuid import UUID
 
 from fastapi import FastAPI, Request
@@ -51,7 +51,7 @@ class EstateImportPort(Protocol):
         rows: Sequence[Mapping[str, object]],
         now: datetime,
         telemetry: TelemetryContext,
-    ) -> EstateImportResult | RecordProblem: ...
+    ) -> EstateImportResult | Mapping[str, object] | RecordProblem: ...
 
 
 def install_estate_import_routes(
@@ -133,7 +133,17 @@ def _handler(
         )
         if isinstance(result, RecordProblem):
             return problem_response(result)
-        boundary = EstateImportResult.model_validate(result.model_dump(mode="json", by_alias=True))
+        result_object: Any = result
+        result_data: Mapping[str, object]
+        if isinstance(result, EstateImportResult):
+            result_data = result.model_dump(mode="json", by_alias=True)
+        elif hasattr(result_object, "response_payload"):
+            result_data = result_object.response_payload()
+        elif hasattr(result_object, "model_dump"):
+            result_data = result_object.model_dump(mode="json", by_alias=True)
+        else:
+            result_data = result
+        boundary = EstateImportResult.model_validate(result_data)
         return JSONResponse(
             content=boundary.model_dump(mode="json", by_alias=True),
             status_code=202 if boundary.durability_state.value == "durability_pending" else 201,
