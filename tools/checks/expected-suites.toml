@@ -31,6 +31,7 @@ phase_order = [
   "CT-I1-024",
   "CT-I1-032",
   "CT-I1-033",
+  "CT-I1-034",
   "CT-I1-039",
   "CT-I1-008",
   "CT-I2-005",
@@ -1174,4 +1175,34 @@ command = [
   "tests/acceptance/increment-1/test_ticket_display_keys.py",
   "-q",
 ]
+timeout_seconds = 900
+
+[[suite]]
+id = "spawn-record-contracts"
+owner = "CT-I1-034"
+phase = "CT-I1-034"
+status = "deferred"
+path = "tests/contracts/spawn_records"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/spawn_records", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "spawn-record-modules"
+owner = "CT-I1-034"
+phase = "CT-I1-034"
+status = "deferred"
+path = "tests/modules/runtime"
+patterns = ["test_spawn_records.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/runtime/test_spawn_records.py", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "spawn-record-acceptance"
+owner = "CT-I1-034"
+phase = "CT-I1-034"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_spawn_records.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_spawn_records.py", "-q"]
 timeout_seconds = 900

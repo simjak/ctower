@@ -12,6 +12,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "addTicketRelation": ("ticket relation add", True, "allowed", None, False),
     "allowConsoleSession": (None, True, "forbidden", None, False),
     "appendAttentionFinding": ("attention finding append", True, "allowed", None, False),
+    "appendSpawnTransition": ("spawn transition", True, "allowed", None, False),
     **REQUEST_PROPOSAL_OPERATION_METADATA,
     "appendCtowerProjectImportCorrection": (
         "migration ctower-project correction append",
@@ -79,6 +80,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         "operator",
         False,
     ),
+    "createSpawnRecord": ("spawn record", True, "allowed", None, False),
     "createTicket": (["ticket capture", "ticket create"], True, "allowed", None, False),
     "exportCompanyBundle": ("company bundle export", False, "forbidden", None, False),
     "importEstateCompanyRecords": (
@@ -137,6 +139,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         "authenticated",
         False,
     ),
+    "getSpawnRecord": ("spawn show", False, "forbidden", "authenticated", False),
     "getSyntheticWorkflowRun": ("synthetic query", False, "forbidden", None, False),
     "getTicket": (["ticket query", "ticket show"], False, "forbidden", None, False),
     "getTicketTimeline": ("ticket timeline", False, "forbidden", None, False),
@@ -178,6 +181,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         None,
         False,
     ),
+    "listSpawnRecords": ("spawn list", False, "forbidden", "authenticated", False),
     "listTicketSessions": ("session ticket", False, "forbidden", None, False),
     "planCompanyBundle": ("company bundle plan", False, "forbidden", None, False),
     "mintConsoleViewGrant": (None, True, "forbidden", None, False),

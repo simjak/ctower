@@ -27,6 +27,8 @@ from ctowerctl._request_commands import mutation_command_names as request_mutati
 from ctowerctl._request_commands import query_command_names as request_queries
 from ctowerctl._session_commands import mutation_command_names as session_mutations
 from ctowerctl._session_commands import query_command_names as session_queries
+from ctowerctl._spawn_commands import mutation_command_names as spawn_mutations
+from ctowerctl._spawn_commands import query_command_names as spawn_queries
 from ctowerctl._synthetic_commands import mutation_command_names as synthetic_mutations
 from ctowerctl._synthetic_commands import query_command_names as synthetic_queries
 from ctowerctl._ticket_commands import mutation_command_names as ticket_mutations
@@ -73,6 +75,7 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         | dream_lane_mutations()
         | _beat_dispatch_commands.mutation_command_names()
         | (request_mutations() | _ruling_commands.mutation_command_names())
+        | spawn_mutations()
     )
     queries = (
         ticket_queries()
@@ -86,6 +89,7 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         | dream_dispatch_queries()
         | _beat_dispatch_commands.query_command_names()
         | (digest_queries() | request_queries() | _ruling_commands.query_command_names())
+        | spawn_queries()
     )
     refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}

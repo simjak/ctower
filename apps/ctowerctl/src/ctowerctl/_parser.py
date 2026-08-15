@@ -51,6 +51,7 @@ from ctowerctl._parser_support import (
 )
 from ctowerctl._request_parser import request_parser
 from ctowerctl._ruling_parser import ruling_parser
+from ctowerctl._spawn_parser import spawn_parser
 
 __all__: tuple[str, ...] = ()
 
@@ -92,6 +93,7 @@ def _parser() -> argparse.ArgumentParser:
     digest_parser(areas.add_parser("digest"))
     request_parser(areas.add_parser("request"))
     ruling_parser(areas.add_parser("ruling"))
+    spawn_parser(areas.add_parser("spawn"))
     _inbox_parser(areas.add_parser("inbox"))
     knowledge_parser(areas.add_parser("knowledge"))
     _ticket_parser(areas.add_parser("ticket"))
