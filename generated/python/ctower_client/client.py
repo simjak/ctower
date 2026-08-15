@@ -1,6 +1,10 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
+<<<<<<< HEAD
 Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
+=======
+Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
+>>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
 """
 
 from __future__ import annotations
@@ -121,6 +125,7 @@ from ctower_client.models import (
     SessionFactRequest,
     SessionReceipt,
     SessionStartRequest,
+    SpawnRecord,
     SpawnRecordCreateRequest,
     SpawnRecordListResult,
     SpawnRecordResult,
@@ -405,7 +410,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: SpawnRecordResult, 202: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_company_bundle(
@@ -794,7 +799,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {201: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: SpawnRecordResult, 202: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ticket(
@@ -1057,7 +1062,7 @@ class CtowerClient:
     def get_spawn_record(
         self,
         spawn_id: UUID,
-    ) -> SpawnRecordResult:
+    ) -> SpawnRecord:
         response = self._http.get(
             f"/v1/spawn-records/{quote(str(spawn_id), safe='')}",
             headers=self._telemetry_headers(
@@ -1067,7 +1072,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem})
+        return _response(response, {200: SpawnRecord}, {401: Problem, 403: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(

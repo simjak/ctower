@@ -1,5 +1,9 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
+<<<<<<< HEAD
 // Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
+=======
+// Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
+>>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -645,7 +649,7 @@ export type OperationResults = Readonly<{
   readonly "getProjectDelivery": Models.ProjectDeliveryView;
   readonly "getRequestMaintenanceReview": Models.RequestMaintenanceReview;
   readonly "getRuling": Models.RulingRow;
-  readonly "getSpawnRecord": Models.SpawnRecordResult;
+  readonly "getSpawnRecord": Models.SpawnRecord;
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
@@ -971,7 +975,7 @@ export class CtowerClient {
 
   public async getSpawnRecord(
     input: GetSpawnRecordInput,
-  ): Promise<Models.SpawnRecordResult> {
+  ): Promise<Models.SpawnRecord> {
     return this.execute("getSpawnRecord", input);
   }
 

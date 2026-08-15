@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from ctower_client.models import SpawnRecordResult
+from ctower_client.models import DurabilityState, SpawnRecordResult
 
 ROOT = Path(__file__).parents[3]
 _SPAWN_OPERATIONS = {
@@ -43,7 +43,7 @@ def test_spawn_http_surface_is_strict_and_append_only() -> None:
 
 
 def test_spawn_storage_is_append_only_with_derived_state() -> None:
-    migration = (ROOT / "packages/ctower-kernel/migrations/0068_spawn_records.sql").read_text(
+    migration = (ROOT / "packages/ctower-kernel/migrations/0069_spawn_records.sql").read_text(
         encoding="utf-8"
     )
 
@@ -110,6 +110,8 @@ def test_generated_response_accepts_an_appended_transition_fact() -> None:
                     "transitioned_at": "2026-08-15T00:01:00Z",
                 },
             ),
+            "durability_state": DurabilityState.ACCEPTED,
+            "accepted_position": 1,
         }
     )
     assert result.status == "accepted"
