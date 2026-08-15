@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -254,13 +254,17 @@ def test_workflow_refuses_non_operator_before_import_or_closure() -> None:
     manifest = _workflow_manifest(signer, rows)
     observed: list[str] = []
 
+    def batch_importer(_index: int, _rows: Sequence[Mapping[str, Any]]) -> int:
+        observed.append("import")
+        return 1
+
     with pytest.raises(EstateRefusal) as raised:
         EstateImportWorkflow(private_key.public_key()).execute(
             actor_kind="commander",
             tier="company_records",
             manifest_text=rfc8785.dumps(manifest).decode(),
             rows=rows,
-            batch_importer=lambda _index, _rows: observed.append("import") or 1,
+            batch_importer=batch_importer,
             emit_report=lambda _report: observed.append("report"),
             close_source=lambda: observed.append("close"),
             signer=signer,

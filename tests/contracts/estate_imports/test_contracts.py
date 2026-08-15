@@ -39,7 +39,7 @@ def test_each_estate_tier_manifest_is_strict_and_signed() -> None:
     }
 
     for tier in _TIERS:
-        candidate = deepcopy(manifest)
+        candidate: dict[str, Any] = deepcopy(manifest)
         candidate["tier"] = tier
         if tier == "company_records":
             candidate["source_identity"]["source_path"] = "state/escapes.jsonl"

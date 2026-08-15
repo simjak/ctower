@@ -301,15 +301,23 @@
     ],
     "AC-IMP-01": [
       "contracts/domain/migration/estate-import-manifest.schema.json",
-      "contracts/domain/migration/estate-seat-mapping.schema.json"
+      "contracts/domain/migration/estate-seat-mapping.schema.json",
+      "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
+    ],
+    "AC-IMP-02": [
+      "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
     ],
     "AC-IMP-03": [
-      "contracts/domain/migration/company-record-import.schema.json"
+      "contracts/domain/migration/company-record-import.schema.json",
+      "packages/ctower-kernel/migrations/0068_company_records.sql",
+      "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
     ],
     "AC-IMP-04": [
       "contracts/domain/migration/estate-import-manifest.schema.json",
       "contracts/domain/migration/estate-import-parity.schema.json",
-      "contracts/domain/migration/estate-seat-mapping.schema.json"
+      "contracts/domain/migration/estate-seat-mapping.schema.json",
+      "packages/ctower-kernel/migrations/0068_company_records.sql",
+      "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
     ],
     "AC-INBOX-01": [
       "contracts/domain/events/canonical-vectors.json",
@@ -1569,7 +1577,9 @@
       "packages/ctower-kernel/migrations/0062_beat_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0063_routine_revision_activation.sql",
       "packages/ctower-kernel/migrations/0066_beat_routine_retirement.sql",
-      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql"
+      "packages/ctower-kernel/migrations/0067_request_maintenance_proposals.sql",
+      "packages/ctower-kernel/migrations/0068_company_records.sql",
+      "packages/ctower-kernel/migrations/0069_estate_import_idempotency.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
