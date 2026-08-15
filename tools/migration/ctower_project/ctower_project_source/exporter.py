@@ -253,7 +253,7 @@ def _reviewed_records(
         if hit:
             raise MigrationRefusal(
                 RefusalCode.FORBIDDEN_DATA_CLASS,
-                sorted(hit)[0],
+                min(hit),
             )
         if record.candidate and record.review_decision is None:
             raise MigrationRefusal(RefusalCode.UNREVIEWED_CANDIDATE, "candidate row")
