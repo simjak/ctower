@@ -7,6 +7,8 @@ schemas after codegen regeneration.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
 from uuid import UUID
 
 from fastapi import FastAPI, Request
@@ -20,9 +22,11 @@ from ctower_api._http_support import (
     uuid_value,
     validation_problem,
 )
+from ctower_api._mutation_response import mutation_response
 from ctower_api.telemetry import TelemetryRecorder
+from ctower_client.models import SpawnRecordResult as HttpSpawnRecordResult
 from ctower_kernel.access import Access
-from ctower_kernel.record import RecordProblem
+from ctower_kernel.record import Record, RecordProblem
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.runtime.spawn_records import (
     PostgresSpawnRecords,
@@ -74,16 +78,31 @@ class SpawnRecordTransitionRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+@dataclass(frozen=True, slots=True)
+class _SpawnMutationResult:
+    """Adapt a spawn row to the shared Record durability response envelope."""
+
+    result: SpawnRecordGet
+
+    def response_payload(self) -> Mapping[str, object]:
+        return {
+            **self.result.response_payload(),
+            "accepted_position": None,
+            "durability_state": "accepted",
+        }
+
+
 def install_spawn_record_routes(
     app: FastAPI,
     access: Access,
+    record: Record,
     spawn_records: PostgresSpawnRecords,
     recorder: TelemetryRecorder,
 ) -> None:
     """Bind the protected spawn-record command adapter."""
 
-    _install_create_route(app, access, spawn_records, recorder)
-    _install_transition_route(app, access, spawn_records, recorder)
+    _install_create_route(app, access, record, spawn_records, recorder)
+    _install_transition_route(app, access, record, spawn_records, recorder)
     _install_list_route(app, access, spawn_records, recorder)
     _install_get_route(app, access, spawn_records, recorder)
 
@@ -91,6 +110,7 @@ def install_spawn_record_routes(
 def _install_create_route(
     app: FastAPI,
     access: Access,
+    record: Record,
     spawn_records: PostgresSpawnRecords,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -138,15 +158,22 @@ def _install_create_route(
         )
         if isinstance(result, SpawnRecordProblem):
             return problem_response(_to_record_problem(result))
-        return JSONResponse(
-            content=_get_payload(result),
-            status_code=201,
+        return mutation_response(
+            record,
+            _SpawnMutationResult(result),
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            command_id=command_id,
+            telemetry=telemetry,
+            boundary_model=HttpSpawnRecordResult,
+            accepted_status=201,
         )
 
 
 def _install_transition_route(
     app: FastAPI,
     access: Access,
+    record: Record,
     spawn_records: PostgresSpawnRecords,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -187,9 +214,15 @@ def _install_transition_route(
         )
         if isinstance(result, SpawnRecordProblem):
             return problem_response(_to_record_problem(result))
-        return JSONResponse(
-            content=_get_payload(result),
-            status_code=200,
+        return mutation_response(
+            record,
+            _SpawnMutationResult(result),
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            command_id=command_id,
+            telemetry=telemetry,
+            boundary_model=HttpSpawnRecordResult,
+            accepted_status=200,
         )
 
 

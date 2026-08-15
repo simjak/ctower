@@ -1,6 +1,10 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
+<<<<<<< HEAD
 Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
+=======
+Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
+>>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
 """
 
 from __future__ import annotations
@@ -2944,6 +2948,8 @@ class SpawnRecordResult(_BoundaryModel):
     created_at: _Rfc3339DateTime
     updated_at: _Rfc3339DateTime
     transitions: tuple[SpawnRecordTransitionFact, ...]
+    durability_state: DurabilityState
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
 
 
 class SurfaceEnvironmentsField(_BoundaryModel):

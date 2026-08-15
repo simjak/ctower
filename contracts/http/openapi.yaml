@@ -2468,8 +2468,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Spawn fact recorded; off-host durability acknowledgement is pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
+          },
           "201": {
-            "description": "Spawn fact recorded; the driver may now drive the substrate",
+            "description": "Spawn fact recorded and accepted; the driver may now drive the substrate",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
           },
           "401": {"$ref": "#/components/responses/ProblemResponse"},
@@ -2523,7 +2528,7 @@
         "responses": {
           "200": {
             "description": "One spawn record with its appended transition facts",
-            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecord"}}}
           },
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
@@ -2549,6 +2554,11 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Transition fact appended; off-host durability acknowledgement is pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
+          },
           "200": {
             "description": "Transition fact appended; derived state follows the latest fact",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SpawnRecordResult"}}}
@@ -7041,7 +7051,7 @@
       "SpawnRecordResult": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["spawn_id", "project_key", "seat_key", "crew_name", "task_file_ref", "worktree_path", "harness", "model", "status", "principal_id", "created_at", "updated_at", "transitions"],
+        "required": ["spawn_id", "project_key", "seat_key", "crew_name", "task_file_ref", "worktree_path", "harness", "model", "status", "principal_id", "created_at", "updated_at", "transitions", "durability_state", "accepted_position"],
         "properties": {
           "spawn_id": {"type": "string", "format": "uuid"},
           "project_key": {"type": "string"},
@@ -7057,7 +7067,9 @@
           "principal_id": {"type": "string", "format": "uuid"},
           "created_at": {"type": "string", "format": "date-time"},
           "updated_at": {"type": "string", "format": "date-time"},
-          "transitions": {"type": "array", "items": {"$ref": "#/components/schemas/SpawnRecordTransitionFact"}}
+          "transitions": {"type": "array", "items": {"$ref": "#/components/schemas/SpawnRecordTransitionFact"}},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "accepted_position": {"type": ["integer", "null"], "minimum": 1}
         }
       },
       "SpawnRecordListResult": {

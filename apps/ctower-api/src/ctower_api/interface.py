@@ -237,18 +237,19 @@ def create_app(
     _install_runtime_boundaries(
         app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
     )
-    _install_spawn_boundary(app, access, spawn_records, recorder)
+    _install_spawn_boundary(app, access, record, spawn_records, recorder)
     return app
 
 
 def _install_spawn_boundary(
     app: FastAPI,
     access: Access,
+    record: Record,
     spawn_records: PostgresSpawnRecords | None,
     recorder: TelemetryRecorder,
 ) -> None:
     return (
-        install_spawn_record_routes(app, access, spawn_records, recorder)
+        install_spawn_record_routes(app, access, record, spawn_records, recorder)
         if spawn_records is not None
         else None
     )

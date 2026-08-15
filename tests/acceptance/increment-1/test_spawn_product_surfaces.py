@@ -9,6 +9,7 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -22,18 +23,56 @@ from support.tenant_fixture import TenantFixture, provision_seat
 
 from ctower_api.interface import create_app
 from ctower_kernel.record.postgres import PostgresRecord
-from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
+from ctower_kernel.runtime.spawn_driver import SpawnSpool
+from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords, SpawnRecordCreate
 from ctowerctl import main
 
 __all__: tuple[str, ...] = ()
 
-_HTTP_CREATED = 201
+_HTTP_PENDING = 202
 _HTTP_OK = 200
 _HTTP_UNAUTHORIZED = 401
 _HTTP_FORBIDDEN = 403
 _HTTP_NOT_FOUND = 404
 _HTTP_UNPROCESSABLE = 422
+_SPOOL_MODE = 0o600
 _EXIT_SUCCESS = 0
+
+
+def test_spawn_create_surfaces_pending_durability_like_driver_spool(
+    tenant: TenantFixture, tmp_path: Path
+) -> None:
+    payload = _create_payload()
+
+    with TestClient(_app(tenant)) as client:
+        response = client.post(
+            "/v1/spawn-records",
+            json=payload,
+            headers=operator_headers(tenant, command_id=uuid4()),
+        )
+
+    assert response.status_code == _HTTP_PENDING
+    assert response.headers["Retry-After"] == "1"
+    response_payload = response.json()
+    assert response_payload["durability_state"] == "durability_pending"
+
+    spool = SpawnSpool(tmp_path / "spawn-spool.jsonl")
+    entry = spool.append(
+        SpawnRecordCreate(
+            client_command_id=uuid4(),
+            project_key=payload["project_key"],
+            seat_key=payload["seat_key"],
+            crew_name=payload["crew_name"],
+            task_file_ref=payload["task_file_ref"],
+            worktree_path=payload["worktree_path"],
+            harness=payload["harness"],
+            model=payload["model"],
+            effort=payload["effort"],
+            workspace_id=None,
+        )
+    )
+    assert entry.state == response_payload["durability_state"]
+    assert (tmp_path / "spawn-spool.jsonl").stat().st_mode & 0o777 == _SPOOL_MODE
 
 
 def test_spawn_http_routes_round_trip_through_the_real_app(tenant: TenantFixture) -> None:
@@ -47,8 +86,10 @@ def test_spawn_http_routes_round_trip_through_the_real_app(tenant: TenantFixture
             json=payload,
             headers=operator_headers(tenant, command_id=create_command_id),
         )
-        assert created_response.status_code == _HTTP_CREATED
+        assert created_response.status_code == _HTTP_PENDING
+        assert created_response.headers["Retry-After"] == "1"
         created = created_response.json()
+        assert created["durability_state"] == "durability_pending"
         spawn_id = UUID(created["spawn_id"])
         assert created["effort"] == "high"
         assert created["workspace_id"] == str(workspace_id)
@@ -58,7 +99,9 @@ def test_spawn_http_routes_round_trip_through_the_real_app(tenant: TenantFixture
             json={"to_status": "accepted", "reason": "operator accepted dispatch"},
             headers=operator_headers(tenant, command_id=uuid4()),
         )
-        assert transition_response.status_code == _HTTP_OK
+        assert transition_response.status_code == _HTTP_PENDING
+        assert transition_response.headers["Retry-After"] == "1"
+        assert transition_response.json()["durability_state"] == "durability_pending"
         assert transition_response.json()["status"] == "accepted"
 
         list_response = client.get(
@@ -156,7 +199,8 @@ def _create_refusal_fixture(
         json=_create_payload(),
         headers=operator_headers(tenant, command_id=uuid4()),
     )
-    assert created_response.status_code == _HTTP_CREATED
+    assert created_response.status_code == _HTTP_PENDING
+    assert created_response.headers["Retry-After"] == "1"
     return UUID(created_response.json()["spawn_id"])
 
 
