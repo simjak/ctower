@@ -14,6 +14,7 @@ from ctower_kernel.record.spawn_events import (
     SpawnState,
     spawn_transition_allowed,
 )
+from ctower_kernel.runtime._spawn_record_sql import APPEND_TRANSITION
 from ctower_kernel.runtime.spawn_driver import (
     SpawnDriveContext,
     SpawnDurabilityState,
@@ -493,6 +494,10 @@ def test_record_before_drive_orders_record_then_host_drive(tmp_path: Path) -> No
     assert events == ["record", "drive"]
 
 
+def test_same_instant_transition_conflict_is_noop_for_typed_refusal() -> None:
+    assert "ON CONFLICT (spawn_id, tenant_id, transition_number) DO NOTHING" in APPEND_TRANSITION
+
+
 def test_unreachable_record_is_spooled_and_then_driven(tmp_path: Path) -> None:
     events: list[str] = []
     command = _spawn_command()
@@ -513,6 +518,37 @@ def test_unreachable_record_is_spooled_and_then_driven(tmp_path: Path) -> None:
     assert result.context.record is None
     assert len(spool.pending()) == 1
     assert events == ["record", "drive"]
+
+
+def test_permanent_record_refusal_does_not_drive_host_session(tmp_path: Path) -> None:
+    events: list[str] = []
+    command = _spawn_command()
+    refusal = SpawnRecordProblem(
+        code="project-scope-denied",
+        detail="project scope denied",
+        status=403,
+        title="Project scope denied",
+        command_id=command.client_command_id,
+    )
+
+    def record(_command: SpawnRecordCreate) -> SpawnRecordProblem:
+        events.append("record")
+        return refusal
+
+    def drive(_context: SpawnDriveContext) -> None:
+        events.append("drive")
+
+    result = record_before_drive(
+        command,
+        record=record,
+        drive=drive,
+        spool=SpawnSpool(tmp_path / "spawn-spool.jsonl"),
+    )
+
+    assert result.context.durability_state is SpawnDurabilityState.REFUSED
+    assert result.problem is refusal
+    assert events == ["record"]
+    assert not (tmp_path / "spawn-spool.jsonl").exists()
 
 
 def test_spool_refuses_prohibited_data_before_writing(tmp_path: Path) -> None:
