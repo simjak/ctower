@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bd76e6ce94e41ed38ece3b118e0a39d277f89fb6708082902b4a8bae83a7ce0b
+Authored contract digest: sha256:843259c9666038396cf0cd5f6fe7f8b3fb4ac058b2ca06439dc537af51917c3c
 """
 
 from __future__ import annotations
@@ -1850,8 +1850,10 @@ class VerdictDecision(StrEnum):
 
 
 class WorkflowChangedAuditPayload(_BoundaryModel):
+    evaluation_ref: Annotated[str, Field(pattern="^$|^[0-9a-f-]{36}$")]
     lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
     operation: Literal["start", "transition", "resolve_close"]
+    source_stage: Annotated[str, Field(pattern="^$|^[a-z][a-z0-9._-]*$")]
     stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     ticket_id: UUID
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]

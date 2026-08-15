@@ -16,6 +16,7 @@ __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
 ENVELOPE = ROOT / "contracts/domain/events/event-envelope.schema.json"
+OPENAPI = ROOT / "contracts/http/openapi.yaml"
 
 
 def _schema() -> dict[str, Any]:
@@ -79,3 +80,16 @@ def test_transition_payload_has_a_stable_evaluation_pointer_shape() -> None:
     # typed as a string so the read path can tolerate an empty default for
     # pre-enrichment rows while write-path ids remain non-empty.
     assert _workflow_changed()["properties"]["evaluation_ref"]["type"] == "string"
+
+
+def test_http_event_contract_mirrors_the_enriched_workflow_payload() -> None:
+    document = cast(dict[str, Any], json.loads(OPENAPI.read_text(encoding="utf-8")))
+    components = cast(dict[str, Any], document["components"])
+    schemas = cast(dict[str, Any], components["schemas"])
+    workflow = cast(dict[str, Any], schemas["WorkflowChangedAuditPayload"])
+    required = set(cast(list[str], workflow["required"]))
+    properties = cast(dict[str, Any], workflow["properties"])
+
+    assert {"evaluation_ref", "source_stage"} <= required
+    assert properties["evaluation_ref"]["pattern"] == "^$|^[0-9a-f-]{36}$"
+    assert properties["source_stage"]["pattern"] == "^$|^[a-z][a-z0-9._-]*$"

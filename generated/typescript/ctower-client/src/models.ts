@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:bd76e6ce94e41ed38ece3b118e0a39d277f89fb6708082902b4a8bae83a7ce0b
+// Authored contract digest: sha256:843259c9666038396cf0cd5f6fe7f8b3fb4ac058b2ca06439dc537af51917c3c
 
 export type ActivityClass = "work" | "verification";
 
@@ -2662,8 +2662,10 @@ export type WorkflowChangedAuditEvent = Readonly<{
 }>;
 
 export type WorkflowChangedAuditPayload = Readonly<{
+  readonly "evaluation_ref": string;
   readonly "lifecycle_facts": ReadonlyArray<"resolved" | "closed">;
   readonly "operation": "start" | "transition" | "resolve_close";
+  readonly "source_stage": string;
   readonly "stage": string;
   readonly "ticket_id": string;
   readonly "workflow_ref": string;
