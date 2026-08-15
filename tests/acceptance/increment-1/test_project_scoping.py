@@ -233,19 +233,16 @@ def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
         & {card.ticket_id for card in right_board.cards}
     )
     with _client(tenant) as client:
-        assert (
-            _get_ticket(client, tenant, left_ticket, right).status_code
-            == _expected_project_read_status(right)
-        )
-        assert (
-            _get_ticket(client, tenant, right_ticket, left).status_code
-            == _expected_project_read_status(left)
-        )
+        assert _get_ticket(
+            client, tenant, left_ticket, right
+        ).status_code == _expected_project_read_status(right)
+        assert _get_ticket(
+            client, tenant, right_ticket, left
+        ).status_code == _expected_project_read_status(left)
         for suffix in ("timeline", "assignments", "audit"):
-            assert (
-                _get_ticket_child(client, tenant, left_ticket, right, suffix).status_code
-                == _expected_project_read_status(right)
-            )
+            assert _get_ticket_child(
+                client, tenant, left_ticket, right, suffix
+            ).status_code == _expected_project_read_status(right)
         second_left = _created_ticket_id(_submit_intake(client, tenant, left, f"{left}-R104"))
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     projections.catch_up(tenant.tenant_id)
