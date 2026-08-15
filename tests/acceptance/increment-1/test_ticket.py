@@ -37,6 +37,7 @@ ROOT = Path(__file__).parents[3]
 def test_project_scoped_ticket_reads_require_the_persisted_project_grant(
     tenant: TenantFixture,
 ) -> None:
+    authorized_credential = secrets.token_urlsafe(32)
     foreign_credential = secrets.token_urlsafe(32)
     revoked_credential = secrets.token_urlsafe(32)
     title = "R3002 cross-project Ticket text canary"
@@ -49,6 +50,13 @@ def test_project_scoped_ticket_reads_require_the_persisted_project_grant(
             priority="P1",
             title=title,
             source_ref="r3002:ticket-read-authz",
+        )
+        authorized_issue = _issue_project_credential(
+            client,
+            tenant.operator_credential,
+            credential=authorized_credential,
+            project_key="ctower",
+            seat_key="ctower-commander",
         )
         issued = _issue_project_credential(
             client,
@@ -66,60 +74,30 @@ def test_project_scoped_ticket_reads_require_the_persisted_project_grant(
         )
         ticket_id = UUID(created.json()["ticket"]["ticket_id"])
         read_paths = _project_ticket_read_paths(ticket_id)
-        authorized = tuple(
-            client.get(path, params=params, headers=_auth(tenant.operator_credential))
-            for path, params in read_paths
+        authorized = _read_ticket_paths(client, read_paths, credential=authorized_credential)
+        foreign = _read_ticket_paths(client, read_paths, credential=foreign_credential)
+        anonymous = _read_ticket_paths(client, read_paths)
+        query_token = _read_ticket_paths(
+            client, read_paths, extra_params={"token": "r3002-query-token-canary"}
         )
-        foreign = tuple(
-            client.get(path, params=params, headers=_auth(foreign_credential))
-            for path, params in read_paths
-        )
-        anonymous = tuple(
-            client.get(path, params=params, headers=telemetry_headers())
-            for path, params in read_paths
-        )
-        query_token = tuple(
-            client.get(
-                path,
-                params={**params, "token": "r3002-query-token-canary"},
-                headers=telemetry_headers(),
-            )
-            for path, params in read_paths
-        )
-        feed_token = tuple(
-            client.get(
-                path,
-                params={**params, "feed_token": "r3002-feed-token-canary"},
-                headers=telemetry_headers(),
-            )
-            for path, params in read_paths
+        feed_token = _read_ticket_paths(
+            client, read_paths, extra_params={"feed_token": "r3002-feed-token-canary"}
         )
         revoked_response = client.post(
             f"/v1/admin/seat-credentials/{revoked.json()['credential_id']}/revocation",
             json={"reason": "R3002 read authorization probe"},
             headers={**_auth(tenant.operator_credential), "Idempotency-Key": str(uuid4())},
         )
-        revoked_reads = tuple(
-            client.get(path, params=params, headers=_auth(revoked_credential))
-            for path, params in read_paths
-        )
+        revoked_reads = _read_ticket_paths(client, read_paths, credential=revoked_credential)
 
     assert created.status_code == HTTP_PENDING
+    assert authorized_issue.status_code == HTTP_PENDING
     assert issued.status_code == HTTP_PENDING
     assert revoked.status_code == HTTP_PENDING
     assert revoked_response.status_code == HTTP_PENDING
     assert all(response.status_code == HTTP_OK for response in authorized)
-    for response in foreign:
-        assert response.status_code == HTTP_FORBIDDEN
-        assert response.json()["code"] == "project-scope-denied"
-        assert str(ticket_id) not in response.text
-        assert title not in response.text
-    for responses in (anonymous, query_token, feed_token, revoked_reads):
-        for response in responses:
-            assert response.status_code == HTTP_UNAUTHORIZED
-            assert response.json()["code"] in {"unauthorized", "credential-revoked"}
-            assert str(ticket_id) not in response.text
-            assert title not in response.text
+    _assert_foreign_denied(foreign, ticket_id, title)
+    _assert_unauthenticated(anonymous + query_token + feed_token + revoked_reads, ticket_id, title)
 
 
 def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixture) -> None:
@@ -368,6 +346,37 @@ def _project_ticket_read_paths(ticket_id: UUID) -> tuple[tuple[str, dict[str, st
         (f"/v1/tickets/{ticket_id}/audit", {"project_key": "ctower"}),
         (f"/v1/tickets/{ticket_id}/assignments", {"project_key": "ctower"}),
     )
+
+
+def _read_ticket_paths(
+    client: TestClient,
+    read_paths: tuple[tuple[str, dict[str, str]], ...],
+    *,
+    credential: str | None = None,
+    extra_params: dict[str, str] | None = None,
+) -> tuple[Response, ...]:
+    headers = _auth(credential) if credential is not None else telemetry_headers()
+    params_extra = extra_params or {}
+    return tuple(
+        client.get(path, params={**params, **params_extra}, headers=headers)
+        for path, params in read_paths
+    )
+
+
+def _assert_foreign_denied(responses: tuple[Response, ...], ticket_id: UUID, title: str) -> None:
+    for response in responses:
+        assert response.status_code == HTTP_FORBIDDEN
+        assert response.json()["code"] == "project-scope-denied"
+        assert str(ticket_id) not in response.text
+        assert title not in response.text
+
+
+def _assert_unauthenticated(responses: tuple[Response, ...], ticket_id: UUID, title: str) -> None:
+    for response in responses:
+        assert response.status_code == HTTP_UNAUTHORIZED
+        assert response.json()["code"] in {"unauthorized", "credential-revoked"}
+        assert str(ticket_id) not in response.text
+        assert title not in response.text
 
 
 def _auth(credential: str) -> dict[str, str]:
