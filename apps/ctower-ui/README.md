@@ -32,6 +32,10 @@ decision before it counts as anything more than an operator surface:
 ```
 design-reference/   the approved mockups, vendored verbatim; app.css is imported by the app,
                     so the rendered screens and the design reference read the same bytes
+design-proposals/   screens the operator has not approved yet, one directory per proposal,
+                    each linking design-reference/app.css so a proposal cannot invent tokens.
+                    Nothing here is routed, imported or built; an approved proposal moves into
+                    design-reference/ and only then becomes a build brief
 src/read/           the record-read contract and its one implementation
 src/frame/          the chrome every screen shares: mark, nav, theme, provenance foot
 src/surfaces/       one directory per screen family
