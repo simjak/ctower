@@ -24,6 +24,7 @@ from ctower_api.development_finalizer import (
     write_finalizer_progress,
 )
 from ctower_api.development_secrets import development_dsn, load_secret
+from ctower_api.estate_imports import PostgresEstateImports
 from ctower_api.interface import OidcRuntimeConfig, create_app
 from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
 from ctower_client import CtowerClient
@@ -45,7 +46,6 @@ from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record import DurabilityFinalizationBatch
-from ctower_api.estate_imports import PostgresEstateImports
 from ctower_kernel.record.postgres import PostgresDurabilityFinalizer, PostgresRecord
 from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime

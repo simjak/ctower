@@ -14,8 +14,6 @@ import pytest
 import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from ctower_kernel.inbox.models import InboxAcknowledgementState
-from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_api.estate_import_contracts import (
     CompanyRecordAppend,
     _inbox_acknowledge_command,
@@ -27,6 +25,8 @@ from ctower_api.estate_import_support import (
     _inbox_batch_header,
     _same_record,
 )
+from ctower_kernel.inbox.models import InboxAcknowledgementState
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.events import EventOrigin
 from ctower_kernel.record.inbox_events import InboxParticipant
 from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
