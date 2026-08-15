@@ -3709,6 +3709,54 @@
           ],
           "type": "object"
         },
+        "companyRecordAppended": {
+          "additionalProperties": false,
+          "properties": {
+            "imported_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "natural_key": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "occurred_on": {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            "payload_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "record_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "record_type": {
+              "const": "escape"
+            },
+            "seat": {
+              "pattern": "^[a-z][a-z0-9._-]{1,127}$",
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "imported_at",
+            "natural_key",
+            "occurred_on",
+            "payload_digest",
+            "record_id",
+            "record_type",
+            "seat",
+            "source_ref"
+          ],
+          "type": "object"
+        },
         "componentReference": {
           "additionalProperties": false,
           "properties": {
@@ -3866,6 +3914,41 @@
             "principal_id",
             "probe_evidence",
             "reasoning_effort"
+          ],
+          "type": "object"
+        },
+        "estateImportChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "manifest_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "operation": {
+              "enum": [
+                "parity_reported",
+                "batch_applied",
+                "tier_closed"
+              ]
+            },
+            "source_ref": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "tier": {
+              "enum": [
+                "inbox_history",
+                "agreed_decisions",
+                "knowledge_documents",
+                "company_records"
+              ]
+            }
+          },
+          "required": [
+            "manifest_digest",
+            "operation",
+            "source_ref",
+            "tier"
           ],
           "type": "object"
         },
@@ -5302,7 +5385,11 @@
                   "const": "work.changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/workChanged"
@@ -5334,7 +5421,11 @@
                   "const": "ticket.created"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/ticketCreated"
@@ -5526,7 +5617,11 @@
                   "const": "migration.changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/migrationChanged"
@@ -5574,7 +5669,11 @@
                   "const": "thread.opened"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxThreadOpened"
@@ -5590,7 +5689,11 @@
                   "const": "message.appended"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxMessageAppended"
@@ -5606,7 +5709,11 @@
                   "const": "message.delivered"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxMessageDelivery"
@@ -5622,7 +5729,11 @@
                   "const": "message.read"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxMessageDelivery"
@@ -5638,7 +5749,11 @@
                   "const": "thread.promoted_to_ticket"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxThreadPromotedToTicket"
@@ -5798,7 +5913,11 @@
                   "const": "knowledge.document_registered"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/knowledgeDocumentRegistered"
@@ -5814,7 +5933,11 @@
                   "const": "request.changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/requestChanged"
@@ -5846,13 +5969,57 @@
                   "const": "ruling.recorded"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/rulingRecorded"
                 },
                 "stream_id": {
                   "pattern": "^ruling:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "estate.import_changed"
+                },
+                "origin": {
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
+                },
+                "payload": {
+                  "$ref": "#/$defs/estateImportChanged"
+                },
+                "stream_id": {
+                  "pattern": "^estate-import:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "company.record_appended"
+                },
+                "origin": {
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
+                },
+                "payload": {
+                  "$ref": "#/$defs/companyRecordAppended"
+                },
+                "stream_id": {
+                  "pattern": "^company-record:[0-9a-f-]{36}$"
                 }
               }
             }
@@ -5923,7 +6090,9 @@
             "knowledge.document_registered",
             "request.changed",
             "request.proposal_changed",
-            "ruling.recorded"
+            "ruling.recorded",
+            "estate.import_changed",
+            "company.record_appended"
           ],
           "type": "string"
         },
@@ -5931,7 +6100,9 @@
           "enum": [
             "api",
             "bootstrap",
-            "control_worker"
+            "control_worker",
+            "migration_importer",
+            "estate_import"
           ],
           "type": "string"
         },
@@ -5956,7 +6127,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -18912,7 +19083,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:420fa5838ba55f9ce0696b5f85550bf9eda423bb4a420233336ad3f4c7dcdfa7"
+      "sha256": "sha256:f7472acb1ee995be14f40b018087059d485188c0b1f2418a63c4febd9de4ec4f"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",

@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:fa96f1f9fce95ad5e906b922aa44489b5f25769f56827f9a1c0fe2012e8512a5"
+          "sha256": "sha256:a7f626ee4e9cc3842415cadf0194c6be5f056fdb91c29d95352825b6fde48ac6"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:248d5ffddeb7112b63301c9f5baa19e5a09207e582c0f31b5258063fa6e9dac0"
+          "sha256": "sha256:2128017e3da4824f395f606a35dc667dd646576a3b32f03b611e9ba2cfe389af"
         }
       ],
       "tool_version": "2"
@@ -170,7 +170,7 @@
         },
         {
           "path": "contracts/domain/events/event-envelope.schema.json",
-          "sha256": "sha256:420fa5838ba55f9ce0696b5f85550bf9eda423bb4a420233336ad3f4c7dcdfa7"
+          "sha256": "sha256:f7472acb1ee995be14f40b018087059d485188c0b1f2418a63c4febd9de4ec4f"
         },
         {
           "path": "contracts/domain/inbox/inbox-v2.schema.json",
@@ -564,7 +564,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:d9ec80917dfefe9b73a4da53facdc592bf22535c64f55080ed1e8dc5537b0cea"
+          "sha256": "sha256:fee22f393395e02f2b5b0a7e5a6d1a81faa9d899cb2ea4d8b114b4dd93cc8870"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

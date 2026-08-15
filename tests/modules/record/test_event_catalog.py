@@ -78,6 +78,19 @@ def _envelope_branch_kinds() -> frozenset[str]:
     return frozenset(branch["properties"]["kind"]["const"] for branch in branches)
 
 
+def _envelope_branch_origins() -> dict[str, frozenset[str]]:
+    branches = _envelope()["allOf"][0]["oneOf"]
+    result: dict[str, frozenset[str]] = {}
+    for branch in branches:
+        kind = str(branch["properties"]["kind"]["const"])
+        origin = cast(dict[str, object], branch["properties"]["origin"])
+        values = origin.get("enum")
+        if values is None:
+            values = (str(origin["const"]),)
+        result[kind] = frozenset(cast(list[str] | tuple[str, ...], values))
+    return result
+
+
 def _audit_branch_kinds() -> frozenset[str]:
     schemas = _openapi()["components"]["schemas"]
     names = [item["$ref"].rsplit("/", 1)[-1] for item in schemas["AuditEvent"]["oneOf"]]
@@ -148,12 +161,9 @@ def test_every_catalog_stream_prefix_is_authored_in_the_envelope_stream_pattern(
 
 
 def test_every_catalog_origin_is_authored_in_its_envelope_branch() -> None:
-    branches = {
-        branch["properties"]["kind"]["const"]: branch["properties"]["origin"]["const"]
-        for branch in _envelope()["allOf"][0]["oneOf"]
-    }
+    branches = _envelope_branch_origins()
     for entry in event_catalog():
-        assert branches[entry.kind.value] in {origin.value for origin in entry.origins}
+        assert branches[entry.kind.value] == {origin.value for origin in entry.origins}
 
 
 def test_the_session_kind_set_is_derived_rather_than_retyped() -> None:

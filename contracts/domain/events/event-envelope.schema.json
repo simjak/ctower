@@ -87,7 +87,9 @@
         "knowledge.document_registered",
         "request.changed",
         "request.proposal_changed",
-        "ruling.recorded"
+        "ruling.recorded",
+        "estate.import_changed",
+        "company.record_appended"
       ]
     },
     "origin": {
@@ -95,7 +97,9 @@
       "enum": [
         "api",
         "bootstrap",
-        "control_worker"
+        "control_worker",
+        "migration_importer",
+        "estate_import"
       ]
     },
     "payload": {
@@ -120,7 +124,7 @@
     },
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36})$"
     },
     "tenant_id": {
       "type": "string",
@@ -136,7 +140,7 @@
               "const": "work.changed"
             },
             "origin": {
-              "const": "api"
+              "enum": ["api", "migration_importer", "estate_import"]
             },
             "stream_id": {
               "pattern": "^ticket:[0-9a-f-]{36}$"
@@ -168,7 +172,7 @@
               "const": "ticket.created"
             },
             "origin": {
-              "const": "api"
+              "enum": ["api", "migration_importer", "estate_import"]
             },
             "stream_id": {
               "pattern": "^ticket:[0-9a-f-]{36}$"
@@ -344,7 +348,7 @@
               "const": "migration.changed"
             },
             "origin": {
-              "const": "api"
+              "enum": ["api", "migration_importer", "estate_import"]
             },
             "stream_id": {
               "pattern": "^migration:[0-9a-f-]{36}$"
@@ -389,7 +393,7 @@
         {
           "properties": {
             "kind": {"const": "thread.opened"},
-            "origin": {"const": "api"},
+            "origin": {"enum": ["api", "migration_importer", "estate_import"]},
             "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/inboxThreadOpened"}
           }
@@ -397,7 +401,7 @@
         {
           "properties": {
             "kind": {"const": "message.appended"},
-            "origin": {"const": "api"},
+            "origin": {"enum": ["api", "migration_importer", "estate_import"]},
             "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/inboxMessageAppended"}
           }
@@ -405,7 +409,7 @@
         {
           "properties": {
             "kind": {"const": "message.delivered"},
-            "origin": {"const": "api"},
+            "origin": {"enum": ["api", "migration_importer", "estate_import"]},
             "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/inboxMessageDelivery"}
           }
@@ -413,7 +417,7 @@
         {
           "properties": {
             "kind": {"const": "message.read"},
-            "origin": {"const": "api"},
+            "origin": {"enum": ["api", "migration_importer", "estate_import"]},
             "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/inboxMessageDelivery"}
           }
@@ -421,7 +425,7 @@
         {
           "properties": {
             "kind": {"const": "thread.promoted_to_ticket"},
-            "origin": {"const": "api"},
+            "origin": {"enum": ["api", "migration_importer", "estate_import"]},
             "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/inboxThreadPromotedToTicket"}
           }
@@ -568,7 +572,7 @@
               "const": "knowledge.document_registered"
             },
             "origin": {
-              "const": "api"
+              "enum": ["api", "migration_importer", "estate_import"]
             },
             "stream_id": {
               "pattern": "^knowledge-document:[0-9a-f-]{36}$"
@@ -584,7 +588,7 @@
               "const": "request.changed"
             },
             "origin": {
-              "const": "api"
+              "enum": ["api", "migration_importer", "estate_import"]
             },
             "stream_id": {
               "pattern": "^request:[0-9a-f-]{36}$"
@@ -616,13 +620,45 @@
               "const": "ruling.recorded"
             },
             "origin": {
-              "const": "api"
+              "enum": ["api", "migration_importer", "estate_import"]
             },
             "stream_id": {
               "pattern": "^ruling:[0-9a-f-]{36}$"
             },
             "payload": {
               "$ref": "#/$defs/rulingRecorded"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "estate.import_changed"
+            },
+            "origin": {
+              "enum": ["api", "migration_importer", "estate_import"]
+            },
+            "stream_id": {
+              "pattern": "^estate-import:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/estateImportChanged"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "company.record_appended"
+            },
+            "origin": {
+              "enum": ["api", "migration_importer", "estate_import"]
+            },
+            "stream_id": {
+              "pattern": "^company-record:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/companyRecordAppended"
             }
           }
         }
@@ -2260,6 +2296,37 @@
         "target_outcome": {"enum": ["accepted", "refused", null]},
         "target_problem_code": {"type": ["string", "null"]},
         "target_request_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "estateImportChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_digest", "operation", "source_ref", "tier"],
+      "properties": {
+        "manifest_digest": {"$ref": "#/$defs/sha256"},
+        "operation": {"enum": ["parity_reported", "batch_applied", "tier_closed"]},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+        "tier": {
+          "enum": ["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+        }
+      }
+    },
+    "companyRecordAppended": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imported_at", "natural_key", "occurred_on", "payload_digest", "record_id",
+        "record_type", "seat", "source_ref"
+      ],
+      "properties": {
+        "imported_at": {"type": "string", "format": "date-time"},
+        "natural_key": {"type": "string", "minLength": 1, "maxLength": 256},
+        "occurred_on": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+        "payload_digest": {"$ref": "#/$defs/sha256"},
+        "record_id": {"type": "string", "format": "uuid"},
+        "record_type": {"const": "escape"},
+        "seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,127}$"},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 512}
       }
     }
   }
