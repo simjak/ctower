@@ -377,7 +377,7 @@ def _persist_message(
             message_id, tenant_id, thread_id, position, sender_id, sender_seat,
             recipient_id, recipient_seat, content, event_id, sent_at,
             source_ref, source_sender, source_recipient
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             result.message_id,
