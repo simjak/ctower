@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import secrets
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -19,15 +20,106 @@ from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
 from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.work import Work
+from ctower_kernel.work.postgres import PostgresWork
 
 __all__: tuple[str, ...] = ()
 
 HTTP_PENDING = 202
 HTTP_OK = 200
 HTTP_FORBIDDEN = 403
+HTTP_UNAUTHORIZED = 401
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 ROOT = Path(__file__).parents[3]
+
+
+def test_project_scoped_ticket_reads_require_the_persisted_project_grant(
+    tenant: TenantFixture,
+) -> None:
+    foreign_credential = secrets.token_urlsafe(32)
+    revoked_credential = secrets.token_urlsafe(32)
+    title = "R3002 cross-project Ticket text canary"
+    with _client(tenant) as client:
+        created = _create_ticket(
+            client,
+            tenant.operator_credential,
+            command_id=uuid4(),
+            custodian_id=tenant.commander_id,
+            priority="P1",
+            title=title,
+            source_ref="r3002:ticket-read-authz",
+        )
+        issued = _issue_project_credential(
+            client,
+            tenant.operator_credential,
+            credential=foreign_credential,
+            project_key="manibo",
+            seat_key="manibo-commander",
+        )
+        revoked = _issue_project_credential(
+            client,
+            tenant.operator_credential,
+            credential=revoked_credential,
+            project_key="bhloop",
+            seat_key="bhloop-commander",
+        )
+        ticket_id = UUID(created.json()["ticket"]["ticket_id"])
+        read_paths = _project_ticket_read_paths(ticket_id)
+        authorized = tuple(
+            client.get(path, params=params, headers=_auth(tenant.operator_credential))
+            for path, params in read_paths
+        )
+        foreign = tuple(
+            client.get(path, params=params, headers=_auth(foreign_credential))
+            for path, params in read_paths
+        )
+        anonymous = tuple(
+            client.get(path, params=params, headers=telemetry_headers())
+            for path, params in read_paths
+        )
+        query_token = tuple(
+            client.get(
+                path,
+                params={**params, "token": "r3002-query-token-canary"},
+                headers=telemetry_headers(),
+            )
+            for path, params in read_paths
+        )
+        feed_token = tuple(
+            client.get(
+                path,
+                params={**params, "feed_token": "r3002-feed-token-canary"},
+                headers=telemetry_headers(),
+            )
+            for path, params in read_paths
+        )
+        revoked_response = client.post(
+            f"/v1/admin/seat-credentials/{revoked.json()['credential_id']}/revocation",
+            json={"reason": "R3002 read authorization probe"},
+            headers={**_auth(tenant.operator_credential), "Idempotency-Key": str(uuid4())},
+        )
+        revoked_reads = tuple(
+            client.get(path, params=params, headers=_auth(revoked_credential))
+            for path, params in read_paths
+        )
+
+    assert created.status_code == HTTP_PENDING
+    assert issued.status_code == HTTP_PENDING
+    assert revoked.status_code == HTTP_PENDING
+    assert revoked_response.status_code == HTTP_PENDING
+    assert all(response.status_code == HTTP_OK for response in authorized)
+    for response in foreign:
+        assert response.status_code == HTTP_FORBIDDEN
+        assert response.json()["code"] == "project-scope-denied"
+        assert str(ticket_id) not in response.text
+        assert title not in response.text
+    for responses in (anonymous, query_token, feed_token, revoked_reads):
+        for response in responses:
+            assert response.status_code == HTTP_UNAUTHORIZED
+            assert response.json()["code"] in {"unauthorized", "credential-revoked"}
+            assert str(ticket_id) not in response.text
+            assert title not in response.text
 
 
 def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixture) -> None:
@@ -211,8 +303,13 @@ def test_runtime_event_schema_hash_outbox_and_public_timeline_are_one_shape(
 
 
 def _client(tenant: TenantFixture) -> TestClient:
+    record = PostgresRecord(tenant.database.runtime_dsn)
     return TestClient(
-        create_app(PostgresRecord(tenant.database.runtime_dsn)), client=("127.0.0.1", 51000)
+        create_app(
+            record,
+            work=Work(record, writer=PostgresWork(tenant.database.runtime_dsn)),
+        ),
+        client=("127.0.0.1", 51000),
     )
 
 
@@ -238,6 +335,39 @@ def _create_ticket(
         headers={**_auth(credential), "Idempotency-Key": str(command_id)},
     )
     return cast(Response, response)
+
+
+def _issue_project_credential(
+    client: TestClient,
+    authority: str,
+    *,
+    credential: str,
+    project_key: str,
+    seat_key: str,
+) -> Response:
+    response = client.post(
+        "/v1/admin/seat-credentials",
+        json={
+            "credential_digest": f"sha256:{hashlib.sha256(credential.encode()).hexdigest()}",
+            "credential_ref": f"secret-ref:test/{project_key}/{seat_key}",
+            "display_name": f"{project_key.title()} Commander",
+            "project_key": project_key,
+            "scopes": ["capture", "transition", "evidence"],
+            "seat_key": seat_key,
+        },
+        headers={**_auth(authority), "Idempotency-Key": str(uuid4())},
+    )
+    return cast(Response, response)
+
+
+def _project_ticket_read_paths(ticket_id: UUID) -> tuple[tuple[str, dict[str, str]], ...]:
+    return (
+        (f"/v1/tickets/{ticket_id}", {"project_key": "ctower"}),
+        (f"/v1/tickets/{ticket_id}/timeline", {"project_key": "ctower"}),
+        (f"/v1/tickets/{ticket_id}/sessions", {"project_key": "ctower"}),
+        (f"/v1/tickets/{ticket_id}/audit", {"project_key": "ctower"}),
+        (f"/v1/tickets/{ticket_id}/assignments", {"project_key": "ctower"}),
+    )
 
 
 def _auth(credential: str) -> dict[str, str]:
