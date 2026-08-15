@@ -84,7 +84,7 @@ class KnowledgeAddCommand:
         if self.scope not in _SCOPES:
             raise ValueError("knowledge scope must be org or project")
         _require_project_key(self.scope, self.project_key)
-        if self.origin is EventOrigin.MIGRATION_IMPORTER:
+        if self.origin in {EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}:
             _require_import_content(body=self.body, source_ref=self.source_ref, title=self.title)
         else:
             _require_content(body=self.body, source_ref=self.source_ref, title=self.title)
@@ -93,7 +93,10 @@ class KnowledgeAddCommand:
         payload: dict[str, object] = {"scope": self.scope}
         if self.project_key is not None:
             payload["project_key"] = self.project_key
-        if self.source_ref is not None and self.origin is not EventOrigin.MIGRATION_IMPORTER:
+        if self.source_ref is not None and self.origin not in {
+            EventOrigin.MIGRATION_IMPORTER,
+            EventOrigin.ESTATE_IMPORT,
+        }:
             payload["source_ref"] = self.source_ref
         else:
             payload["body"] = cast(str, self.body)

@@ -247,8 +247,9 @@ def _request_row(record: dict[str, Any]) -> dict[str, Any]:
         "occurred_on": occurred_on,
         "payload": payload,
         "source_ref": record["source_ref"],
-        "seat": str(record.get("seat", "source-only")),
+        "seat": str(record.get("seat", "unknown-owner")),
         "imported_at": datetime.now(UTC).isoformat(),
+        "content_sha256": record["content_sha256"],
     }
 
 

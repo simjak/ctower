@@ -43,6 +43,8 @@ def test_each_estate_tier_manifest_is_strict_and_signed() -> None:
         candidate["tier"] = tier
         if tier == "company_records":
             candidate["source_identity"]["source_path"] = "state/escapes.jsonl"
+        if tier == "agreed_decisions":
+            candidate["project_key"] = "ctower"
         validator_for("ctower.estate-import-manifest/v1").validate(candidate)
 
 
@@ -76,6 +78,7 @@ def test_company_record_payload_is_a_closed_typed_object() -> None:
             "defect": "example defect",
             "seat": "engineer",
         },
+        "content_sha256": _SHA,
     }
 
     validator_for("ctower.company-record-import/v1").validate(payload)

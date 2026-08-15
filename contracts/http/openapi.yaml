@@ -4517,6 +4517,7 @@
         "properties": {
           "schema": {"const": "ctower.estate-import-manifest/v1"},
           "tier": {"type": "string", "enum": ["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,63}$"},
           "source_identity": {
             "type": "object",
             "additionalProperties": false,
@@ -4601,12 +4602,13 @@
       "EstateCompanyRecordImportRow": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "record_type", "natural_key", "occurred_on", "payload", "source_ref", "seat", "imported_at"],
+        "required": ["schema", "record_type", "natural_key", "occurred_on", "payload", "source_ref", "seat", "imported_at", "content_sha256"],
         "properties": {
           "schema": {"const": "ctower.company-record-import/v1"},
           "record_type": {"const": "escape"},
           "natural_key": {"type": "string", "minLength": 1, "maxLength": 256},
           "occurred_on": {"type": "string", "format": "date"},
+          "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "source_ref": {"type": "string", "minLength": 1, "maxLength": 512},
           "seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,127}$"},
           "imported_at": {"type": "string", "format": "date-time"},

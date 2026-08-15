@@ -55,7 +55,11 @@ def append_ruling(
             connection,
             actor,
             project_key=command.project_key,
-            allow_operator=command.origin is EventOrigin.MIGRATION_IMPORTER,
+            allow_operator=command.origin
+            in {
+                EventOrigin.MIGRATION_IMPORTER,
+                EventOrigin.ESTATE_IMPORT,
+            },
         )
         if seat is None:
             return _refuse(
@@ -286,7 +290,7 @@ def _existing_seat(
          AND principal.principal_id = seat.principal_id
         WHERE seat.tenant_id = %s AND seat.principal_id = %s
           AND principal.kind = %s AND NOT principal.disabled
-          AND (%s IS NULL OR seat.project_key = %s)
+          AND (%s::text IS NULL OR seat.project_key = %s)
         """,
         parameters,
     ).fetchone()

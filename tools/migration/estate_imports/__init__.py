@@ -45,9 +45,7 @@ _BATCH_SIZE = 100
 _MAX_SOURCE_REF = 512
 _MAPPING_DIGEST_FIELD = "mapping_digest"
 _ESTATE_NAMESPACE = UUID("b6fb53ef-8a3f-5e0d-9b1d-5a66efab4b5a")
-_TIERS = frozenset(
-    {"inbox_history", "agreed_decisions", "knowledge_documents", "company_records"}
-)
+_TIERS = frozenset({"inbox_history", "agreed_decisions", "knowledge_documents", "company_records"})
 _SHA256_PREFIX = "sha256:"
 
 
@@ -227,9 +225,7 @@ def _parse_mapping_rows(raw: Mapping[str, Any]) -> dict[str, SeatDisposition]:
         disposition = str(entry["disposition"])
         target = entry.get("target_seat_key")
         if disposition == "mapped" and not isinstance(target, str):
-            raise EstateRefusal(
-                "seat-mapping-invalid", f"mapped seat has no target: {source_seat}"
-            )
+            raise EstateRefusal("seat-mapping-invalid", f"mapped seat has no target: {source_seat}")
         if disposition == "source_only" and target is not None:
             raise EstateRefusal(
                 "seat-mapping-invalid", f"source-only seat has a target: {source_seat}"
@@ -271,6 +267,7 @@ def build_estate_manifest(
     source_identity: dict[str, Any],
     rows: list[dict[str, Any]],
     seat_mapping_digest: str | None,
+    project_key: str | None = None,
     signer: _Sealer | None,
 ) -> dict[str, Any]:
     """Build one strict signed manifest over a non-empty frozen source."""
@@ -299,6 +296,8 @@ def build_estate_manifest(
             for index in range(0, source_count, _BATCH_SIZE)
         ],
     }
+    if project_key is not None:
+        manifest["project_key"] = project_key
     if seat_mapping_digest is not None:
         _validate_digest(seat_mapping_digest, "seat mapping digest")
         manifest["seat_mapping_digest"] = seat_mapping_digest
@@ -378,8 +377,7 @@ def parity_report(
             for batch in batches
         ],
         "sampled_content_hashes": [
-            {"source_ref": source_ref, "content_sha256": digest}
-            for source_ref, digest in sampled
+            {"source_ref": source_ref, "content_sha256": digest} for source_ref, digest in sampled
         ],
         "source_only_owners": [
             {
@@ -413,8 +411,10 @@ def _manifest_digest(manifest: Mapping[str, Any]) -> str:
 
 def _manifest_parity_batches(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
     batches = manifest.get("batches")
-    if not isinstance(batches, list) or not batches or not all(
-        isinstance(batch, dict) for batch in batches
+    if (
+        not isinstance(batches, list)
+        or not batches
+        or not all(isinstance(batch, dict) for batch in batches)
     ):
         raise EstateRefusal("manifest-invalid", "parity requires manifest batches")
     return cast(list[dict[str, Any]], batches)

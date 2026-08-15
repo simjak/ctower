@@ -191,7 +191,7 @@ def _inbox_send_command(
         source_recipient=_required_text(row, "source_recipient"),
         sender_principal_id=sender.principal_id,
         sender_seat=sender.seat_key,
-        origin=EventOrigin.MIGRATION_IMPORTER,
+        origin=EventOrigin.ESTATE_IMPORT,
     )
 
 
@@ -207,7 +207,7 @@ def _inbox_acknowledge_command(
         command.message_id,
         state,
         recorded_at=command.sent_at,
-        origin=EventOrigin.MIGRATION_IMPORTER,
+        origin=EventOrigin.ESTATE_IMPORT,
     )
 
 
@@ -236,7 +236,7 @@ def _ruling_import_command(
         recorded_at=recorded_at,
         project_key=project_key,
         ruling_id=ruling_id,
-        origin=EventOrigin.MIGRATION_IMPORTER,
+        origin=EventOrigin.ESTATE_IMPORT,
     )
 
 
@@ -265,7 +265,7 @@ def _knowledge_import_command(
         title=title,
         recorded_at=recorded_at,
         document_id=document_id,
-        origin=EventOrigin.MIGRATION_IMPORTER,
+        origin=EventOrigin.ESTATE_IMPORT,
     )
 
 
@@ -521,12 +521,20 @@ class PostgresEstateImports:
         command_id: UUID,
     ) -> tuple[_RulingImportPlan, ...] | RecordProblem:
         header = _inbox_batch_header(artifact, batch_index, len(rows), command_id)
-        if isinstance(header, RecordProblem):
-            return header
+        project_key = artifact.get("project_key")
+        if isinstance(header, RecordProblem) or not isinstance(project_key, str):
+            problem = (
+                header
+                if isinstance(header, RecordProblem)
+                else _estate_problem(
+                    command_id,
+                    "estate-import-project-required",
+                    "Ruling imports require a project key in the signed manifest.",
+                )
+            )
+            return problem
         plans: list[_RulingImportPlan] = []
         seen: set[str] = set()
-        project_key = artifact.get("project_key")
-        project_key = project_key if isinstance(project_key, str) else None
         for row in rows:
             try:
                 source_ref = _required_text(row, "source_ref")
@@ -1033,7 +1041,7 @@ def append_company_record(
 
 
 def _from_replay(payload: dict[str, object]) -> CompanyRecordAppendResult:
-    body = payload.get("response_body")
+    body = payload.get("response_body", payload)
     if not isinstance(body, dict):
         raise TypeError("committed company-record result has no response body")
     return CompanyRecordAppendResult(
@@ -1051,7 +1059,7 @@ def _from_replay(payload: dict[str, object]) -> CompanyRecordAppendResult:
 
 
 def _estate_replay(payload: dict[str, object]) -> EstateImportBatchResult:
-    body = payload.get("response_body")
+    body = payload.get("response_body", payload)
     if not isinstance(body, Mapping):
         raise TypeError("committed estate-import result has no response body")
     event_ids = body.get("event_ids")
@@ -1429,7 +1437,7 @@ def _estate_batch_event(
         correlation_id=telemetry.correlation_uuid(command_id),
         event_id=uuid7(now),
         kind=EventKind.ESTATE_IMPORT_CHANGED,
-        origin=EventOrigin.MIGRATION_IMPORTER,
+        origin=EventOrigin.ESTATE_IMPORT,
         payload=EstateImportChangedPayload(
             tier,
             manifest_digest,
@@ -1440,7 +1448,7 @@ def _estate_batch_event(
         request_sha256=request_digest,
         sequence=1,
         server_time=now,
-        stream_id=f"estate-import:{manifest_digest}:{batch_index}",
+        stream_id=f"estate-import:{aggregate_id}",
         tenant_id=actor.tenant_id,
     )
 
@@ -1484,7 +1492,7 @@ def _company_event(
         correlation_id=telemetry.correlation_uuid(command.client_command_id),
         event_id=uuid7(now),
         kind=EventKind.COMPANY_RECORD_APPENDED,
-        origin=EventOrigin.MIGRATION_IMPORTER,
+        origin=EventOrigin.ESTATE_IMPORT,
         payload=CompanyRecordAppendedPayload(
             record_id,
             command.record_type,

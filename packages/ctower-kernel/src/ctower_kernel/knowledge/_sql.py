@@ -216,7 +216,10 @@ def _write_authority_problem(
             command.client_command_id,
         )
     project_key = cast(str, command.project_key)
-    if actor.kind is PrincipalKind.OPERATOR and command.origin is EventOrigin.MIGRATION_IMPORTER:
+    if actor.kind is PrincipalKind.OPERATOR and command.origin in {
+        EventOrigin.MIGRATION_IMPORTER,
+        EventOrigin.ESTATE_IMPORT,
+    }:
         return None
     return project_mutation_refusal(
         connection,
@@ -272,7 +275,10 @@ def _resolve_content(
     source: KnowledgeSource | None,
     command: KnowledgeAddCommand,
 ) -> tuple[str, str] | RecordProblem:
-    if command.origin is EventOrigin.MIGRATION_IMPORTER and command.body is not None:
+    if (
+        command.origin in {EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}
+        and command.body is not None
+    ):
         return cast(str, command.title), command.body
     if command.source_ref is None:
         return cast(str, command.title), cast(str, command.body)

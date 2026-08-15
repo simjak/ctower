@@ -52,3 +52,4 @@ class EventOrigin(StrEnum):
     BOOTSTRAP = "bootstrap"
     CONTROL_WORKER = "control_worker"
     MIGRATION_IMPORTER = "migration_importer"
+    ESTATE_IMPORT = "estate_import"

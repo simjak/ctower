@@ -128,6 +128,23 @@ def test_ruling_is_byte_exact_immutable_citable_and_superseded_by_a_new_fact(
     )
 
 
+def test_ordinary_commander_ruling_append_does_not_crash_on_project_filter(
+    tenant: TenantFixture,
+) -> None:
+    """Regression: the shipped commander append path must bind a nullable project key."""
+
+    command_id = uuid4()
+    with TestClient(application(tenant.database.runtime_dsn)) as client:
+        response = client.post(
+            "/v1/rulings",
+            json={"verbatim": "A normal commander ruling append remains operational."},
+            headers=_mutation_headers(tenant, command_id),
+        )
+
+    assert response.status_code == HTTP_PENDING
+    assert response.json()["command_id"] == str(command_id)
+
+
 def test_unknown_seat_identity_is_typed_and_creates_no_principal(
     tenant: TenantFixture,
 ) -> None:

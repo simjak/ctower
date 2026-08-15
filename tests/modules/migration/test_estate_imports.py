@@ -170,10 +170,16 @@ def test_inbox_import_commands_preserve_source_identity_and_read_timestamp() -> 
     assert send.source_ref == "inbox.jsonl#17"
     assert send.source_sender == "mapped-sender"
     assert send.source_recipient == "operator"
-    assert send.origin is EventOrigin.MIGRATION_IMPORTER
+    assert send.origin is EventOrigin.ESTATE_IMPORT
     assert acknowledge.state is InboxAcknowledgementState.READ
     assert acknowledge.recorded_at == sent_at
-    assert acknowledge.origin is EventOrigin.MIGRATION_IMPORTER
+    assert acknowledge.origin is EventOrigin.ESTATE_IMPORT
+
+
+def test_estate_imports_have_a_distinct_operator_authority_origin() -> None:
+    """Estate imports cannot reuse the restricted Request-import origin."""
+    assert EventOrigin.ESTATE_IMPORT.value == "estate_import"
+    assert EventOrigin.ESTATE_IMPORT is not EventOrigin.MIGRATION_IMPORTER
 
 
 def test_ruling_import_command_preserves_source_timestamp_and_origin() -> None:
@@ -192,7 +198,7 @@ def test_ruling_import_command_preserves_source_timestamp_and_origin() -> None:
     assert command.source_ref == "agreed-decision.md"
     assert command.recorded_at == recorded_at
     assert command.project_key == "ctower"
-    assert command.origin is EventOrigin.MIGRATION_IMPORTER
+    assert command.origin is EventOrigin.ESTATE_IMPORT
 
 
 def test_knowledge_import_command_preserves_document_identity_and_source_metadata() -> None:
@@ -214,7 +220,7 @@ def test_knowledge_import_command_preserves_document_identity_and_source_metadat
     assert command.document_id == document_id
     assert command.source_ref == "policy/reference.md"
     assert command.recorded_at == recorded_at
-    assert command.origin is EventOrigin.MIGRATION_IMPORTER
+    assert command.origin is EventOrigin.ESTATE_IMPORT
 
 
 def test_estate_batch_header_refuses_negative_batch_index() -> None:

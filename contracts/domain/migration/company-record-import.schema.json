@@ -10,13 +10,15 @@
     "record_type",
     "natural_key",
     "occurred_on",
-    "payload"
+    "payload",
+    "content_sha256"
   ],
   "properties": {
     "schema": { "const": "ctower.company-record-import/v1" },
     "record_type": { "enum": ["escape"] },
     "natural_key": { "type": "string", "minLength": 1, "maxLength": 256 },
     "occurred_on": { "type": "string", "format": "date" },
+    "content_sha256": { "$ref": "#/$defs/sha256" },
     "payload": {
       "type": "object",
       "additionalProperties": false,
@@ -58,6 +60,12 @@
         "window_end_utc": { "type": "string" },
         "window_start_utc": { "type": "string" }
       }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
     }
   }
 }

@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0069_estate_import_idempotency.sql",
-    "schema_sha256": "sha256:a3493d178f9a135ecbcf10cd1a448f8a0345d5e4315590273003bcb67f431b04",
+    "through": "0070_estate_import_authority.sql",
+    "schema_sha256": "sha256:ac1b4fc5b36a8efd8e7219fcb3cd5bcb875f136a60c3a954ef65e0dcc21f8b04",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:483ceeca80f548cdbe5f534d4622695aa221fbb2e23f4c0c6d3958ad0c0f1e4a"
+    "schema_object_sum256": "sum256:b0aa6739b9ab0be5345708e546086d3b4c34667569be5d217c83201f10818a15"
   },
   "ledger_advance_transitions": [
     {
@@ -650,7 +650,7 @@
       "scope": "database",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_estate_imports.py::test_product_migration_engine_applies_and_attests_final_estate_schema",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_estate_imports.py::test_estate_import_authority_is_operator_scoped_in_postgres",
       "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, and company-record counts plus a verified database backup; the new company-record table starts empty."
     },
@@ -660,9 +660,19 @@
       "scope": "database",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_estate_imports.py::test_product_migration_engine_applies_and_attests_final_estate_schema",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_estate_imports.py::test_estate_import_authority_is_operator_scoped_in_postgres",
       "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify inbox, ruling, knowledge, event, command-result, and outbox counts plus a verified database backup; all source identity columns start null on existing rows."
+    },
+    {
+      "path": "0070_estate_import_authority.sql",
+      "sha256": "sha256:7e51fd55661d4ebb14a79ea78ab8552e8fd65984b9f2a2c444f42ef78ffbfe28",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_estate_imports.py::test_estate_import_authority_is_operator_scoped_in_postgres",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event-origin constraints, event counts, principal kinds, and a verified database backup; the estate-origin guard starts with no estate events."
     }
   ]
 }

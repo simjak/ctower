@@ -384,7 +384,9 @@ class EventCatalogEntry:
 
 _BOOTSTRAP = frozenset({EventOrigin.BOOTSTRAP})
 _WORKER = frozenset({EventOrigin.CONTROL_WORKER})
-_API_OR_IMPORT = frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER})
+_API_OR_IMPORT = frozenset(
+    {EventOrigin.API, EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}
+)
 _SESSION = "session"
 
 # THE authoritative event catalog. Rows default to the API origin; a row states its
@@ -490,6 +492,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             EventKind.KNOWLEDGE_DOCUMENT_REGISTERED,
             KnowledgeDocumentRegisteredPayload,
             "knowledge-document",
+            _API_OR_IMPORT,
         ),
         EventCatalogEntry(
             EventKind.REQUEST_CHANGED,
@@ -502,7 +505,9 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             RequestProposalChangedPayload,
             "request-proposal",
         ),
-        EventCatalogEntry(EventKind.RULING_RECORDED, RulingRecordedPayload, "ruling"),
+        EventCatalogEntry(
+            EventKind.RULING_RECORDED, RulingRecordedPayload, "ruling", _API_OR_IMPORT
+        ),
         EventCatalogEntry(
             EventKind.ESTATE_IMPORT_CHANGED,
             EstateImportChangedPayload,

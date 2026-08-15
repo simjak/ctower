@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from support.postgres import DatabaseFixture
+from support.tenant_fixture import TenantFixture
 
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record._estate_import_sql import PostgresEstateImports
 from ctower_kernel.record.postgres import apply_migrations, provision_database_roles
+from ctower_kernel.telemetry import TelemetryContext
 from ctowerctl._parser import parse_arguments
+from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
+from tools.migration.estate_imports import build_estate_manifest
 
 __all__: tuple[str, ...] = ()
 
@@ -65,3 +75,199 @@ def test_product_migration_engine_applies_and_attests_final_estate_schema(
         manifest["adoption_baseline"]["through"],
         manifest["adoption_baseline"]["schema_sha256"],
     )
+
+
+@pytest.mark.parametrize(
+    "tier",
+    ["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"],
+)
+def test_estate_import_authority_is_operator_scoped_in_postgres(
+    tenant: TenantFixture, tier: str
+) -> None:
+    """Each estate tier commits through a fresh product-migrated PostgreSQL database."""
+    if tier == "agreed_decisions":
+        _provision_operator_project_seat(tenant)
+    private_key = Ed25519PrivateKey.generate()
+    signer = ArtifactSigner("signing-key-ref:acceptance", 1, private_key)
+    manifest_rows, rows = _tier_rows(tier)
+    manifest = build_estate_manifest(
+        tier=tier,
+        source_identity={
+            "namespace": "mission-control:estate",
+            "source_path": f"acceptance/{tier}.jsonl",
+            "source_sha256": _digest_text(tier),
+        },
+        rows=manifest_rows,
+        seat_mapping_digest=None,
+        project_key="ctower" if tier == "agreed_decisions" else None,
+        signer=signer,
+    )
+    actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    command_id = uuid4()
+    importer = PostgresEstateImports(
+        tenant.database.runtime_dsn,
+        {("signing-key-ref:acceptance", 1): private_key.public_key()},
+        parity_signer=signer,
+    )
+    result = importer.import_batch(
+        actor,
+        tier=tier,
+        batch_index=0,
+        command_id=command_id,
+        manifest=manifest,
+        rows=rows,
+        now=datetime.now(UTC),
+        telemetry=_telemetry(actor, command_id),
+    )
+
+    assert not isinstance(result, RecordProblem), result
+    assert result.source_count == result.imported_count == 1
+    assert result.parity["emitted_before_closure"] is True
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        assert connection.execute(
+            "SELECT origin FROM events WHERE event_id = %s", (result.event_ids[0],)
+        ).fetchone() == ("estate_import",)
+
+    replay = importer.import_batch(
+        actor,
+        tier=tier,
+        batch_index=0,
+        command_id=command_id,
+        manifest=manifest,
+        rows=rows,
+        now=datetime.now(UTC),
+        telemetry=_telemetry(actor, command_id),
+    )
+    assert not isinstance(replay, RecordProblem), replay
+    assert replay.manifest_digest == result.manifest_digest
+    assert replay.parity["emitted_before_closure"] is True
+
+
+def _tier_rows(tier: str) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    digest = _digest_text(tier)
+    if tier == "inbox_history":
+        message_id = str(uuid4())
+        subject = "Acceptance inbox message"
+        body = "The estate importer committed this source-only message."
+        content_digest = _digest_text(
+            json.dumps({"subject": subject, "body": body}, sort_keys=True)
+        )
+        projection = {
+            "_disposition": "source_only",
+            "content_sha256": content_digest,
+            "source_ref": "inbox.jsonl#1",
+            "source_seat": "external-sender",
+            "target_seat_key": None,
+        }
+        return [projection], [
+            {
+                **projection,
+                "message_id": message_id,
+                "source_sender": "external-sender",
+                "source_recipient": "operator",
+                "sent_at": "2026-08-15T12:00:00+00:00",
+                "subject": subject,
+                "body": body,
+                "read_state": "delivered",
+            }
+        ]
+    if tier == "agreed_decisions":
+        verbatim = "# Accepted decision\n\nKeep the project provenance."
+        return _generic_rows(
+            tier,
+            "board/agreed-acceptance.md",
+            _digest_content(verbatim),
+            {
+                "source_ref": "board/agreed-acceptance.md",
+                "verbatim": verbatim,
+                "recorded_at": "2026-08-15T12:00:00+00:00",
+                "content_sha256": _digest_content(verbatim),
+            },
+        )
+    if tier == "knowledge_documents":
+        body = "A knowledge document from a path-shaped source reference."
+        return _generic_rows(
+            tier,
+            "board/policy-reference.md",
+            _digest_content(body),
+            {
+                "document_id": str(uuid4()),
+                "source_ref": "board/policy-reference.md",
+                "title": "Policy reference",
+                "body": body,
+                "recorded_at": "2026-08-15T12:00:00+00:00",
+                "content_sha256": _digest_content(body),
+            },
+        )
+    if tier == "company_records":
+        return _generic_rows(
+            tier,
+            "state/escapes.jsonl#1",
+            digest,
+            {
+                "schema": "ctower.company-record-import/v1",
+                "record_type": "escape",
+                "natural_key": "escape:acceptance-1",
+                "occurred_on": "2026-08-15",
+                "payload": {"summary": "Acceptance escape"},
+                "source_ref": "state/escapes.jsonl#1",
+                "seat": "unknown-owner",
+                "imported_at": "2026-08-15T12:00:00+00:00",
+                "content_sha256": digest,
+            },
+        )
+    raise AssertionError(f"unknown estate tier: {tier}")
+
+
+def _generic_rows(
+    tier: str, source_ref: str, digest: str, row: dict[str, object]
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    projection: dict[str, object] = {
+        "_disposition": "source_only",
+        "content_sha256": digest,
+        "source_ref": source_ref,
+        "source_seat": "unknown-owner",
+    }
+    if tier == "company_records":
+        projection.update(
+            {
+                "natural_key": row["natural_key"],
+                "target_seat_key": None,
+                "payload": row["payload"],
+            }
+        )
+    return [projection], [{**row, "source_seat": "unknown-owner", "_disposition": "source_only"}]
+
+
+def _provision_operator_project_seat(tenant: TenantFixture) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO project_seats (
+                principal_id, tenant_id, project_key, seat_key, granted_by, granted_at
+            ) VALUES (%s, %s, 'ctower', 'ctower-operator', %s, %s)
+            """,
+            (tenant.operator_id, tenant.tenant_id, tenant.operator_id, datetime.now(UTC)),
+        )
+
+
+def _telemetry(actor: Actor, command_id: UUID) -> TelemetryContext:
+    return TelemetryContext(
+        schema="ctower.telemetry-context/v1",
+        trace_id="0" * 32,
+        span_id="0" * 16,
+        trace_flags=1,
+        correlation_id=str(command_id),
+        causation_id=str(command_id),
+        tenant_id=str(actor.tenant_id),
+        actor_id=str(actor.principal_id),
+        command_id=str(command_id),
+    )
+
+
+def _digest_text(value: str) -> str:
+    return "sha256:" + hashlib.sha256(value.encode()).hexdigest()
+
+
+def _digest_content(value: str) -> str:
+    return _digest_text(value)

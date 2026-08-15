@@ -148,7 +148,8 @@ def _acknowledgement_problem(
     }:
         return _unavailable(command.client_command_id)
     if actor.principal_id != message.get("recipient_id") and not (
-        actor.kind is PrincipalKind.OPERATOR and command.origin is EventOrigin.MIGRATION_IMPORTER
+        actor.kind is PrincipalKind.OPERATOR
+        and command.origin in {EventOrigin.MIGRATION_IMPORTER, EventOrigin.ESTATE_IMPORT}
     ):
         return _problem(
             command.client_command_id,

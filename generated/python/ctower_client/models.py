@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3cf181879f7367018d252f3e6ba6cf59c1192acf32f86d3551c6494157cf367e
+Authored contract digest: sha256:d3921400650f116fe93d54d0d3b11f9bdf428392e13cd89c4b5a9313ccc2eabf
 """
 
 from __future__ import annotations
@@ -1048,6 +1048,7 @@ class EstateCompanyRecordImportRow(_BoundaryModel):
     record_type: Literal["escape"]
     natural_key: Annotated[str, Field(min_length=1, max_length=256)]
     occurred_on: str
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     source_ref: Annotated[str, Field(min_length=1, max_length=512)]
     seat: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,127}$")]
     imported_at: _Rfc3339DateTime
@@ -2227,6 +2228,7 @@ class EstateImportManifest(_BoundaryModel):
         alias="schema", serialization_alias="schema"
     )
     tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,63}$")] | None = None
     source_identity: dict[str, object]
     seat_mapping_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None = None
     counts: dict[str, object]

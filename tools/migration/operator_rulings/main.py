@@ -119,6 +119,7 @@ def analyze_rulings_import(
             },
             rows=estate_rows,
             seat_mapping_digest=None,
+            project_key=project_key,
             signer=signer,
         )
         if estate_rows
@@ -153,7 +154,6 @@ def execute_rulings_import(
     signer: ArtifactSigner | None = None,
 ) -> dict[str, Any]:
     """Submit signed, bounded ruling estate batches through the import seam."""
-    del project_key
     rulings = _parse_agreed_files(agreed_dir)
     evidence_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     manifest = _execution_manifest(
@@ -161,6 +161,7 @@ def execute_rulings_import(
         rulings,
         manifest_path=manifest_path,
         signer=signer,
+        project_key=project_key,
     )
     batches = manifest.get("batches")
     if not isinstance(batches, list) or not batches:
@@ -293,6 +294,7 @@ def _execution_manifest(
     *,
     manifest_path: Path | None,
     signer: ArtifactSigner | None,
+    project_key: str,
 ) -> dict[str, Any]:
     if manifest_path is not None:
         raw = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -323,6 +325,7 @@ def _execution_manifest(
         },
         rows=estate_rows,
         seat_mapping_digest=None,
+        project_key=project_key,
         signer=signer,
     )
 

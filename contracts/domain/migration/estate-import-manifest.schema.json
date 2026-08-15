@@ -19,6 +19,10 @@
     "tier": {
       "enum": ["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
     },
+    "project_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,63}$"
+    },
     "source_identity": {
       "type": "object",
       "additionalProperties": false,
@@ -77,5 +81,11 @@
         "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "tier": { "const": "agreed_decisions" } } },
+      "then": { "required": ["project_key"] }
+    }
+  ]
 }

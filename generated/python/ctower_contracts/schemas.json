@@ -6818,11 +6818,20 @@
       "type": "object"
     },
     "contracts/domain/migration/company-record-import.schema.json": {
+      "$defs": {
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
       "$id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "description": "One typed accountability row for the append-only company-record aggregate. Natural key per record type; refuses credential material, production customer data, and other prohibited classes at the contract boundary.",
       "properties": {
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
         "natural_key": {
           "maxLength": 256,
           "minLength": 1,
@@ -6959,7 +6968,8 @@
         "record_type",
         "natural_key",
         "occurred_on",
-        "payload"
+        "payload",
+        "content_sha256"
       ],
       "title": "Company record import row",
       "type": "object"
@@ -11043,6 +11053,22 @@
       "$id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "const": "agreed_decisions"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "project_key"
+            ]
+          }
+        }
+      ],
       "description": "One signed frozen-source manifest binding an external estate ledger to an import tier. Every tier admits the same strict manifest envelope; tier rows vary by tier kind.",
       "properties": {
         "batches": {
@@ -11094,6 +11120,10 @@
         },
         "manifest_digest": {
           "$ref": "#/$defs/sha256"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9._-]{2,63}$",
+          "type": "string"
         },
         "schema": {
           "const": "ctower.estate-import-manifest/v1"
@@ -18912,7 +18942,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
       "path": "contracts/domain/migration/company-record-import.schema.json",
-      "sha256": "sha256:3d5ac334ea956dca6d713e8ae5f52ce8a50b57ee721dd2ca2bad6716e6415d6b"
+      "sha256": "sha256:f6a5b24c8f27771b8ecb7262cecdd7cedf18cd841bb7458f244b101c840e1603"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
@@ -19012,7 +19042,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
       "path": "contracts/domain/migration/estate-import-manifest.schema.json",
-      "sha256": "sha256:712d7e50799b81a214e37e8f73f976c415029958c68b37873901b9cd0e3d86b6"
+      "sha256": "sha256:8d163fd1580688d4e2696b5f85cc4457cb9f452eeb65d74977c4a6b1daded118"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json",
