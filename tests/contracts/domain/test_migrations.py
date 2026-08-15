@@ -85,11 +85,11 @@ _EXPECTED_MIGRATION_PATHS = [
     "0069_estate_import_idempotency.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0067_request_maintenance_proposals.sql",
-    "schema_sha256": ("sha256:a469179f2e1f13cae2ab11325d1b764188e626124be3a0c0bc29079c2a7527a4"),
+    "through": "0069_estate_import_idempotency.sql",
+    "schema_sha256": ("sha256:a3493d178f9a135ecbcf10cd1a448f8a0345d5e4315590273003bcb67f431b04"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:b38c6aa1eaef75e0a4904976b1656bde423d36bea1797022e875c4338ae6ab70"
+        "sum256:483ceeca80f548cdbe5f534d4622695aa221fbb2e23f4c0c6d3958ad0c0f1e4a"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [
