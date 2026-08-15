@@ -175,6 +175,8 @@ class WorkflowChangedPayload:
     workflow_version: int
     stage: str
     lifecycle_facts: tuple[str, ...]
+    source_stage: str = ""
+    evaluation_ref: str = ""
 
     def __post_init__(self) -> None:
         _require_uuid_fields(self, ("ticket_id",))
@@ -186,13 +188,19 @@ class WorkflowChangedPayload:
             raise ValueError("workflow reference must be versioned")
         if _STABLE_KEY.fullmatch(self.stage) is None:
             raise ValueError("workflow stage must be stable")
+        if self.source_stage and _STABLE_KEY.fullmatch(self.source_stage) is None:
+            raise ValueError("workflow source stage must be stable or empty")
+        if self.operation == "transition" and (not self.source_stage or not self.evaluation_ref):
+            raise ValueError("workflow transitions require source stage and evaluation reference")
         if self.lifecycle_facts not in {(), ("resolved", "closed")}:
             raise ValueError("workflow lifecycle facts must preserve terminal order")
 
     def to_mapping(self) -> dict[str, object]:
         return {
+            "evaluation_ref": self.evaluation_ref,
             "lifecycle_facts": list(self.lifecycle_facts),
             "operation": self.operation,
+            "source_stage": self.source_stage,
             "stage": self.stage,
             "ticket_id": str(self.ticket_id),
             "workflow_ref": self.workflow_ref,

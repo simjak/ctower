@@ -181,6 +181,8 @@ def _validate_workflow_payload(payload: Mapping[str, object]) -> None:
         workflow_version=int(cast(int, payload["workflow_version"])),
         stage=str(payload["stage"]),
         lifecycle_facts=tuple(str(item) for item in cast(list[object], payload["lifecycle_facts"])),
+        source_stage=str(payload.get("source_stage", "")),
+        evaluation_ref=str(payload.get("evaluation_ref", "")),
     )
 
 

@@ -88,8 +88,10 @@ def test_work_proof_and_workflow_event_variants_are_strict_and_typed() -> None:
     }
     workflow = _aggregate_event("workflow.changed", "workflow")
     workflow["payload"] = {
+        "evaluation_ref": "",
         "lifecycle_facts": ["resolved", "closed"],
         "operation": "resolve_close",
+        "source_stage": "",
         "stage": "terminal",
         "ticket_id": "00000000-0000-4000-8000-000000000008",
         "workflow_ref": "fixture.generic@1",

@@ -1202,14 +1202,20 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "evaluation_ref",
         "lifecycle_facts",
         "operation",
+        "source_stage",
         "stage",
         "ticket_id",
         "workflow_ref",
         "workflow_version"
       ],
       "properties": {
+        "evaluation_ref": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-f-]{36}$"
+        },
         "lifecycle_facts": {
           "oneOf": [
             {
@@ -1231,6 +1237,10 @@
             "resolve_close"
           ]
         },
+        "source_stage": {
+          "type": "string",
+          "pattern": "^$|^[a-z][a-z0-9._-]*$"
+        },
         "stage": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9._-]*$"
@@ -1247,7 +1257,20 @@
           "type": "integer",
           "minimum": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["operation"],
+            "properties": {
+              "operation": {"const": "transition"}
+            }
+          },
+          "then": {
+            "required": ["evaluation_ref", "source_stage"]
+          }
+        }
+      ]
     },
     "routineOccurrenceRecorded": {
       "type": "object",
