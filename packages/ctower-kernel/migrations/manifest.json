@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0074_restore_routine_retirement_kind.sql",
-    "schema_sha256": "sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea",
+    "through": "0075_spawn_records.sql",
+    "schema_sha256": "sha256:12b66b0116e13488cc0a9b7ecc9d829f08aedb1808471886bbdffe8b57b0dcd7",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:b35533df20f94ae7eb67dfd9cdea4a15884de96213d6e43521c3413fb2a6732e"
+    "schema_object_sum256": "sum256:ad504996e93fc010ef0a8fb5059eb69fa88462faaa19e9dd9d860930bd417e81"
   },
   "ledger_advance_transitions": [
     {
@@ -702,6 +702,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_operator_retires_active_beat_append_only_and_future_ticks_do_not_reactivate",
       "rollback_or_forward_compensation": "Preserve every immutable Routine retirement, beat effect, canonical event, command result, and outbox row; append a reviewed forward compensation rather than editing or deleting an accepted runtime fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify routine-trigger, routine-retirement, event, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no runtime rows."
+    },
+    {
+      "path": "0075_spawn_records.sql",
+      "sha256": "sha256:63d53c613516baf72009dc2dc5c16bb06394513c5b223b8411dd2949933ea2f4",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_spawn_records.py::test_migration_forward_apply_creates_requested_spawn",
+      "rollback_or_forward_compensation": "Preserve every immutable spawn record, appended transition fact, canonical event, command result, and outbox row; append reviewed forward compensation and never edit, delete, or reuse an accepted spawn fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture spawn-record, transition, event, event-link, command-result, and outbox counts grouped by tenant plus a verified database backup; both spawn tables start empty."
     }
   ]
 }
