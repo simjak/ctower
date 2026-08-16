@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import cast
+from uuid import UUID
 
 import pytest
 
@@ -33,6 +34,7 @@ def test_manibo_report_pack_loads_as_a_pointer_only_work_item() -> None:
     assert manibo_report.catch_up.value == "skip_missed"
     assert manibo_report.routine_item is not None
     assert manibo_report.routine_item.knowledge_ref == "mc-cron.manibo-report"
+    assert manibo_report.routine_item.document_id == UUID("a98100ac-1ac2-56f4-8754-e9550ebf67e7")
     assert manibo_report.routine_item.owner_seat == "manibo-commander"
 
 

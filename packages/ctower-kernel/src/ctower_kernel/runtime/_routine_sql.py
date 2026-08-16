@@ -103,7 +103,8 @@ def register(
                 dream.primary_model_ref, dream.primary_reasoning_effort,
                 dream.fallback_model_ref, dream.fallback_reasoning_effort,
                 dream.minimum_model_tier, dream.excluded_model_families,
-                item.item_key, item.knowledge_ref, item.owner_seat, item.escalation_seat,
+                item.item_key, item.knowledge_ref, item.document_id, item.owner_seat,
+                item.escalation_seat,
                 gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_revisions AS revision
             LEFT JOIN routine_dream_dispatch_specs AS dream
@@ -159,7 +160,8 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                 dream.skill_path, dream.primary_model_ref, dream.primary_reasoning_effort,
                 dream.fallback_model_ref, dream.fallback_reasoning_effort,
                 dream.minimum_model_tier, dream.excluded_model_families,
-                item.item_key, item.knowledge_ref, item.owner_seat, item.escalation_seat,
+                item.item_key, item.knowledge_ref, item.document_id, item.owner_seat,
+                item.escalation_seat,
                 gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_triggers AS trigger
             JOIN routine_revisions AS revision

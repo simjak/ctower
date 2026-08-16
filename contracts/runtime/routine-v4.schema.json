@@ -83,10 +83,11 @@
     },
     "routineItem": {
       "type": "object", "additionalProperties": false,
-      "required": ["item_key", "knowledge_ref", "owner_seat", "escalation_seat"],
+      "required": ["item_key", "knowledge_ref", "document_id", "owner_seat", "escalation_seat"],
       "properties": {
         "item_key": {"$ref": "#/$defs/stableKey"},
         "knowledge_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+        "document_id": {"type": "string", "format": "uuid"},
         "owner_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
         "escalation_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
       }

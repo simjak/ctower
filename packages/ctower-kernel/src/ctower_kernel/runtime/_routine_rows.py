@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import time
 from typing import cast
+from uuid import UUID
 
 from ctower_kernel.runtime import (
     CatchUpPolicy,
@@ -38,6 +39,7 @@ def revision(row: dict[str, object]) -> RoutineRevision:
         routine_item = RoutineItemSpec(
             item_key=str(row["item_key"]),
             knowledge_ref=str(row["knowledge_ref"]),
+            document_id=cast(UUID, row["document_id"]),
             owner_seat=str(row["owner_seat"]),
             escalation_seat=str(row["escalation_seat"]),
         )

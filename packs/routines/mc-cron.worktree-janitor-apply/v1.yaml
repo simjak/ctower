@@ -27,15 +27,16 @@
   "timeout_seconds": 900,
   "handler_kind": "routine_item",
   "component_digests": [
-    "sha256:556f4b6447e6d01c1c3a11f0068feca68fe3afb602008fb99599a17165aaf153"
+    "sha256:3656da615e645ac21c0308b05bf007796e504790e99a2d2cd87f87b2a9501dbb"
   ],
   "activity_gate": {
     "kind": "always"
   },
-  "revision_digest": "sha256:5781ad13fc484926245d673c2c50137a189e56165bea775f4fc7c92ca9004d82",
+  "revision_digest": "sha256:b5112191c7b0b358f37d0c37ea484681d523e05479af1faba20ae19a35efcf54",
   "routine_item": {
     "item_key": "worktree-janitor-apply",
     "knowledge_ref": "mc-cron.worktree-janitor-apply",
+    "document_id": "b82a0ce2-280e-5a05-af2d-acb051441e6e",
     "owner_seat": "ctower-commander",
     "escalation_seat": "ctower-commander"
   }

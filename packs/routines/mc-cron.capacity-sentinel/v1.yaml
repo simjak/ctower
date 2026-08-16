@@ -21,16 +21,17 @@
   "timeout_seconds": 600,
   "handler_kind": "routine_item",
   "component_digests": [
-    "sha256:2be6be19fa8b1fd133f6b10e9074e3cb421c98b44197ba08c5ac4c220c6834cb"
+    "sha256:3e35bed33879cb6ab57d65dae096d39ef9c37af85c6d316b7f7b95d5b7fb3707"
   ],
   "activity_gate": {
     "kind": "open_tickets_above",
     "threshold": 0
   },
-  "revision_digest": "sha256:9a2894877bd87345f9c84aa6a1f6b2494e8f5f696274478106a14ce95abbb7bc",
+  "revision_digest": "sha256:46edd0ac001ffb7baa4d90760e79d8199080456d676c9f080b7f9e3fec9967d3",
   "routine_item": {
     "item_key": "capacity-sentinel",
     "knowledge_ref": "mc-cron.capacity-sentinel",
+    "document_id": "1edc6d80-b92f-5cab-9a8b-df4728a96dfe",
     "owner_seat": "ctower-commander",
     "escalation_seat": "ctower-commander"
   }

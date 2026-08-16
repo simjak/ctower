@@ -74,6 +74,7 @@ def _append_work_item(
         owner_seat=spec.owner_seat,
         escalation_seat=spec.escalation_seat,
         knowledge_ref=spec.knowledge_ref,
+        document_id=spec.document_id,
         gate_evidence=gate_evidence,
         created_at=now,
     )
@@ -155,6 +156,7 @@ def _work_item_event(
             owner_seat=item.owner_seat,
             escalation_seat=item.escalation_seat,
             knowledge_ref=item.knowledge_ref,
+            document_id=item.document_id,
             gate_evidence=item.gate_evidence.response_payload(),
         ),
         prev_hash=bytes(32),
@@ -194,9 +196,10 @@ def _insert_work_item(
         """
         INSERT INTO inbox_work_items (
             work_item_id, tenant_id, routine_ref, revision_digest, scheduled_for,
-            window_ends_at, owner_seat, escalation_seat, knowledge_ref, gate_evidence,
+            window_ends_at, owner_seat, escalation_seat, knowledge_ref, document_id,
+            gate_evidence,
             created_at, event_id
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             item.work_item_id,
@@ -208,6 +211,7 @@ def _insert_work_item(
             item.owner_seat,
             item.escalation_seat,
             item.knowledge_ref,
+            item.document_id,
             Jsonb(item.gate_evidence.response_payload()),
             now,
             event_id,
@@ -631,14 +635,15 @@ def _register_routine_item_spec(
     connection.execute(
         """
         INSERT INTO routine_item_specs (
-            revision_digest, item_key, knowledge_ref, owner_seat, escalation_seat
-        ) VALUES (%s, %s, %s, %s, %s)
+            revision_digest, item_key, knowledge_ref, document_id, owner_seat, escalation_seat
+        ) VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (revision_digest) DO NOTHING
         """,
         (
             _digest(revision.revision_digest),
             spec.item_key,
             spec.knowledge_ref,
+            spec.document_id,
             spec.owner_seat,
             spec.escalation_seat,
         ),
