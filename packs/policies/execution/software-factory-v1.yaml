@@ -1,6 +1,6 @@
 {
   "schema": "ctower.execution-policy/v1",
-  "status": "draft",
+  "status": "staged",
   "key": "engineering.software-factory.execution",
   "revision": 1,
   "workflow_ref": "engineering.software-factory@1",
@@ -21,5 +21,5 @@
   "participant_resolution": [],
   "placement_rules": [],
   "escalation_rules": [],
-  "note": "Draft example only. Risk selectors use the canonical gate-policy child reference <gate-policy-key>@<revision>#review-plans.<name>. Concrete limits live in the selected child; total executions and all consumed counts remain immutable server-owned facts."
+  "note": "Draft example only. Risk selectors use the canonical gate-policy child reference <gate-policy-key>@<revision>#review-plans.<name>. Concrete limits live in the selected child; total executions and all consumed counts remain immutable server-owned facts. | Status raised draft->staged 2026-08-16 so the workflow can register: ctowerctl indexes installed policy components only when status is staged or published, so a draft policy makes its workflow unresolvable with \"installed Workflow policy is unavailable\"."
 }
