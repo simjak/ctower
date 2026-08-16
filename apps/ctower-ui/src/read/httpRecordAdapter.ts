@@ -49,6 +49,8 @@ import type {
   RecordApiReads,
   RecordEvent,
   RecordSource,
+  RequestEntry,
+  RequestsSnapshot,
   TenantDisplayIdentity,
   TicketRecord,
 } from "./interface";
@@ -74,6 +76,9 @@ import type {
 const PRIORITIES: readonly Priority[] = ["P0", "P1", "P2"];
 const HEALTH: readonly ProjectionHealth[] = ["CURRENT", "STATE_UNKNOWN"];
 const DURABILITY: readonly DurabilityState[] = ["durability_pending", "accepted"];
+const REQUEST_STATES = ["NEW", "TRIAGED", "WIP", "BLOCKED", "DONE"] as const;
+const REQUEST_TRIAGE = ["UNTRIAGED", "ACCEPTED", "DUPLICATE", "REJECTED"] as const;
+const REQUEST_DURABILITY = ["accepted"] as const;
 
 function environment(name: string, fallback: string): string {
   const value = process.env[name];
@@ -290,6 +295,65 @@ function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardC
   };
 }
 
+function toRequestEntry(value: unknown): RequestEntry {
+  const row = asRecord(value, "requests.rows[]");
+  return {
+    requestId: asString(row.request_id, "requests.rows[].request_id"),
+    requestNumber: asInteger(row.request_number, "requests.rows[].request_number"),
+    reference: asString(row.reference, "requests.rows[].reference"),
+    projectKey: asString(row.project_key, "requests.rows[].project_key"),
+    content: asString(row.content, "requests.rows[].content"),
+    contentSha256: asString(row.content_sha256, "requests.rows[].content_sha256"),
+    state: asMember(row.state, "requests.rows[].state", REQUEST_STATES),
+    triage: asMember(row.triage, "requests.rows[].triage", REQUEST_TRIAGE),
+    ownerId: asString(row.owner_id, "requests.rows[].owner_id"),
+    owner: asString(row.owner, "requests.rows[].owner"),
+    priority: asMember(row.priority, "requests.rows[].priority", PRIORITIES),
+    priorityDefault: asBoolean(row.priority_default, "requests.rows[].priority_default"),
+    createdAt: asString(row.created_at, "requests.rows[].created_at"),
+    ageSeconds: asInteger(row.age_seconds, "requests.rows[].age_seconds"),
+    requiredTicketIds: asStringList(row.required_ticket_ids, "requests.rows[].required_ticket_ids"),
+    optionalTicketIds: asStringList(row.optional_ticket_ids, "requests.rows[].optional_ticket_ids"),
+    blocker: asStringOrNull(row.blocker, "requests.rows[].blocker"),
+    proofCoverage: asIntegerOrNull(row.proof_coverage, "requests.rows[].proof_coverage"),
+    durabilityState: asMember(
+      row.durability_state,
+      "requests.rows[].durability_state",
+      REQUEST_DURABILITY
+    ),
+    freshness: asInteger(row.freshness, "requests.rows[].freshness"),
+    sourceKind: asString(row.source_kind, "requests.rows[].source_kind"),
+    sourceRef: asString(row.source_ref, "requests.rows[].source_ref"),
+    originalOwnerSha256: asStringOrNull(
+      row.original_owner_sha256,
+      "requests.rows[].original_owner_sha256"
+    ),
+    decisionBrief:
+      row.decision_brief === null
+        ? null
+        : asRecord(row.decision_brief, "requests.rows[].decision_brief"),
+    unknownReason: asStringOrNull(row.unknown_reason, "requests.rows[].unknown_reason"),
+  };
+}
+
+/** Parse the complete accepted-only Request list without inventing defaults. */
+export function requestsFrom(value: unknown): RequestsSnapshot {
+  const row = asRecord(value, "requests");
+  return {
+    rows: asArray(row.rows, "requests.rows").map(toRequestEntry),
+    answeredProjectCount: asInteger(row.answered_project_count, "requests.answered_project_count"),
+    answeredProjects: asStringList(row.answered_projects, "requests.answered_projects"),
+    observedAt: asString(row.observed_at, "requests.observed_at"),
+    requestedProjectCount: asInteger(
+      row.requested_project_count,
+      "requests.requested_project_count"
+    ),
+    requestedProjects: asStringList(row.requested_projects, "requests.requested_projects"),
+    unansweredProjects: asStringList(row.unanswered_projects, "requests.unanswered_projects"),
+    watermark: asInteger(row.watermark, "requests.watermark"),
+  };
+}
+
 /** The recorded source, plus the issue it addresses when the record names one. */
 function sourceOf(kind: string, ref: string): RecordSource {
   return { kind, ref, issue: issueReferenceOf(kind, ref) };
@@ -386,6 +450,12 @@ export function inboxThreadFrom(value: unknown): InboxThread {
 /** `project_key` is a required query parameter on every one of these paths. */
 function scoped(path: string, projectKey: string): string {
   return `${path}?project_key=${encodeURIComponent(projectKey)}`;
+}
+
+async function loadRequests(projectKey: string | null): Promise<RequestsSnapshot> {
+  return requestsFrom(
+    await read(projectKey === null ? "/v1/requests" : scoped("/v1/requests", projectKey))
+  );
 }
 
 async function loadTicket(ticketId: string, projectKey: string): Promise<TicketRecord> {
@@ -555,6 +625,8 @@ export const httpRecordAdapter: RecordApiReads = {
     await reading(async () => await loadBoard(projectKey)),
   boardCards: async (projectKey: string): Promise<Reading<BoardCards>> =>
     await reading(async () => await loadBoardCards(projectKey)),
+  requests: async (projectKey: string | null): Promise<Reading<RequestsSnapshot>> =>
+    await reading(async () => await loadRequests(projectKey)),
   ticket: async (ticketId: string, projectKey: string): Promise<Reading<TicketRecord>> =>
     await reading(async () => await loadTicket(ticketId, projectKey)),
   ticketAudit: async (

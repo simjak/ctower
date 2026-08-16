@@ -9,7 +9,15 @@ import type {
   ProjectionHealth,
 } from "@ctower/client";
 import type { ReadFailure } from "./bounded";
+import type { RequestsSnapshot } from "./requestsInterface";
 import type { Known } from "./sources/maybe";
+
+export type {
+  RequestEntry,
+  RequestState,
+  RequestTriage,
+  RequestsSnapshot,
+} from "./requestsInterface";
 
 /**
  * The record-read contract this surface renders.
@@ -912,6 +920,8 @@ export interface RecordAdapter {
   board: (projectKey: string) => Promise<Reading<BoardSnapshot>>;
   /** One project's board cards alone, for a screen that counts rather than joins. */
   boardCards: (projectKey: string) => Promise<Reading<BoardCards>>;
+  /** Accepted-only operator Requests, in the record's returned order. */
+  requests: (projectKey: string | null) => Promise<Reading<RequestsSnapshot>>;
   /** Every configured project's work, escalations and unread comms, in one read. */
   portfolio: () => Promise<Reading<Portfolio>>;
   ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;
@@ -964,6 +974,7 @@ export type RecordApiReads = Pick<
   | "instance"
   | "board"
   | "boardCards"
+  | "requests"
   | "ticket"
   | "ticketAudit"
   | "inbox"

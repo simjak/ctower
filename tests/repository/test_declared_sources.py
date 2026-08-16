@@ -213,6 +213,7 @@ class RailContractTests(unittest.TestCase):
                 "/inbox",
                 "/metrics",
                 "/portfolio",
+                "/requests",
                 "/team",
                 "/ticket",
                 "/workspace",

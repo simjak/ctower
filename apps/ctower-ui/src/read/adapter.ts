@@ -44,6 +44,7 @@ import type {
 
 export type ScreenKey =
   | "board"
+  | "requests"
   | "portfolio"
   | "ticket"
   | "inbox"
@@ -59,6 +60,7 @@ export type ScreenKey =
 /** Which source answers each screen today, for the provenance foot. */
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   board: "ctower read API · /v1/board",
+  requests: "ctower read API · /v1/requests",
   portfolio: "ctower read API · /v1/board per project + /v1/inbox/threads",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
   inbox:
@@ -78,6 +80,7 @@ export const recordAdapter: RecordAdapter = {
   instance: httpRecordAdapter.instance,
   board: httpRecordAdapter.board,
   boardCards: httpRecordAdapter.boardCards,
+  requests: httpRecordAdapter.requests,
   // the portfolio composes the reads above rather than adding a source: one
   // card-only board per configured project, plus the one inbox projection
   portfolio: readPortfolio,
