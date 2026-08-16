@@ -30,11 +30,19 @@ emits that same full prompt with the occurrence. Mission Control delivery theref
 text changes after registration. A corrected digest serially replaces only the tenant's active trigger;
 older revisions, occurrences, and effects remain immutable history.
 
+Retirement is different from correcting a revision. `beat-dispatch retire` appends a tenant-scoped fact
+for the currently active fleet-beat revision and removes only its scheduling trigger. Once accepted, later
+registration and scheduler scans cannot create more occurrences for that tenant/reference. The definition
+and all prior facts remain immutable. Startup may stop requiring the corresponding pack only after every
+current tenant has an authoritative retirement for that exact reference; an unexplained missing pack still
+fails closed.
+
 ## How to use routines
 
 There is no general routine editor today. Operators inspect the registered fleet subset with
 `beat-dispatch routines`, list pending immutable effects with `beat-dispatch list`, and use the exact dream
-commands for dream effects. Both beat reads are operator-only. Ctower records the schedule and effect; the
+commands for dream effects. Operators and Commanders retire an active beat with `beat-dispatch retire
+<ctower.beat.*@revision>`. Both beat reads are operator-only. Ctower records the schedule and effect; the
 external Mission Control consumer owns DIRECTOR-session injection and its append-only delivery ledger.
 
 New users should treat routines as scheduled system work, not as tickets they can edit from the Board. If a
