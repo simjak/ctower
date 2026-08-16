@@ -1,6 +1,6 @@
 {
   "schema": "ctower.workflow/v1",
-  "status": "draft",
+  "status": "staged",
   "key": "engineering.software-factory",
   "revision": 1,
   "initial_stage": "intake",
@@ -11,24 +11,169 @@
     "gates": "engineering.software-factory.gates@1"
   },
   "stages": [
-    {"key": "intake", "activity_class": "work"},
-    {"key": "think", "activity_class": "work"},
-    {"key": "plan", "activity_class": "work"},
-    {"key": "design", "activity_class": "work"},
-    {"key": "implement", "activity_class": "work"},
-    {"key": "local-verification-qa", "activity_class": "verification"},
-    {"key": "risk-derived-review", "activity_class": "verification"},
-    {"key": "documentation", "activity_class": "work"},
-    {"key": "release-preflight", "activity_class": "work"},
-    {"key": "merge", "activity_class": "work"},
-    {"key": "staging-deploy", "activity_class": "work"},
-    {"key": "staging-qa", "activity_class": "verification"},
-    {"key": "production-deploy", "activity_class": "work"},
-    {"key": "production-smoke-live-qa", "activity_class": "verification"},
-    {"key": "retro", "activity_class": "work"},
-    {"key": "resolve-close", "activity_class": "work"}
+    {
+      "key": "intake",
+      "activity_class": "work"
+    },
+    {
+      "key": "think",
+      "activity_class": "work"
+    },
+    {
+      "key": "plan",
+      "activity_class": "work"
+    },
+    {
+      "key": "design",
+      "activity_class": "work"
+    },
+    {
+      "key": "implement",
+      "activity_class": "work"
+    },
+    {
+      "key": "local-verification-qa",
+      "activity_class": "verification"
+    },
+    {
+      "key": "risk-derived-review",
+      "activity_class": "verification"
+    },
+    {
+      "key": "documentation",
+      "activity_class": "work"
+    },
+    {
+      "key": "release-preflight",
+      "activity_class": "work"
+    },
+    {
+      "key": "merge",
+      "activity_class": "work"
+    },
+    {
+      "key": "staging-deploy",
+      "activity_class": "work"
+    },
+    {
+      "key": "staging-qa",
+      "activity_class": "verification"
+    },
+    {
+      "key": "production-deploy",
+      "activity_class": "work"
+    },
+    {
+      "key": "production-smoke-live-qa",
+      "activity_class": "verification"
+    },
+    {
+      "key": "retro",
+      "activity_class": "work"
+    },
+    {
+      "key": "resolve-close",
+      "activity_class": "work"
+    }
   ],
-  "transitions": [],
-  "failure_routes": [],
-  "note": "Skeleton only. Publication requires typed transitions, contracts, failure routes, invalidation, skip predicates, and conformance evidence from SPEC."
+  "transitions": [
+    {
+      "from": "intake",
+      "to": "think",
+      "predicate_ref": "entry.ready@1"
+    },
+    {
+      "from": "think",
+      "to": "plan",
+      "predicate_ref": "entry.ready@1"
+    },
+    {
+      "from": "plan",
+      "to": "design",
+      "predicate_ref": "criteria.frozen@1"
+    },
+    {
+      "from": "design",
+      "to": "implement",
+      "predicate_ref": "criteria.frozen@1"
+    },
+    {
+      "from": "implement",
+      "to": "local-verification-qa",
+      "predicate_ref": "criteria.frozen@1"
+    },
+    {
+      "from": "local-verification-qa",
+      "to": "risk-derived-review",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "risk-derived-review",
+      "to": "documentation",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "documentation",
+      "to": "release-preflight",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "release-preflight",
+      "to": "merge",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "merge",
+      "to": "staging-deploy",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "staging-deploy",
+      "to": "staging-qa",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "staging-qa",
+      "to": "production-deploy",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "production-deploy",
+      "to": "production-smoke-live-qa",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "production-smoke-live-qa",
+      "to": "retro",
+      "predicate_ref": "proof.current@1"
+    },
+    {
+      "from": "retro",
+      "to": "resolve-close",
+      "predicate_ref": "proof.current@1"
+    }
+  ],
+  "failure_routes": [
+    {
+      "from": "local-verification-qa",
+      "failure_class_ref": "qa.local-verification-failed@1",
+      "to": "implement"
+    },
+    {
+      "from": "risk-derived-review",
+      "failure_class_ref": "review.changes-required@1",
+      "to": "implement"
+    },
+    {
+      "from": "staging-qa",
+      "failure_class_ref": "qa.staging-verification-failed@1",
+      "to": "implement"
+    },
+    {
+      "from": "production-smoke-live-qa",
+      "failure_class_ref": "qa.production-smoke-failed@1",
+      "to": "implement"
+    }
+  ],
+  "note": "Typed transitions and failure routes authored 2026-08-16. Predicates are restricted to the three the kernel computes (entry.ready@1, criteria.frozen@1, proof.current@1); any other reference is refused forever as predicate-unsatisfied. Criteria must be frozen to leave plan; every stage after local-verification-qa requires current proof. All four verification stages route failure back to implement. Registration additionally requires the runtime to load this pack: development_runtime.py currently hardcodes one workflow."
 }

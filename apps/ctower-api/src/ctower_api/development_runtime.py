@@ -63,6 +63,12 @@ _WORKFLOW = "workflows/ctower.trust-spine-four-stage/v1.yaml"
 _EXECUTION = "policies/execution/trust-spine-four-stage-v1.yaml"
 _GATE = "policies/gates/trust-spine-four-stage-v1.yaml"
 _EVIDENCE = "policies/evidence/trust-spine-four-stage-v1.yaml"
+# The runtime held exactly ONE workflow, so engineering.software-factory could be authored,
+# validated and still never appear in `ticket workflow list` — the operator's twelve stages
+# existed as a pack nothing loaded. Registering a second workflow is a two-line change here.
+_SF_WORKFLOW = "workflows/engineering.software-factory/v1.yaml"
+_SF_EXECUTION = "policies/execution/software-factory-v1.yaml"
+_SF_GATE = "policies/gates/software-factory-v1.yaml"
 
 
 @dataclass(slots=True)
@@ -138,7 +144,7 @@ def api_main() -> None:
             record,
             proof=Proof(writer=proof_store),
             workflow=Workflow(
-                (_workflow_graph(packs),),
+                (_workflow_graph(packs), _software_factory_graph(packs)),
                 writer=workflow_store,
                 policy_digests=_policy_digests(packs),
             ),
@@ -244,11 +250,20 @@ def _workflow_graph(packs: Path) -> WorkflowGraph:
     return WorkflowGraph.from_mapping(payload)
 
 
+def _software_factory_graph(packs: Path) -> WorkflowGraph:
+    payload = json.loads((packs / _SF_WORKFLOW).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError("authored Workflow pack must be an object")
+    return WorkflowGraph.from_mapping(payload)
+
+
 def _policy_digests(packs: Path) -> dict[str, str]:
     return {
         "ctower.trust-spine-four-stage.execution@1": _digest(packs / _EXECUTION),
         "ctower.trust-spine-four-stage.gates@1": _digest(packs / _GATE),
         "ctower.trust-spine-four-stage.evidence@1": _digest(packs / _EVIDENCE),
+        "engineering.software-factory.execution@1": _digest(packs / _SF_EXECUTION),
+        "engineering.software-factory.gates@1": _digest(packs / _SF_GATE),
     }
 
 
