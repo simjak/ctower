@@ -38,7 +38,7 @@ nav:
   - Concepts:
       - concepts/index.md
       - The whole picture in one map: concepts/map.md
-      - The components, grouped: concepts/components.md
+      - Every component with examples: concepts/components.md
       - Requests: concepts/requests.md
       - Request-maintenance proposals: concepts/request-maintenance-proposals.md
       - Rulings and agreements: concepts/rulings.md
