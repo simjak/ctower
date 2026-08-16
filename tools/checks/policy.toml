@@ -32,6 +32,7 @@ non_waivable_rules = [
   "generated.manifest",
   "generated.notice",
   "security.secret",
+  "tenant-catalog-content-in-public-repository",
 ]
 
 [budgets.file]

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
-import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from pathlib import Path
+
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from tools.checks.report import Finding, Severity
 
@@ -14,12 +17,9 @@ __all__ = ["catalog_admission_findings"]
 TENANT_CONTENT_REFUSAL = "tenant-catalog-content-in-public-repository"
 _FIELD = "catalog_content"
 _TENANT_VALUE = "tenant"
-_YAML_MARKER = re.compile(
-    rf"^\s*{re.escape(_FIELD)}\s*:\s*['\"]?{re.escape(_TENANT_VALUE)}['\"]?\s*(?:#.*)?$"
-)
-_JSON_MARKER = re.compile(
-    rf"^\s*['\"]{re.escape(_FIELD)}['\"]\s*:\s*['\"]{re.escape(_TENANT_VALUE)}['\"]\s*,?\s*$"
-)
+_SUPPORTED_SUFFIXES = frozenset({".json", ".yaml", ".yml"})
+_CATALOG_DIRECTORIES = frozenset({"examples", "packs"})
+_YAML = YAML(typ="safe")
 _EXCLUDED_DIRECTORIES = frozenset(
     {
         ".git",
@@ -40,25 +40,72 @@ def catalog_admission_findings(root: Path) -> tuple[Finding, ...]:
 
     findings: list[Finding] = []
     for path in _files(root):
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        if path.suffix.lower() not in _SUPPORTED_SUFFIXES:
             continue
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            if _YAML_MARKER.fullmatch(line) or _JSON_MARKER.fullmatch(line):
-                relative = path.relative_to(root).as_posix()
-                findings.append(
-                    Finding(
-                        TENANT_CONTENT_REFUSAL,
-                        relative,
-                        f"{TENANT_CONTENT_REFUSAL}: explicit tenant catalog content marker",
-                        Severity.ERROR,
-                        line=line_number,
-                        observed=1,
-                        limit=0,
-                    )
-                )
+        findings.extend(_path_findings(path, root))
     return tuple(findings)
+
+
+def _path_findings(path: Path, root: Path) -> tuple[Finding, ...]:
+    relative = path.relative_to(root).as_posix()
+    is_catalog_artifact = _is_catalog_artifact(path, root)
+    text = _read_text(path)
+    if text is None:
+        return (
+            (_finding(relative, "catalog artifact could not be classified"),)
+            if is_catalog_artifact
+            else ()
+        )
+    parsed, value = _parse(path, text)
+    if not parsed:
+        if is_catalog_artifact or _FIELD in text:
+            return (_finding(relative, "catalog artifact could not be classified"),)
+        return ()
+    if _contains_tenant_marker(value):
+        return (_finding(relative, "explicit tenant catalog content marker"),)
+    return ()
+
+
+def _read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _parse(path: Path, text: str) -> tuple[bool, object | None]:
+    try:
+        if path.suffix.lower() == ".json":
+            return True, json.loads(text)
+        return True, _YAML.load(text)
+    except (ValueError, YAMLError):
+        return False, None
+
+
+def _contains_tenant_marker(value: object) -> bool:
+    if isinstance(value, Mapping):
+        if value.get(_FIELD) == _TENANT_VALUE:
+            return True
+        return any(_contains_tenant_marker(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_tenant_marker(item) for item in value)
+    return False
+
+
+def _is_catalog_artifact(path: Path, root: Path) -> bool:
+    relative = path.relative_to(root)
+    return bool(relative.parts) and relative.parts[0] in _CATALOG_DIRECTORIES
+
+
+def _finding(relative: str, detail: str) -> Finding:
+    return Finding(
+        TENANT_CONTENT_REFUSAL,
+        relative,
+        f"{TENANT_CONTENT_REFUSAL}: {detail}",
+        Severity.ERROR,
+        observed=1,
+        limit=0,
+    )
 
 
 def _files(root: Path) -> Iterator[Path]:

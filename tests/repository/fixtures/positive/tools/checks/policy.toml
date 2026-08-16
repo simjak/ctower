@@ -5,7 +5,12 @@ protected_roots = ["app", "consumer"]
 
 [architecture]
 forbidden_module_stems = ["common", "helpers", "manager", "utils"]
-non_waivable_rules = ["generated.drift", "generated.manifest", "generated.notice"]
+non_waivable_rules = [
+  "generated.drift",
+  "generated.manifest",
+  "generated.notice",
+  "tenant-catalog-content-in-public-repository",
+]
 
 [budgets.file]
 warning = 500
