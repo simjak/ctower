@@ -4,7 +4,7 @@ CompanyBundle is the strict, portable desired-state envelope for the development
 validate, plan, atomically apply, and deterministically export one tenant's future-only component pins. It
 does not activate runners, effects, external targets, or production recovery.
 
-The checked-in synthetic example is
+The checked-in development bundle is
 [`company/company.bundle.yaml`](https://github.com/simjak/ctower/blob/main/company/company.bundle.yaml).
 It contains complete versioned component envelopes and inline non-secret payloads. Secret bindings contain
 names and reference classes only—never credentials or resolved values.

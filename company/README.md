@@ -1,3 +1,3 @@
 # Company desired state
 
-`company.bundle.yaml` is a secret-free authoring example over the same future authenticated command API as the UI. It is never watched, never required for runtime liveness, and never stores tickets, jobs, leases, cursors, receipts, health, verdicts, counters, provider handles, login sessions, or secret values.
+`company.bundle.yaml` is the read-only-exported development desired state for the `ctower-development` company. It carries the existing 48 published resources and adds the ten `ctower:<role>` agent-profile assignments used by the operator's seat-credential ceremony; it contains no bearer values.

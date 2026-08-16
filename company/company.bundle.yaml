@@ -1,13 +1,13 @@
 schema: ctower.company-bundle/v1
 company:
-  key: ctower
-  display_name: Ctower
+  key: ctower-development
+  display_name: Ctower Development
 resources:
   - component:
       schema: ctower.versioned-component/v1
       kind: goal
       key: company.trusted-delivery
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:52e8483da484e9d27789621c173bc77f2b6511e91188caa98443f2da05cc5368
       schema_ref: ctower.goal/v1
@@ -28,7 +28,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: ctower.control-plane
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:a99c1695616e71bc638500024708d25e6199df247f250b2dbadf398136c84c3b
       schema_ref: ctower.project/v1
@@ -47,7 +47,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-0
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:67914f0fd3fa36805f841afb2cea3aa2b3136bf7462477f5f6763ae69d1edb5c
       schema_ref: ctower.checkpoint/v1
@@ -64,7 +64,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-1
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:9cbfcb282d909773c1470fed4598c09b17a6f1ca31bf36b9757e20fff0bf9356
       schema_ref: ctower.checkpoint/v1
@@ -82,7 +82,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-2
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:5d1f6363da9b3928065009611a0ecd542ad6ab34d5c703001d735b6d79e66f74
       schema_ref: ctower.checkpoint/v1
@@ -100,7 +100,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-3
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:4d7221f08f88c320f29db5ff1a878d964cd5954ca4cb685791c890f54ed9f84a
       schema_ref: ctower.checkpoint/v1
@@ -118,7 +118,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-4
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:57c27e316e9955259c3a447c935f056dbb153b52c645cad7bbf028e9162f8883
       schema_ref: ctower.checkpoint/v1
@@ -136,7 +136,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-5
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:26fc0ba838720e7b7d973aa6aa329a42f21bdc73aa9c6d486f8a2d715fd3807a
       schema_ref: ctower.checkpoint/v1
@@ -154,7 +154,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-6
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:2b2a508909023dd80ddcb07e303708e35a132f805d002e07c0a5c27ef19d7901
       schema_ref: ctower.checkpoint/v1
@@ -172,7 +172,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i1-7
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:32c8704a2e9e6e805b2a48be619f940c1e379c19c88fd166ac20ababaf92b7f7
       schema_ref: ctower.checkpoint/v1
@@ -190,7 +190,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i2-1
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:b51fc6da6491b92a0eb15dfb54b022f519ff515198161d24ca9cdd7246c52f90
       schema_ref: ctower.checkpoint/v1
@@ -208,7 +208,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i2-2
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:52c7a14ec0e11244cd6a01d2469f909574983b13adb3c51f645d38088d04b075
       schema_ref: ctower.checkpoint/v1
@@ -226,7 +226,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i2-3
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:2aa030dfc9969c8a509b7f0bd731a52d0edf0b0c369014d6dce26ba07204559c
       schema_ref: ctower.checkpoint/v1
@@ -244,7 +244,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i2-4
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:81f916fcdbf355e0548b5810d77654841356cfd4a0e030e3e4c4bd38e0675173
       schema_ref: ctower.checkpoint/v1
@@ -262,7 +262,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i2-5
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:eaa3e9d5161986b87923a57918a153515347974cc5698d9d20030e8e7fea3098
       schema_ref: ctower.checkpoint/v1
@@ -280,7 +280,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: ctower.i2-6
-      scope: {tenant: ctower, project: ctower}
+      scope: {tenant: ctower-development, project: ctower}
       revision: 1
       content_digest: sha256:02222298a3bbcc38bf2ce19685ea246c76465b7fd37785fce9790573b4a0d8be
       schema_ref: ctower.checkpoint/v1
@@ -298,7 +298,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: persona
       key: operator.commander
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:c188b829bde39cf37e2765aa44d1cf10d256c3461d7097984693e299c8cb229d
       schema_ref: ctower.persona/v1
@@ -316,7 +316,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: capability
       key: control.api
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e
       schema_ref: ctower.capability/v1
@@ -335,7 +335,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: skill
       key: protected.cli
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:3a53651d8858c87c698d9d0386535cc875816f4a1d0c8dfc54737c1509aaf632
       schema_ref: ctower.skill/v1
@@ -357,7 +357,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: tool
       key: ctowerctl.client
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:8baab4c5906a2039c470a42ca86961d81ead9d1b610e4939abef11dba6466d92
       schema_ref: ctower.tool/v1
@@ -379,7 +379,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: environment
       key: local.linux
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db
       schema_ref: ctower.environment/v1
@@ -399,7 +399,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: image
       key: local.control
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:314c24a09a252a2588c7bfcdd7a9c0875d055d46e017e11865c09f46fc47ac53
       schema_ref: ctower.image/v1
@@ -422,7 +422,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: harness
       key: local.generated-client
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:3458a380b9f9fd4436761a38cb2b7755af8700813b694ce7d993ad7e42083d10
       schema_ref: ctower.harness/v1
@@ -441,7 +441,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: supervisor
       key: local.process
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:3803991ba7d0b7e797edc60d7078e8334d7850d1b769b052dc4775cc315fbd82
       schema_ref: ctower.supervisor/v1
@@ -460,7 +460,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: target
       key: local.control
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:48fee5c2e773f9632720d5fd3cd066927b7d9f82da8dfc185d3bd601c73ba7fd
       schema_ref: ctower.target/v1
@@ -484,7 +484,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: workspace
       key: local.checkout
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:b395579f15d221ddc0c47921a4c4cbf7d8039fdeab49532b621d0f192040baad
       schema_ref: ctower.workspace/v1
@@ -503,7 +503,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: telemetry
       key: local.otlp
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:338919da4a210a40c7bd68a51264e2e6cd49653b8b16a0b8c9aca16b21637f58
       schema_ref: ctower.telemetry/v1
@@ -522,7 +522,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: agent_profile
       key: commander.protected-cli
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
       schema_ref: ctower.agent-profile/v1
@@ -549,7 +549,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: workflow
       key: ctower.trust-spine-four-stage
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
       schema_ref: ctower.workflow/v1
@@ -588,7 +588,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: execution_policy
       key: ctower.trust-spine-four-stage.execution
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:15f720af3958e10884ef06e39a5f937f0f5110a2f6fdaf08f9d2927119430d73
       schema_ref: ctower.execution-policy/v1
@@ -616,7 +616,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: gate_policy
       key: ctower.trust-spine-four-stage.gates
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21
       schema_ref: ctower.gate-policy/v1
@@ -647,7 +647,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: evidence_policy
       key: ctower.trust-spine-four-stage.evidence
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6
       schema_ref: ctower.evidence-policy/v1
@@ -671,7 +671,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: manibo.delivery
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:e0e7d00eb3be2db075ce79fe521060001e830f7ff14c4b057cc2c5dd2d5d10ba
       schema_ref: ctower.project/v1
@@ -690,7 +690,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: bh-loop.delivery
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower-development, project: null}
       revision: 1
       content_digest: sha256:c46a54c1a9d00b1ad05f30afc5eccf502dde2d9665f1ca54f4d800d728136a2f
       schema_ref: ctower.project/v1
@@ -709,7 +709,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.verify
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:bd51bf7efede29f73eb8e219b816f9bb72074e0b3e3dfac866c282f0db423fca
       schema_ref: ctower.checkpoint/v1
@@ -731,7 +731,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.staging-infra
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:e0eb0249e1459355d328c558188b6c3d5ba14e426fe8a57348deb558b7ae7772
       schema_ref: ctower.checkpoint/v1
@@ -753,7 +753,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.images-published
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:c63af0c8c7b8b5fdfcc679266143d7233e4e800e43f2d5f69c6515df8e74d9cd
       schema_ref: ctower.checkpoint/v1
@@ -775,7 +775,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.staging-deployed
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:c530d8e47d33912bfb8b60a444d1082fd3a25122f5711829b45b136a11620fc4
       schema_ref: ctower.checkpoint/v1
@@ -797,7 +797,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.staging-nfq-e2e
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:93b682af4d859a812c186a029fcb017ffe03e312e9f3f86954fe195d39892870
       schema_ref: ctower.checkpoint/v1
@@ -819,7 +819,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.production-released
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:1e454294f05e673d84be4b94477021845d64c166a9ca7eafc76964c17081ba41
       schema_ref: ctower.checkpoint/v1
@@ -841,7 +841,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.production-nfq-e2e
-      scope: {tenant: ctower, project: manibo}
+      scope: {tenant: ctower-development, project: manibo}
       revision: 1
       content_digest: sha256:60cc61507f4eef88ef879ec03c44f88167ed003f5a28e939042a0e6f4206fe26
       schema_ref: ctower.checkpoint/v1
@@ -863,7 +863,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.contract-admission
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:c6dd3ab1070166fc770c9aad668a35b0b425ca89ce7f9b259ac7756c1dace7f2
       schema_ref: ctower.checkpoint/v1
@@ -885,7 +885,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.d11-technical
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:4fffb8e09af4156827cffdb3c96450ba83ec663d4e29b0c8dd6a5c07d6ef5724
       schema_ref: ctower.checkpoint/v1
@@ -907,7 +907,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.production-foundation
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:55b816de0c00cd9d51453f7a31f8f89cbf27781c65a527091944e957b4663d44
       schema_ref: ctower.checkpoint/v1
@@ -929,7 +929,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.layer-1-foundation
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:70b44a96ef28fba94bf37cd73c5b283344ec7f056fb26257d722421f2896e92b
       schema_ref: ctower.checkpoint/v1
@@ -951,7 +951,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.layer-2-staff-assistant
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:1c342e2563ea1376b079dbc233080f159034cac05762435f93ac2c21f3893f65
       schema_ref: ctower.checkpoint/v1
@@ -973,7 +973,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.d11-org
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:cec8198b5901bb6da25e8be79c15cfd83bb1fb5d292058171953625097bfe78a
       schema_ref: ctower.checkpoint/v1
@@ -995,7 +995,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.biomarker-rail
-      scope: {tenant: ctower, project: bh-loop}
+      scope: {tenant: ctower-development, project: bh-loop}
       revision: 1
       content_digest: sha256:06489398a99a2b3e40ee9fee52da760758166330b09ca117c9c0b73267aa26bb
       schema_ref: ctower.checkpoint/v1
@@ -1042,6 +1042,76 @@ assignments:
       key: ctower.trust-spine-four-stage
       revision: 1
       content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
+  - subject: ctower:commander
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:cso
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:eng-manager
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:engineer-1
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:engineer-2
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:qa
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:release-manager
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:retro
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:review
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: ctower:tech-writer
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
 secret_binding_refs:
   - name: SOURCE_CONTROL_TOKEN
     reference_class: runtime-binding

@@ -204,16 +204,16 @@ def test_minimal_bundle_is_portable_strict_and_content_addressed() -> None:
 def test_reviewed_ctower_bundle_declares_one_ordered_meaningful_project_hierarchy() -> None:
     company, resources, checkpoints, payloads, assignments = _reviewed_bundle_hierarchy()
 
-    assert company == {"key": "ctower", "display_name": "Ctower"}
+    assert company == {"key": "ctower-development", "display_name": "Ctower Development"}
     assert all(
         cast(dict[str, object], cast(dict[str, object], resource["component"])["scope"])["tenant"]
-        == "ctower"
+        == "ctower-development"
         for resource in resources
     )
     assert tuple(payload["checkpoint_key"] for payload in payloads) == _CTOWER_CHECKPOINT_KEYS
     assert all(
         cast(dict[str, object], resource["component"])["scope"]
-        == {"tenant": "ctower", "project": "ctower"}
+        == {"tenant": "ctower-development", "project": "ctower"}
         for resource in checkpoints
     )
     assert all(cast(list[object], payload["criteria"]) for payload in payloads)
@@ -256,7 +256,7 @@ def _reviewed_bundle_hierarchy() -> tuple[
             dict[str, object],
             cast(dict[str, object], resource["component"])["scope"],
         )["tenant"]
-        == "ctower"
+        == "ctower-development"
     ]
     checkpoints = [
         resource
