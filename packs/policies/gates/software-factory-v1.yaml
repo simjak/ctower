@@ -4,6 +4,15 @@
   "key": "engineering.software-factory.gates",
   "revision": 1,
   "workflow_ref": "engineering.software-factory@1",
+  "criteria": [
+    {
+      "key": "artifact-current",
+      "description": "Artifact evidence matches the current candidate.",
+      "candidate_dependent": true,
+      "requires_verdict": true
+    }
+  ],
+  "protected_verdict": {"reviewer_kind": "operator", "self_review": "forbidden"},
   "independence": {
     "author_may_not_review_own_candidate": true,
     "effective_identity_fields": [

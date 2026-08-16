@@ -130,7 +130,7 @@ def api_main() -> None:
     record = PostgresRecord(runtime_dsn, standby_dsn=standby_dsn)
     proof_store = PostgresProof(
         runtime_dsn,
-        policies=(_proof_policy(packs),),
+        policies=(_proof_policy(packs), _software_factory_proof_policy(packs)),
         policy_pins=PostgresWorkflowPolicyPins(),
     )
     workflow_store = PostgresWorkflow(
@@ -241,6 +241,13 @@ def _proof_policy(packs: Path) -> ProofPolicy:
     return ProofPolicy.from_bytes(
         (packs / _GATE).read_bytes(),
         (packs / _EVIDENCE).read_bytes(),
+    )
+
+
+def _software_factory_proof_policy(packs: Path) -> ProofPolicy:
+    return ProofPolicy.from_bytes(
+        (packs / _SF_GATE).read_bytes(),
+        (packs / _SF_EVIDENCE).read_bytes(),
     )
 
 
