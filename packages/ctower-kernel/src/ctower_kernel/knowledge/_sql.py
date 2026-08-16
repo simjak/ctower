@@ -243,6 +243,7 @@ def _read_authority_problem(
         tenant_id=actor.tenant_id,
         principal_id=actor.principal_id,
         project_keys=(cast(str, project_key),),
+        allow_operator_read=True,
     )
 
 

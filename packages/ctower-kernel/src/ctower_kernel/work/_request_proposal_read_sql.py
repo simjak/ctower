@@ -92,6 +92,7 @@ def _list_request_proposals_once(
             principal_id=actor.principal_id,
             project_keys=requested,
             operator_only=project_key is None and actor.kind is not PrincipalKind.OPERATOR,
+            allow_operator_read=True,
         )
         if scope is not None:
             return scope

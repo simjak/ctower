@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3c64910c84ef9419bf8fbaf219189b952ff287b7d6923a931706280886c071ee
+Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
 """
 
 from __future__ import annotations
@@ -1044,7 +1044,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TicketResource}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketResource}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket_timeline(
@@ -1063,7 +1063,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TimelineResponse}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def import_estate_company_records(
@@ -1418,7 +1418,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: AssignmentList}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AssignmentList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_audit_events(
@@ -1439,7 +1439,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: AuditPage}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AuditPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_sessions(
@@ -1458,7 +1458,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TicketSessionList}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketSessionList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def plan_company_bundle(

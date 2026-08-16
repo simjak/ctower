@@ -28,7 +28,11 @@ from ctower_kernel.record.ticket_creation import (
     new_ticket_creation_ids,
     ticket_created_commit,
 )
-from ctower_kernel.record.transaction import RecordTransaction, authority_connection
+from ctower_kernel.record.transaction import (
+    RecordTransaction,
+    authority_connection,
+    project_scope_refusal,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["create_ticket", "get_ticket", "ticket_timeline"]
@@ -182,6 +186,15 @@ def get_ticket(
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(project_key,),
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
         row = connection.execute(
             """
             SELECT ticket.ticket_id, ticket.title, ticket.project_key,
@@ -221,6 +234,15 @@ def ticket_timeline(
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(project_key,),
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
         rows = connection.execute(
             """
             SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,

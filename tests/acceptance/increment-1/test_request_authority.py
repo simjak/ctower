@@ -39,6 +39,33 @@ __all__: tuple[str, ...] = ()
 HTTP_FORBIDDEN = 403
 
 
+def test_empty_bound_operator_cannot_capture_or_prioritize_requests(
+    tenant: TenantFixture,
+) -> None:
+    """R2-1: the read-only operator exemption cannot authorize Request writes."""
+    authority = Requests(PostgresRequests(tenant.database.runtime_dsn))
+    machine_operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    bound_operator = _bound_human(tenant, machine_operator, "operator", project_keys=())
+    seed = _accepted_capture(tenant, authority, machine_operator, "R2-1 transition seed")
+    before = _request_counts(tenant)
+    capture_text = "R2-1 empty-bound operator capture"
+    capture = authority.capture(
+        bound_operator,
+        RequestCapture(uuid4(), "ctower", capture_text),
+        telemetry=_telemetry(bound_operator),
+    )
+    priority_reason = "R2-1 empty-bound operator priority"
+    priority = authority.prioritize(
+        bound_operator,
+        RequestPriority(uuid4(), seed.request_id, 1, "P1", priority_reason),
+        telemetry=_telemetry(bound_operator),
+    )
+    markers = (str(bound_operator.principal_id), str(seed.request_id))
+    _assert_scope_refusal(capture, (*markers, capture_text))
+    _assert_scope_refusal(priority, (*markers, priority_reason))
+    assert _request_counts(tenant) == before
+
+
 def test_viewer_is_denied_every_request_mutation_axis_and_cannot_be_owner(
     tenant: TenantFixture,
 ) -> None:
@@ -285,7 +312,29 @@ def _accepted_change(tenant: TenantFixture, outcome: object) -> RequestChangeRes
     return outcome
 
 
-def _bound_human(tenant: TenantFixture, operator: Actor, role: str) -> Actor:
+def _request_counts(tenant: TenantFixture) -> tuple[int, int]:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            "SELECT (SELECT count(*) FROM requests), (SELECT count(*) FROM request_priority_facts)"
+        ).fetchone()
+    assert row is not None
+    return int(row[0]), int(row[1])
+
+
+def _assert_scope_refusal(outcome: object, markers: tuple[str, ...]) -> None:
+    assert isinstance(outcome, RecordProblem)
+    problem: RecordProblem = outcome
+    assert (problem.code, problem.status) == ("project-scope-denied", HTTP_FORBIDDEN)
+    assert all(marker not in str(problem.response_payload()) for marker in markers)
+
+
+def _bound_human(
+    tenant: TenantFixture,
+    operator: Actor,
+    role: str,
+    *,
+    project_keys: tuple[str, ...] = ("ctower",),
+) -> Actor:
     record = PostgresRecord(tenant.database.runtime_dsn)
     subject = f"request-authority-{role}-{uuid4().hex}"
     receipt = record.human_identity.bind_role(
@@ -295,7 +344,7 @@ def _bound_human(tenant: TenantFixture, operator: Actor, role: str) -> Actor:
             display_name=f"Request authority {role} {uuid4().hex[:8]}",
             oidc_issuer="https://request-authority.example.test",
             oidc_subject=subject,
-            project_keys=("ctower",),
+            project_keys=project_keys,
             role=cast(HumanRole, role),
         ),
         request_digest=hashlib.sha256(subject.encode()).digest(),
