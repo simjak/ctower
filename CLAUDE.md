@@ -1,5 +1,19 @@
 # ctower engineering constitution
 
+## GBrain first — the fleet's common memory (operator, 2026-08-16)
+
+**Before grepping, re-deriving context, or answering anything about past decisions, query GBrain.**
+It indexes mission-control, manibo, ctower and bh-loop plus curated artifacts, so it answers
+cross-repo questions that no single checkout can.
+
+```bash
+gbrain search "<terms>"      # semantic search across the indexed repos
+gbrain query "<question>"    # ask a question, get a grounded answer
+```
+
+Use it FIRST for *"where is X handled"*, *"what did we decide"*, and anything spanning repos. Grep
+is for exact known strings. After meaningful changes, re-sync.
+
 Read `SPEC.md`, `DECISIONS.md`, `ARCHITECTURE.md`, `IMPLEMENTATION-ROADMAP.md`, and the nearest
 boundary README before changing this repository.
 
