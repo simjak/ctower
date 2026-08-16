@@ -9,14 +9,26 @@ name: landing boundary
 # record's own Change fact, never from a branch name, a title, a body, or a label, and it
 # writes no authoritative state. The record's answer is supplied through
 # CTOWER_LANDING_BOUNDARY_RECORD, a path a record-read step writes on the runner. Until
-# that read surface publishes, no answer is written, every fact is STATE_UNKNOWN, and the
-# check refuses: unknown is a failure, not calm.
+# that read surface publishes, no answer is written, and the reader itself still refuses
+# `record-unavailable` -- unknown is a failure, not calm, and that never changes.
+#
+# What CI renders for that one refusal does change (gh#277): a refusal named only
+# `record-unavailable` means the record was never reachable here, not that this change
+# failed a real evaluation, so the published check-run conclusion is `neutral`, with the
+# refusal still named in its summary -- honest and visible, never buried, never red. Any
+# other refusal -- a real answer the record gave -- still renders `failure`. This is why
+# the check-run named `landing boundary (record-backed)` is published explicitly through
+# the Checks API by `tools.landing_boundary.ci_conclusion`, rather than left to the
+# runner job's own native pass/fail status: GitHub Actions has no native "neutral" job
+# conclusion, and this job's own status (below, a different name) is not the check the
+# future required-mode ceremony in docs/operations/landing-boundary-check.md points at.
 
 on:
   pull_request:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: landing-boundary-${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -27,7 +39,7 @@ env:
 
 jobs:
   landing-boundary:
-    name: landing boundary (record-backed)
+    name: landing boundary (runner)
     runs-on: ubuntu-24.04
     steps:
       - name: Check out exact candidate
@@ -48,17 +60,54 @@ jobs:
           python -m pip install --disable-pip-version-check --require-hashes
           -r requirements/verify.txt
 
-      - name: Report every landing-boundary fact the record carries
+      - name: Render the landing-boundary check-run this CI publishes
+        id: render
         env:
           CTOWER_LANDING_BOUNDARY_RECORD: ${{ vars.CTOWER_LANDING_BOUNDARY_RECORD }}
           CTOWER_PULL_REQUEST: ${{ github.event.pull_request.number }}
           CTOWER_HEAD_REVISION: ${{ github.event.pull_request.head.sha }}
+          CTOWER_LANDING_BOUNDARY_CHECK_RUN: ${{ runner.temp }}/landing-boundary-check-run.json
         shell: bash
         run: |
           set -euo pipefail
           PYTHONPATH="packages/ctower-kernel/src:generated/python" \
-            python -m tools.landing_boundary \
+            python -m tools.landing_boundary.ci_conclusion \
               --repository "${GITHUB_REPOSITORY}" \
               --pull-request "${CTOWER_PULL_REQUEST}" \
               --head-revision "${CTOWER_HEAD_REVISION}" \
-              --record "${CTOWER_LANDING_BOUNDARY_RECORD:-}"
+              --record "${CTOWER_LANDING_BOUNDARY_RECORD:-}" \
+              --name "landing boundary (record-backed)" \
+              --output "${CTOWER_LANDING_BOUNDARY_CHECK_RUN}" \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      - name: Publish the landing-boundary check-run
+        if: always() && !cancelled()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CTOWER_HEAD_REVISION: ${{ github.event.pull_request.head.sha }}
+          CTOWER_LANDING_BOUNDARY_CHECK_RUN: ${{ runner.temp }}/landing-boundary-check-run.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="${CTOWER_LANDING_BOUNDARY_CHECK_RUN}"
+          if [[ ! -s "${payload}" ]]; then
+            # The render step above did not complete (an earlier step failed before it
+            # could evaluate the record answer at all) -- publish the one honest fact
+            # this CI still owes: the check-run this repository's required-mode ceremony
+            # names must never go missing, so it renders FAILURE with that said plainly.
+            jq -n \
+              --arg name "landing boundary (record-backed)" \
+              --arg sha "${CTOWER_HEAD_REVISION}" \
+              '{name: $name, head_sha: $sha, status: "completed", conclusion: "failure",
+                output: {
+                  title: "landing boundary: CI could not evaluate this change",
+                  summary: "an earlier step in the landing-boundary workflow did not complete; see the run log for the actual failure."
+                }}' \
+              > "${payload}"
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/check-runs" --input "${payload}" > /dev/null
+          conclusion="$(jq -r '.conclusion' "${payload}")"
+          echo "landing boundary (record-backed): ${conclusion}"
+          if [[ "${conclusion}" == "failure" ]]; then
+            exit 1
+          fi
