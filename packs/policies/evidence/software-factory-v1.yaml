@@ -1,0 +1,12 @@
+{
+  "schema": "ctower.evidence-policy/v1",
+  "status": "staged",
+  "key": "engineering.software-factory.evidence",
+  "revision": 1,
+  "digest_algorithm": "sha256",
+  "content_encoding": "utf-8",
+  "candidate_binding": "current_digest",
+  "corruption_policy": "reject",
+  "missing_policy": "reject",
+  "note": "Authored 2026-08-16 because the workflow resolver requires every workflow to name an evidence policy; software-factory named only execution and gates and was therefore unresolvable. missing_policy=reject is the setting that makes a stage gate REFUSE on absent evidence rather than pass quietly."
+}
