@@ -23,7 +23,7 @@ from ctower_kernel.projections.project_delivery import (
     SeatCatalogReference,
     SeatIdentity,
 )
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
 
@@ -166,6 +166,16 @@ def project_delivery(
 ) -> ProjectDeliveryView | None:
     """Return stored rows for exactly one tenant/project without catch-up."""
 
+    if actor.kind is not PrincipalKind.OPERATOR and project_key not in actor.project_grants:
+        return cast(
+            ProjectDeliveryView | None,
+            RecordProblem(
+                "project-scope-denied",
+                "The authenticated project seat cannot reach a ticket from another project.",
+                403,
+                "Project scope denied",
+            ),
+        )
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
         rows = connection.execute(

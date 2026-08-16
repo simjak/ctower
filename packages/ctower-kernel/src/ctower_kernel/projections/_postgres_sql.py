@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 from ctower_kernel.projections import BoardQuery, BoardView
@@ -12,7 +13,7 @@ from ctower_kernel.projections._consumer_sql import (
     read_source,
     reset_projection,
 )
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
 
@@ -33,6 +34,20 @@ def catch_up(dsn: str, tenant_id: UUID, through_watermark: int | None) -> BoardV
 def board(dsn: str, actor: Actor, query: BoardQuery) -> BoardView:
     """Read stored projection rows and watermarks without mutation."""
 
+    if (
+        query.project_key is not None
+        and actor.kind is not PrincipalKind.OPERATOR
+        and query.project_key not in actor.project_grants
+    ):
+        return cast(
+            BoardView,
+            RecordProblem(
+                "project-scope-denied",
+                "The authenticated project seat cannot reach a ticket from another project.",
+                403,
+                "Project scope denied",
+            ),
+        )
     source = read_source(dsn, actor.tenant_id)
     return read_view(dsn, actor.tenant_id, query, source=source)
 
