@@ -11,6 +11,7 @@ import { recordAdapter } from "@/read/adapter";
  */
 const RAIL_OF = {
   Portfolio: "Portfolio",
+  Requests: "Requests",
   Board: "Dashboard",
   Ticket: "Latest ticket",
   Heartbeats: "Heartbeats",

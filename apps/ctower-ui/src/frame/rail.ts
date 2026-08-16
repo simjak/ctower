@@ -23,6 +23,7 @@ export interface RailItem {
 
 export const RAIL: readonly RailItem[] = [
   { href: "/portfolio", label: "Portfolio", group: null },
+  { href: "/requests", label: "Requests", group: null },
   { href: "/board", label: "Dashboard", group: null },
   { href: "/inbox", label: "Inbox", group: null },
   { href: "/ticket", label: "Latest ticket", group: "Work" },
