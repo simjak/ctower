@@ -69,6 +69,7 @@ _EVIDENCE = "policies/evidence/trust-spine-four-stage-v1.yaml"
 _SF_WORKFLOW = "workflows/engineering.software-factory/v1.yaml"
 _SF_EXECUTION = "policies/execution/software-factory-v1.yaml"
 _SF_GATE = "policies/gates/software-factory-v1.yaml"
+_SF_EVIDENCE = "policies/evidence/software-factory-v1.yaml"
 
 
 @dataclass(slots=True)
@@ -264,6 +265,7 @@ def _policy_digests(packs: Path) -> dict[str, str]:
         "ctower.trust-spine-four-stage.evidence@1": _digest(packs / _EVIDENCE),
         "engineering.software-factory.execution@1": _digest(packs / _SF_EXECUTION),
         "engineering.software-factory.gates@1": _digest(packs / _SF_GATE),
+        "engineering.software-factory.evidence@1": _digest(packs / _SF_EVIDENCE),
     }
 
 
