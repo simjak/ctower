@@ -20,6 +20,8 @@ from ctowerctl.spool import Spool
 __all__: tuple[str, ...] = ()
 
 EXIT_TEMPORARY = 75
+INITIAL_THREAD_VERSION = 1
+PROMOTED_THREAD_VERSION = 2
 
 
 class _MemoryBackend:
@@ -80,6 +82,71 @@ def test_intake_cli_uses_generated_client_and_spools_before_every_send(
     assert spool_status.pending_count == 1
     assert spool_status.accepted_count == 1
     assert tenant.commander_credential not in stdout + promoted_stdout
+
+
+def test_intake_cli_promotes_submitted_item_and_reads_it_back(
+    tenant: TenantFixture,
+    protected_state: None,
+    tmp_path: Path,
+) -> None:
+    """The operator journey retains the receipt needed by promotion and exposes the ticket."""
+
+    del protected_state
+    declare_ctower_project(tenant)
+    content = tmp_path / "promotion-readback.txt"
+    content.write_text("CLI promotion read-back", encoding="utf-8")
+    with running_api(tenant.database.runtime_dsn) as base_url:
+        submit_id = uuid4()
+        submit_status, submit_stdout, submit_stderr = _run(
+            _submit_arguments(base_url, submit_id, content),
+            tenant.commander_credential,
+        )
+        submitted = json.loads(submit_stdout)
+        submitted_result = submitted["result"]
+        event_id = submitted_result["inbound_event_id"]
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+
+        promotion_id = uuid4()
+        promote_status, promote_stdout, promote_stderr = _run(
+            _promotion_arguments(
+                base_url,
+                event_id,
+                promotion_id,
+                tenant.commander_id,
+            ),
+            tenant.commander_credential,
+        )
+        promoted = json.loads(promote_stdout)
+        promoted_result = promoted["result"]
+        ticket_id = promoted_result["ticket_id"]
+        show_status, show_stdout, show_stderr = _run(
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "show",
+                ticket_id,
+                "--project-key",
+                "ctower",
+            ],
+            tenant.operator_credential,
+        )
+
+    shown = json.loads(show_stdout)
+    assert (submit_status, promote_status, show_status) == (EXIT_TEMPORARY, EXIT_TEMPORARY, 0)
+    assert submit_stderr == promote_stderr == show_stderr == ""
+    assert submitted_result["inbound_event_id"] == event_id
+    assert submitted_result["thread_version"] == INITIAL_THREAD_VERSION
+    assert promoted["command_id"] == str(promotion_id)
+    assert promoted_result["inbound_event_id"] == event_id
+    assert promoted_result["thread_version"] == PROMOTED_THREAD_VERSION
+    assert promoted_result["outcome"] == "ticket_created"
+    assert shown["ticket_id"] == ticket_id
+    assert shown["title"] == "CLI promoted intake"
+    assert shown["priority"] == "P2"
+    assert shown["custodian_id"] == str(tenant.commander_id)
+    assert shown["source"] == {"kind": "cli", "ref": f"cli:{submit_id}"}
+    assert tenant.commander_credential not in submit_stdout + promote_stdout
 
 
 def test_offline_intake_is_encrypted_and_queued_before_network_failure(
