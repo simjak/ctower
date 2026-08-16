@@ -28,6 +28,9 @@ class UnscopedAuthentication(StrEnum):
     ALLOWED = "allowed"
 
 
+_SESSION_COOKIE = "__Host-ctower_session"
+
+
 def authenticate(
     access: Access,
     recorder: TelemetryRecorder,
@@ -37,7 +40,12 @@ def authenticate(
 ) -> Actor | RecordProblem:
     """Resolve one credential and emit a denial without trusting request context."""
 
-    outcome = access.authenticate(request.headers.get("Authorization"))
+    authorization = request.headers.get("Authorization")
+    session_cookie = request.cookies.get(_SESSION_COOKIE)
+    if authorization is None and request.method == "GET" and session_cookie is not None:
+        outcome = access.human.authenticate_session(session_cookie)
+    else:
+        outcome = access.authenticate(authorization)
     if isinstance(outcome, RecordProblem):
         emit_auth_denial(recorder, "access.authenticate", outcome)
         return outcome

@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.hashes import SHA256
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import OidcRuntimeConfig, create_app
@@ -188,7 +189,75 @@ def test_full_login_callback_session_logout_http_round_trip(tenant: TenantFixtur
         assert after_logout.json()["code"] == "auth-session-invalid"
 
 
-def _bind_role(record: PostgresRecord, tenant: TenantFixture, *, subject: str) -> None:
+def test_human_session_cookie_authenticates_project_read_and_revocation_is_immediate(
+    tenant: TenantFixture,
+) -> None:
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    fake_provider = _FakeProvider()
+    app = _build_app(fake_provider, record=record)
+    _bind_role(record, tenant, subject="user-project-read", project_keys=("ctower",))
+
+    with TestClient(app, base_url="https://testserver", follow_redirects=False) as client:
+        started = client.get("/auth/login", params={"provider": "fake-idp"})
+        query = parse_qs(urlsplit(started.headers["location"]).query)
+        code = "code-" + uuid4().hex
+        fake_provider.register_code(
+            code,
+            subject="user-project-read",
+            code_challenge=query["code_challenge"][0],
+            nonce=query["nonce"][0],
+        )
+
+        callback = client.get("/auth/callback", params={"code": code, "state": query["state"][0]})
+        assert callback.status_code == HTTPStatus.OK
+        old_session_cookie = client.cookies.get(_SESSION_COOKIE)
+        assert old_session_cookie is not None
+
+        project_read = client.get(
+            "/v1/projects/ctower/sessions",
+            headers=telemetry_headers(),
+        )
+        assert project_read.status_code == HTTPStatus.OK
+        assert project_read.json()["project_key"] == "ctower"
+
+        bearer_wins = client.get(
+            "/v1/projects/ctower/sessions",
+            headers={
+                **telemetry_headers(),
+                "Authorization": "Bearer definitely-invalid",
+            },
+        )
+        assert bearer_wins.status_code == HTTPStatus.UNAUTHORIZED
+        assert bearer_wins.json()["code"] == "unauthorized"
+
+        human_command = client.post(
+            f"/v1/tickets/{uuid4()}/sessions",
+            headers=telemetry_headers(),
+            json={},
+        )
+        assert human_command.status_code == HTTPStatus.UNAUTHORIZED
+        assert human_command.json()["code"] == "unauthorized"
+
+        logged_out = client.post("/auth/logout")
+        assert logged_out.status_code == HTTPStatus.NO_CONTENT
+        replay = client.get(
+            "/v1/projects/ctower/sessions",
+            headers={
+                **telemetry_headers(),
+                "Cookie": f"{_SESSION_COOKIE}={old_session_cookie}",
+            },
+        )
+        assert replay.status_code == HTTPStatus.UNAUTHORIZED
+        assert replay.json()["code"] == "auth-session-invalid"
+
+
+def _bind_role(
+    record: PostgresRecord,
+    tenant: TenantFixture,
+    *,
+    subject: str,
+    project_keys: tuple[str, ...] = (),
+) -> None:
     operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
     receipt = record.human_identity.bind_role(
         operator,
@@ -197,7 +266,7 @@ def _bind_role(record: PostgresRecord, tenant: TenantFixture, *, subject: str) -
             display_name=f"HTTP Flow Viewer {uuid4().hex[:8]}",
             oidc_issuer=_ISSUER,
             oidc_subject=subject,
-            project_keys=(),
+            project_keys=project_keys,
             role="viewer",
         ),
         request_digest=hashlib.sha256(b"http-flow-bind").digest(),

@@ -65,6 +65,7 @@ _READING_HOLDERS = (
     "apps/ctower-ui/src/frame/Declared.tsx",
 )
 _CHOKEPOINT = "apps/ctower-ui/src/read/bounded.ts"
+_HTTP_RECORD_ADAPTER = "apps/ctower-ui/src/read/httpRecordAdapter.ts"
 _SOURCE_DIRECTORY = "apps/ctower-ui/src/read/sources/"
 # Helpers in the source directory that carry no foreign text of their own.
 _SOURCE_HELPERS = frozenset(
@@ -158,6 +159,17 @@ class BrowserNetworkChokepointTests(unittest.TestCase):
             "an application value-imports the generated client, whose requests are single-shot; "
             "either bring that client under a bounded policy or keep the import type-only",
         )
+
+    def test_record_reads_forward_only_the_server_cookie_before_separate_machine_mode(self) -> None:
+        code = _code(_ROOT / _HTTP_RECORD_ADAPTER)
+        self.assertIn('import("next/headers")', code)
+        self.assertIn('const SESSION_COOKIE = "__Host-ctower_session"', code)
+        self.assertIn("nextHeaders.cookies()", code)
+        self.assertIn("headers.Cookie", code)
+        self.assertIn("CTOWER_UI_API_TOKEN", code)
+        self.assertLess(code.index("headers.Cookie"), code.index("headers.Authorization"))
+        self.assertNotIn("localStorage", code)
+        self.assertNotIn("sessionStorage", code)
 
     def test_no_module_in_apps_writes_to_the_filesystem(self) -> None:
         offenders = sorted(path for path in _matching(_WRITE_PATTERN) if path.startswith("apps/"))

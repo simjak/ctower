@@ -60,7 +60,9 @@ import type {
  * — this module never calls `fetch` itself. There is no mutation method to call
  * by accident, and the bearer never leaves it: the credential is read from the
  * server process environment and attached to a server-side request, so no
- * browser payload or script on this surface can carry it.
+ * browser payload or script on this surface can carry it. When the private
+ * browser session exists, the server forwards only its opaque cookie instead;
+ * the machine-token path remains an explicit fallback for non-human reads.
  *
  * The literal unions below are imported as types from the generated client, so
  * a lane, priority, durability or projection-health value this surface accepts
@@ -74,6 +76,23 @@ import type {
 const PRIORITIES: readonly Priority[] = ["P0", "P1", "P2"];
 const HEALTH: readonly ProjectionHealth[] = ["CURRENT", "STATE_UNKNOWN"];
 const DURABILITY: readonly DurabilityState[] = ["durability_pending", "accepted"];
+const SESSION_COOKIE = "__Host-ctower_session";
+
+function nextHeadersUnavailable(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Cannot find package 'next'");
+}
+
+async function humanSessionCookie(): Promise<string | undefined> {
+  try {
+    const nextHeaders = await import("next/headers");
+    return (await nextHeaders.cookies()).get(SESSION_COOKIE)?.value;
+  } catch (error) {
+    if (nextHeadersUnavailable(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
 
 function environment(name: string, fallback: string): string {
   const value = process.env[name];
@@ -117,22 +136,29 @@ function telemetry(): TelemetryContext {
  * in exactly one place.
  */
 export async function read(path: string): Promise<unknown> {
-  const credential = process.env.CTOWER_UI_API_TOKEN;
-  if (credential === undefined || credential === "") {
-    throw new ReadRefused({
-      reason: "no read credential is configured; set CTOWER_UI_API_TOKEN from the instance keyring",
-      failureClass: "permanent",
-      attempts: 0,
-      elapsedMs: 0,
-      // the API was never asked, so there is no status to report
-      status: null,
-    });
-  }
-  return await boundedRead(`${instanceIdentity().baseUrl}${path}`, {
+  const headers: Record<string, string> = {
     Accept: "application/json",
-    Authorization: `Bearer ${credential}`,
     "X-Ctower-Telemetry-Context": JSON.stringify(telemetry()),
-  });
+  };
+  const sessionCookie = await humanSessionCookie();
+  if (sessionCookie !== undefined) {
+    headers.Cookie = `${SESSION_COOKIE}=${sessionCookie}`;
+  } else {
+    const credential = process.env.CTOWER_UI_API_TOKEN;
+    if (credential === undefined || credential === "") {
+      throw new ReadRefused({
+        reason:
+          "no human session or machine read credential is configured; set CTOWER_UI_API_TOKEN from the instance keyring",
+        failureClass: "permanent",
+        attempts: 0,
+        elapsedMs: 0,
+        // the API was never asked, so there is no status to report
+        status: null,
+      });
+    }
+    headers.Authorization = `Bearer ${credential}`;
+  }
+  return await boundedRead(`${instanceIdentity().baseUrl}${path}`, headers);
 }
 
 function optionalText(value: unknown, field: string): string | null {
