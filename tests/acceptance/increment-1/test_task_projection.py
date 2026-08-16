@@ -86,10 +86,12 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
     )
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     stale = projections.board(actor, BoardQuery(project_key="ctower"))
+    assert not isinstance(stale, RecordProblem), stale
     ready = projections.catch_up(tenant.tenant_id)
     rebuilt = projections.rebuild(tenant.tenant_id)
     ProjectionFaults(tenant.database.admin_dsn).remove_projected_card(tenant.tenant_id, ticket_id)
     missing = projections.board(actor, BoardQuery(project_key="ctower"))
+    assert not isinstance(missing, RecordProblem), missing
 
     assert isinstance(admitted, WorkReceipt)
     assert backlog.health is ProjectionHealth.CURRENT

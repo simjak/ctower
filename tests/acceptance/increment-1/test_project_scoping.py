@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID, uuid4
@@ -25,6 +26,7 @@ from ctower_kernel.catalog import CatalogProblem, CompanyBundle, PostgresCatalog
 from ctower_kernel.projections import BoardQuery, Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record.human_identity import HumanRoleBindingIssue
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Block, Work, WorkReceipt
@@ -97,16 +99,12 @@ def test_granted_project_projection_reads_still_work(tenant: TenantFixture) -> N
     projections, scoped_actor, operator, manibo_ticket = _scoped_projection_fixture(tenant)
 
     granted_board = projections.board(scoped_actor, BoardQuery(project_key="manibo"))
-    assert not isinstance(cast(object, granted_board), RecordProblem), (
-        granted_board.response_payload()
-    )
+    assert not isinstance(granted_board, RecordProblem), granted_board
     assert {card.ticket_id for card in granted_board.cards} == {manibo_ticket}
 
     granted_delivery = projections.project_delivery(scoped_actor, "manibo")
     assert granted_delivery is not None
-    assert not isinstance(cast(object, granted_delivery), RecordProblem), (
-        granted_delivery.response_payload()
-    )
+    assert not isinstance(granted_delivery, RecordProblem), granted_delivery
     assert granted_delivery.project_key == "manibo"
 
     operator_board = projections.board(operator, BoardQuery(project_key="ctower"))
@@ -123,6 +121,34 @@ def test_manibo_and_bhloop_boards_are_disjoint(tenant: TenantFixture) -> None:
     _assert_pair_disjoint(tenant, "manibo", "bh-loop")
 
 
+def test_foreign_project_projection_reads_are_refused_before_materialization(
+    tenant: TenantFixture,
+) -> None:
+    """A viewer bound only to manibo cannot read ctower Board or Delivery rows."""
+    _apply_portfolio_bundle(tenant)
+    with _client(tenant) as client:
+        foreign_ticket = _created_ticket_id(
+            _submit_intake(client, tenant, "ctower", "ctower-R3048")
+        )
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    projections.catch_up(tenant.tenant_id)
+    projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    viewer = _bind_viewer(tenant, project_keys=("manibo",))
+
+    board = projections.board(viewer, BoardQuery(project_key="ctower"))
+    assert isinstance(board, RecordProblem), (
+        f"HTTP 200 with foreign card {foreign_ticket}: {board.response_payload()}"
+    )
+    assert (board.status, board.code) == (403, "project-scope-denied")
+
+    delivery = projections.project_delivery(viewer, "ctower")
+    assert isinstance(delivery, RecordProblem), (
+        f"HTTP 200 with foreign Project Delivery rows: {delivery!r}"
+    )
+    assert (delivery.status, delivery.code) == (403, "project-scope-denied")
+
+
 def test_starter_bundles_apply_and_render_ordered_project_delivery_rows(
     tenant: TenantFixture,
 ) -> None:
@@ -135,6 +161,8 @@ def test_starter_bundles_apply_and_render_ordered_project_delivery_rows(
     manibo = projections.project_delivery(actor, "manibo")
     bhloop = projections.project_delivery(actor, "bh-loop")
 
+    assert not isinstance(manibo, RecordProblem), manibo
+    assert not isinstance(bhloop, RecordProblem), bhloop
     assert affected == (
         len(_CTOWER_CHECKPOINTS) + len(_MANIBO_CHECKPOINTS) + len(_BHLOOP_CHECKPOINTS)
     )
@@ -192,6 +220,7 @@ def test_project_delivery_excludes_foreign_project_ticket_facts(
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR), "manibo"
     )
 
+    assert not isinstance(view, RecordProblem), view
     assert view is not None
     row = next(item for item in view.rows if item.checkpoint_key == "manibo.verify")
     assert row.headline_state.value == "blocked"
@@ -210,6 +239,7 @@ def test_project_delivery_excludes_foreign_project_ticket_facts(
     after = projections.project_delivery(
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR), "manibo"
     )
+    assert not isinstance(after, RecordProblem), after
     assert after is not None
     assert after.source_record_position == view.source_record_position
     assert after.projection_record_position == view.projection_record_position
@@ -264,6 +294,8 @@ def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
     actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
     left_board = projections.board(actor, BoardQuery(project_key=left))
     right_board = projections.board(actor, BoardQuery(project_key=right))
+    assert not isinstance(left_board, RecordProblem), left_board
+    assert not isinstance(right_board, RecordProblem), right_board
 
     assert {card.ticket_id for card in left_board.cards} == {left_ticket}
     assert {card.ticket_id for card in right_board.cards} == {right_ticket}
@@ -287,6 +319,8 @@ def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
     projections.catch_up(tenant.tenant_id)
     left_after = projections.board(actor, BoardQuery(project_key=left))
     right_after = projections.board(actor, BoardQuery(project_key=right))
+    assert not isinstance(left_after, RecordProblem), left_after
+    assert not isinstance(right_after, RecordProblem), right_after
     assert {card.ticket_id for card in left_after.cards} == {left_ticket, second_left}
     assert {card.ticket_id for card in right_after.cards} == {right_ticket}
     assert left_after.source_watermark > left_board.source_watermark
@@ -335,6 +369,30 @@ def _apply_portfolio_bundle(tenant: TenantFixture) -> None:
     plan = catalog.plan(actor, bundle)
     assert not isinstance(plan, CatalogProblem), plan
     apply_initial_bundle(catalog, actor, bundle)
+
+
+def _bind_viewer(tenant: TenantFixture, *, project_keys: tuple[str, ...]) -> Actor:
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    subject = f"r3048-viewer-{uuid4().hex}"
+    receipt = record.human_identity.bind_role(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        HumanRoleBindingIssue(
+            client_command_id=uuid4(),
+            display_name="R3048 viewer",
+            oidc_issuer="https://r3048.example.test",
+            oidc_subject=subject,
+            project_keys=project_keys,
+            role="viewer",
+        ),
+        request_digest=hashlib.sha256(subject.encode()).digest(),
+        now=datetime.now(UTC),
+        telemetry=_telemetry(),
+    )
+    assert not isinstance(receipt, RecordProblem), receipt
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    resolved = record.human_identity.resolve_role_binding("https://r3048.example.test", subject)
+    assert resolved is not None
+    return resolved[1]
 
 
 def _tenant_bundle() -> CompanyBundle:

@@ -14,7 +14,7 @@ from ctower_kernel.projections.project_delivery import (
     DeliverySurfaceDeclaration,
     ProjectDeliveryView,
 )
-from ctower_kernel.record import Actor, DurabilityHealth
+from ctower_kernel.record import Actor, DurabilityHealth, RecordProblem
 
 __all__ = [
     "AppliedLabel",
@@ -511,7 +511,7 @@ class InboxThread:
 class _ProjectionStore(Protocol):
     def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView: ...
 
-    def board(self, actor: Actor, query: BoardQuery) -> BoardView: ...
+    def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem: ...
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
@@ -529,7 +529,9 @@ class _ProjectionStore(Protocol):
 
     def cutover_health(self, actor: Actor) -> CtowerProjectCutoverHealth: ...
 
-    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None: ...
+    def project_delivery(
+        self, actor: Actor, project_key: str
+    ) -> ProjectDeliveryView | RecordProblem | None: ...
 
     def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int: ...
 
@@ -545,7 +547,7 @@ class Projections:
     def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView:
         return self._store.catch_up(tenant_id, through_watermark)
 
-    def board(self, actor: Actor, query: BoardQuery) -> BoardView:
+    def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
         return self._store.board(actor, query)
 
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
@@ -573,7 +575,9 @@ class Projections:
 
         return self._store.cutover_health(actor)
 
-    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None:
+    def project_delivery(
+        self, actor: Actor, project_key: str
+    ) -> ProjectDeliveryView | RecordProblem | None:
         """Read stored compact rows without accepting a desired status."""
 
         return self._store.project_delivery(actor, project_key)

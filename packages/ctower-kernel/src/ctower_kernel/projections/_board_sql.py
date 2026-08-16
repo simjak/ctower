@@ -29,7 +29,9 @@ from ctower_kernel.projections.interface import (
     HumanWaitingState,
     TenantDisplayIdentity,
 )
+from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.events import EventKind
+from ctower_kernel.record.transaction import project_scope_refusal
 
 __all__: tuple[str, ...] = ()
 
@@ -68,12 +70,44 @@ def apply_message(
     handler(connection, tenant_id, message, payload, position)
 
 
-def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: int) -> BoardView:
-    project_key = query.project_key if query is not None else None
-    source_kind = query.source_kind if query is not None else None
-    source_ref = query.source_ref if query is not None else None
+def read_view(
+    dsn: str, actor: Actor, query: BoardQuery, *, source: int
+) -> BoardView | RecordProblem:
+    """Read one authenticated Project-scoped Board view."""
+
+    return _read_view(dsn, actor.tenant_id, query, source=source, actor=actor)
+
+
+def _read_view_for_catch_up(dsn: str, tenant_id: UUID, *, source: int) -> BoardView:
+    """Read the tenant projection after an internal accepted-outbox catch-up."""
+
+    result = _read_view(dsn, tenant_id, None, source=source, actor=None)
+    if isinstance(result, RecordProblem):
+        raise TypeError("unscoped catch-up Board read unexpectedly requested authorization")
+    return result
+
+
+def _read_view(
+    dsn: str,
+    tenant_id: UUID,
+    query: BoardQuery | None,
+    *,
+    source: int,
+    actor: Actor | None,
+) -> BoardView | RecordProblem:
+    project_key, source_kind, source_ref = _query_filters(query)
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
+        if actor is not None:
+            refusal = project_scope_refusal(
+                connection,
+                tenant_id=actor.tenant_id,
+                principal_id=actor.principal_id,
+                project_keys=(project_key,) if project_key is not None else (),
+                allow_operator_read=True,
+            )
+            if refusal is not None:
+                return refusal
         cursor = connection.execute(
             """
             SELECT acceptance_position, health, blocked_outbox_id
@@ -111,31 +145,9 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
                 source_ref,
             ),
         ).fetchall()
-        expected_row = connection.execute(
-            """
-            SELECT count(*) AS value
-            FROM durability_acceptance_confirmations AS confirmation
-            JOIN events AS event
-              ON event.tenant_id = confirmation.tenant_id
-             AND event.actor_principal_id = confirmation.principal_id
-             AND event.client_command_id = confirmation.client_command_id
-            JOIN tickets AS ticket
-              ON ticket.tenant_id = event.tenant_id
-             AND ticket.ticket_id = event.aggregate_id
-            WHERE confirmation.tenant_id = %s AND event.kind = 'ticket.created'
-              AND (%s::text IS NULL OR ticket.project_key = %s)
-            """,
-            (tenant_id, project_key, project_key),
-        ).fetchone()
+        expected_cards = _expected_card_count(connection, tenant_id, project_key)
         scoped_source = _project_source(connection, tenant_id, project_key)
-        scoped_projection = connection.execute(
-            """
-            SELECT COALESCE(MAX(source_position), 0) AS value
-            FROM board_projection_rows
-            WHERE tenant_id = %s AND (%s::text IS NULL OR project_key = %s)
-            """,
-            (tenant_id, project_key, project_key),
-        ).fetchone()
+        scoped_projection = _scoped_projection_position(connection, tenant_id, project_key)
         context = _read_context_sets(connection, tenant_id, rows)
     global_projection = _cursor_position(cursor)
     view_source, projection = _scoped_watermarks(
@@ -145,7 +157,6 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
         global_projection=global_projection,
         scoped_projection=scoped_projection,
     )
-    expected_cards = int(cast(int, expected_row["value"])) if expected_row else 0
     actual_cards = int(cast(int, row_count["value"])) if row_count else 0
     current = _is_current(
         cursor,
@@ -162,6 +173,51 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
         source_watermark=view_source,
         projection_watermark=projection,
     )
+
+
+def _expected_card_count(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str | None,
+) -> int:
+    row = connection.execute(
+        """
+        SELECT count(*) AS value
+        FROM durability_acceptance_confirmations AS confirmation
+        JOIN events AS event
+          ON event.tenant_id = confirmation.tenant_id
+         AND event.actor_principal_id = confirmation.principal_id
+         AND event.client_command_id = confirmation.client_command_id
+        JOIN tickets AS ticket
+          ON ticket.tenant_id = event.tenant_id
+         AND ticket.ticket_id = event.aggregate_id
+        WHERE confirmation.tenant_id = %s AND event.kind = 'ticket.created'
+          AND (%s::text IS NULL OR ticket.project_key = %s)
+        """,
+        (tenant_id, project_key, project_key),
+    ).fetchone()
+    return int(cast(int, row["value"])) if row else 0
+
+
+def _query_filters(query: BoardQuery | None) -> tuple[str | None, str | None, str | None]:
+    if query is None:
+        return None, None, None
+    return query.project_key, query.source_kind, query.source_ref
+
+
+def _scoped_projection_position(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str | None,
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT COALESCE(MAX(source_position), 0) AS value
+        FROM board_projection_rows
+        WHERE tenant_id = %s AND (%s::text IS NULL OR project_key = %s)
+        """,
+        (tenant_id, project_key, project_key),
+    ).fetchone()
 
 
 def _cursor_position(cursor: dict[str, object] | None) -> int:
