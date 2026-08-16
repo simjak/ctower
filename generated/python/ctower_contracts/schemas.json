@@ -5016,6 +5016,220 @@
           ],
           "type": "object"
         },
+        "routineWorkItemAlarmRaised": {
+          "additionalProperties": false,
+          "properties": {
+            "alarm_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "escalation_seat": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "missed_window",
+                "degraded_read"
+              ]
+            },
+            "recorded_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "routine_ref": {
+              "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "work_item_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "alarm_id",
+            "escalation_seat",
+            "kind",
+            "recorded_at",
+            "routine_ref",
+            "scheduled_for",
+            "work_item_id"
+          ],
+          "type": "object"
+        },
+        "routineWorkItemAppended": {
+          "additionalProperties": false,
+          "properties": {
+            "document_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "escalation_seat": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "gate_evidence": {
+              "$ref": "#/$defs/routineWorkItemGateEvidence"
+            },
+            "knowledge_ref": {
+              "pattern": "^[a-z][a-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            "owner_seat": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "revision_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "routine_ref": {
+              "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "window_ends_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "work_item_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_id",
+            "escalation_seat",
+            "gate_evidence",
+            "knowledge_ref",
+            "owner_seat",
+            "revision_digest",
+            "routine_ref",
+            "scheduled_for",
+            "window_ends_at",
+            "work_item_id"
+          ],
+          "type": "object"
+        },
+        "routineWorkItemCompleted": {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_ref": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "delivered_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "owner_seat": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "receipt_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "work_item_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "artifact_ref",
+            "delivered_at",
+            "owner_seat",
+            "receipt_id",
+            "work_item_id"
+          ],
+          "type": "object"
+        },
+        "routineWorkItemGateEvidence": {
+          "additionalProperties": false,
+          "properties": {
+            "detail": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "always",
+                "new_movement_since_watermark",
+                "open_tickets_above"
+              ]
+            },
+            "observed_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "result": {
+              "const": "fired"
+            },
+            "watermark_kind": {
+              "enum": [
+                "none",
+                "events.server_time",
+                "tickets.server_time",
+                "tickets.nonterminal"
+              ]
+            },
+            "watermark_position": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "detail",
+            "kind",
+            "observed_count",
+            "result",
+            "watermark_kind",
+            "watermark_position"
+          ],
+          "type": "object"
+        },
+        "routineWorkItemSuppressed": {
+          "additionalProperties": false,
+          "properties": {
+            "blocking_item_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "routine_ref": {
+              "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "suppression_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "blocking_item_id",
+            "routine_ref",
+            "scheduled_for",
+            "suppression_id"
+          ],
+          "type": "object"
+        },
         "rulingRecorded": {
           "additionalProperties": false,
           "properties": {
@@ -5871,6 +6085,70 @@
             {
               "properties": {
                 "kind": {
+                  "const": "routine.work_item_appended"
+                },
+                "origin": {
+                  "const": "control_worker"
+                },
+                "payload": {
+                  "$ref": "#/$defs/routineWorkItemAppended"
+                },
+                "stream_id": {
+                  "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "routine.work_item_suppressed"
+                },
+                "origin": {
+                  "const": "control_worker"
+                },
+                "payload": {
+                  "$ref": "#/$defs/routineWorkItemSuppressed"
+                },
+                "stream_id": {
+                  "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "routine.work_item_completed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/routineWorkItemCompleted"
+                },
+                "stream_id": {
+                  "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "routine.work_item_alarm_raised"
+                },
+                "origin": {
+                  "const": "control_worker"
+                },
+                "payload": {
+                  "$ref": "#/$defs/routineWorkItemAlarmRaised"
+                },
+                "stream_id": {
+                  "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
                   "const": "routine.retired"
                 },
                 "origin": {
@@ -6437,6 +6715,10 @@
             "proof.changed",
             "workflow.changed",
             "routine.occurrence_recorded",
+            "routine.work_item_appended",
+            "routine.work_item_suppressed",
+            "routine.work_item_completed",
+            "routine.work_item_alarm_raised",
             "routine.retired",
             "runtime.dream_dispatch_consumed",
             "runtime.dream_lane_bound",
@@ -6501,7 +6783,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36}|pool-observation:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-work-item:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36}|pool-observation:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -20024,7 +20306,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:65afead1459bc11eb0a252b0a6c8c1d48fd17eadee536a11c3ab0b4c27e3d748"
+      "sha256": "sha256:aac088bf818954e0c31dc8dfa68bdbba2987ab10182fdc93b9c8513c0d317ce2"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
