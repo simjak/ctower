@@ -6,7 +6,7 @@ from typing import cast
 from uuid import UUID
 
 from ctower_kernel.projections import BoardQuery, BoardView
-from ctower_kernel.projections._board_sql import read_view
+from ctower_kernel.projections._board_sql import _read_view_for_catch_up, read_view
 from ctower_kernel.projections._consumer_sql import (
     consume_one,
     mark_requested_unknown,
@@ -24,14 +24,14 @@ def catch_up(dsn: str, tenant_id: UUID, through_watermark: int | None) -> BoardV
     source = read_source(dsn, tenant_id)
     if through_watermark is not None and through_watermark != source:
         mark_requested_unknown(dsn, tenant_id, through_watermark, source)
-        return read_view(dsn, tenant_id, None, source=source)
+        return _read_view_for_catch_up(dsn, tenant_id, source=source)
     while consume_one(dsn, tenant_id):
         pass
     source = read_source(dsn, tenant_id)
-    return read_view(dsn, tenant_id, None, source=source)
+    return _read_view_for_catch_up(dsn, tenant_id, source=source)
 
 
-def board(dsn: str, actor: Actor, query: BoardQuery) -> BoardView:
+def board(dsn: str, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
     """Read stored projection rows and watermarks without mutation."""
 
     if (
@@ -49,7 +49,7 @@ def board(dsn: str, actor: Actor, query: BoardQuery) -> BoardView:
             ),
         )
     source = read_source(dsn, actor.tenant_id)
-    return read_view(dsn, actor.tenant_id, query, source=source)
+    return read_view(dsn, actor, query, source=source)
 
 
 def rebuild(dsn: str, tenant_id: UUID) -> BoardView:

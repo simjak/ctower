@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import shutil
+import tempfile
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +15,7 @@ ROOT = Path(__file__).parents[2]
 _RECORD_ROOT = ROOT / "packages/ctower-kernel/src/ctower_kernel/record"
 _INTERFACE = _RECORD_ROOT / "interface.py"
 _POSTGRES = _RECORD_ROOT / "postgres.py"
+_PROJECTION_ROOT = ROOT / "packages/ctower-kernel/src/ctower_kernel/projections"
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,9 +38,13 @@ class _InventoryRow:
 
     def output(self) -> str:
         status = "yes" if self.composes_predicate else "no"
+        try:
+            source_path = self.source_path.relative_to(ROOT)
+        except ValueError:
+            source_path = self.source_path
         return (
             f"{self.public_owner}.{self.public_method} -> "
-            f"{self.source_path.relative_to(ROOT)}:{self.function_name} "
+            f"{source_path}:{self.function_name} "
             f"composes-predicate {status}"
         )
 
@@ -45,7 +52,7 @@ class _InventoryRow:
 class RecordProjectReadInventoryTests(unittest.TestCase):
     def test_every_project_scoped_record_read_composes_grant_before_materialization(self) -> None:
         inventory = _discover_inventory()
-        self.assertTrue(inventory, "the Record Project-read inventory discovered no reads")
+        self.assertTrue(inventory, "the Project-read inventory discovered no reads")
         for row in inventory:
             print(row.output())
 
@@ -54,12 +61,49 @@ class RecordProjectReadInventoryTests(unittest.TestCase):
             [], failures, "unguarded Project-scoped Record reads: " + "; ".join(failures)
         )
 
+    def test_projection_read_inventory_rejects_a_planted_unguarded_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            projection_root = Path(temporary) / "projections"
+            shutil.copytree(_PROJECTION_ROOT, projection_root)
+            board_sql = projection_root / "_board_sql.py"
+            original = board_sql.read_text(encoding="utf-8")
+            planted_call = "        refusal = project_scope_refusal(\n"
+            self.assertIn(planted_call, original)
+            board_sql.write_text(
+                original.replace(planted_call, "        refusal = _planted_scope_refusal(\n", 1),
+                encoding="utf-8",
+            )
+
+            planted = _discover_projection_inventory(projection_root)
+            failures = [row.output() for row in planted if not row.composes_predicate]
+            print("planted projection read guard failures:", failures)
+            self.assertTrue(failures, "the planted projection read unexpectedly passed the guard")
+
+            board_sql.write_text(original, encoding="utf-8")
+            restored = _discover_projection_inventory(projection_root)
+            print(
+                "restored projection read guard failures:",
+                [row.output() for row in restored if not row.composes_predicate],
+            )
+            self.assertTrue(restored)
+            self.assertTrue(all(row.composes_predicate for row in restored))
+
 
 def _discover_inventory() -> tuple[_InventoryRow, ...]:
+    return (*_discover_record_inventory(), *_discover_projection_inventory())
+
+
+def _discover_record_inventory() -> tuple[_InventoryRow, ...]:
     interface = ast.parse(_INTERFACE.read_text(encoding="utf-8"), filename=str(_INTERFACE))
-    public_reads = tuple(_public_reads(interface))
+    public_reads = tuple(
+        _public_reads(interface, scope_names={"project_key", "project_keys", "ticket_id"})
+    )
     postgres = ast.parse(_POSTGRES.read_text(encoding="utf-8"), filename=str(_POSTGRES))
-    aliases = _postgres_sql_aliases(postgres)
+    aliases = _postgres_sql_aliases(
+        postgres,
+        module_prefix="ctower_kernel.record._",
+        module_root=_RECORD_ROOT,
+    )
     adapter_methods = tuple(
         (method, implementation, target)
         for owner, method in public_reads
@@ -94,7 +138,49 @@ def _discover_inventory() -> tuple[_InventoryRow, ...]:
     return tuple(rows)
 
 
-def _public_reads(tree: ast.Module) -> list[tuple[str, str]]:
+def _discover_projection_inventory(
+    projection_root: Path = _PROJECTION_ROOT,
+) -> tuple[_InventoryRow, ...]:
+    interface_path = projection_root / "interface.py"
+    postgres_path = projection_root / "postgres.py"
+    interface = ast.parse(interface_path.read_text(encoding="utf-8"), filename=str(interface_path))
+    public_reads = tuple(
+        _public_reads(interface, scope_names={"project_key", "project_keys", "ticket_id", "query"})
+    )
+    postgres = ast.parse(postgres_path.read_text(encoding="utf-8"), filename=str(postgres_path))
+    aliases = _postgres_sql_aliases(
+        postgres,
+        module_prefix="ctower_kernel.projections._",
+        module_root=projection_root,
+    )
+    rows: list[_InventoryRow] = []
+    for owner, method in public_reads:
+        matches = [
+            target for _implementation, target in _adapter_targets(postgres, method, aliases)
+        ]
+        if not matches:
+            raise AssertionError(f"no Postgres projection adapter found for {owner}.{method}")
+        for target in matches:
+            source_path, function_name = _resolve_projection_target(target, method, projection_root)
+            source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+            function = _function(source, function_name)
+            predicate_line = _first_call_line(function, "project_scope_refusal")
+            materialization_line = _first_materialization_execute_line(function)
+            rows.append(
+                _InventoryRow(
+                    public_owner=owner,
+                    public_method=method,
+                    implementation="PostgresProjections",
+                    source_path=source_path,
+                    function_name=function_name,
+                    predicate_line=predicate_line,
+                    materialization_line=materialization_line,
+                )
+            )
+    return tuple(rows)
+
+
+def _public_reads(tree: ast.Module, *, scope_names: set[str]) -> list[tuple[str, str]]:
     reads: list[tuple[str, str]] = []
     for node in tree.body:
         if not isinstance(node, ast.ClassDef) or not _is_protocol(node):
@@ -112,7 +198,7 @@ def _public_reads(tree: ast.Module) -> list[tuple[str, str]]:
             }
             if method.name.startswith("_") or "actor" not in names:
                 continue
-            if not names & {"project_key", "project_keys", "ticket_id"}:
+            if not names & scope_names:
                 continue
             if "command" in names:
                 continue
@@ -128,17 +214,66 @@ def _is_protocol(node: ast.ClassDef) -> bool:
     )
 
 
-def _postgres_sql_aliases(tree: ast.Module) -> dict[str, tuple[Path, str]]:
+def _postgres_sql_aliases(
+    tree: ast.Module,
+    *,
+    module_prefix: str,
+    module_root: Path,
+) -> dict[str, tuple[Path, str]]:
     aliases: dict[str, tuple[Path, str]] = {}
     for node in tree.body:
         if not isinstance(node, ast.ImportFrom) or node.module is None:
             continue
-        if not node.module.startswith("ctower_kernel.record._"):
+        if not node.module.startswith(module_prefix):
             continue
-        module_path = _RECORD_ROOT / (node.module.rsplit(".", 1)[-1] + ".py")
+        module_path = module_root / (node.module.rsplit(".", 1)[-1] + ".py")
         for imported in node.names:
             aliases[imported.asname or imported.name] = (module_path, imported.name)
     return aliases
+
+
+def _resolve_projection_target(
+    target: tuple[Path, str], method_name: str, projection_root: Path
+) -> tuple[Path, str]:
+    source_path, function_name = target
+    if source_path != projection_root / "_postgres_sql.py":
+        return target
+    source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    aliases = _postgres_sql_aliases(
+        source,
+        module_prefix="ctower_kernel.projections._",
+        module_root=projection_root,
+    )
+    function = _function(source, function_name)
+    desired = "read_view" if method_name == "board" else method_name
+    for call in ast.walk(function):
+        if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name):
+            continue
+        child = aliases.get(call.func.id)
+        if child is None or child[1] != desired:
+            continue
+        if method_name == "board":
+            return _resolve_board_target(child)
+        return child
+    return target
+
+
+def _resolve_board_target(target: tuple[Path, str]) -> tuple[Path, str]:
+    source_path, function_name = target
+    if function_name != "read_view":
+        return target
+    source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    function = _function(source, function_name)
+    if _calls(function, "_read_view"):
+        return source_path, "_read_view"
+    return target
+
+
+def _calls(function: ast.AST, name: str) -> bool:
+    return any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == name
+        for node in ast.walk(function)
+    )
 
 
 def _adapter_targets(

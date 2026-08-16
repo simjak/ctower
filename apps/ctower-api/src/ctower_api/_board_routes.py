@@ -67,6 +67,8 @@ def install_board_routes(
         except ValueError:
             return _problem_response(_validation_problem())
         view = projections.board(actor, query)
+        if isinstance(view, RecordProblem):
+            return _problem_response(view)
         boundary = HttpBoardView.model_validate_json(_encoded(view.response_payload()))
         return JSONResponse(content=boundary.model_dump(mode="json"))
 

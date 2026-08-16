@@ -28,7 +28,7 @@ from ctower_kernel.catalog import (
 from ctower_kernel.catalog.interface import CompanyBundleResource, JsonValue
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctowerctl import _migration_commands
 from ctowerctl.interface import write_result
 
@@ -146,6 +146,7 @@ def test_checkpoint_bundle_materializes_every_definition_and_replays_without_res
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
         "ctower",
     )
+    assert not isinstance(prior_view, RecordProblem), prior_view
     assert prior_view is not None
     assert len(prior_view.rows) == len(prior_bundle.resources)
 
@@ -180,6 +181,7 @@ def test_checkpoint_bundle_materializes_every_definition_and_replays_without_res
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
         "ctower",
     )
+    assert not isinstance(view, RecordProblem), view
     assert view is not None
     configured_keys = {str(resource.payload["checkpoint_key"]) for resource in bundle.resources}
     assert {row.checkpoint_key for row in view.rows} == configured_keys
@@ -225,6 +227,11 @@ def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
     )
     rebuilt = projections.project_delivery(actor, "ctower")
 
+    assert not isinstance(missing, RecordProblem), missing
+    assert not isinstance(recovered, RecordProblem), recovered
+    assert not isinstance(lagging, RecordProblem), lagging
+    assert not isinstance(poisoned, RecordProblem), poisoned
+    assert not isinstance(rebuilt, RecordProblem), rebuilt
     assert missing is not None and recovered is not None
     assert lagging is not None and poisoned is not None and rebuilt is not None
     configured = len(_checkpoint_bundle().resources)
@@ -266,6 +273,7 @@ def test_non_increment_checkpoint_key_materializes_and_projects_end_to_end(
     view = projections.project_delivery(actor, "ctower")
 
     assert affected == len(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert not isinstance(view, RecordProblem), view
     assert view is not None
     assert {row.checkpoint_key for row in view.rows} == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
     definitions, rows = _stored_checkpoint_keys(tenant)
