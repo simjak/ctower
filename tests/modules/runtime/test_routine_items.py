@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -19,6 +19,7 @@ def test_routine_item_spec_has_a_knowledge_pointer_and_no_embedded_instructions(
     spec = RoutineItemSpec(
         item_key="operator-report",
         knowledge_ref="routine-operator-report",
+        document_id=UUID("00000000-0000-4000-8000-000000000001"),
         owner_seat="ctower-commander",
         escalation_seat="ctower-commander",
     )
@@ -26,6 +27,7 @@ def test_routine_item_spec_has_a_knowledge_pointer_and_no_embedded_instructions(
         "escalation_seat": "ctower-commander",
         "item_key": "operator-report",
         "knowledge_ref": "routine-operator-report",
+        "document_id": "00000000-0000-4000-8000-000000000001",
         "owner_seat": "ctower-commander",
     }
     with pytest.raises((TypeError, ValueError), match="instruction"):
@@ -51,6 +53,7 @@ def test_work_item_carries_gate_window_pointer_and_completion_command() -> None:
         owner_seat="ctower-commander",
         escalation_seat="ctower-commander",
         knowledge_ref="routine-operator-report",
+        document_id=UUID("00000000-0000-4000-8000-000000000001"),
         gate_evidence=RoutineGateEvidence(
             kind="always",
             watermark_kind="none",
@@ -63,6 +66,7 @@ def test_work_item_carries_gate_window_pointer_and_completion_command() -> None:
     payload = item.response_payload()
     assert payload["work_item_id"] == str(item_id)
     assert payload["knowledge_ref"] == "routine-operator-report"
+    assert payload["document_id"] == "00000000-0000-4000-8000-000000000001"
     assert payload["window"] == {
         "scheduled_for": scheduled_for.isoformat(),
         "ends_at": (scheduled_for + timedelta(minutes=30)).isoformat(),

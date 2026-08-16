@@ -18371,6 +18371,10 @@
         "routineItem": {
           "additionalProperties": false,
           "properties": {
+            "document_id": {
+              "format": "uuid",
+              "type": "string"
+            },
             "escalation_seat": {
               "pattern": "^[a-z][a-z0-9._-]{1,95}$",
               "type": "string"
@@ -18390,6 +18394,7 @@
           "required": [
             "item_key",
             "knowledge_ref",
+            "document_id",
             "owner_seat",
             "escalation_seat"
           ],
@@ -18683,6 +18688,10 @@
         }
       },
       "properties": {
+        "document_id": {
+          "format": "uuid",
+          "type": "string"
+        },
         "escalation_seat": {
           "pattern": "^[a-z][a-z0-9._-]{1,95}$",
           "type": "string"
@@ -18812,6 +18821,7 @@
         "owner_seat",
         "escalation_seat",
         "knowledge_ref",
+        "document_id",
         "gate_evidence",
         "status",
         "receipt"
@@ -20344,7 +20354,7 @@
     {
       "id": "https://ctower.dev/contracts/runtime/routine-v4.schema.json",
       "path": "contracts/runtime/routine-v4.schema.json",
-      "sha256": "sha256:27f5c760afe86a10414881938367043db6548ab216f1e5aec9ed353a680cdca3"
+      "sha256": "sha256:27fd2b6f66d80418d4cd791f0497e2ebd2eb2240b3b2bfd26d99f5ec35b34333"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/routine-work-item-alarm.schema.json",
@@ -20364,7 +20374,7 @@
     {
       "id": "https://ctower.dev/contracts/runtime/routine-work-item.schema.json",
       "path": "contracts/runtime/routine-work-item.schema.json",
-      "sha256": "sha256:0d70ff33c5a2fcc083abfcdee820364235b27b6fd6066bddc98699eef86de14e"
+      "sha256": "sha256:a676393bf9cb37a68a37c124795d9d0f0bc7bc5953acbe2302d334412dc3e25c"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/routine.schema.json",

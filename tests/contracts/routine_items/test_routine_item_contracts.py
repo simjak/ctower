@@ -30,6 +30,7 @@ def test_routine_v4_is_a_pointer_only_work_item_contract_without_session_dispatc
     assert set(cast(list[str], routine_item["required"])) == {
         "item_key",
         "knowledge_ref",
+        "document_id",
         "owner_seat",
         "escalation_seat",
     }
@@ -51,7 +52,12 @@ def test_routine_v4_is_a_pointer_only_work_item_contract_without_session_dispatc
 
 def test_routine_item_contracts_are_strict_and_name_receipt_suppression_and_alarm_facts() -> None:
     expected = {
-        "routine-work-item.schema.json": {"RoutineWorkItem", "knowledge_ref", "gate_evidence"},
+        "routine-work-item.schema.json": {
+            "RoutineWorkItem",
+            "knowledge_ref",
+            "document_id",
+            "gate_evidence",
+        },
         "routine-work-item-receipt.schema.json": {"RoutineWorkItemReceipt", "artifact_ref"},
         "routine-work-item-suppression.schema.json": {
             "RoutineWorkItemSuppression",
@@ -90,6 +96,7 @@ def _valid_revision() -> dict[str, object]:
         "routine_item": {
             "item_key": "report",
             "knowledge_ref": "routine-report",
+            "document_id": "00000000-0000-4000-8000-000000000001",
             "owner_seat": "ctower-commander",
             "escalation_seat": "ctower-commander",
         },

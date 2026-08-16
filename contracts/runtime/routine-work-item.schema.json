@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schema_id", "work_item_id", "tenant_id", "routine_ref", "revision_digest",
-    "window", "owner_seat", "escalation_seat", "knowledge_ref", "gate_evidence",
+    "window", "owner_seat", "escalation_seat", "knowledge_ref", "document_id", "gate_evidence",
     "status", "receipt"
   ],
   "properties": {
@@ -26,6 +26,7 @@
     "owner_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
     "escalation_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
     "knowledge_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+    "document_id": {"type": "string", "format": "uuid"},
     "gate_evidence": {
       "type": "object", "additionalProperties": false,
       "required": ["kind", "result", "watermark_kind", "watermark_position", "observed_count", "detail"],

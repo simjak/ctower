@@ -8,8 +8,8 @@ scan cannot turn one due time into duplicate truth.
 
 Recurring work must survive restarts, time-zone transitions, and missed schedule times. A routine revision
 records its schedule, time zone, catch-up rule, concurrency rule, timeout, and immutable component references.
-Migrated work-item revisions carry a Knowledge pointer instead of instruction text. The scheduler records every
-considered occurrence, including a skipped occurrence.
+Migrated work-item revisions carry the immutable document ID of a registered Knowledge snapshot instead of
+instruction text. The scheduler records every considered occurrence, including a skipped occurrence.
 
 The scheduler handles missing and repeated civil times explicitly. A revision can skip missed work, coalesce it
 into one latest occurrence, or enqueue a bounded number of missed occurrences, as its catch-up rule declares.
@@ -25,9 +25,9 @@ Ctower currently contains twelve fixed routine definitions:
 - five activity-gated definitions covering two operator-facing report schedules, one watcher, one janitor,
   and one capacity sentinel.
 
-The scheduler records occurrences for these definitions. The five migrated Mission Control definitions append one
+The scheduler records occurrences for these definitions. The five migrated definitions append one
 pointer-only Inbox work item per
-fire, carrying the gate evidence and watermark plus a Knowledge reference, with no session-targeted instruction.
+fire, carrying the gate evidence and watermark plus the immutable Knowledge document ID, with no session-targeted instruction.
 The item remains open until a receipt references the delivered artifact. Correcting a definition creates a new
 revision and leaves older revisions, occurrences, effects, and work-item facts as history.
 
@@ -57,7 +57,7 @@ observed count, detail, and evaluation time. The result has one of three meaning
 - **Degraded** — the activity read could not be established. The evaluation is recorded as `degraded`, the
   occurrence is visible as skipped, and no clean dispatch is emitted.
 
-A work item carries the Knowledge reference, gate evidence, and delivery window; it is closed only by a receipt
+A work item carries the immutable Knowledge document ID, gate evidence, and delivery window; it is closed only by a receipt
 naming the delivered artifact. A fire or open item is evidence that the routine fired, not evidence that external
 work completed successfully.
 

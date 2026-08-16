@@ -18,6 +18,7 @@ class GatedPackExpected(TypedDict):
     gate: dict[str, object]
     item_key: str
     knowledge_ref: str
+    document_id: str
     owner_seat: str
     escalation_seat: str
 
@@ -29,6 +30,7 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
         "gate": {"kind": "always"},
         "item_key": "manibo-report",
         "knowledge_ref": "mc-cron.manibo-report",
+        "document_id": "a98100ac-1ac2-56f4-8754-e9550ebf67e7",
         "owner_seat": "manibo-commander",
         "escalation_seat": "ctower-commander",
     },
@@ -38,6 +40,7 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
         "gate": {"kind": "always"},
         "item_key": "structural-report",
         "knowledge_ref": "mc-cron.structural-report",
+        "document_id": "ff5bb90f-6eb6-5cf6-9469-3e80d34190fd",
         "owner_seat": "ctower-commander",
         "escalation_seat": "ctower-commander",
     },
@@ -47,6 +50,7 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
         "gate": {"kind": "new_movement_since_watermark", "source": "events"},
         "item_key": "manibo-merge-watch",
         "knowledge_ref": "mc-cron.manibo-merge-watch",
+        "document_id": "5ef302e2-6eb4-59cd-a39a-be1c53aaa0ed",
         "owner_seat": "manibo-commander",
         "escalation_seat": "ctower-commander",
     },
@@ -56,6 +60,7 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
         "gate": {"kind": "always"},
         "item_key": "worktree-janitor-apply",
         "knowledge_ref": "mc-cron.worktree-janitor-apply",
+        "document_id": "b82a0ce2-280e-5a05-af2d-acb051441e6e",
         "owner_seat": "ctower-commander",
         "escalation_seat": "ctower-commander",
     },
@@ -65,6 +70,7 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
         "gate": {"kind": "open_tickets_above", "threshold": 0},
         "item_key": "capacity-sentinel",
         "knowledge_ref": "mc-cron.capacity-sentinel",
+        "document_id": "1edc6d80-b92f-5cab-9a8b-df4728a96dfe",
         "owner_seat": "ctower-commander",
         "escalation_seat": "ctower-commander",
     },
@@ -96,6 +102,7 @@ def test_five_gated_packs_pin_exact_gate_schedule_and_digest() -> None:
         assert item == {
             "item_key": expected["item_key"],
             "knowledge_ref": expected["knowledge_ref"],
+            "document_id": expected["document_id"],
             "owner_seat": expected["owner_seat"],
             "escalation_seat": expected["escalation_seat"],
         }

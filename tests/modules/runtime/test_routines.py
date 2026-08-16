@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import cast
+from uuid import UUID
 
 import pytest
 
@@ -44,6 +45,7 @@ def _revision(gate: ActivityGate | None) -> RoutineRevision:
         routine_item=RoutineItemSpec(
             item_key="capacity-sentinel",
             knowledge_ref="mc-cron.capacity-sentinel",
+            document_id=UUID("1edc6d80-b92f-5cab-9a8b-df4728a96dfe"),
             owner_seat="ctower-commander",
             escalation_seat="ctower-commander",
         ),

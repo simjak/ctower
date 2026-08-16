@@ -83,7 +83,9 @@ _BEAT_SCHEDULE_KEYS = frozenset({"kind", "timezone", "minutes", "hours"})
 _DREAM_KEYS = frozenset({"scope_kind", "project_key", "skill_path", "model_requirement"})
 _MODEL_KEYS = frozenset({"primary", "fallback", "minimum_tier", "excluded_families"})
 _MODEL_SELECTION_KEYS = frozenset({"model_ref", "reasoning_effort"})
-_ROUTINE_ITEM_KEYS = frozenset({"item_key", "knowledge_ref", "owner_seat", "escalation_seat"})
+_ROUTINE_ITEM_KEYS = frozenset(
+    {"item_key", "knowledge_ref", "document_id", "owner_seat", "escalation_seat"}
+)
 _GATE_KEYS = frozenset({"kind", "source", "threshold", "project_key"})
 
 
@@ -205,6 +207,7 @@ def _routine_item(value: object) -> RoutineItemSpec | None:
     return RoutineItemSpec(
         item_key=_string(item["item_key"], "routine_item.item_key"),
         knowledge_ref=_string(item["knowledge_ref"], "routine_item.knowledge_ref"),
+        document_id=UUID(_string(item["document_id"], "routine_item.document_id")),
         owner_seat=_string(item["owner_seat"], "routine_item.owner_seat"),
         escalation_seat=_string(item["escalation_seat"], "routine_item.escalation_seat"),
     )

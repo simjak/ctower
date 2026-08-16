@@ -2552,6 +2552,14 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0080_routine_item_document_pins.sql",
+      "references": [
+        "SPEC#activity-gated-routines",
+        "INV-76",
+        "AC-RTN-04"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/0064_console_output_reader_role.sql",
       "references": [
         "SPEC#contextual-console-viewer-server-foundation",

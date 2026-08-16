@@ -38,6 +38,7 @@ def test_ac_rwi_01_fire_appends_one_pointer_only_inbox_item_and_replays_zero(
     item = first.work_items[0]
     assert item.owner_seat == "ctower-commander"
     assert item.knowledge_ref == "routine-test-report"
+    assert item.document_id == UUID("00000000-0000-4000-8000-000000000001")
     assert item.gate_evidence.result == "fired"
     assert first.session_writes == ()
 
@@ -48,7 +49,8 @@ def test_ac_rwi_01_fire_appends_one_pointer_only_inbox_item_and_replays_zero(
         assert count is not None and count[0] == 1
         columns = connection.execute(
             """
-            SELECT routine_ref, owner_seat, knowledge_ref, gate_evidence, to_jsonb(inbox_work_items)
+            SELECT routine_ref, owner_seat, knowledge_ref, document_id, gate_evidence,
+                   to_jsonb(inbox_work_items)
             FROM inbox_work_items WHERE tenant_id = %s
             """,
             (tenant.tenant_id,),
@@ -57,8 +59,9 @@ def test_ac_rwi_01_fire_appends_one_pointer_only_inbox_item_and_replays_zero(
         assert columns[0] == revision.routine_ref
         assert columns[1] == "ctower-commander"
         assert columns[2] == "routine-test-report"
-        assert columns[3]["result"] == "fired"
-        assert "prompt" not in columns[4] and "instructions" not in columns[4]
+        assert columns[3] == UUID("00000000-0000-4000-8000-000000000001")
+        assert columns[4]["result"] == "fired"
+        assert "prompt" not in columns[5] and "instructions" not in columns[5]
 
     _reset_trigger(tenant, revision, due)
     replay = runtime.scan(tenant.tenant_id)
@@ -310,6 +313,7 @@ def _revision() -> RoutineRevision:
         routine_item=RoutineItemSpec(
             item_key="test-report",
             knowledge_ref="routine-test-report",
+            document_id=UUID("00000000-0000-4000-8000-000000000001"),
             owner_seat="ctower-commander",
             escalation_seat="ctower-commander",
         ),

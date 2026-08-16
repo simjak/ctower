@@ -40,6 +40,7 @@ class RoutineItemSpec:
 
     item_key: str
     knowledge_ref: str
+    document_id: UUID
     owner_seat: str
     escalation_seat: str
 
@@ -48,6 +49,8 @@ class RoutineItemSpec:
             raise ValueError("Routine item key must be stable")
         if _KNOWLEDGE_REF.fullmatch(self.knowledge_ref) is None:
             raise ValueError("Routine item must carry a Knowledge reference")
+        if not isinstance(self.document_id, UUID):
+            raise TypeError("Routine item must carry a Knowledge document UUID")
         if _SEAT_KEY.fullmatch(self.owner_seat) is None:
             raise ValueError("Routine item owner seat is outside the authored contract")
         if _SEAT_KEY.fullmatch(self.escalation_seat) is None:
@@ -58,6 +61,7 @@ class RoutineItemSpec:
             "escalation_seat": self.escalation_seat,
             "item_key": self.item_key,
             "knowledge_ref": self.knowledge_ref,
+            "document_id": str(self.document_id),
             "owner_seat": self.owner_seat,
         }
 
@@ -153,6 +157,7 @@ class RoutineWorkItem:
     owner_seat: str
     escalation_seat: str
     knowledge_ref: str
+    document_id: UUID
     gate_evidence: RoutineGateEvidence
     created_at: datetime
     status: RoutineWorkItemStatus = RoutineWorkItemStatus.OPEN
@@ -170,6 +175,7 @@ class RoutineWorkItem:
             "escalation_seat": self.escalation_seat,
             "gate_evidence": self.gate_evidence.response_payload(),
             "knowledge_ref": self.knowledge_ref,
+            "document_id": str(self.document_id),
             "owner_seat": self.owner_seat,
             "receipt": (
                 {
@@ -289,6 +295,8 @@ def _validate_work_item_seats(item: RoutineWorkItem) -> None:
         raise ValueError("Routine work-item seat is outside the authored contract")
     if _KNOWLEDGE_REF.fullmatch(item.knowledge_ref) is None:
         raise ValueError("Routine work-item Knowledge reference is invalid")
+    if not isinstance(item.document_id, UUID):
+        raise TypeError("Routine work-item Knowledge document must be a UUID")
 
 
 def _validate_work_item_shape(item: RoutineWorkItem) -> None:

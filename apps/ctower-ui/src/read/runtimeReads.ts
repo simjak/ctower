@@ -85,7 +85,6 @@ async function loadWorkSessions(
   return asArray(row.sessions, "ticket.sessions.sessions").map(toWorkSession);
 }
 
-
 /**
  * One crew's recorded sessions across a project.
  *

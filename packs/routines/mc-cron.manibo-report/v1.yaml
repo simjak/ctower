@@ -17,15 +17,16 @@
   "timeout_seconds": 1800,
   "handler_kind": "routine_item",
   "component_digests": [
-    "sha256:fc875875ec8142a0ad86c6d390b38d6841d5bdeb00b77fddd9e4cb0cd130abb5"
+    "sha256:0c59e7c0be02650adc3803252513b4f49c3f63920a1f084cc7cb7a5523728057"
   ],
   "activity_gate": {
     "kind": "always"
   },
-  "revision_digest": "sha256:e2f21d0caa9d0674f5d40446fdb0042502fd89fe8f2fc982ec708023ce579057",
+  "revision_digest": "sha256:78e6163472f18a9be33be24103678dae66a80c64b513b96c9e989d8394722ee7",
   "routine_item": {
     "item_key": "manibo-report",
     "knowledge_ref": "mc-cron.manibo-report",
+    "document_id": "a98100ac-1ac2-56f4-8754-e9550ebf67e7",
     "owner_seat": "manibo-commander",
     "escalation_seat": "ctower-commander"
   }

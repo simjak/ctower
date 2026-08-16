@@ -30,16 +30,17 @@
   "timeout_seconds": 600,
   "handler_kind": "routine_item",
   "component_digests": [
-    "sha256:1d4c615cc892c642adff1dc00ab38ee4a0d817c7f2aab3e13acd7a899ac718ac"
+    "sha256:8cb333f3d07921b9e201d8528a90a7eba923653ee9f76ec6b394be8165dde04c"
   ],
   "activity_gate": {
     "kind": "new_movement_since_watermark",
     "source": "events"
   },
-  "revision_digest": "sha256:1815f096d90edee13ad80dd4350dce5c89cc808a327a3da2fcf9919b2a54e3d5",
+  "revision_digest": "sha256:bfef4e18b1338f7cb2391d5f733ce7cf53f5f0eee40530d77b1092a92fb3c094",
   "routine_item": {
     "item_key": "manibo-merge-watch",
     "knowledge_ref": "mc-cron.manibo-merge-watch",
+    "document_id": "5ef302e2-6eb4-59cd-a39a-be1c53aaa0ed",
     "owner_seat": "manibo-commander",
     "escalation_seat": "ctower-commander"
   }

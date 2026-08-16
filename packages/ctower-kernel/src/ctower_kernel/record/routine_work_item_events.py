@@ -37,6 +37,7 @@ class RoutineWorkItemAppendedPayload:
     owner_seat: str
     escalation_seat: str
     knowledge_ref: str
+    document_id: UUID
     gate_evidence: dict[str, object]
 
     def __post_init__(self) -> None:
@@ -53,6 +54,7 @@ class RoutineWorkItemAppendedPayload:
             raise ValueError("Routine work-item window must end after it starts")
         if _KNOWLEDGE.fullmatch(self.knowledge_ref) is None:
             raise ValueError("Routine work-item Knowledge reference is invalid")
+        _validate_uuid(self.document_id, "document_id")
         _validate_gate_evidence(self.gate_evidence)
 
     def to_mapping(self) -> dict[str, object]:
@@ -60,6 +62,7 @@ class RoutineWorkItemAppendedPayload:
             "escalation_seat": self.escalation_seat,
             "gate_evidence": _gate_mapping(self.gate_evidence),
             "knowledge_ref": self.knowledge_ref,
+            "document_id": str(self.document_id),
             "owner_seat": self.owner_seat,
             "revision_digest": self.revision_digest,
             "routine_ref": self.routine_ref,

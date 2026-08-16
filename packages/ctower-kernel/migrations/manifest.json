@@ -1,7 +1,7 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0079_routine_work_items.sql",
+    "through": "0080_routine_item_document_pins.sql",
     "schema_sha256": "sha256:4630057e6f35d29170eb81bbbbba07f30b111768eea876b6e5843339273af16b",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:43f81cd514df45f35673462563dd16d2bc6bfded5493004721e0ef5c4a1a3558"
@@ -749,6 +749,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_routine_items.py::test_ac_rwi_01_fire_appends_one_pointer_only_inbox_item_and_replays_zero",
       "rollback_or_forward_compensation": "Preserve every immutable Routine work-item append, receipt, suppression, alarm, event, and command result; recover with a reviewed forward compensation and never delete, reopen, or infer a missing receipt.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture routine revisions, item specifications, Inbox work items, receipts, suppressions, alarms, events, command results, and durability heads grouped by tenant plus a verified database backup; all five new fact tables start empty."
+    },
+    {
+      "path": "0080_routine_item_document_pins.sql",
+      "sha256": "sha256:1938291873da30db719a136b879a928f8d180c20b201307dea79ce41ca6e456a",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_routine_work_item_migration.py::test_final_schema_persists_exact_knowledge_document_pins",
+      "rollback_or_forward_compensation": "Preserve every immutable Routine item and Knowledge pointer fact; append a reviewed forward compensation rather than editing or deleting an accepted document pin or source label.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture routine item specification and Inbox work-item counts grouped by tenant plus a verified database backup; the additive pin columns preserve existing historical rows and enforce document IDs on new rows."
     }
   ]
 }
