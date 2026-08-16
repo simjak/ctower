@@ -96,6 +96,8 @@ def _atom_document(
     next_cursor: int | None,
 ) -> bytes:
     feed = ET.Element(f"{{{_ATOM_NS}}}feed")
+    author = ET.SubElement(feed, f"{{{_ATOM_NS}}}author")
+    ET.SubElement(author, f"{{{_ATOM_NS}}}name").text = "ctower"
     ET.SubElement(feed, f"{{{_ATOM_NS}}}title").text = f"ctower movement: {project_key}"
     ET.SubElement(feed, f"{{{_ATOM_NS}}}id").text = f"urn:ctower:movement:{project_key}"
     ET.SubElement(
@@ -118,7 +120,10 @@ def _atom_document(
         ET.SubElement(
             entry,
             f"{{{_ATOM_NS}}}link",
-            {"rel": "alternate", "href": f"/v1/tickets/{event.ticket_id}/timeline"},
+            {
+                "rel": "alternate",
+                "href": (f"/v1/tickets/{event.ticket_id}/timeline?project_key={project_key}"),
+            },
         )
     return cast(bytes, ET.tostring(feed, encoding="utf-8", xml_declaration=True))
 

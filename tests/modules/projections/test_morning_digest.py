@@ -363,7 +363,7 @@ def _assert_complete_digest(digest: MorningDigest) -> None:
     assert digest.movement.counts() == {}
     proof = next(item for item in digest.proof.items if item.request_reference == "R102")
     assert proof.current_proof_count == 1
-    assert proof.tickets[0].href == f"/v1/tickets/{_TICKET_ID}/timeline"
+    assert proof.tickets[0].href == f"/v1/tickets/{_TICKET_ID}/timeline?project_key=ctower"
     assert proof.tickets[0].purpose == "required"
     assert all(item.request_id != _UNRELATED_REQUEST_ID for item in digest.proof.items)
 

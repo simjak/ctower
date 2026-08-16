@@ -4485,7 +4485,7 @@
         "additionalProperties": false,
         "required": ["href", "purpose", "ticket_id"],
         "properties": {
-          "href": {"type": "string", "pattern": "^/v1/tickets/[0-9a-f-]{36}/timeline$"},
+          "href": {"type": "string", "pattern": "^/v1/tickets/[0-9a-f-]{36}/timeline\\?project_key=[a-z][a-z0-9-]{2,63}$"},
           "purpose": {"type": "string", "enum": ["required", "optional"]},
           "ticket_id": {"type": "string", "format": "uuid"}
         }

@@ -369,13 +369,17 @@ def _assert_http_and_atom(
         )
         assert atom.status_code == HTTP_OK, atom.text
         assert atom.headers["content-type"].startswith("application/atom+xml")
+        assert b"<author><name>ctower</name></author>" in atom.content
         parsed = feedparser.parse(atom.content)
         assert parsed.bozo is False
         assert len(parsed.entries) == 1
         event = cast(list[dict[str, object]], json_payload["events"])[0]
         assert parsed.entries[0].id == f"urn:uuid:{event['event_id']}"
         assert parsed.entries[0].updated.endswith("Z")
-        assert parsed.entries[0].links[0].href.endswith(f"/v1/tickets/{ticket_id}/timeline")
+        alternate = next(link.href for link in parsed.entries[0].links if link.rel == "alternate")
+        assert alternate == f"/v1/tickets/{ticket_id}/timeline?project_key=ctower"
+        linked = http.get(alternate, headers=operator_headers)
+        assert linked.status_code == HTTP_OK, linked.text
 
         query_credential = http.get(
             "/v1/projects/ctower/movement",

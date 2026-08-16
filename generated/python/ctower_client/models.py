@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:16f9297291f8725b774ffbe563588b6a21de10f299fa78b1d8e08a07bd1a90c3
+Authored contract digest: sha256:2ce9798fff8a7e57b975d80dc59956f4bf290f266bda6ee8513cb62359653f30
 """
 
 from __future__ import annotations
@@ -1464,7 +1464,7 @@ class MorningDigestExecution(_BoundaryModel):
 
 
 class MorningDigestTicketLink(_BoundaryModel):
-    href: Annotated[str, Field(pattern="^/v1/tickets/[0-9a-f-]{36}/timeline$")]
+    href: Annotated[str, Field(pattern="^/v1/tickets/[0-9a-f-]{36}/timeline\\?project_key=[a-z][a-z0-9-]{2,63}$")]
     purpose: Literal["required", "optional"]
     ticket_id: UUID
 

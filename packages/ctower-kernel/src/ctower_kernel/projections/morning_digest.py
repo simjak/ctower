@@ -522,7 +522,7 @@ def _proof_section(
                 DigestTicketLink(
                     ticket_id,
                     purpose,
-                    f"/v1/tickets/{ticket_id}/timeline",
+                    f"/v1/tickets/{ticket_id}/timeline?project_key={item.project_key}",
                 )
                 for purpose, ticket_ids in (
                     ("required", item.required_ticket_ids),

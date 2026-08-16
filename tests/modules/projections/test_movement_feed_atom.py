@@ -31,22 +31,23 @@ _EVENT = MovementEvent(
 
 
 def test_atom_entry_has_stable_identity_timestamp_and_authorized_ticket_link() -> None:
-    parsed = feedparser.parse(
-        routes._atom_document(
-            (_EVENT,),
-            "ctower",
-            cursor=0,
-            limit=1,
-            next_cursor=None,
-        )
+    document = routes._atom_document(
+        (_EVENT,),
+        "ctower",
+        cursor=0,
+        limit=1,
+        next_cursor=None,
     )
+    assert b"<author><name>ctower</name></author>" in document
+    parsed = feedparser.parse(document)
 
     assert parsed.bozo is False
     entry = parsed.entries[0]
     assert entry.id == f"urn:uuid:{_EVENT.event_id}"
     assert entry.updated == "2026-08-09T12:00:00Z"
     assert any(
-        link.rel == "alternate" and link.href == f"/v1/tickets/{_EVENT.ticket_id}/timeline"
+        link.rel == "alternate"
+        and link.href == f"/v1/tickets/{_EVENT.ticket_id}/timeline?project_key=ctower"
         for link in entry.links
     )
     assert "ticket text" not in str(entry)

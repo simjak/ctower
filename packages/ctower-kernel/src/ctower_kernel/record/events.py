@@ -9,10 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from ctower_kernel.record._event_encoding import (
-    _canonical,
-    _timestamp,
-)
+from ctower_kernel.record._event_encoding import _canonical, _timestamp
 from ctower_kernel.record._event_types import EventKind, EventOrigin
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
@@ -61,9 +58,7 @@ from ctower_kernel.record.knowledge_events import (
     KnowledgeDocumentRegisteredPayload,
     KnowledgeEventPayload,
 )
-from ctower_kernel.record.knowledge_events import (
-    _validate_identity as _validate_knowledge_identity,
-)
+from ctower_kernel.record.knowledge_events import _validate_identity as _validate_knowledge_identity
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
