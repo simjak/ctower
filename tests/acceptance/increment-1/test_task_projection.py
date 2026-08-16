@@ -63,7 +63,12 @@ def test_defer_stays_backlog_until_explicit_admission(tenant: TenantFixture) -> 
 
 
 def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) -> None:
-    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    actor = Actor(
+        tenant.commander_id,
+        tenant.tenant_id,
+        PrincipalKind.COMMANDER,
+        project_grants=frozenset({"ctower"}),
+    )
     ticket_id = _ticket(tenant)
     store = PostgresProjections(tenant.database.projection_dsn)
     projections = Projections(store)

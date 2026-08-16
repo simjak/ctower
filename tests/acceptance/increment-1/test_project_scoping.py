@@ -18,13 +18,13 @@ from support.catalog import (
     minimal_bundle,
 )
 from support.telemetry import telemetry_headers
-from support.tenant_fixture import TenantFixture
+from support.tenant_fixture import TenantFixture, provision_seat
 
 from ctower_api.interface import create_app
 from ctower_kernel.catalog import CatalogProblem, CompanyBundle, PostgresCatalog
 from ctower_kernel.projections import BoardQuery, Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Block, Work, WorkReceipt
@@ -73,6 +73,45 @@ _CTOWER_CHECKPOINTS = (
 
 def test_manibo_and_ctower_boards_are_disjoint(tenant: TenantFixture) -> None:
     _assert_pair_disjoint(tenant, "manibo", "ctower")
+
+
+def test_foreign_project_projection_reads_are_refused(tenant: TenantFixture) -> None:
+    projections, scoped_actor, _operator, _manibo_ticket = _scoped_projection_fixture(tenant)
+
+    foreign_board = projections.board(scoped_actor, BoardQuery(project_key="ctower"))
+    foreign_cards = getattr(foreign_board, "cards", ())
+    assert isinstance(cast(object, foreign_board), RecordProblem), (
+        f"HTTP 200 with foreign card(s)={len(foreign_cards)}: {foreign_board.response_payload()}"
+    )
+
+    foreign_delivery = projections.project_delivery(scoped_actor, "ctower")
+    foreign_rows = getattr(foreign_delivery, "rows", ())
+    assert isinstance(cast(object, foreign_delivery), RecordProblem), (
+        f"HTTP 200 with foreign delivery row(s)={len(foreign_rows)}: "
+        f"{foreign_delivery.response_payload() if foreign_delivery is not None else None}"
+    )
+
+
+def test_granted_project_projection_reads_still_work(tenant: TenantFixture) -> None:
+    projections, scoped_actor, operator, manibo_ticket = _scoped_projection_fixture(tenant)
+
+    granted_board = projections.board(scoped_actor, BoardQuery(project_key="manibo"))
+    assert not isinstance(cast(object, granted_board), RecordProblem), (
+        granted_board.response_payload()
+    )
+    assert {card.ticket_id for card in granted_board.cards} == {manibo_ticket}
+
+    granted_delivery = projections.project_delivery(scoped_actor, "manibo")
+    assert granted_delivery is not None
+    assert not isinstance(cast(object, granted_delivery), RecordProblem), (
+        granted_delivery.response_payload()
+    )
+    assert granted_delivery.project_key == "manibo"
+
+    operator_board = projections.board(operator, BoardQuery(project_key="ctower"))
+    assert not isinstance(cast(object, operator_board), RecordProblem), (
+        operator_board.response_payload()
+    )
 
 
 def test_bhloop_and_ctower_boards_are_disjoint(tenant: TenantFixture) -> None:
@@ -249,6 +288,34 @@ def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
     assert left_after.source_watermark > left_board.source_watermark
     assert right_after.source_watermark == right_board.source_watermark
     assert right_after.projection_watermark == right_board.projection_watermark
+
+
+def _scoped_projection_fixture(
+    tenant: TenantFixture,
+) -> tuple[Projections, Actor, Actor, UUID]:
+    _apply_portfolio_bundle(tenant)
+    with _client(tenant) as client:
+        _created_ticket_id(_submit_intake(client, tenant, "ctower", "ctower-R3048"))
+        manibo_ticket = _created_ticket_id(_submit_intake(client, tenant, "manibo", "manibo-R3048"))
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    projections.catch_up(tenant.tenant_id)
+    projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    principal_id, _credential = provision_seat(tenant, "r3048-manibo-reader", project_key="manibo")
+    scoped_actor = Actor(
+        principal_id,
+        tenant.tenant_id,
+        PrincipalKind.COMMANDER,
+        project_grants=frozenset({"manibo"}),
+    )
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    return projections, scoped_actor, operator, manibo_ticket
+
+
+def _expected_project_read_status(project_key: str) -> int:
+    """The fixture Commander has only the bootstrap ``ctower`` Project grant."""
+
+    return HTTP_NOT_FOUND if project_key == "ctower" else HTTP_FORBIDDEN
 
 
 def _apply_portfolio_bundle(tenant: TenantFixture) -> None:
