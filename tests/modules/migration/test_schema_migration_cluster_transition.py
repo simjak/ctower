@@ -100,7 +100,7 @@ def test_declared_cluster_transition_advances_the_recorded_0063_instance(
     recorded_after = _versioned_ledger_rows(migration_database)
     assert [row[:5] for row in recorded_after[: len(recorded_before)]] == recorded_before
     assert all(row[5] is None for row in recorded_after[: len(recorded_before)])
-    assert [row[0] for row in recorded_after[-7:]] == [
+    assert [row[0] for row in recorded_after[-9:]] == [
         "0072_estate_import_authority.sql",
         "0073_restore_request_proposal_constraints.sql",
         "0074_restore_routine_retirement_kind.sql",
@@ -108,6 +108,8 @@ def test_declared_cluster_transition_advances_the_recorded_0063_instance(
         "0076_spawn_records.sql",
         "0077_inbox_message_severity.sql",
         "0078_pool_credential_observations.sql",
+        "0079_routine_work_items.sql",
+        "0080_routine_item_document_pins.sql",
     ]
     assert all(
         isinstance(row[5], int)
@@ -187,7 +189,7 @@ def test_retry_after_cluster_phase_and_two_concurrent_callers_converge_once(
             future.result(timeout=60)
 
     rows = _versioned_ledger_rows(migration_database)
-    assert [row[0] for row in rows[-7:]] == [
+    assert [row[0] for row in rows[-9:]] == [
         "0072_estate_import_authority.sql",
         "0073_restore_request_proposal_constraints.sql",
         "0074_restore_routine_retirement_kind.sql",
@@ -195,6 +197,8 @@ def test_retry_after_cluster_phase_and_two_concurrent_callers_converge_once(
         "0076_spawn_records.sql",
         "0077_inbox_message_severity.sql",
         "0078_pool_credential_observations.sql",
+        "0079_routine_work_items.sql",
+        "0080_routine_item_document_pins.sql",
     ]
     assert len({row[0] for row in rows}) == len(rows)
 
