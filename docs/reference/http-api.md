@@ -83,10 +83,10 @@ means it is sent online or not at all.
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
 |---|---|---|---|---|---|---|
 | `POST` | `/v1/tickets` | `createTicket` | `ticket capture`<br>`ticket create` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
-| `GET` | `/v1/tickets/{ticket_id}` | `getTicket` | `ticket query`<br>`ticket show` | query | forbidden | `200`, `401`, `404`, `422` |
-| `GET` | `/v1/tickets/{ticket_id}/assignments` | `listTicketAssignments` | `ticket assignments` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/tickets/{ticket_id}` | `getTicket` | `ticket query`<br>`ticket show` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `GET` | `/v1/tickets/{ticket_id}/assignments` | `listTicketAssignments` | `ticket assignments` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/assignments` | `changeTicketAssignment` | `ticket assign` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
-| `GET` | `/v1/tickets/{ticket_id}/audit` | `listTicketAuditEvents` | `ticket audit` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/tickets/{ticket_id}/audit` | `listTicketAuditEvents` | `ticket audit` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/comments` | `addTicketComment` | `ticket comment add` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/custody` | `transferTicketCustody` | `ticket custody transfer` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/intents` | `applyTicketIntent` | `ticket admit`<br>`ticket defer`<br>`ticket block`<br>`ticket unblock`<br>`ticket reopen` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
@@ -95,7 +95,7 @@ means it is sent online or not at all.
 | `POST` | `/v1/tickets/{ticket_id}/proof/evidence` | `recordProofEvidence` | `ticket evidence add` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/proof/verdict` | `recordProofVerdict` | `ticket gate verdict` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/relations` | `addTicketRelation` | `ticket relation add` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
-| `GET` | `/v1/tickets/{ticket_id}/timeline` | `getTicketTimeline` | `ticket timeline` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/tickets/{ticket_id}/timeline` | `getTicketTimeline` | `ticket timeline` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/resolve-close` | `resolveCloseWorkflow` | `ticket resolve` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/start` | `startTicketWorkflow` | `ticket workflow start` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/transition` | `transitionWorkflow` | `ticket transition` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
@@ -103,6 +103,11 @@ means it is sent online or not at all.
 | `POST` | `/v1/tickets/{ticket_id}/workflow/review-dispatches/{effect_id}/consume` | `consumeReviewDispatchEffect` | `ticket review-dispatch consume` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/change-references` | `recordTicketChangeReference` | `ticket change-reference add` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/labels` | `applyTicketLabel` | `ticket label apply` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+
+The five Project-scoped Ticket reads above evaluate the authenticated Actor's persisted Project grant before
+materializing any Ticket data. A same-tenant foreign-project request returns `403 project-scope-denied`
+without the Ticket identity or text; unauthenticated, query-token-only, feed-token-only, and revoked requests
+return `401`.
 
 `TicketCreateRequest.initial_custodian_id` is optional at this HTTP boundary. Omission selects the
 authenticated principal. A Commander may establish its own custody; an operator omission is refused and
@@ -303,7 +308,7 @@ fact-derived `read_through_position`; reading does not advance it or reduce unre
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
 |---|---|---|---|---|---|---|
-| `GET` | `/v1/tickets/{ticket_id}/sessions` | `listTicketSessions` | `session ticket` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/tickets/{ticket_id}/sessions` | `listTicketSessions` | `session ticket` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/sessions` | `startTicketSession` | `session start` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/sessions/{session_id}/facts` | `recordTicketSessionFact` | `session transition`<br>`session close` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/projects/{project_key}/sessions` | `listProjectSessions` | `session project` | query | forbidden | `200`, `401`, `403`, `404`, `422` |

@@ -68,6 +68,15 @@ def ticket_sessions(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(project_key,),
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
         exists = connection.execute(
             """
             SELECT 1 FROM tickets
@@ -115,6 +124,7 @@ def project_sessions(
             tenant_id=actor.tenant_id,
             principal_id=actor.principal_id,
             project_keys=(project_key,),
+            allow_operator_read=True,
         )
         if refusal is not None:
             return refusal
