@@ -233,6 +233,24 @@ def test_estate_import_operations_are_documented_in_the_http_reference() -> None
         assert row in reference, f"missing HTTP reference row: {row}"
 
 
+def test_inbox_transport_contract_is_documented_in_the_http_reference() -> None:
+    reference = (ROOT / "docs/reference/http-api.md").read_text(encoding="utf-8")
+    reference = re.sub(r"\s+", " ", reference)
+
+    fragments = (
+        "addresses a project seat with `to` and `project_key`",
+        "one closed `severity` of `P0`, `P1`, or `info`",
+        "`InboxNotificationRequest` contains `to`, `project_key`, `text`, "
+        "and one closed `severity`",
+        "Only a `P0` delivery may use the push/wake path",
+        "existing n-minute beat-Routine pull",
+        "optional `project_key` query parameter that narrows the listed correspondents",
+        "transported `severity`",
+    )
+    for fragment in fragments:
+        assert fragment in reference, f"missing HTTP reference fragment: {fragment}"
+
+
 def test_generated_runtime_contracts_validate_offline_and_are_defensive() -> None:
     payload = YAML(typ="safe", pure=True).load(
         (ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")
