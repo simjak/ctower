@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+Authored contract digest: sha256:852214e9950f66c77c32b3b2e824bf01bec9e59845579088a4a9a1000e49cec0
 """
 
 from __future__ import annotations
@@ -1158,6 +1158,7 @@ class InboxMessage(_BoundaryModel):
     message_id: UUID
     position: Annotated[int, Field(ge=1, le=9007199254740991)]
     sent_at: _Rfc3339DateTime
+    severity: Literal["P0", "P1", "info"]
     text: Annotated[str, Field(min_length=1, max_length=65536)]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
 
@@ -1174,6 +1175,8 @@ class InboxMessageReadState(_BoundaryModel):
 
 
 class InboxNotificationRequest(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    severity: Literal["P0", "P1", "info"]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     text: Annotated[str, Field(min_length=1, max_length=65536)]
 
@@ -1188,6 +1191,8 @@ class InboxPromotionRequest(_BoundaryModel):
 
 
 class InboxSendRequest(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    severity: Literal["P0", "P1", "info"]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     thread_id: UUID | None = None
     text: Annotated[str, Field(min_length=1, max_length=65536)]
@@ -2334,6 +2339,7 @@ class InboxSendResult(_BoundaryModel):
     message_id: UUID
     position: Annotated[int, Field(ge=1, le=9007199254740991)]
     sent_at: _Rfc3339DateTime
+    severity: Literal["P0", "P1", "info"]
     thread_id: UUID
     thread_version: Annotated[int, Field(ge=2, le=9007199254740991)]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]

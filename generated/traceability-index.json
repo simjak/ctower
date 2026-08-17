@@ -63,6 +63,18 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0061_request_decision_briefs.sql"
     ],
+    "AC-COMMS-01": [
+      "packages/ctower-kernel/migrations/0075_inbox_message_severity.sql"
+    ],
+    "AC-COMMS-02": [
+      "packages/ctower-kernel/migrations/0075_inbox_message_severity.sql"
+    ],
+    "AC-COMMS-03": [
+      "packages/ctower-kernel/migrations/0075_inbox_message_severity.sql"
+    ],
+    "AC-COMMS-04": [
+      "packages/ctower-kernel/migrations/0075_inbox_message_severity.sql"
+    ],
     "AC-COMP-01": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/attention-kind-catalog.schema.json",
@@ -1551,6 +1563,9 @@
       "packs/policies/execution/trust-spine-four-stage-v1.yaml",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml",
       "packs/workflows/ctower.trust-spine-four-stage/v1.yaml"
+    ],
+    "SPEC#inbox-transport-severity-and-pull-contract": [
+      "packages/ctower-kernel/migrations/0075_inbox_message_severity.sql"
     ],
     "SPEC#language-allocation-and-runtime-acceptance": [
       "contracts/compatibility/matrix-input.schema.json",

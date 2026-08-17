@@ -266,7 +266,8 @@ current PR, proof lenses, an immutable author model/family binding, execution-po
 `different_from_author` family rule; Work-owned substrate consumption that derives the reviewer model/family
 from the authenticated principal's immutable registration and records the reviewer assignment; linked
 verdict readback and a close-time completeness check; proof-gated resolve/close; linked cursor
-audit; two-party native Inbox threads with ordered messages, per-recipient unread cursors, and immutable
+audit; two-party native Inbox threads with ordered messages, per-recipient unread cursors, immutable
+severity facts (`P0` is the only interrupt; `P1|info` are consumed by the existing beat pull), and immutable
 thread-to-ticket links visible from Board cards, including atomic public promotion that either creates a P2
 ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside

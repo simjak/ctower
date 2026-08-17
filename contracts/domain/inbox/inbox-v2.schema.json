@@ -42,14 +42,15 @@
     "message": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["message_id", "thread_id", "position", "sender", "recipient", "text"],
+      "required": ["message_id", "thread_id", "position", "sender", "recipient", "text", "severity"],
       "properties": {
         "message_id": {"type": "string", "format": "uuid"},
         "thread_id": {"type": "string", "format": "uuid"},
         "position": {"type": "integer", "minimum": 1},
         "sender": {"$ref": "#/$defs/participant"},
         "recipient": {"$ref": "#/$defs/participant"},
-        "text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        "text": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "severity": {"type": "string", "enum": ["P0", "P1", "info"]}
       }
     },
     "deliveryFact": {

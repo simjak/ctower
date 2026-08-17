@@ -15,7 +15,10 @@ _ROOT = Path(__file__).resolve().parents[2]
 _SURFACE = _ROOT / "apps/ctower-ui/src"
 _FIXTURE = Path(__file__).with_name("inbox_send_fixtures.ts")
 _THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000600"
-_EXPECTED_BODY = f'{{"text":"ready for the taste gate","thread_id":"{_THREAD_ID}","to":"engineer"}}'
+_EXPECTED_BODY = (
+    '{"project_key":"ctower","severity":"info","text":"ready for the taste gate",'
+    f'"thread_id":"{_THREAD_ID}","to":"engineer"}}'
+)
 _UNCONFIRMED_SENTENCE = (
     "The server has not confirmed this message, so it is not sent yet. "
     "Press send again to send the same message."
@@ -41,7 +44,9 @@ class InboxSendTransportTests(unittest.TestCase):
         self.assertEqual([attempt["method"] for attempt in attempts], ["GET", "POST"])
         self.assertTrue(attempts[0]["url"].endswith("/v1/inbox/threads"))
         self.assertTrue(attempts[1]["url"].endswith("/v1/inbox/messages"))
-        self.assertEqual(attempts[1]["bodyKeys"], ["text", "thread_id", "to"])
+        self.assertEqual(
+            attempts[1]["bodyKeys"], ["project_key", "severity", "text", "thread_id", "to"]
+        )
         self.assertEqual(attempts[1]["body"], _EXPECTED_BODY)
         self.assertRegex(cast("str", attempts[1]["idempotencyKey"]), r"^[0-9a-f-]{36}$")
         self.assertTrue(attempts[1]["authorized"])
@@ -58,6 +63,7 @@ class InboxSendTransportTests(unittest.TestCase):
                     "to": "engineer",
                     "text": "ready for the taste gate",
                     "sentAt": "2026-08-09T03:05:00Z",
+                    "severity": "info",
                 },
             },
         )

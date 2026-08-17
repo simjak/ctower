@@ -10,6 +10,7 @@ from ctower_kernel.inbox.models import (
     InboxPromotionResult,
     InboxSendCommand,
     InboxSendResult,
+    InboxSeverity,
 )
 from ctower_kernel.inbox.postgres import PostgresInbox
 
@@ -23,5 +24,6 @@ __all__ = [
     "InboxPromotionResult",
     "InboxSendCommand",
     "InboxSendResult",
+    "InboxSeverity",
     "PostgresInbox",
 ]

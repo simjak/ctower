@@ -56,6 +56,7 @@ _AUTHORED_SEND_FIELDS = (
     "message_id",
     "position",
     "sent_at",
+    "severity",
     "thread_id",
     "thread_version",
     "to",
@@ -383,7 +384,12 @@ def test_the_send_response_puts_the_authored_field_names_on_the_wire(
                 "Idempotency-Key": str(command_id),
                 **telemetry_headers(command_id),
             },
-            json={"to": "wire-shape-agent", "text": "The wire carries the authored names."},
+            json={
+                "project_key": "ctower",
+                "severity": "info",
+                "to": "wire-shape-agent",
+                "text": "The wire carries the authored names.",
+            },
             timeout=30,
         )
 
@@ -419,7 +425,12 @@ def test_a_send_is_not_accepted_until_its_durable_receipt_commits(
         "Idempotency-Key": str(command_id),
         **telemetry_headers(command_id),
     }
-    request = {"to": "durability-state-agent", "text": "Not sent until the record says so."}
+    request = {
+        "project_key": "ctower",
+        "severity": "info",
+        "to": "durability-state-agent",
+        "text": "Not sent until the record says so.",
+    }
 
     with running_api(
         tenant.database.runtime_dsn,

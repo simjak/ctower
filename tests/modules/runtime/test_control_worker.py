@@ -102,7 +102,9 @@ class _ProjectionStore:
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         raise NotImplementedError
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
+    def list_inbox_correspondents(
+        self, actor: Actor, project_key: str | None = None
+    ) -> InboxCorrespondentList:
         raise NotImplementedError
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:

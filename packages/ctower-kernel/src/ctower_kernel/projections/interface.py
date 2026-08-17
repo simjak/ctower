@@ -15,6 +15,7 @@ from ctower_kernel.projections.project_delivery import (
     ProjectDeliveryView,
 )
 from ctower_kernel.record import Actor, DurabilityHealth
+from ctower_kernel.record.inbox_events import InboxSeverity
 
 __all__ = [
     "AppliedLabel",
@@ -476,6 +477,14 @@ class InboxMessage:
     sent_at: datetime
     text: str
     to: str
+    severity: InboxSeverity = InboxSeverity.INFO
+
+    def __post_init__(self) -> None:
+        try:
+            severity = InboxSeverity(self.severity)
+        except ValueError as error:
+            raise ValueError("inbox message severity is outside the authored contract") from error
+        object.__setattr__(self, "severity", severity)
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -483,6 +492,7 @@ class InboxMessage:
             "message_id": str(self.message_id),
             "position": self.position,
             "sent_at": self.sent_at.isoformat(),
+            "severity": self.severity.value,
             "text": self.text,
             "to": self.to,
         }
@@ -515,7 +525,9 @@ class _ProjectionStore(Protocol):
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList: ...
+    def list_inbox_correspondents(
+        self, actor: Actor, project_key: str | None = None
+    ) -> InboxCorrespondentList: ...
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None: ...
 
@@ -551,10 +563,12 @@ class Projections:
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
+    def list_inbox_correspondents(
+        self, actor: Actor, project_key: str | None = None
+    ) -> InboxCorrespondentList:
         """Read the registered seats this principal may address, never invent one."""
 
-        return self._store.list_inbox_correspondents(actor)
+        return self._store.list_inbox_correspondents(actor, project_key)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return self._store.read_inbox(actor, thread_id)
