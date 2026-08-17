@@ -18,6 +18,7 @@ __all__ = ["catalog_admission_findings"]
 TENANT_CONTENT_REFUSAL = "tenant-catalog-content-in-public-repository"
 _FIELD = "catalog_content"
 _TENANT_VALUE = "tenant"
+_BYTE_ORDER_MARK = "\ufeff"
 _CATALOG_DIRECTORIES = frozenset({"examples", "packs"})
 _YAML = YAML(typ="safe")
 _EXCLUDED_DIRECTORIES = frozenset(
@@ -35,6 +36,18 @@ _EXCLUDED_DIRECTORIES = frozenset(
 )
 
 
+def _reject_duplicate_json_names(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object name: {key}")
+        result[key] = value
+    return result
+
+
+_JSON = json.JSONDecoder(object_pairs_hook=_reject_duplicate_json_names)
+
+
 def catalog_admission_findings(root: Path) -> tuple[Finding, ...]:
     """Refuse explicit tenant-content markers in the public repository tree."""
 
@@ -46,14 +59,15 @@ def catalog_admission_findings(root: Path) -> tuple[Finding, ...]:
 
 def _path_findings(path: Path, root: Path) -> tuple[Finding, ...]:
     relative = path.relative_to(root).as_posix()
-    is_catalog_artifact = _is_catalog_artifact(path, root)
     text = _read_text(path)
     if text is None:
-        return _unclassified(relative, must_classify=is_catalog_artifact)
-    parsed, value = _document(path, text)
-    if not parsed:
-        return _unclassified(relative, must_classify=is_catalog_artifact or _FIELD in text)
-    if _contains_tenant_marker(value):
+        if _is_catalog_artifact(path, root):
+            return (_finding(relative, "catalog artifact could not be decoded"),)
+        return ()
+    composed, documents = _documents(path, text)
+    if not composed:
+        return (_finding(relative, "structured stream could not be classified"),)
+    if any(_contains_tenant_marker(document) for document in documents):
         return (_finding(relative, "explicit tenant catalog content marker"),)
     return ()
 
@@ -65,65 +79,60 @@ def _read_text(path: Path) -> str | None:
         return None
 
 
-def _document(path: Path, text: str) -> tuple[bool, object | None]:
-    """Parse the structured document a file carries, wherever that class occurs.
+def _documents(path: Path, text: str) -> tuple[bool, tuple[object, ...]]:
+    """Compose every structured document a file carries, wherever that class occurs.
 
-    The parser decodes escaped names and values, so admission judges the decoded
-    content class. Files carrying no structured document parse as empty.
+    Composition takes whole streams, not one document each: a byte-order mark,
+    several YAML documents, and several concatenated JSON values all compose,
+    and every composed document is judged by the one classifier. A stream that
+    composes to no document carries no class. A stream that does not compose at
+    all offers no document to judge, so its caller refuses it rather than asking
+    how the bytes are spelled. Files carrying no structured document compose
+    empty.
     """
 
     suffix = path.suffix.lower()
     if suffix == ".json":
-        return _parse_json(text)
+        return _compose_json(text)
     if suffix in {".yaml", ".yml"}:
-        return _parse_yaml(text)
+        return _compose_yaml(text)
     has_frontmatter, frontmatter = _yaml_frontmatter(text)
     if not has_frontmatter:
-        return True, None
+        return True, ()
     if frontmatter is None:
-        return False, None
-    return _parse_yaml(frontmatter)
+        return False, ()
+    return _compose_yaml(frontmatter)
 
 
-def _unclassified(relative: str, *, must_classify: bool) -> tuple[Finding, ...]:
-    """Fail closed where a document owes a class but cannot supply one.
+def _compose_json(text: str) -> tuple[bool, tuple[object, ...]]:
+    stream = text.removeprefix(_BYTE_ORDER_MARK)
+    documents: list[object] = []
+    index = _next_document(stream, 0)
+    while index < len(stream):
+        try:
+            document, index = _JSON.raw_decode(stream, index)
+        except ValueError:
+            return False, ()
+        documents.append(document)
+        index = _next_document(stream, index)
+    return True, tuple(documents)
 
-    Classification is owed by the catalog artifact registry, and by any
-    unparsable document whose bytes already show the semantic field. Neither
-    condition can route a parsed document around admission; both only widen
-    refusal where no parse exists to judge.
-    """
 
-    if not must_classify:
-        return ()
-    return (_finding(relative, "catalog artifact could not be classified"),)
+def _next_document(stream: str, index: int) -> int:
+    while index < len(stream) and stream[index].isspace():
+        index += 1
+    return index
 
 
-def _parse_json(text: str) -> tuple[bool, object | None]:
+def _compose_yaml(text: str) -> tuple[bool, tuple[object, ...]]:
     try:
-        return True, json.loads(text, object_pairs_hook=_reject_duplicate_json_names)
-    except ValueError:
-        return False, None
-
-
-def _parse_yaml(text: str) -> tuple[bool, object | None]:
-    try:
-        return True, _YAML.load(text)
+        return True, tuple(_YAML.load_all(text))
     except (ValueError, YAMLError):
-        return False, None
-
-
-def _reject_duplicate_json_names(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"duplicate JSON object name: {key}")
-        result[key] = value
-    return result
+        return False, ()
 
 
 def _yaml_frontmatter(text: str) -> tuple[bool, str | None]:
-    lines = text.removeprefix("\ufeff").splitlines(keepends=True)
+    lines = text.removeprefix(_BYTE_ORDER_MARK).splitlines(keepends=True)
     if not lines or lines[0].strip() != "---":
         return False, None
     body = "".join(lines[1:])

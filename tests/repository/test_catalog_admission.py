@@ -6,7 +6,7 @@ import json
 import shutil
 import tempfile
 import unittest
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from io import StringIO
@@ -20,6 +20,9 @@ _STABLE_REFUSAL = "tenant-catalog-content-in-public-repository"
 _ROOT = Path(__file__).parents[2]
 _FIXTURES = Path(__file__).parent / "fixtures"
 _CANONICAL_POLICY = _ROOT / "tools/checks/policy.toml"
+_TENANT_VALUE = "tenant"
+_PUBLIC_VALUE = "synthetic"
+_BYTE_ORDER_MARK = "\ufeff"
 
 
 class CatalogAdmissionTests(unittest.TestCase):
@@ -107,13 +110,16 @@ class CatalogAdmissionTests(unittest.TestCase):
                 self._assert_admission(relative, tenant_content, refused=True)
                 self._assert_admission(relative, public_content, refused=False)
 
-    def test_unparsable_document_carrying_the_field_refuses_wherever_it_occurs(self) -> None:
-        self._assert_admission(
-            "docs/private-catalog-broken.yaml", "catalog_content: [tenant\n", refused=True
-        )
+    def test_multi_document_streams_are_judged_document_by_document(self) -> None:
+        for label, relative, tenant_content, public_content in _multi_document_streams():
+            with self.subTest(label=label):
+                self._assert_admission(relative, tenant_content, refused=True)
+                self._assert_admission(relative, public_content, refused=False)
 
-    def test_unparsable_document_without_the_field_is_admitted_outside_the_registry(self) -> None:
-        self._assert_admission("docs/notes/draft.json", '{"name": "private",\n', refused=False)
+    def test_stream_composition_decides_admission_not_the_spelling_of_the_bytes(self) -> None:
+        for label, relative, content, refused in _composition_boundary():
+            with self.subTest(label=label):
+                self._assert_admission(relative, content, refused=refused)
 
     def test_public_synthetic_catalog_artifact_is_admitted(self) -> None:
         with self._repository() as root:
@@ -152,11 +158,14 @@ class CatalogAdmissionTests(unittest.TestCase):
 
         self.assertTrue(clean_report.ok, clean_report.findings)
 
-    def _assert_admission(self, relative: str, content: str, *, refused: bool) -> None:
+    def _assert_admission(self, relative: str, content: str | bytes, *, refused: bool) -> None:
         with self._repository() as root:
             artifact = root / relative
             artifact.parent.mkdir(parents=True, exist_ok=True)
-            artifact.write_text(content, encoding="utf-8")
+            if isinstance(content, bytes):
+                artifact.write_bytes(content)
+            else:
+                artifact.write_text(content, encoding="utf-8")
 
             report = verify(root, "full")
 
@@ -273,6 +282,117 @@ def _documents_outside_catalog() -> Iterator[tuple[str, str, str, str]]:
             f'---\nmetadata:\n  "{key}": "{value}"\nname: private\n---\n\n# Runbook\n',
             f'---\nmetadata:\n  "{key}": "synthetic"\nname: generic example\n---\n\n# Runbook\n',
         )
+
+
+def _multi_document_streams() -> Iterator[tuple[str, str, str, str]]:
+    """Streams that no single-document composition can decode, marker anywhere in them."""
+
+    for label, relative, render in _stream_shapes():
+        yield label, relative, render(_TENANT_VALUE), render(_PUBLIC_VALUE)
+
+
+def _stream_shapes() -> tuple[tuple[str, str, Callable[[str], str]], ...]:
+    """Each shape writes one decoded class in one escape form; only the class varies."""
+
+    key = "catalog_content"
+    escaped = _unicode_escaped(key)
+    hex_key = _hex_escaped(key)
+    return (
+        (
+            "multi-document-yaml-literal-doc2",
+            "docs/private-multidoc.yaml",
+            lambda value: f'name: public first document\n---\n"{key}": {value}\n',
+        ),
+        (
+            "multi-document-yaml-escaped-doc2",
+            "docs/private-multidoc-escaped.yaml",
+            lambda value: f'name: public first document\n---\n"{escaped}": {value}\n',
+        ),
+        (
+            "multi-document-yaml-escaped-doc1",
+            "docs/private-multidoc-escaped-doc1.yaml",
+            lambda value: f'"{escaped}": {value}\n---\nname: second document\n',
+        ),
+        (
+            "bom-three-document-yaml-hex-escaped-doc3",
+            "reference/streams/private-inventory.yml",
+            lambda value: (
+                f"{_BYTE_ORDER_MARK}---\nname: first\n...\n---\nscope: second\n...\n"
+                f'---\ninventory:\n  - entry:\n      "{hex_key}": "{_hex_escaped(value)}"\n'
+            ),
+        ),
+        (
+            "concatenated-json-escaped-doc1",
+            "docs/private-concat.json",
+            lambda value: f'{{"{escaped}":"{value}"}}\n{{"name":"second"}}\n',
+        ),
+        (
+            "juxtaposed-json-escaped-doc3",
+            "reference/streams/private-registry.json",
+            lambda value: (
+                f'{{"name":"first"}}{{"scope":"second"}}{{"{escaped}":"{_unicode_escaped(value)}"}}'
+            ),
+        ),
+        (
+            "bom-json-escaped",
+            "docs/private-bom.json",
+            lambda value: f'{_BYTE_ORDER_MARK}{{"{escaped}":"{value}","name":"private"}}\n',
+        ),
+    )
+
+
+def _composition_boundary() -> tuple[tuple[str, str, str | bytes, bool], ...]:
+    """A stream is refused when no document composes, whatever its bytes spell."""
+
+    return (
+        (
+            "yaml-naming-the-field",
+            "docs/private-catalog-broken.yaml",
+            "catalog_content: [tenant\n",
+            True,
+        ),
+        ("json-naming-nothing", "docs/notes/draft.json", '{"name": "private",\n', True),
+        ("json-trailing-garbage", "docs/notes/trailing.json", '{"name":"public"} tenant\n', True),
+        (
+            "yaml-second-document-unparsable",
+            "docs/notes/half-broken.yaml",
+            "name: public first document\n---\nvalues: [1\n",
+            True,
+        ),
+        (
+            "frontmatter-scanner-error",
+            "docs/notes/private-runbook.md",
+            "---\nname: private\n\tscope: broken\n",
+            True,
+        ),
+        (
+            "undecodable-bytes-in-the-registry",
+            "packs/components/private-skill.yaml",
+            b"\xff\xfe",
+            True,
+        ),
+        ("undecodable-bytes-outside-the-registry", "docs/notes/binary.dat", b"\xff\xfe", False),
+        (
+            "zero-document-json-stream",
+            "docs/notes/placeholder.json",
+            f"{_BYTE_ORDER_MARK}  \n",
+            False,
+        ),
+        (
+            "prose-naming-the-field-is-not-a-document",
+            "docs/notes/prose.md",
+            "# Notes\n\nThe catalog_content field marks tenant artifacts.\n",
+            False,
+        ),
+    )
+
+
+def _unicode_escaped(value: str) -> str:
+    return f"\\u{ord(value[0]):04x}{value[1:]}"
+
+
+def _hex_escaped(value: str) -> str:
+    return f"\\x{ord(value[0]):02x}{value[1:]}"
 
 
 def _spellings() -> tuple[tuple[str, str, str], ...]:
