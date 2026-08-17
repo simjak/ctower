@@ -22,7 +22,7 @@ from ctower_kernel.catalog import (
 from ctower_kernel.catalog.interface import JsonValue
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
 
@@ -54,6 +54,8 @@ def test_checkpoint_completeness_is_project_local_across_a_materialization_gap(
 
     ctower_before = projections.project_delivery(operator, "ctower")
     manibo_before = projections.project_delivery(operator, "manibo")
+    assert not isinstance(ctower_before, RecordProblem), ctower_before
+    assert not isinstance(manibo_before, RecordProblem), manibo_before
     assert ctower_before is not None and manibo_before is not None
     assert {row.checkpoint_key for row in ctower_before.rows} == {"fx-ctower-1", "fx-ctower-2"}
     assert {row.checkpoint_key for row in manibo_before.rows} == {"fx-manibo-1", "fx-manibo-2"}
@@ -71,6 +73,7 @@ def test_checkpoint_completeness_is_project_local_across_a_materialization_gap(
     later = datetime.now(UTC)
     projections.reconcile_project_delivery(tenant.tenant_id, now=later)
     ctower_after = projections.project_delivery(operator, "ctower")
+    assert not isinstance(ctower_after, RecordProblem), ctower_after
     assert ctower_after is not None
     assert {row.checkpoint_key for row in ctower_after.rows} == {"fx-ctower-1", "fx-ctower-2"}
     assert all("source_incomplete" not in row.derivation_reasons for row in ctower_after.rows), (

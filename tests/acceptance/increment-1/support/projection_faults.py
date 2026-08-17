@@ -8,6 +8,7 @@ from typing import Literal, cast
 from uuid import UUID
 
 import psycopg
+from psycopg import sql
 
 __all__ = ["InjectedOutboxFailure", "ProjectionFault", "ProjectionFaults"]
 
@@ -27,6 +28,36 @@ class ProjectionFaults:
                 "DELETE FROM board_projection_rows WHERE tenant_id = %s AND ticket_id = %s",
                 (tenant_id, ticket_id),
             )
+
+    @contextmanager
+    def corrupt_projected_priority(self, priority: str) -> Iterator[None]:
+        """Fold every Board row with a valid but wrong priority while the block runs."""
+
+        with psycopg.connect(self._admin_dsn) as connection:
+            connection.execute(
+                sql.SQL(
+                    """
+                    CREATE FUNCTION ctower_test_corrupt_board_priority()
+                        RETURNS trigger LANGUAGE plpgsql AS $$
+                    BEGIN
+                        NEW.priority := {priority};
+                        RETURN NEW;
+                    END
+                    $$;
+                    CREATE TRIGGER ctower_test_corrupt_board_priority
+                        BEFORE INSERT OR UPDATE ON board_projection_rows
+                        FOR EACH ROW EXECUTE FUNCTION ctower_test_corrupt_board_priority();
+                    """
+                ).format(priority=sql.Literal(priority))
+            )
+        try:
+            yield
+        finally:
+            with psycopg.connect(self._admin_dsn) as connection:
+                connection.execute(
+                    "DROP TRIGGER ctower_test_corrupt_board_priority ON board_projection_rows"
+                )
+                connection.execute("DROP FUNCTION ctower_test_corrupt_board_priority()")
 
     @contextmanager
     def reject_outbox_appends(self) -> Iterator[None]:

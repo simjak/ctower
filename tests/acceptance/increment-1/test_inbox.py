@@ -318,8 +318,9 @@ def _assert_promotion(
         {"subject_kind": "inbox_thread", "subject_id": roundtrip.thread_id},
         {"subject_kind": "ticket", "subject_id": ticket_id},
     ]
-    rebuilt = roundtrip.projections.rebuild(tenant.tenant_id)
-    rebuilt_card = next(item for item in rebuilt.cards if item.ticket_id == ticket_id)
+    roundtrip.projections.rebuild(tenant.tenant_id)
+    rebuilt_board = _api_board(tenant)
+    rebuilt_card = next(item for item in rebuilt_board.cards if item.ticket_id == ticket_id)
     assert rebuilt_card.inbox_thread_ids == (roundtrip.thread_id,)
     authority_after = _authority_counts(tenant, roundtrip.thread_id)
     assert authority_before == authority_after == {"delivery_facts": 2, "messages": 2, "links": 1}
