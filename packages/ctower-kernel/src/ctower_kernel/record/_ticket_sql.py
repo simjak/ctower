@@ -66,6 +66,14 @@ def create_ticket(
         )
         if not isinstance(project, str):
             return project
+        display_key = insert_ticket_state(
+            connection,
+            actor,
+            command,
+            project_key=project,
+            identifiers=identifiers,
+            now=now,
+        )
         ticket = Ticket(
             ticket_id=identifiers.ticket,
             title=command.title,
@@ -74,16 +82,9 @@ def create_ticket(
             custodian_id=command.initial_custodian_id,
             version=1,
             created_at=now,
+            display_key=display_key,
         )
         result = TicketCommandResult(command.client_command_id, (identifiers.event,), ticket)
-        insert_ticket_state(
-            connection,
-            actor,
-            command,
-            project_key=project,
-            identifiers=identifiers,
-            now=now,
-        )
         _append_ticket_created(
             connection,
             actor,
@@ -200,7 +201,7 @@ def get_ticket(
             SELECT ticket.ticket_id, ticket.title, ticket.project_key,
                 ticket.source_kind, ticket.source_ref,
                 ticket.priority, ticket.custodian_principal_id, ticket.version,
-                ticket.created_at,
+                ticket.created_at, ticket.display_key,
                 CASE WHEN confirmation.client_command_id IS NULL
                     THEN 'durability_pending' ELSE 'accepted'
                 END AS durability_state
@@ -334,6 +335,7 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
+        display_key=cast(str | None, row["display_key"]),
         durability_state=DurabilityState(str(row["durability_state"])),
     )
 
@@ -349,6 +351,7 @@ def _result_from_payload(payload: dict[str, object]) -> TicketCommandResult:
         custodian_id=UUID(str(ticket_payload["custodian_id"])),
         version=int(cast(int, ticket_payload["version"])),
         created_at=datetime.fromisoformat(str(ticket_payload["created_at"])),
+        display_key=cast(str | None, ticket_payload.get("display_key")),
     )
     event_ids = cast(list[str], payload["event_ids"])
     return TicketCommandResult(

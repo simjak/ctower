@@ -87,9 +87,10 @@ _EXPECTED_MIGRATION_PATHS = [
     "0072_estate_import_authority.sql",
     "0073_restore_request_proposal_constraints.sql",
     "0074_restore_routine_retirement_kind.sql",
+    "0075_ticket_display_keys.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0074_restore_routine_retirement_kind.sql",
+    "through": "0075_ticket_display_keys.sql",
     "schema_sha256": ("sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
