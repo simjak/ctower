@@ -313,7 +313,7 @@ def test_ticket_comment_is_canonical_replay_safe_and_table_free(
 
     assert isinstance(comment, TicketCommentResult)
     assert replay == comment
-    timeline = record.ticket_timeline(
+    timeline = record.tickets.timeline(
         actor,
         created.ticket.ticket_id,
         "ctower",

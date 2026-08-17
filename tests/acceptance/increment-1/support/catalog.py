@@ -29,6 +29,7 @@ __all__ = [
     "InterruptingObjectStore",
     "MemoryObjectStore",
     "SimulatedProcessLoss",
+    "activate_project_prefixes",
     "actor_for",
     "apply_initial_bundle",
     "assert_command_replay_precedes_adapters",
@@ -130,6 +131,19 @@ class InterruptingObjectStore(MemoryObjectStore):
             self.armed = False
             raise SimulatedProcessLoss
         return receipt
+
+
+def activate_project_prefixes(runtime_dsn: str, tenant_id: UUID, operator_id: UUID) -> None:
+    """Materialize the authored Project prefixes so capture assigns a real display key."""
+
+    catalog = PostgresCatalog(
+        runtime_dsn,
+        FileSchemas(),
+        MemoryObjectStore(),
+        key_reference="vault:catalog-key",
+        clock=lambda: datetime(2026, 8, 17, tzinfo=UTC),
+    )
+    apply_initial_bundle(catalog, actor_for(tenant_id, operator_id), minimal_bundle())
 
 
 def apply_initial_bundle(

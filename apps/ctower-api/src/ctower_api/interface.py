@@ -581,7 +581,7 @@ def _install_ticket_read_routes(
         )
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         return _ticket_response(
-            record.get_ticket(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
+            record.tickets.get(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
         )
 
     @app.get("/v1/tickets/{ticket_id}/timeline")
@@ -609,7 +609,9 @@ def _install_ticket_read_routes(
         )
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         return _timeline_response(
-            record.ticket_timeline(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
+            record.tickets.timeline(
+                actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry
+            )
         )
 
 

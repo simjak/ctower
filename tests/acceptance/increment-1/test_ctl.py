@@ -21,6 +21,7 @@ import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 from support.acceptance import accept_pending_commands
+from support.catalog import activate_project_prefixes
 from support.postgres import DatabaseFixture
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
@@ -109,6 +110,7 @@ def test_ticket_capture_and_query_use_stable_queued_command(
     cli_state: _MemoryBackend,
 ) -> None:
     del cli_state
+    activate_project_prefixes(tenant.database.runtime_dsn, tenant.tenant_id, tenant.operator_id)
     create_id = uuid4()
     with _server(tenant.database.runtime_dsn) as base_url:
         create_status, created_text, create_error = _run(
@@ -137,6 +139,7 @@ def test_ticket_capture_and_query_use_stable_queued_command(
     assert created["state"] == "queued"
     assert created["reason_code"] == "durability_pending"
     assert created["result"]["durability_state"] == "durability_pending"
+    assert shown["display_key"] == "CTW-1"
     assert shown == created["result"]["ticket"]
     assert tenant.operator_credential not in created_text + shown_text
 

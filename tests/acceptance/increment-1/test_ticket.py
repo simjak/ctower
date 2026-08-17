@@ -486,11 +486,11 @@ def _record_ticket_read_surfaces(
 
 
 def _read_record_ticket(record: PostgresRecord, actor: Actor, ticket_id: UUID) -> object:
-    return record.get_ticket(actor, ticket_id, "ctower", telemetry=_record_telemetry())
+    return record.tickets.get(actor, ticket_id, "ctower", telemetry=_record_telemetry())
 
 
 def _read_record_timeline(record: PostgresRecord, actor: Actor, ticket_id: UUID) -> object:
-    return record.ticket_timeline(actor, ticket_id, "ctower", telemetry=_record_telemetry())
+    return record.tickets.timeline(actor, ticket_id, "ctower", telemetry=_record_telemetry())
 
 
 def _read_record_sessions(record: PostgresRecord, actor: Actor, ticket_id: UUID) -> object:

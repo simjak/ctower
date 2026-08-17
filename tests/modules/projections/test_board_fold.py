@@ -58,6 +58,7 @@ def _facts() -> BoardFacts:
     return BoardFacts(
         ticket_id=uuid4(),
         project_key="ctower",
+        display_key="CTW-7",
         title="Fold vector",
         priority="P2",
         lifecycle_state="open",

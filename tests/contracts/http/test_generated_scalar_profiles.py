@@ -256,6 +256,7 @@ def _ticket_raw(token: str, *, created_at: str = "2026-07-25T20:00:00Z") -> str:
         {
             "created_at": created_at,
             "custodian_id": UUID,
+            "display_key": "CTW-4",
             "durability_state": "accepted",
             "priority": "P2",
             "source": {"kind": "test", "ref": "generated:ticket"},

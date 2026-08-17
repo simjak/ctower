@@ -20,10 +20,8 @@ from ctower_kernel.record import (
     DurabilityFinalizationBatch,
     DurabilityHealth,
     RecordProblem,
-    Ticket,
     TicketCommand,
     TicketCommandResult,
-    TicketTimeline,
 )
 from ctower_kernel.record._audit_sql import ticket_audit as _ticket_audit
 from ctower_kernel.record._bootstrap_sql import (
@@ -71,9 +69,8 @@ from ctower_kernel.record._setup_sql import (
     provision_database_roles,
     provision_principal_credential,
 )
+from ctower_kernel.record._ticket_adapter import PostgresTickets
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
-from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
-from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.credentials import (
     SeatCredentialIssue,
@@ -93,6 +90,7 @@ from ctower_kernel.record.sessions import (
     SessionStartCommand,
     TicketSessionList,
 )
+from ctower_kernel.record.tickets import TicketStore
 from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
@@ -356,6 +354,7 @@ class PostgresRecord:
         self.seat_credentials = _PostgresSeatCredentials(dsn, telemetry=self._telemetry)
         self.work_sessions = _PostgresWorkSessions(dsn, telemetry=self._telemetry)
         self.event_audit = _PostgresEventAudit(dsn, telemetry=self._telemetry)
+        self.tickets: TicketStore = PostgresTickets(dsn, telemetry=self._telemetry)
         self.human_identity = PostgresHumanIdentity(dsn, telemetry=self._telemetry)
 
     def authorize_bootstrap(
@@ -520,34 +519,6 @@ class PostgresRecord:
             )
         )
         self._emit("record.promote_intake", telemetry, outcome)
-        return outcome
-
-    def get_ticket(
-        self,
-        actor: Actor,
-        ticket_id: UUID | str,
-        project_key: str,
-        *,
-        telemetry: TelemetryContext,
-    ) -> Ticket | RecordProblem:
-        """Read one tenant/project-scoped ticket."""
-
-        outcome = _get_ticket(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
-        self._emit("record.get_ticket", telemetry, outcome)
-        return outcome
-
-    def ticket_timeline(
-        self,
-        actor: Actor,
-        ticket_id: UUID | str,
-        project_key: str,
-        *,
-        telemetry: TelemetryContext,
-    ) -> TicketTimeline | RecordProblem:
-        """Read one tenant/project-scoped event timeline."""
-
-        outcome = _ticket_timeline(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
-        self._emit("record.ticket_timeline", telemetry, outcome)
         return outcome
 
     def transfer_custody(

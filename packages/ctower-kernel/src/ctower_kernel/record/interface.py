@@ -6,7 +6,7 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 from uuid import UUID
 
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
@@ -37,6 +37,9 @@ from ctower_kernel.record.sessions import (
     TicketSessionList,
 )
 from ctower_kernel.telemetry import TelemetryContext
+
+if TYPE_CHECKING:
+    from ctower_kernel.record.tickets import TicketStore
 
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 _MAX_RETRY_SECONDS = 60
@@ -407,6 +410,8 @@ class TicketCommand:
     title: str
 
     def request_payload(self) -> dict[str, object]:
+        """Return the request body without transport authority."""
+
         payload: dict[str, object] = {
             "initial_custodian_id": str(self.initial_custodian_id),
             "priority": self.priority,
@@ -454,14 +459,16 @@ class Ticket:
     custodian_id: UUID
     version: int
     created_at: datetime
+    display_key: str | None
     durability_state: DurabilityState = DurabilityState.PENDING
-    display_key: str | None = None
 
     def response_payload(self) -> dict[str, object]:
+        """Return the generated HTTP resource shape."""
+
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
-            **({"display_key": self.display_key} if self.display_key is not None else {}),
+            "display_key": self.display_key,
             "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
@@ -480,6 +487,8 @@ class TicketCommandResult:
     ticket: Ticket
 
     def response_payload(self) -> dict[str, object]:
+        """Return the exact authoritative command response."""
+
         return {
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
@@ -677,19 +686,8 @@ class Record(Protocol):
 
         ...
 
-    def get_ticket(
-        self, actor: Actor, ticket_id: UUID | str, project_key: str, *, telemetry: TelemetryContext
-    ) -> Ticket | RecordProblem:
-        """Read one tenant-scoped ticket without cross-tenant disclosure."""
-
-        ...
-
-    def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID | str, project_key: str, *, telemetry: TelemetryContext
-    ) -> TicketTimeline | RecordProblem:
-        """Read the ordered tenant-scoped event timeline."""
-
-        ...
+    tickets: TicketStore
+    """Cohesive tenant-scoped ticket read boundary; see `record.tickets`."""
 
     def transfer_custody(
         self,
