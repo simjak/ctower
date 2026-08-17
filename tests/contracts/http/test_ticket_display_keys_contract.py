@@ -3,18 +3,44 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
+from uuid import UUID
+
+import pytest
+from pydantic import ValidationError
+
+from ctower_kernel.record.identifiers import uuid7
+
+from ._generated_client_runtime import python_client
 
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
+CANONICAL_TICKET_ID = uuid7(datetime(2026, 8, 17, 17, 35, tzinfo=UTC))
 
 
 def _document() -> dict[str, object]:
     return cast(
         dict[str, object],
         json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8")),
+    )
+
+
+def _ticket_body() -> str:
+    return json.dumps(
+        {
+            "created_at": "2026-08-17T17:35:00Z",
+            "custodian_id": "018f7a40-1234-7abc-8def-1234567890ab",
+            "display_key": "CTW-4",
+            "durability_state": "accepted",
+            "priority": "P2",
+            "source": {"kind": "test", "ref": "contract:ticket-display-keys"},
+            "ticket_id": str(CANONICAL_TICKET_ID),
+            "title": "Ticket resource",
+            "version": 1,
+        }
     )
 
 
@@ -44,3 +70,43 @@ def test_ticket_path_accepts_uuid_or_server_assigned_display_key() -> None:
         "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
         "[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$"
     )
+
+
+def test_generated_client_takes_the_canonical_uuid_version_the_record_mints() -> None:
+    """Record issues UUIDv7, so the ticket path must accept it in both transport forms."""
+
+    assert CANONICAL_TICKET_ID.version == 7
+    references: tuple[UUID | str, ...] = (
+        CANONICAL_TICKET_ID,
+        str(CANONICAL_TICKET_ID),
+        "CTW-4",
+    )
+    for reference in references:
+        client = python_client(_ticket_body(), status=200)
+        try:
+            assert client.get_ticket(reference, project_key="ctower").display_key == "CTW-4"
+        finally:
+            client.close()
+
+
+@pytest.mark.parametrize(
+    "reference",
+    (
+        "CTW-0",
+        "CTW-04",
+        "ctw-4",
+        "CTOWER-4",
+        "01a010ca-79a0-706d-b5ee-8e96afa4a57",
+        "01a010ca79a0706db5ee8e96afa4a574",
+        "not-a-ticket-reference",
+    ),
+)
+def test_generated_client_refuses_references_outside_the_authored_contract(
+    reference: str,
+) -> None:
+    client = python_client(_ticket_body(), status=200)
+    try:
+        with pytest.raises(ValidationError):
+            client.get_ticket(reference, project_key="ctower")
+    finally:
+        client.close()
