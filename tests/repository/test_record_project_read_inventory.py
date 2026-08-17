@@ -446,44 +446,71 @@ def _scope_guard_dominates_materialization(
         if materialization_line is not None
         else _first_materialization_execute_line(function)
     )
-    if (
-        predicate_line is None
-        or materialization_line is None
-        or predicate_line >= materialization_line
-    ):
+    if not _predicate_precedes_materialization(predicate_line, materialization_line):
         return False
-    predicate_assignments = [
-        node
-        for node in ast.walk(function)
-        if isinstance(node, ast.Assign)
-        and any(
-            isinstance(call, ast.Call)
-            and isinstance(call.func, ast.Name)
-            and call.func.id == "project_scope_refusal"
-            for call in ast.walk(node.value)
-        )
-    ]
+    predicate_assignments = _predicate_assignments(function)
     if len(predicate_assignments) != 1:
         return False
-    targets = {
-        target.id for target in predicate_assignments[0].targets if isinstance(target, ast.Name)
-    }
-    if not targets:
+    targets = _assignment_targets(predicate_assignments[0])
+    return bool(targets) and _has_early_scope_return(
+        function, predicate_line, materialization_line, targets
+    )
+
+
+def _predicate_precedes_materialization(
+    predicate_line: int | None,
+    materialization_line: int | None,
+) -> bool:
+    return (
+        predicate_line is not None
+        and materialization_line is not None
+        and predicate_line < materialization_line
+    )
+
+
+def _predicate_assignments(function: ast.AST) -> list[ast.Assign]:
+    return [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign) and _calls(node.value, "project_scope_refusal")
+    ]
+
+
+def _assignment_targets(assignment: ast.Assign) -> set[str]:
+    return {target.id for target in assignment.targets if isinstance(target, ast.Name)}
+
+
+def _has_early_scope_return(
+    function: ast.AST,
+    predicate_line: int | None,
+    materialization_line: int | None,
+    targets: set[str],
+) -> bool:
+    return any(
+        _is_early_scope_return(node, predicate_line, materialization_line, targets)
+        for node in ast.walk(function)
+    )
+
+
+def _is_early_scope_return(
+    node: ast.AST,
+    predicate_line: int | None,
+    materialization_line: int | None,
+    targets: set[str],
+) -> bool:
+    if not isinstance(node, ast.If):
         return False
-    for node in ast.walk(function):
-        if not isinstance(node, ast.If) or node.lineno <= predicate_line:
-            continue
-        if node.end_lineno is None or node.end_lineno >= materialization_line:
-            continue
-        if not any(_is_not_none_test(node.test, target) for target in targets):
-            continue
-        if any(
-            isinstance(child, ast.Return)
-            for statement in node.body
-            for child in ast.walk(statement)
-        ):
-            return True
-    return False
+    if predicate_line is None or node.lineno <= predicate_line:
+        return False
+    if materialization_line is None or node.end_lineno is None:
+        return False
+    if node.end_lineno >= materialization_line:
+        return False
+    if not any(_is_not_none_test(node.test, target) for target in targets):
+        return False
+    return any(
+        isinstance(child, ast.Return) for statement in node.body for child in ast.walk(statement)
+    )
 
 
 def _is_not_none_test(node: ast.AST, name: str) -> bool:

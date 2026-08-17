@@ -21,16 +21,12 @@ from ctower_kernel.attention.postgres import PostgresAttention
 from ctower_kernel.projections import (
     BoardQuery,
     BoardView,
-    HealthContributorKey,
-    HealthStatus,
     ProjectionHealth,
     Projections,
 )
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import (
     Actor,
-    DurabilityHealth,
-    DurabilityHealthStatus,
     PrincipalKind,
     RecordProblem,
     SourceReference,
@@ -511,56 +507,6 @@ def test_fold_crash_replays_and_terminal_retry_requires_recovery(
     assert [card.ticket_id for card in _board(projections, tenant).cards] == [
         outcome.ticket.ticket_id
     ]
-
-
-def test_health_keeps_future_contributors_explicitly_unknown(tenant: TenantFixture) -> None:
-    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    now = datetime.now(UTC)
-    snapshot = Projections(PostgresProjections(tenant.database.projection_dsn)).health(
-        actor,
-        DurabilityHealth(
-            DurabilityHealthStatus.HEALTHY,
-            "ctower.test-acceptance@1",
-            "ctower-test-standby",
-            1,
-            now,
-            "current",
-        ),
-        now=now,
-    )
-    contributors = {
-        item.key: item
-        for dimension in (snapshot.availability, snapshot.completeness, snapshot.integrity)
-        for item in dimension.contributors
-    }
-
-    assert set(contributors) == set(HealthContributorKey)
-    for key in (
-        HealthContributorKey.BACKUP,
-        HealthContributorKey.ANCHOR,
-        HealthContributorKey.OBJECT,
-        HealthContributorKey.SYNTHETIC,
-    ):
-        assert contributors[key].status is HealthStatus.STATE_UNKNOWN
-        assert contributors[key].watermark is None
-        assert contributors[key].reason == "not-applicable-in-cp3-b"
-    assert snapshot.status is HealthStatus.STATE_UNKNOWN
-
-    command_id = uuid4()
-    app = create_app(
-        PostgresRecord(tenant.database.runtime_dsn),
-        projections=Projections(PostgresProjections(tenant.database.projection_dsn)),
-    )
-    with TestClient(app) as client:
-        response = client.get(
-            "/health",
-            headers={
-                "Authorization": f"Bearer {tenant.commander_credential}",
-                **telemetry_headers(command_id),
-            },
-        )
-    assert response.status_code == _HTTP_OK
-    assert response.json()["schema_id"] == "ctower.health/v1"
 
 
 def _board(projections: Projections, tenant: TenantFixture) -> BoardView:

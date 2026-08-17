@@ -33,6 +33,8 @@ from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Block, Work, WorkReceipt
 from ctower_kernel.work.postgres import PostgresWork
 
+__all__: tuple[str, ...] = ()
+
 
 def test_foreign_project_projection_reads_are_refused_before_materialization(
     tenant: TenantFixture,
