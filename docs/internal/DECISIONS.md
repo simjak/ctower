@@ -2993,56 +2993,90 @@ bounded candidate below; it does not derive that scope from D62.
    authority and operator order R3016. It adds no product UI, no new principal, no session
    write path, no second Inbox store, and no expression language in the gate set.
 
-## D68 — Workflow stage participants resolve from authenticated project-seat role facts (authority, 2026-08-16, operator order R3000 item 5)
+## D68 — Workflow stage participants resolve from authenticated role facts (authority, 2026-08-16)
 
-The operator's crew ceremony established the missing fact that the execution-policy lane could not
-truthfully invent: project-seat principals now have active assignment subjects and stable seat keys. The
-step-2 refusal remains correct until the Workflow evaluator consumes that authenticated fact. This decision
-defines the smallest authority shape that unblocks it. It preserves D28's configured seat catalog, D30's
-project-grant rules, D31's two identity planes and one Actor, the domain-neutral Workflow/Execution Policy
-boundary, and the default-deny/zero-mutation refusal laws. It adds no product roster or live mutation by
-itself.
+D28's configured seat accountability, D30's project-seat grant, and D31's two identity planes establish the
+existing authorities this decision composes. The deployment ceremony is implementation context showing that
+those authorities have current data; it is not a source for new evaluator semantics and does not authorize a
+role by display name. This decision defines the smallest role-record boundary that the Workflow/Execution
+Policy lanes may consume. It preserves one Actor, the domain-neutral Workflow/Execution Policy boundary, and
+the default-deny/zero-mutation refusal laws. It adds no product roster or live mutation by itself.
 
-1. **Role is a derived project-seat fact, not a new identity plane.** For one active project-seat grant,
-   the server joins the authenticated principal, tenant, project, and stable `seat_key` to the active
-   CompanyBundle assignment subject and the exact assignment/component and seat-catalog revisions that
-   supplied it. The configured assignment subject is the role identity; the resulting role fact carries the
-   principal, project, seat, role/subject, scope, and source revision/digest pins needed to re-check it. The
-   join is a derived read over existing seat/assignment authorities, not a second crew/role store, principal
-   kind, grant, credential, or bearer format. The current development seed's ten `ctower:<role>` subjects
-   (`commander`, `eng-manager`, `engineer-1`, `engineer-2`, `qa`, `review`, `cso`, `tech-writer`,
-   `release-manager`, `retro`) is deployment evidence only; role keys remain configured data and the product
-   hard-codes no roster.
-2. **Role facts are authenticated and revision-pinned.** A caller cannot post a role, select one by principal
-   ID, or derive one from display name, profile, model, harness, crew label, or stage key. Missing, ambiguous,
-   revoked, expired, stale, or foreign-scope seat/assignment resolution is `role-resolution-unavailable`
-   with zero mutation. A resolved role fact is included in the Workflow run/transition participant digest;
-   later assignment or seat-catalog changes affect future resolution only and never rewrite a historical
-   evaluation.
-3. **Stage-role checks are part of transition evaluation.** A stage may declare configured role keys. When it
-   does, the evaluator requires the acting Actor's authenticated role fact to be a member before accepting
-   the transition, in addition to the existing graph, predicate, assignment, evidence, gate, and scope
-   rules. A non-member receives the named `role-not-permitted` refusal (wire code
-   `workflow-role-not-permitted`) beside `transition-not-declared` and `predicate-unsatisfied`; the refusal
-   records the unmet stage/role and one evaluation while changing no stage, job, gate, Evidence, or delivery
-   fact. A caller label or an execution-policy list with no consumer is never evidence of membership.
-4. **Participant resolution only narrows.** The Execution Policy shape is an optional unique list:
+1. **Role binding is an authored CompanyBundle fact.** A role-bearing `CompanyBundle.assignments[*]` entry
+   carries the exact `CompanyBundle.assignments[*].seat_key` and `CompanyBundle.assignments[*].role_key` fields
+   alongside its `subject`, `slot`, and component reference. The
+   operator writes that pair through the authenticated `company bundle apply` command; the active bundle
+   revision, assignment/component revision and digest, and the referenced seat-catalog revision and digest
+   are the binding's source pins. The authenticated project-seat grant's `project_seats.seat_key` must equal
+   the assignment's authored `seat_key` exactly. The assignment `subject` remains the configured role
+   identity, while `role_key` is the exact key used for Workflow membership. No implementation may derive
+   either value from a principal ID, display name, profile, model, harness, crew label, seat spelling, or
+   stage name. Existing non-role assignments may omit the pair; a role-bearing assignment may not.
+2. **Role facts are typed, authenticated, and revision-pinned.** A project-seat role fact carries
+   `authority_plane=project-seat`, the authenticated principal, tenant, project, exact seat key, exact
+   assignment subject, exact role key, scope, and every source revision/digest above. A human role fact
+   carries `authority_plane=human-binding`, the authenticated principal, exact bound project scope, and the
+   human binding's exact authored role value plus its binding/access-policy revision and digest. The two
+   planes never confer one another's grant or scope. Missing, ambiguous, revoked, expired, stale, or
+   foreign-scope resolution is `role-resolution-unavailable` with zero mutation. A resolved role fact is
+   included in the immutable Workflow run/transition participant digest; later authority changes affect
+   future resolution only and never rewrite a historical evaluation.
+3. **A stage role set is closed data, not a policy hint.** A Workflow stage may carry an optional nonempty,
+   unique `role_keys` list of exact `{authority_plane, key}` references. `authority_plane` is either
+   `project-seat` or `human-binding`; `key` is an opaque configured key. Omission means the stage is
+   role-neutral and no role membership check is required. Presence of an empty list is invalid, not a
+   wildcard. The normalized Workflow/effective-participant digest includes the stage role set and its exact
+   order. The software-factory pack authors a nonempty base set for every stage; those values are package
+   data, not a product-code roster.
+4. **Stage-role checks have one owner and one exact location.** CT-I2-006 owns stage-role membership and
+   `participant_resolution` enforcement; CT-I1-036 owns only the authenticated role facts and their
+   source-binding contract. For a transition, the checked stage is the destination stage being entered; the
+   source stage is not checked by this rule. For a stage attempt, the checked stage is the current stage.
+   The refusal `workflow-stage-role-not-permitted` carries the checked stage, source/destination when
+   applicable, the declared and effective role sets, the actor plane, the resolved role (or null), and one
+   transition evaluation. It changes no stage, job, gate, Evidence, or delivery fact.
+5. **The evaluator precedence is total.** After `workflow-version-unknown` and `run-not-started`, it selects
+   the requested edge. An absent edge returns `workflow-transition-not-declared` without evaluating stage
+   membership. For a declared edge into a role-bearing stage it resolves the actor role, returns
+   `role-resolution-unavailable` if that fact cannot be established, then checks the role set and returns
+   `workflow-stage-role-not-permitted` before checking the edge predicate. Only a resolved member reaches
+   `workflow-predicate-unsatisfied`; an absent role set skips both role checks. Therefore undeclared +
+   non-member is `workflow-transition-not-declared`, predicate-unsatisfied + non-member is
+   `workflow-stage-role-not-permitted`, and a permitted member plus an unsatisfied predicate is
+   `workflow-predicate-unsatisfied`. The combined-failure matrix is part of AC-ROLE-03.
+6. **Human identity outcomes are explicit.** An authenticated operator is evaluated as the exact
+   `human-binding/operator` role fact, and may satisfy a stage only when that exact reference is declared and
+   all protected-operation rules pass. An authenticated commander is evaluated as
+   `human-binding/commander` and may satisfy only an explicitly declaring stage; no project-seat scope is
+   invented. An authenticated viewer remains read-only: a mutation is refused by the existing human
+   authorization boundary before transition evaluation, and any read/attempt evaluation that reaches a
+   stage-role check uses the exact `human-binding/viewer` fact and returns the named stage-role refusal when
+   it is not declared. Missing or ambiguous human binding is `role-resolution-unavailable`; no human path is
+   silent, bypasses membership, or is equated with a project-seat role.
+7. **Participant resolution only narrows.** The Execution Policy shape is an optional unique list:
 
    ```yaml
    participant_resolution:
      - stage_key: implement
-       role_keys: [engineer-1, engineer-2]
+       role_keys:
+         - {authority_plane: project-seat, key: engineer-1}
+         - {authority_plane: project-seat, key: engineer-2}
    ```
 
-   Each entry names a declared Workflow stage and only role keys already declared by that stage. Its effective
-   set is the stage's declared role set narrowed by the policy entry. The policy cannot add a role, stage,
-   edge, capability, or participant; missing entries are not wildcards for role-bearing stages; duplicate,
-   unknown, widened, ambiguous, or empty-effective mappings refuse before publication or dispatch.
-5. **Sequencing and bounds.** This decision admits CT-I1-036 with AC-ROLE-01..04 as the contract prerequisite
-   for package-defined execution-policy enforcement in CT-I2-006. Its implementation uses the existing
-   Catalog/CompanyBundle, seat-grant, Access, and Workflow Interfaces and adds no route, store, principal,
-   secret, environment variable, feature flag, live-instance mutation, or compatibility path. The current
-   step-5 candidate is spec-only; pack/runtime enforcement and the RED/GREEN transition pair belong to its
+   Each entry names a declared Workflow stage and a nonempty unique subset of that stage's authored base
+   role set. The effective set preserves the Workflow base order after filtering to policy members. An absent
+   entry leaves the base set unchanged; it is not a wildcard, especially for a role-bearing stage. An entry
+   for a role-neutral stage, an empty effective set, duplicate/unknown reference, widened set, or ambiguous
+   stage mapping refuses before publication or dispatch. The policy cannot add a role, stage, edge,
+   capability, or participant, and the policy ref/digest plus effective set are pinned in the participant
+   digest.
+8. **Sequencing and bounds.** This decision admits CT-I1-036 with AC-ROLE-01..04 as the authenticated role
+   record prerequisite for CT-I2-006. CT-I1-036 owns the derived role fact, the CompanyBundle binding fields,
+   the human/project-seat source matrix, and their no-new-authority proofs. CT-I2-006 alone owns the
+   evaluator membership/refusal, policy narrowing, and software-factory package consumer. The implementation
+   uses existing Catalog/CompanyBundle, seat-grant, Access, and Workflow Interfaces and adds no route, store,
+   principal, secret, environment variable, feature flag, live-instance mutation, or compatibility path.
+   The step-5 candidate remains spec-only; the RED/GREEN transition and policy-consumer suites belong to the
    separately gated implementation.
 
 Rejected alternatives:

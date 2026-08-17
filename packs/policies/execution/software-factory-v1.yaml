@@ -18,8 +18,28 @@
       "review_plan_ref": "engineering.software-factory.gates@1#review-plans.critical"
     }
   },
-  "participant_resolution": [],
+  "participant_resolution": [
+    {
+      "stage_key": "implement",
+      "role_keys": [
+        {"authority_plane": "project-seat", "key": "engineer-1"},
+        {"authority_plane": "project-seat", "key": "engineer-2"}
+      ]
+    },
+    {
+      "stage_key": "risk-derived-review",
+      "role_keys": [
+        {"authority_plane": "project-seat", "key": "review"}
+      ]
+    },
+    {
+      "stage_key": "staging-qa",
+      "role_keys": [
+        {"authority_plane": "project-seat", "key": "qa"}
+      ]
+    }
+  ],
   "placement_rules": [],
   "escalation_rules": [],
-  "note": "Draft example only. Risk selectors use the canonical gate-policy child reference <gate-policy-key>@<revision>#review-plans.<name>. Concrete limits live in the selected child; total executions and all consumed counts remain immutable server-owned facts."
+  "note": "Draft example only. participant_resolution is a strict subset of the Workflow stage role_keys base set; absent entries preserve that base and never wildcard it. Risk selectors use the canonical gate-policy child reference <gate-policy-key>@<revision>#review-plans.<name>. Concrete limits live in the selected child; total executions and all consumed counts remain immutable server-owned facts."
 }
