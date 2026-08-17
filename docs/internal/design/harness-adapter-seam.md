@@ -316,6 +316,7 @@ provides it (§4.1).
 | e | **Reset / window semantics** | Rolling block, weekly plan, prepaid balance, or unknown — decides what `limits()` can honestly report |
 | f | **Cache semantics on rotation** | What a rotation costs, and which invalidation hook must complete before an observation counts |
 | g | **Subagent credential inheritance** | Whether delegation is covered by the parent's ladder or needs its own acquisition |
+| h | **Egress path — shared across entries, or per entry?** | A shared egress means a CDN challenge hits every entry at once (§4.2): correlated failure is then evidence about the path, not about N credentials |
 
 The rest of the template is the seam-verb mapping, the liveness evidence sources, the ACK predicate,
 and the declared probe shape — each of which appears in the per-binding tables below.
@@ -553,19 +554,22 @@ performs, and "logging in does not add quota — capped accounts stay capped unt
 acquires, meters, and reports; it never creates an entry, and it never treats a credential it can
 reach as a credential it is entitled to.
 
-### 4.2 Usage and limit tracking — two axes, never one status
+### 4.2 Usage and limit tracking — three axes, never one status
 
-**AUTH ≠ QUOTA.** This is the invariant that most changes the data shape, so it is modelled
-structurally rather than described: every entry carries **two orthogonal states**, not one. A capped
+**AUTH ≠ QUOTA ≠ REACH.** This is the invariant that most changes the data shape, so it is modelled
+structurally rather than described: every entry carries **three orthogonal states**, not one. A capped
 account passes login and refuses work (`usage_limit_reached, plan_type: pro, resets_at …`); a dead
-lineage fails login while quota may be untouched. A single `status` column forces those into one
-value, and every tool that has flattened them has eventually told someone to run the wrong ceremony.
+lineage fails login while quota may be untouched; and — discovered live on this fleet tonight — an
+entry can have *both* fine and still be unable to reach the provider at all, because the provider's
+CDN is bot-challenging our egress. A single `status` column forces those into one value, and every
+tool that has flattened them has eventually told someone to run the wrong ceremony.
 
 ```
 EntryState
   identity: IdentityClaim         # decoded from the credential (§4.1.3), not the label
   auth:  healthy | lineage-dead | chain-burned
   quota: available | capped(reset_at) | capped(reset_unknown) | unfunded | unknown
+  reach: ok | edge-challenged | unknown
   windows: {model_ref: quota}     # quota is per (entry × model), not per account
 ```
 
@@ -579,9 +583,26 @@ EntryState
 | `quota: capped(reset_unknown)` | Cap observed, reset unknown | Waiting, with no predictable return |
 | `quota: unfunded` | Prepaid balance exhausted (402) | Operator refill |
 | `quota: unknown` | No trustworthy observation | A real probe (§4.6) |
+| `reach: ok` | The provider's edge answers our egress | — |
+| `reach: edge-challenged` | CDN bot-challenge on the path — 403 with a challenge page and a `cf_chl`-style token, **auth and quota both fine** | **Infra-plane action only**: client fingerprint, headers, or egress. Never a mint, rotation, or restart |
+| `reach: unknown` | Reachability not observed | A real probe (§4.6) |
 
-Three consequences follow from the shape and are checkable because of it:
+An entry is selectable only when **all three** axes are clear. Five consequences follow from the
+shape, and are checkable because of it:
 
+- **A reachability fault must never route to a credential ceremony.** `edge-challenged` looks like an
+  auth failure at the status-code level — it is a 403 — and a model with one status column classifies
+  it as `lineage-dead`, whose action is *re-mint*. That would consume a single-use device flow
+  against a perfectly healthy credential and still not work, because nothing about the credential was
+  ever wrong. This is the same shape as the runbook's original AUTH≠QUOTA lesson (where a full
+  re-grant ceremony was run against what was actually a cap), which is exactly why it is the third
+  axis and not a fourth `auth` value.
+- **Correlated failure across independent identities is evidence about the path, not the
+  credentials.** Entries in one pool typically share an egress, so a challenge hits all of them at
+  once. N identities failing simultaneously and identically is a shared-path signal; genuine
+  credential faults arrive one identity at a time. The pool should say so rather than reporting N
+  broken credentials — and survey question (h) records whether a binding's egress is shared or
+  per-entry, which is what makes the inference valid.
 - **No ceremony adds quota.** A mint changes only the `auth` axis. If a rotation, ceremony, or reset
   appears to change `quota`, that is a bug in the observer, not a recovery — the fleet has twice run
   a full re-grant ceremony against what was actually a cap.
@@ -631,6 +652,13 @@ cheap one look identical on every dashboard we have.
 
 It also sharpens routing policy: **rotate on exhaustion, not on preference.** A rotation that buys
 nothing still costs a full context re-read.
+
+**And never rotate on a reachability fault.** When `reach: edge-challenged`, every entry behind the
+same egress is equally unreachable, so rotation cannot help — it merely pays a prompt-cache reset per
+attempt while the edge keeps answering 403. A rotation requested against an edge-challenged
+classification is refused, not attempted. The correct response is one layer up (cross-provider
+fallback, §4.4.3) plus an infra-plane escalation, because a different provider is a different edge
+while a different credential is the same one.
 
 For a **managed** harness (`claude-code`), ctower performs the rotation itself and inherits the rules
 the fleet already paid for:
@@ -749,12 +777,14 @@ diagnosis table (§4.5):
 |---|---|---|
 | Transient | 429 after retries | The explicitly configured provider is **respected** — retry it, then rotate within its pool |
 | Capacity | 402, daily-quota phrasings, connection failures | The explicit choice is **bypassed**: primary-aux → task `fallback_chain` → main model → warn and raise |
+| **Reachability** | 403 with a challenge page (`reach: edge-challenged`) | **Skip layer 1 entirely** — rotation cannot help behind a shared egress — go straight to cross-provider fallback and raise an infra-plane escalation |
 
 The rule underneath: an explicit configuration choice binds while the chosen thing is merely *busy*,
 and yields when it is *out of capacity*. Encoding that distinction is the same auth-versus-quota split
 of §4.2 appearing one layer up — and mis-mapping it produces exactly the two failures we have already
 seen, a doomed retry against an exhausted balance, and a stubborn respect for a provider that cannot
-serve at all.
+serve at all. The reachability row is the third axis appearing here for the same reason: it is the one
+class where the *pool* layer has nothing to offer and only the *provider* layer does.
 
 #### 4.4.4 Delegation and cron inherit the ladder
 
@@ -774,14 +804,16 @@ reader is not asked to re-derive what an operator already learned the hard way.
 ```
 credential-pool-exhausted
   harness, model_ref, tier
-  observed:  the exact substrate string + HTTP status
-  meaning:   the classified cause (pool-state | capped | lineage-dead | chain-burned | unfunded)
-  action:    what clears it (restart+re-probe | wait until reset_at | re-mint profile | fresh mint | top up)
-  entries:   [{identity, auth, quota, reset_at | unknown}]      # §4.2's two axes
+  observed:  the exact substrate string + HTTP status (+ body shape when it classifies)
+  meaning:   pool-state | capped | lineage-dead | chain-burned | unfunded | edge-challenged
+  action:    restart+re-probe | wait until reset_at | re-mint profile | fresh mint | top up
+             | infra-plane: fingerprint/headers/egress
+  entries:   [{identity, auth, quota, reach, reset_at | unknown}]     # §4.2's three axes
   earliest_return: reset_at | explicit unknown
 ```
 
-The classification table is the runbook's, imported whole because each row cost an incident:
+The classification table is the runbook's, imported whole because each row cost an incident — plus
+tonight's new row:
 
 | Observed | Meaning | Action |
 |---|---|---|
@@ -790,11 +822,15 @@ The classification table is the runbook's, imported whole because each row cost 
 | Lineage 401 while the shell reports "logged in" | Per-profile lineage expired | Re-mint that profile |
 | `refresh_token_reused` | A copy burned the chain | Fresh mint — never a copy (§4.1) |
 | Probe passes, real call 402 | Prepaid balance near zero | Top up (and see §4.6: the probe was too small) |
+| **403 with an HTML challenge page and a `cf_chl`-style token** | **Edge challenge — auth and quota both fine**; the CDN is refusing our egress, not our credential | **Infra plane only**: client fingerprint, headers, or egress. Explicitly *not* a mint, rotation, or restart |
 
-The first row is the one that most justifies structure over prose: **a pool-state refusal and a real
-exhaustion look identical to the caller**, and treating the first as the second is what let a stale
-proxy report `No available credentials` for an entire night while the accounts underneath were merely
-resting. A refusal that carries `meaning` cannot make that mistake silently.
+Two rows justify structure over prose more than the rest. **A pool-state refusal and a real
+exhaustion look identical to the caller** — treating the first as the second is what let a stale proxy
+report `No available credentials` for a night while the accounts underneath were merely resting. And
+**an edge challenge looks exactly like an auth failure**, because it *is* a 403: the flattened reading
+sends a seat to burn a fresh single-use mint against a credential that was never broken, and the mint
+still will not work. A refusal that carries `meaning` and `action` as fields cannot make either
+mistake silently.
 
 `credential-pool-exhausted` never downgrades to another model, never retries into another family,
 never returns a receipt, and never lets the lane render as idle.
@@ -835,6 +871,15 @@ where a 200 OK with empty content is a hang rather than capacity, so a valid pro
 Any observation taken before the invalidation hook of §4.1 has completed is discarded rather than
 recorded — this is the discipline the runbook states as clear the markers, restart the proxy, *then*
 send one request per entry.
+
+**4. Classified on the response body, not the status code alone.** This is the condition tonight's
+edge challenge adds, and it runs in both directions: a `200` can be a failure (z.ai's empty-content
+hang) and a `403` can be a perfectly healthy credential (a CDN challenge page carrying a `cf_chl`-style
+token). So `probe` classifies on shape — HTML plus a challenge token means `reach: edge-challenged`
+and **never** `auth: lineage-dead` — and a probe that reads only the status line is not a valid probe.
+The cost of getting this wrong is asymmetric and immediate: the lineage-dead reading prescribes a
+re-mint, which consumes a single-use device flow, cannot succeed against a challenged edge, and leaves
+the operator believing the credential was the problem.
 
 Where a valid probe would cost a real turn, the honest answer is `unknown` plus the age of the last
 real observation — and the pool keeps learning from the refusals seats actually receive via `meter()`,
@@ -894,9 +939,9 @@ entry-state fidelity) and 17+18 (both are ledger-and-config fidelity) rather tha
 | AC-HAD-11 | Composition fails closed. An unknown, incompatible, revoked, or digest-mismatched `HarnessSpec` performs zero dispatch with no fallback to a generic process. Credential rotation affects future attempts only: a rotation during a live attempt changes nothing about that attempt and is visible as a pinned difference on the next one. | Four fail-closed component fixtures; live-rotation no-op proof; manifest digest comparison across attempts |
 | AC-HAD-12 | Every `spawn` obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; a receipt that cannot be durably recorded before dispatch yields zero dispatch; a changed plan, expired or replayed grant, or direct bypass fails closed. | Guard invocation trace per binding; zero-execution-on-block assertion; receipt-first ordering; replay/expiry/bypass refusals |
 | AC-HAD-13 | Every binding's `HarnessSpec` carries a complete credentials survey — native pool, native fallback, config surface and whether it is authored-config-only, identity proof, reset/window semantics, rotation cache semantics, and subagent inheritance — and a binding with any answer unfilled cannot register or enter the conformance suite. Per layer, the adapter either configures the harness's own or provides ctower's, **never both**: a fixture declaring a native pool and also enabling ctower rotation is refused at registration. The same five verbs are satisfied by a configure-and-observe binding and a ctower-provided one over one shared suite. | Survey-completeness refusal fixture; both-layers-enabled registration refusal; two-role conformance run over one suite; per-layer role resolution table derived from surveys rather than harness names |
-| AC-HAD-14 | Every entry carries **two orthogonal states** — `auth ∈ {healthy, lineage-dead, chain-burned}` and `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}` — and no code path collapses them into one status. A mint ceremony changes only the `auth` axis and leaves `quota` untouched. `capped(reset_unknown)`, `unknown`, `unfunded`, `lineage-dead`, and `chain-burned` are all non-selectable. Observation projects a **strict named-field allowlist** from the engine's state, so no credential value reaches a ledger row, status output, log, refusal, or telemetry event even though token fields sit adjacent to the metadata being read. | Two-axis matrix including auth-healthy/quota-capped and auth-dead/quota-available cells; no-ceremony-adds-quota assertion; non-selectable set proof; adjacent-token projection scan over ledger, logs, refusals, and telemetry |
+| AC-HAD-14 | Every entry carries **three orthogonal states** — `auth ∈ {healthy, lineage-dead, chain-burned}`, `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}`, and `reach ∈ {ok, edge-challenged, unknown}` — and no code path collapses them into one status. An entry is selectable only when all three are clear. A mint ceremony changes only the `auth` axis: `quota` and `reach` are untouched, so an `edge-challenged` entry with healthy auth is never routed to a mint, rotation, or restart, and its only prescribed action is infra-plane. Observation projects a **strict named-field allowlist** from the engine's state, so no credential value reaches a ledger row, status output, log, refusal, or telemetry event even though token fields sit adjacent to the metadata being read. | Three-axis matrix including auth-healthy/quota-available/reach-challenged, auth-healthy/quota-capped, and auth-dead/quota-available cells; mint-changes-only-auth assertion; no-ceremony-for-reachability proof; non-selectable set proof; adjacent-token projection scan over ledger, logs, refusals, and telemetry |
 | AC-HAD-15 | With no selectable entry, `spawn` performs zero dispatch and refuses `credential-pool-exhausted` carrying `observed`, `meaning`, `action`, per-entry two-axis states, and the earliest known reset or an explicit unknown. Each row of the diagnosis table maps to its exact `meaning`/`action` pair — in particular a pool-state refusal from a stale cache classifies as `pool-state` with a restart-and-re-probe action, never as real exhaustion. No model downgrade, cross-family retry, receipt, or idle-looking lane results. | Refusal-body assertions per diagnosis row (pool-state, capped, lineage-401, `refresh_token_reused`, probe-passes-402); stale-cache misclassification fixture; zero-dispatch and no-downgrade proofs |
-| AC-HAD-16 | `rotate` is incomplete until its declared cache-invalidation hook completes: a rotation whose hook did not run returns `rotation-incomplete`, and no entry state may be recorded from an observation taken before it. `probe` is valid only when drawn from the pool's own entries, sized to the declared workload shape, and taken after invalidation; a one-token probe, a constant, a default, or a hand-marked file each report `unknown`, never `available`. A window returning to `available` is not selectable until it holds a full observation cycle. | Hook-incomplete refusal and pre-hook-observation discard; tiny-probe-passes-then-real-call-402 fixture; empty-content-200 rejection; default-alive-constant rejected as evidence; flap hold-one-cycle fixture |
+| AC-HAD-16 | `rotate` is incomplete until its declared cache-invalidation hook completes: a rotation whose hook did not run returns `rotation-incomplete`, and no entry state may be recorded from an observation taken before it. A rotation requested against an `edge-challenged` classification is **refused rather than attempted**, since every entry behind a shared egress is equally unreachable and the attempt would only pay a cache reset. `probe` is valid only when drawn from the pool's own entries, sized to the declared workload shape, taken after invalidation, **and classified on the response body rather than the status line alone**: a 403 carrying an HTML challenge page and a `cf_chl`-style token classifies as `reach: edge-challenged`, never `auth: lineage-dead`, while a 200 with empty content classifies as a hang, never as capacity. A one-token probe, a constant, a default, or a hand-marked file each report `unknown`, never `available`. A window returning to `available` is not selectable until it holds a full observation cycle. | Hook-incomplete refusal and pre-hook-observation discard; rotate-refused-on-reachability fixture; challenge-page-versus-401 classification pair; empty-content-200 rejection; tiny-probe-passes-then-real-call-402 fixture; correlated-failure-across-identities inference over a shared-egress survey answer; default-alive-constant rejected as evidence; flap hold-one-cycle fixture |
 | AC-HAD-17 | The ledger meters every rotation and every fallback activation as a cost event, with a fallback charged **two** context re-reads (switch and return) and a rotation charged one. Fallback is recorded turn-scoped with at most one activation per turn, never as a mode; a skipped retry against an unelapsed `reset_at` is recorded as an explicit fact rather than as an absence; aux-task spend is attributed on separate lines from main-model spend under the same seat and attempt; and a compression degradation is recorded as a quality event rather than passing silently. | Cost-event arithmetic assertions for rotation and round-trip fallback; turn-scoped-not-modal ledger shape; explicit reset-skip fact; main-versus-aux attribution split; degradation event fixture |
 | AC-HAD-18 | Each profile's `fallback_providers` list and aux `fallback_chain` entries are **generated from the registry** as revision-pinned authored configuration, applied by the adapter and read by the engine; ctower writes configuration and never `auth.json`, proven by a one-writer-per-file inventory. No environment variable can alter a chain: an exported override is ignored, and the effective chain equals the pinned configuration. Layer identity is preserved end to end — a same-provider rotation is never recorded as a cross-provider fallback, and a transient 429 respects an explicitly configured provider while a capacity error (402, daily-quota, connection) bypasses it. | Registry-to-chain generation diff with revision/digest pins; env-override-ignored fixture; one-writer-per-file inventory; layer-attribution fixture; transient-versus-capacity ladder matrix |
 | AC-HAD-19 | For a binding whose survey answers "no native fallback", a cross-provider failover produces a **new attempt** with its own pinned composition — new harness or credential reference and a new manifest digest — preceded by a successful `teardown(checkpoint)` that preserves the work, and never an in-place credential or model swap inside the running session. The attempt boundary is visible in the ledger and carries the context re-read as a metered cost. A fixture attempting an in-session swap on such a harness is refused. | Failover-to-new-attempt trace with digest diff; checkpoint-precedes-teardown ordering; in-session-swap refusal fixture; cost event on the new attempt |
