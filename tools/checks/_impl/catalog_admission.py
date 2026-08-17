@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
+from ruamel.yaml.tokens import DocumentEndToken, DocumentStartToken
 
 from tools.checks.report import Finding, Severity
 
@@ -117,9 +118,13 @@ def _yaml_frontmatter(text: str) -> tuple[bool, str | None]:
     lines = text.removeprefix("\ufeff").splitlines(keepends=True)
     if not lines or lines[0].strip() != "---":
         return False, None
-    for index, line in enumerate(lines[1:], start=1):
-        if line.strip() in {"---", "..."}:
-            return True, "".join(lines[1:index])
+    body = "".join(lines[1:])
+    try:
+        for token in _YAML.scan(body):
+            if isinstance(token, (DocumentStartToken, DocumentEndToken)):
+                return True, body[: token.start_mark.index]
+    except YAMLError:
+        return True, None
     return True, None
 
 
