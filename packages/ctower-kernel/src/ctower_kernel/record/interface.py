@@ -457,6 +457,7 @@ class Ticket:
     version: int
     created_at: datetime
     durability_state: DurabilityState = DurabilityState.PENDING
+    display_key: str | None = None
 
     def response_payload(self) -> dict[str, object]:
         """Return the generated HTTP resource shape."""
@@ -464,6 +465,7 @@ class Ticket:
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
+            "display_key": self.display_key,
             "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
@@ -682,14 +684,14 @@ class Record(Protocol):
         ...
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID | str, project_key: str, *, telemetry: TelemetryContext
     ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket without cross-tenant disclosure."""
 
         ...
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID | str, project_key: str, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
 

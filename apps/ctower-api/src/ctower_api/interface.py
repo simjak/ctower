@@ -45,6 +45,9 @@ from ctower_api._http_support import (
     telemetry_context as _telemetry,
 )
 from ctower_api._http_support import (
+    ticket_reference as _ticket_reference,
+)
+from ctower_api._http_support import (
     uuid_value as _uuid,
 )
 from ctower_api._http_support import (
@@ -567,7 +570,7 @@ def _install_ticket_read_routes(
             return _problem_response(actor)
         try:
             telemetry = _telemetry(request)
-            parsed_ticket_id = _uuid(ticket_id)
+            parsed_ticket_id = _ticket_reference(ticket_id)
             parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
@@ -595,7 +598,7 @@ def _install_ticket_read_routes(
             return _problem_response(actor)
         try:
             telemetry = _telemetry(request)
-            parsed_ticket_id = _uuid(ticket_id)
+            parsed_ticket_id = _ticket_reference(ticket_id)
             parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())

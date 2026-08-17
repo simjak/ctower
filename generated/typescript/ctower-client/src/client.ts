@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+// Authored contract digest: sha256:018119aadbe3c39ff384098d27c037cca547d21f81132643bbfa647c46b31c35
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";

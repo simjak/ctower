@@ -3840,6 +3840,71 @@
       "verifier": "00000000-0000-4000-8000-000000000003",
       "verdict_id": "00000000-0000-4000-8000-000000000004",
       "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-09",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-09 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-10",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-10 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-11",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-11 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-12",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-12 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-13",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-13 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
   ],
   "deferred_suites": [

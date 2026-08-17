@@ -103,8 +103,9 @@ def _inspect_revision(
     existing = connection.execute(
         """
         SELECT revision.component_revision_id, revision.content_digest,
-            revision.schema_ref, revision.scope_project, revision.compatibility_ctower,
-            revision.payload_ref, lifecycle.event_id AS publication_event_id
+        revision.schema_ref, revision.scope_project, revision.compatibility_ctower,
+        revision.project_prefix,
+        revision.payload_ref, lifecycle.event_id AS publication_event_id
         FROM catalog_component_revisions AS revision
         LEFT JOIN catalog_component_lifecycle_facts AS lifecycle
           ON lifecycle.component_revision_id = revision.component_revision_id
@@ -223,6 +224,8 @@ def _revision_matches(
         or str(existing["schema_ref"]) != component.schema_ref
         or cast(str | None, existing["scope_project"]) != component.scope.project
         or str(existing["compatibility_ctower"]) != component.compatibility.ctower
+        or cast(str | None, existing["project_prefix"])
+        != (str(resource.payload["prefix"]) if component.kind is ComponentKind.PROJECT else None)
         or str(existing["payload_ref"]) != component.payload_ref
     ):
         return False
@@ -315,8 +318,8 @@ def insert_revisions(
             INSERT INTO catalog_component_revisions (
                 component_revision_id, component_id, tenant_id, revision_number,
                 content_digest, schema_ref, scope_project, compatibility_ctower,
-                payload_ref, created_by, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                payload_ref, project_prefix, created_by, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 state.revision_id,
@@ -328,6 +331,11 @@ def insert_revisions(
                 component.scope.project,
                 component.compatibility.ctower,
                 component.payload_ref,
+                (
+                    str(state.resource.payload["prefix"])
+                    if component.kind is ComponentKind.PROJECT
+                    else None
+                ),
                 actor.principal_id,
                 now,
             ),
