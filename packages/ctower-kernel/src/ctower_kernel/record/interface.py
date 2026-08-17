@@ -9,19 +9,13 @@ from enum import StrEnum
 from typing import Literal, Protocol
 from uuid import UUID
 
+import ctower_kernel.record.events as record_events
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.credentials import (
     CredentialScope,
     SeatCredentialIssue,
     SeatCredentialReceipt,
     SeatCredentialRevocation,
-)
-from ctower_kernel.record.events import (
-    CustodyTransferredPayload,
-    EventKind,
-    TicketCommentAddedPayload,
-    TicketCreatedPayload,
-    TicketEventPayload,
 )
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
@@ -499,19 +493,20 @@ class TimelineEvent:
     actor_principal_id: UUID
     command_id: UUID
     event_id: UUID
-    kind: EventKind
+    kind: record_events.EventKind
     occurred_at: datetime
-    payload: TicketEventPayload
+    payload: record_events.TicketEventPayload | record_events.WorkflowChangedPayload
     sequence: int
 
     def __post_init__(self) -> None:
         expected_payload = {
-            EventKind.TICKET_CREATED: TicketCreatedPayload,
-            EventKind.CUSTODY_TRANSFERRED: CustodyTransferredPayload,
-            EventKind.TICKET_COMMENT_ADDED: TicketCommentAddedPayload,
+            record_events.EventKind.TICKET_CREATED: record_events.TicketCreatedPayload,
+            record_events.EventKind.CUSTODY_TRANSFERRED: record_events.CustodyTransferredPayload,
+            record_events.EventKind.TICKET_COMMENT_ADDED: record_events.TicketCommentAddedPayload,
+            record_events.EventKind.WORKFLOW_CHANGED: record_events.WorkflowChangedPayload,
         }.get(self.kind)
         if expected_payload is None:
-            raise ValueError("timeline kind must be a ticket event")
+            raise ValueError("timeline kind must be a ticket or workflow event")
         if not isinstance(self.payload, expected_payload):
             raise TypeError(f"{self.kind} requires {expected_payload.__name__}")
 
@@ -554,7 +549,7 @@ class AuditEvent:
     command_id: UUID
     event_hash: str
     event_id: UUID
-    kind: EventKind
+    kind: record_events.EventKind
     occurred_at: datetime
     payload: dict[str, object]
     record_position: int

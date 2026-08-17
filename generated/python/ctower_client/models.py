@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+Authored contract digest: sha256:908ed9b033faddecade3c0adb0d2ecc052243840e3b0b1b44419293e820ff430
 """
 
 from __future__ import annotations
@@ -3474,9 +3474,14 @@ class TimelineEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
     event_id: UUID
-    kind: Literal["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
+    kind: Literal[
+        "ticket.created",
+        "ticket.custody_transferred",
+        "ticket.comment_added",
+        "workflow.changed",
+    ]
     occurred_at: _Rfc3339DateTime
-    payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload
+    payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload | WorkflowChangedAuditPayload
     sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
