@@ -30,4 +30,4 @@ setuptools==83.0.0
 types-jsonschema==4.26.0.20260518
 uv==0.12.3
 uvicorn==0.52.1
-wheel==0.47.0
+wheel==0.48.0
