@@ -14,7 +14,10 @@ rather than maintained as a second architecture source.
 code, hermes, codex, later openclaw, qwen code, zcode, deepseek harness — so we need decent
 abstraction"*. Scope addition (operator via director, 2026-08-17 18:04Z): a per-harness credentials
 pool — create and maintain a pool per harness, track usage limits, rotate automatically — specified
-in §4 with draft criteria `AC-HAD-13..15`.
+in §4 with draft criteria `AC-HAD-13..18`. That section is written against three operator-supplied
+inputs rather than from first principles: the Hermes credential-pools and fallback-providers docs
+(preserved at mission-control `board/assets/hermes-credential-pools-doc.md`), the operational law in
+mission-control `playbooks/codex-hermes-auth-runbook.md`, and the live state of this box's own pools.
 
 **Prior art it is derived from:** D10 (compositional execution, the Supervisor Interface, and the
 two-real-Adapters-plus-fake rule that has kept adapters design-only until now), D11 (extension host,
@@ -61,7 +64,9 @@ not get to discover it at runtime; an unknown, incompatible, revoked, or digest-
 The credentials pool of §4 is a **sibling Interface, not a sixth verb**. It is resolved at `spawn` and
 consumed by the binding, because a pool owned per-adapter is how a fleet ends up with three
 incompatible rotation policies and a fourth substrate class with no pool at all — which is exactly
-today's state.
+today's state. Where a harness already ships a pool engine, that Interface **configures and observes
+it rather than replacing it**: ctower's contribution is registry, ledger, policy, configuration, and
+observation, not a second rotation policy competing with a working one.
 
 ---
 
@@ -294,6 +299,27 @@ Seam is earned only when two real Adapters plus one deterministic fault-injectio
 conformance suite. Seven adapters do not earn it faster; they earn it not at all if the first two
 never proved the contract.
 
+### 3.0 The binding template
+
+Every binding fills the same template before implementation, and the credentials half of it is a
+**capability survey** — because the one thing that varies most between harnesses is not how they are
+launched but how much resilience they already have. A binding that has not answered these seven
+questions cannot be implemented, because the answers decide whether ctower configures a layer or
+provides it (§4.1).
+
+| # | Survey question | Why the answer changes the code |
+|---|---|---|
+| a | **Native credential pool?** | Present → configure and observe. Absent → ctower's registry plus the existing tool family operates it |
+| b | **Native fallback?** | Absent means there is no in-session ladder at all, and failover becomes a new attempt (§4.1.1) |
+| c | **Config surface — and is it authored-config-only?** | A surface an environment variable can override is not a pinned composition (§4.4.1) |
+| d | **Identity proof** — decodable claim, account file, or nothing? | Decides whether the registry can key on identity or must degrade to a declared mapping (§4.1.3) |
+| e | **Reset / window semantics** | Rolling block, weekly plan, prepaid balance, or unknown — decides what `limits()` can honestly report |
+| f | **Cache semantics on rotation** | What a rotation costs, and which invalidation hook must complete before an observation counts |
+| g | **Subagent credential inheritance** | Whether delegation is covered by the parent's ladder or needs its own acquisition |
+
+The rest of the template is the seam-verb mapping, the liveness evidence sources, the ACK predicate,
+and the declared probe shape — each of which appears in the per-binding tables below.
+
 ### 3.1 `claude-code` — mechanics from `tools/claude-crew`
 
 | Seam verb | Harness mechanic | The trap it encodes |
@@ -302,6 +328,7 @@ never proved the contract.
 | `liveness` | `esc to interrupt` / running-shell markers for working; limit-menu and "reached your … limit" text for `capped`; context-bar percentage for `saturated`; pane-hash delta as the marker-free fallback. | The limit menu matched the generic working pattern for hours. "N shells still running" with no esc-marker is working, not idle: the turn ended but the gate run continues. |
 | served model | Session transcript JSONL under the pane's cwd, most recent real assistant turn, `<synthetic>` turns skipped, stale beyond one hour = `unknown`. | These panes carry **no** parseable model footer; treating absence as agreement made an entire harness family read `unknown` forever. A stale transcript in a shared worktree once reported a dead session's model as live truth. |
 | `collect` | Worktree branch + status artifact; `just check` / `just verify` closing lines as gate output. | The status file is optional; the pushed branch is not. |
+| credentials | **Survey: (a) no native pool · (b) no native fallback · (c) config home per install · (d) account file, no decodable pool claim · (e) 5-hour blocks with reset times · (f) cached per config home, invalidated by respawn · (g) no separate subagent credentials.** One account per install (`~/.claude/.credentials.json` OAuth, or an API-key variable), while the operator holds three accounts — so ctower operates **topology A: per-seat credential isolation**, one config home per account, rotation by write-back-then-swap, mint-never-copy applying to OAuth here exactly as it does for codex. | This is the harness where ctower must *provide* both layers, and where the absence of in-session fallback has a structural consequence (§4.1.1): a cross-provider failover is a respawn, not a rung. The isolated-config-home ceremony is already how a new account is seeded without disturbing the live one. |
 | `writeback` | Seat credential through the generated client. | Same as every binding — no exceptions for the harness the commander happens to run on. |
 | `teardown` | Checkpoint order on saturation; pane preserved on `dead_auth`. | Claude cap text differs from every other harness's and was missing from the classifier twice. |
 
@@ -310,7 +337,7 @@ never proved the contract.
 | Seam verb | Harness mechanic | The trap it encodes |
 |---|---|---|
 | `spawn` | `bin/mux spawn` a wrapper that execs `hermes` with `HERMES_HOME` pointing at a **profile directory**; model and reasoning effort come from that profile's config, never from the launcher's arguments. | Model-in-the-launcher is how a launcher gets named after a model and a phantom harness category is born. The profile is the pinned component; the launcher is not. |
-| credentials | Each profile owns its own credential lineage (`auth.json` + `auth.lock`); tokens are minted per profile, never copied. | A copied refresh chain self-revokes — the single-use-refresh dual-copy conflict killed the raw path twice in one night. Account pooling as a *launcher argument* is retired; it lives in the profile or nowhere. |
+| credentials | Each profile owns its own credential lineage (`auth.json` + `auth.lock`); tokens are minted per profile, never copied. **Hermes ships the pool engine** — per-provider pools, rotation strategies, error-class recovery, per-task leasing — so this binding configures and observes it (§4) and implements none of it. | A copied refresh chain self-revokes — the single-use-refresh dual-copy conflict killed the raw path twice in one night. Account pooling as a *launcher argument* is retired; it lives in the profile or nowhere. Building a second pool over a working one would be the same category error one layer down. |
 | `liveness` | Footer timer glyphs (`⏲`/`⏱`) rather than an "esc to interrupt" hint; footer `used/window │ [bar] pct` gives the saturation percentage; pool errors (`credential pool: no available entries`, non-retryable 401) are `dead_auth`. | Five working hermes lanes read as idle against a Claude-shaped pattern and fired false floor breaches every cycle. |
 | served model | **Gateway/provider log**, not the footer — the footer shows the *requested* model. A footer/ledger disagreement is recorded as a conflict, not paged as substitution. | A footer said `gpt-5.6-terra` while the gateway served deepseek. This is the single clearest case for per-binding evidence sources. |
 | ladders | A profile declares a fallback chain; serving a known fallback rung of the spawn intent is the never-stall ladder, not a substitution — **except on judgment lanes, where tolerance is zero**. | Anchoring "expected" to the latest ledger row instead of the durable spawn intent reports the *recovery* as the violation. |
@@ -326,9 +353,24 @@ exercises "local Codex/Claude Harness compositions", so the value is legitimate;
 to it is not a separate harness.
 
 The seam expresses this with two pinned fields rather than one: the observed `harness_ref` **and**
-the runtime/profile reference that carries credential lineage. The credential mechanics below are the
-concrete case that §4 generalizes into one `CredentialPool` per harness; they are kept here because
-this binding is where every one of them was learned.
+the runtime/profile reference that carries credential lineage.
+
+That distinction turns out to be load-bearing for credentials too, and it cuts both ways:
+
+- **Codex as a runtime under hermes** — today's fleet route — has its subscriptions as OAuth
+  device-code entries inside hermes's own `openai-codex` pool. Identical pool model, no special case:
+  configure and observe.
+- **Codex as a direct CLI harness** has a **single active account per `~/.codex` home and no native
+  pool or fallback at all**. Survey: (a) none · (b) none · (c) an account file, not authored config ·
+  (d) decodable identity claim (which is why labels can be checked against it) · (e) ~5-hour cooldown
+  model · (f) proxy/home caching that must be invalidated after any token change · (g) no separate
+  subagent credentials. Here ctower *provides* the layer — and the mechanism already exists as the
+  fleet's tool family (§4.7), so the binding wraps `codex-auth-all`, `codex-grant-ceremony`,
+  `codex-rotate-fallback` with its generation guard, and `codex-pool`, rather than writing a fifth
+  rotation implementation. Three accounts, single-use refresh chains binding everything.
+
+The mechanics below are the concrete case §4 generalizes; they are kept here because this binding is
+where every one of them was learned.
 
 | Seam concern | Mechanic | The trap it encodes |
 |---|---|---|
@@ -356,119 +398,406 @@ That is the abstraction working. What the later wave does need is the `HarnessSp
 declaration to be honest: `qwen-code` and `zcode` declare their liveness evidence sources or their
 `liveness` returns `unknown` by name — never a guess.
 
+**And each of them owes the §3.0 credentials survey before implementation, not after.** Their native
+pool, native fallback, config surface, identity proof, reset semantics, cache semantics, and subagent
+inheritance are all currently unknown to us, and §4.1's resolution rule cannot be applied to an
+unknown: the choice between *configure* and *provide* is exactly what the survey decides. The
+`deepseek` row shows why the survey is cheap insurance — answering (a) and (b) for it reveals that it
+is served through a profile that already has both layers, so the correct amount of adapter work is
+zero. An unanswered survey is the only thing here that can produce a duplicate rotation policy.
+
 ---
 
 ## 4. The per-harness credentials pool
 
 **Scope addition, operator via director, 2026-08-17 18:04Z:** create and maintain a pool per harness,
-track usage limits, rotate automatically. Every constraint below was paid for by an incident today or
-this week; they are written as requirements, not as background.
+track usage limits, rotate automatically. **T4 design input, operator, 2026-08-17 ~18:4xZ** (doc
+preserved at mission-control `board/assets/hermes-credential-pools-doc.md`): Hermes already *ships*
+the pool engine, so for the hermes binding ctower does not build pooling. Every constraint below was
+paid for by an incident today or this week; they are written as requirements, not as background.
 
-### 4.1 It is a sibling Interface, not a sixth verb
+### 4.1 Capability-matrix-driven: configure where the layer exists, provide where it does not
 
-The pool must **not** become a method on the adapter. If each binding owns its own rotation policy,
-the result is what exists today: three hand-rolled pools with three different cap semantics —
-`tools/codex-pool` (a JSON store with a five-hour cooldown, `rotate`/`cap`/`next`, swapping the file
-vanilla codex reads), `tools/claude-pool` (slot directories with `meta.json` cap marks and a
-write-back-before-swap rule), and the hermes forge pool (one shared pool of mints served through a
-local proxy, rotation happening inside the proxy) — plus a fourth class with no pool at all: raw
-provider keys (openrouter, z.ai, the Alibaba token plan) held as single env values with nothing
-tracking their limits.
+The decisive fact is that **resilience is not uniformly missing, and not uniformly present.** Hermes
+ships a per-provider credential pool with four rotation strategies (`fill_first`, `round_robin`,
+`least_used`, `random`), error-class recovery, a pools-first-then-fallback-providers layering,
+reference-only borrowed secrets, per-task credential leasing for subagents, and thread safety — with
+strategies in `config.yaml` and live state in `~/.hermes/auth.json`. The Claude Code and Codex CLIs
+ship neither pooling nor fallback and hold one account per config home.
 
-So the shape is one `CredentialPool` Interface with one **pool per harness**, resolved at `spawn` and
-consumed by the binding:
+So the resolution rule is per **layer**, per harness — read from the §3.0 survey, not from the
+harness's name:
+
+> **Where the harness has the layer, the adapter configures and observes it.
+> Where it lacks the layer, the adapter provides it through ctower's registry and the existing tool
+> family. Never both.**
+
+"Never both" is the load-bearing half. Two rotation policies over one credential set do not add
+redundancy; they add a race over single-use refresh chains, which is the failure that revokes
+everything at once.
+
+| Harness | Native pool | Native fallback | Identity proof | Reset semantics | Ctower's role |
+|---|---|---|---|---|---|
+| `hermes` | **Yes** — per-provider, 4 strategies | **Yes** — ordered `fallback_providers` + aux chains | Decodable claim per entry | Per-provider `reset_at`, authoritative | Configure + observe both layers |
+| `codex` *via hermes* | Yes (inside hermes's `openai-codex` pool) | Yes (inherited) | Decodable claim | ~5h cooldown + provider reset | Configure + observe |
+| `codex` *direct CLI* | **No** — one active account per home | **No** | Decodable claim | ~5h cooldown model | **Provide**, wrapping the tool family (§4.7) |
+| `claude-code` | **No** — one account per install | **No** — no in-session ladder | Account file; no pool claim | **5-hour blocks** with reset times | **Provide**: topology A, per-seat credential isolation |
+| `openclaw` · `qwen-code` · `zcode` · `deepseek-harness` | **Survey first** | **Survey first** | **Survey first** | **Survey first** | Undecidable until §3.0 (a)–(g) are answered |
+
+The last row is a refusal, not a gap: the role cannot be chosen before the survey is filled, and
+guessing it is how a second rotation policy gets built over a working one. A binding whose survey is
+unanswered does not enter the conformance suite.
+
+#### 4.1.1 Where there is no in-session fallback, failover is a new attempt
+
+For `claude-code` — and any harness answering "no" to survey question (b) — cross-provider failover
+cannot be a rung inside a running session, because no such rung exists. It is the **adapter's** job,
+and it takes the only shape available: checkpoint the lane, tear it down, and respawn the seat on
+another harness or account.
+
+That is architecturally cleaner than it first sounds, and it costs nothing extra to specify, because
+the seam already has every piece: `teardown(checkpoint)` preserves the work (§1.5), and the respawn
+produces a **new attempt with its own immutable pinned composition** — new harness, new credential
+reference, new manifest digest. What would be a hidden mid-session model swap on a fallback-capable
+harness is, here, a visible attempt boundary in the ledger. The cost is the full context re-read the
+new attempt pays, which §4.4.2 already meters, plus the checkpoint's own cost.
+
+#### 4.1.2 The Interface: five verbs, one deliberately absent, one completion condition
+
+The pool remains a **sibling Interface resolved at `spawn`, never a sixth adapter verb** (§0). Its five
+verbs are the operator's:
 
 ```
-CredentialPool(harness_ref)
-  entries: [PoolEntry]                # references + labels + lineage. NEVER values.
-  select(model_ref, tier) -> PoolEntry | PoolExhausted
-  observe(entry, observation)         # append-only: what the substrate actually answered
-  status() -> PoolStatus              # per-entry windows, reset times, unknowns
+CredentialPool(harness_ref)                    # one pool per harness
+  acquire(model_ref, tier) -> Lease | PoolExhausted   # which credential this attempt runs on
+  meter(lease, observation)                           # usage, cost, and cache-reset events
+  limits(scope) -> [EntryState]                       # auth × quota axes per entry (§4.2)
+  rotate(reason) -> RotationEvent | Refusal           # native: request+record · managed: perform
+  probe(shape) -> PoolHealth                          # realistic-sized, pool-drawn (§4.6)
+
+  # There is NO copy verb. Deliberately. New credential material enters only through
+  # request_mint(identity) -> OperatorCeremony, which the pool can ask for and never perform.
 ```
 
-A `PoolEntry` is a credential **reference** with a label, its lineage (which account minted it, when,
-and which profile or proxy owns it), and its per-model windows. No pool surface, log, status file, or
-error may contain a credential value — today's tools already hold this line ("never prints tokens;
-only labels, cooldown, status") and the seam inherits it, matching the repository rule that secrets
-are references and never values.
+**The absent verb is a design element.** OAuth refresh tokens here are single-use chains, and
+installing a copied auth file — from another profile, another instance, or a stale snapshot — replays
+a consumed token and the provider revokes *the whole chain*: every grant derived from that login dies
+at once. That is not a rule an implementer should have to remember, so the Interface cannot express
+it. Every entry is its own device-flow mint; rotation switches *which entry an attempt rides*, never
+which file sits where.
 
-Pool *membership* is operator-owned: minting an entry is a sign-in ceremony a human performs, and
-"logging in does not add quota — capped accounts stay capped until their reset". The adapter selects,
-observes, and reports; it never creates an entry, and it never treats a credential it can reach as a
-credential it is entitled to.
+**`rotate` is incomplete until its cache-invalidation hook completes.** Pool proxies cache state in
+memory, so a rotation that changes tokens without invalidating the cache leaves the old grant live: a
+stale proxy translated `usage_limit_reached` into `No available credentials` for an entire night, and
+cached state can burn a fresh single-use refresh token. The `HarnessSpec` therefore declares the
+invalidation hook for its pool (for the hermes forge pool: restarting the pool-proxy service), and a
+`RotationEvent` whose hook has not completed is `rotation-incomplete` — never a success, and never a
+basis for marking any entry's state.
 
-### 4.2 Usage and limit tracking
+For a native-engine harness these verbs **configure and observe**: `acquire` resolves which pool entry
+the engine will serve this attempt and leases it; `rotate` records the engine's own rotation rather
+than performing one; `probe` reads the engine's state. For a managed harness the identical verbs are
+implemented by ctower's checkout topology. A binding declares which class it is in its `HarnessSpec`,
+and that declaration is the only place the difference appears — no caller branches on harness name.
 
-Capacity is tracked per **(entry × model or tier) window**, not per account, and each window carries
-its own state and reset time. The most mature existing model already does this — Claude capacity is
-computed per tracked model as an exhausted window with a `reset_at` and a rotation trigger — and the
-seam generalizes that shape rather than the binary `alive|capped` the fleet sentinel writes.
+This split is the abstraction's real test. If the same five verbs cannot express both a shipped engine
+and a hand-managed checkout without either leaking into the caller, the abstraction is wrong, and the
+fleet has both cases *today* to prove it against.
 
-| Window state | Meaning | Selectable? |
+#### 4.1.3 Ctower's five jobs for a layer the harness already owns
+
+1. **Registry** — which pools exist, and which subscriptions feed them. A subscription is the paying
+   thing (a codex account, the z.ai coding plan, the Alibaba token plan, an OpenRouter balance); an
+   entry is its credential inside a pool. The mapping subscription → pool → entry is what makes
+   "which plan paid for this attempt" answerable, and it is what budgets and hard-stops attach to.
+   The live shape to register against is `auth.json`'s `credential_pool.<provider>[]` with its `id`,
+   `label`, `auth_type`, `priority`, and `source`, across the providers actually present here:
+   `openai-codex`, `zai`, `openrouter`, `alibaba`.
+   **The registry key is the credential's own decoded identity claim, never its label.** Labels have
+   pointed at the wrong account twice — a `simasjak-gmail` label was actually a jakit.lt mint, and two
+   identically-named labels hid two different accounts. So identity (the JWT email claim, decoded from
+   the credential itself) is the primary key; `label` is a display attribute with no authority, and
+   two entries sharing an identity are one subscription however they are named. A registry keyed on
+   labels cannot answer "how many accounts do we actually have", which is the question the pool exists
+   to answer.
+   **A discovered identity is not an enrolled one.** The codex pool is three operator-confirmed
+   accounts (`simonas@jakit.lt`, `simonas@jakitlabs.com`, `simasjak@gmail.com`); a fourth identity was
+   found minted in the pool and awaits an operator keep-or-evict decision. `discovered` is therefore a
+   first-class registry state that is **never selectable** — auto-adopting a credential because it is
+   reachable is the same authority error as an adapter using an operator credential it happens to
+   hold (§2).
+2. **Ledger** — usage, limits, resets, and rotation events over time, including the cost event of
+   §4.3. The engine's `auth.json` carries *current* state and is overwritten as it changes; a ledger
+   is what turns that into history, which is the only thing that can answer "how often are we
+   rotating, and what is it costing us".
+3. **Policy** — budgets, hard-stops, and the *order of the ladder*. The engine decides which entry
+   serves a request; ctower decides whether the attempt may run at all against a budget, and which
+   providers may be fallen back to in what order (§4.4). Refusal happens before dispatch rather than
+   as a discovery from a provider's 402.
+4. **Configuration** — rotation strategies and the generated fallback ladder in `config.yaml`;
+   credentials added by the harness's own `hermes auth add` device-flow ceremony. Ctower authors
+   configuration as revision-pinned data and **generates each profile's chain from the registry**
+   (§4.4.1); it never writes `auth.json`. **One writer per file** is the rule that prevents the whole
+   copied-credential failure family: the harness owns its auth state, ctower owns its configuration,
+   and neither edits the other's file.
+5. **Observation** — read `last_status`, `last_status_at`, `last_error_code`, `last_error_reason`,
+   `last_error_reset_at`, and `request_count` from each pool entry into the ledger, projected through
+   a **strict metadata allowlist**. That last word is load-bearing: OAuth entries in `auth.json` carry
+   `access_token` and `refresh_token` fields *adjacent to* the metadata being read, so an observation
+   reader that copies the object rather than projecting named fields would move credential values into
+   the ledger. Reference-only entries carry `secret_fingerprint` instead of a value — the shape our
+   own secrets law already requires, arrived at independently by the engine.
+
+Pool *membership* stays operator-owned in both classes: minting an entry is a sign-in ceremony a human
+performs, and "logging in does not add quota — capped accounts stay capped until their reset". Ctower
+acquires, meters, and reports; it never creates an entry, and it never treats a credential it can
+reach as a credential it is entitled to.
+
+### 4.2 Usage and limit tracking — two axes, never one status
+
+**AUTH ≠ QUOTA.** This is the invariant that most changes the data shape, so it is modelled
+structurally rather than described: every entry carries **two orthogonal states**, not one. A capped
+account passes login and refuses work (`usage_limit_reached, plan_type: pro, resets_at …`); a dead
+lineage fails login while quota may be untouched. A single `status` column forces those into one
+value, and every tool that has flattened them has eventually told someone to run the wrong ceremony.
+
+```
+EntryState
+  identity: IdentityClaim         # decoded from the credential (§4.1.3), not the label
+  auth:  healthy | lineage-dead | chain-burned
+  quota: available | capped(reset_at) | capped(reset_unknown) | unfunded | unknown
+  windows: {model_ref: quota}     # quota is per (entry × model), not per account
+```
+
+| Axis value | Meaning | Clears by |
 |---|---|---|
-| `available` | Observed serving within the window | Yes |
-| `exhausted(reset_at)` | Cap observed, reset time known | No, until `reset_at` |
-| `exhausted(reset_unknown)` | Cap observed, reset time not known | **No** |
-| `unfunded` | Credit/billing refusal (HTTP 402) | No, until an operator refill |
-| `needs_login` | Refresh chain dead or revoked | No, until a mint ceremony |
-| `unknown` | No trustworthy observation | **No** |
+| `auth: healthy` | Login/refresh works | — |
+| `auth: lineage-dead` | Per-profile grant expired; the shell may still say "logged in" | Re-mint that profile |
+| `auth: chain-burned` | `refresh_token_reused` — a copy replayed a single-use token | Fresh mint, never a copy |
+| `quota: available` | Observed serving within the window | — |
+| `quota: capped(reset_at)` | Cap observed, provider reset known | Waiting; the provider's `reset_at` overrides any local cooldown |
+| `quota: capped(reset_unknown)` | Cap observed, reset unknown | Waiting, with no predictable return |
+| `quota: unfunded` | Prepaid balance exhausted (402) | Operator refill |
+| `quota: unknown` | No trustworthy observation | A real probe (§4.6) |
 
-Two rows carry the whole lesson. **An unknown reset is not availability.** The live Claude pool today
-holds a slot marked `capped_until: "unknown"` with a `capped_marked_at` stamp, and the sentinel's
-availability count treats an unknown reset as alive — a credential explicitly marked capped renders
-as healthy, which is the same failure class as a cap menu matching the working pattern. **And
-`unknown` is not `available`.** A pool that cannot observe a window says so; it does not default
-toward optimism, because every default-toward-optimism in this system has eventually dispatched work
-into a dead substrate.
+Three consequences follow from the shape and are checkable because of it:
+
+- **No ceremony adds quota.** A mint changes only the `auth` axis. If a rotation, ceremony, or reset
+  appears to change `quota`, that is a bug in the observer, not a recovery — the fleet has twice run
+  a full re-grant ceremony against what was actually a cap.
+- **An unknown reset is not availability.** The live Claude pool holds a slot marked
+  `capped_until: "unknown"` with a `capped_marked_at` stamp, and the sentinel's availability count
+  treats an unknown reset as alive — a credential explicitly marked capped renders as healthy, the
+  same failure class as a cap menu matching the working pattern.
+- **`unknown` is not `available`.** A pool that cannot observe a state says so; it does not default
+  toward optimism, because every default-toward-optimism in this system has eventually dispatched
+  work into a dead substrate.
+
+Quota is tracked per **(entry × model) window**, not per account — the shape `_claude_capacity.py`
+already computes as an exhausted window with a `reset_at` and a rotation trigger, rather than the
+binary `alive|capped` the fleet sentinel writes.
 
 Consumption is observed, never predicted. Where a substrate reports usage against a window
 (percentage, tokens, requests), the pool records it; where it does not, exhaustion is learned from
 the refusal the substrate actually returned. A pool never estimates that an entry is *probably* fine.
 
-### 4.3 Rotation
+For a native-engine harness this table is a **projection, not a second source**: `limits()` derives it
+from the engine's own per-entry fields — `last_status` (`exhausted` is the value live in this box's
+pool files right now), `last_error_code`, `last_error_reason`, `last_error_reset_at`, and
+`request_count`. Ctower does not maintain a parallel opinion about whether an entry is capped; it
+records what the engine already knows, timestamps it, and keeps the history the engine does not.
+
+### 4.3 Rotation, and what a rotation costs
+
+**For a native-engine harness ctower does not rotate — it records rotations and their cost.** The
+engine's recovery is already error-class-aware, and re-implementing it would guarantee two policies
+disagreeing under load:
+
+| Observed | Engine behaviour | Ctower's part |
+|---|---|---|
+| 429 rate-limited | Retry once, then rotate | Meter the retry and the rotation; no second policy |
+| 402 unfunded | Rotate immediately, 1h cooldown on the entry | Ledger `unfunded`; escalate the refill as an operator ceremony |
+| 401 unauthorized | Refresh, then rotate if the refresh fails | Ledger `needs_login` on refresh failure |
+| Provider `reset_at` present | Overrides the local cooldown | Record the provider's reset as authoritative over any inferred one |
+
+**Each rotation resets the provider's prompt cache — one full-price context re-read — and that is a
+metered cost event, not a footnote.** It is the design consequence with the sharpest downstream
+effect, because it makes rotation *not free* and therefore makes strategy a budget decision:
+`fill_first` minimizes cache resets by exhausting one entry before moving on, while `round_robin`,
+`least_used`, and `random` spread load and pay a cache reset at every hop. On lanes carrying
+200K-token contexts, a strategy chosen for fairness can cost more than the capacity it balances. The
+ledger is what makes that visible; without a metered cache-reset event, the expensive strategy and the
+cheap one look identical on every dashboard we have.
+
+It also sharpens routing policy: **rotate on exhaustion, not on preference.** A rotation that buys
+nothing still costs a full context re-read.
+
+For a **managed** harness (`claude-code`), ctower performs the rotation itself and inherits the rules
+the fleet already paid for:
 
 - **Write-back before swap, always.** OAuth refresh tokens rotate as they are used, so a stored
   snapshot of an account goes stale the moment that account is live. Every rotation first saves the
   live credential back into its own slot, then swaps the next one in. Skipping this is what killed
   our codex snapshots with `refresh_token_reused`, and it is the single most expensive rotation bug
   available.
-- **Minted, never copied.** A copied refresh chain self-revokes; each account contributes its own
-  mint to the pool and each profile holds its own lineage. Rotation happens *inside* the pool, not by
-  copying credential files between profiles — the raw-copy path died twice in one night from the
-  single-use-refresh dual-copy conflict.
-- **One live holder per entry**, enforced by the supervised-refresh lock the hermes profiles already
-  carry. Two concurrent holders of a single-use refresh chain is the same bug wearing a different hat.
+- **Minted, never copied** — structurally guaranteed by the absent copy verb (§4.1). The managed
+  implementation additionally refuses to install a snapshot whose refresh-token generation is older
+  than the live one, which is the exact hardening added after a rotation tool installed a stale
+  snapshot and revoked every grant at once, killing a review mid-run.
+- **One live holder per entry**, enforced by a supervised-refresh lock — the same guarantee the
+  native engine provides with thread safety. Two concurrent holders of a single-use refresh chain is
+  the same bug wearing a different hat.
+- **Invalidate the cache, then believe the result** (§4.1). In the managed class this is the same
+  rule at smaller scale: whatever caches the credential must be restarted before any entry's state is
+  re-observed, or a stale reader will mark healthy entries dead.
+
+Both classes share the last two rules:
+
 - **Rotation reaches a running attempt only through a respawn.** Credentials are read at spawn; an
   attempt's credential reference is part of its immutable pinned composition, so a rotation changes
   the *next* attempt and never mutates a live one. This is D13's active-pointer rule applied to
   credentials, and it is why "rotate, then respawn the capped seats" is the correct order rather than
   an inconvenience.
-- **Automatic where it is mechanical, ceremonial where it is human.** Selecting a healthy entry,
-  marking an observed cap, and rotating to the next available entry are automatic. Minting a new
-  entry, refilling credits, and raising a plan are operator ceremonies the pool can only *request* —
-  by surfacing the exact refusal and the earliest known reset.
+- **Automatic where it is mechanical, ceremonial where it is human.** Acquiring a healthy entry,
+  recording an observed cap, and rotating on exhaustion are automatic. Minting a new entry, refilling
+  credits, and raising a plan are operator ceremonies the pool can only *request* — by surfacing the
+  exact refusal and the earliest known reset.
 
-### 4.4 Cap-aware routing
+### 4.4 Routing: ctower decides policy, the engine executes it
 
-`select(model_ref, tier)` returns an entry whose window for that exact model is `available`. It never
-substitutes a different model to find an available credential: model policy belongs to profiles,
-ladders, and operator rulings (§2), and a pool that silently reroutes a judgment lane to whatever
-happened to be funded would defeat the zero-tolerance rule judgment lanes already carry.
+The division of labour is exact, and it is the whole answer to "who owns resilience":
 
-**Flap discipline is part of selection.** A window that flips from exhausted to available is not
+> **Ctower decides policy** (which providers, in what order, under what budget stops).
+> **Hermes executes it** (pools, then fallback providers, then aux chains).
+> **The adapter translates** policy → `config.yaml`, and events → ledger.
+
+`acquire(model_ref, tier)` leases an entry whose window for that exact model is `available`. It never
+substitutes a *model* to find an available credential: model policy belongs to profiles, ladders, and
+operator rulings (§2), and a pool that silently rerouted a judgment lane to whatever happened to be
+funded would defeat the zero-tolerance rule judgment lanes already carry. Ctower's budgets and
+hard-stops are evaluated **before dispatch**, so an over-budget attempt refuses at `acquire` rather
+than discovering its answer from a provider's 402 mid-turn.
+
+**Flap discipline is part of acquisition.** A window that flips from exhausted to available is not
 selectable until it holds for a full observation cycle. This is not caution for its own sake: z.ai
 flipped alive twice in one morning and the second flip lasted exactly two sweeps, and because the
 hold-one-cycle bar was enforced, zero lanes were half-started — briefs were staged and nothing
 launched. A pool that routes on the first good news manufactures precisely the half-dead lanes the
 rest of this design spends its length detecting.
 
-### 4.5 Fail-loud exhaustion, with the exact error surfaced
+#### Three ordered layers, which the seam must never collapse
 
-When no entry is selectable, `spawn` performs **zero dispatch** and refuses `credential-pool-exhausted`
-carrying: the harness, the requested model/tier, the exact substrate refusal string and HTTP status
-observed, the per-entry window states, the earliest known `reset_at` (or an explicit unknown), and
-what would clear it (mint, refill, wait). It never downgrades to another model, never retries into
-another family, never returns a receipt, and never lets the lane render as idle.
+| Layer | Scope | Trigger | Ctower's part |
+|---|---|---|---|
+| 1. Credential pools | Same provider | Rotation strategy + error class (§4.3) | Register, meter; never re-implement |
+| 2. `fallback_providers` | Cross-provider, ordered | 429/5xx after retries; 401/403/404 immediately; malformed responses | **Generate the chain from the registry**; meter each activation |
+| 3. Aux per-task chains | Per task kind (vision, compression, web-extract, skills, mcp, approval, title, triage) | Own resolution per task | Attribute spend separately (§4.4.2) |
+
+Collapsing layers 1 and 2 is how a cross-provider failover gets recorded as a rotation and a judgment
+lane quietly changes family. Layer 1 is *the same subscription serving again*; layer 2 is *a different
+vendor answering* — the distinction the fleet learned by hand as "a known fallback rung of the spawn
+intent is the never-stall ladder, not substitution, except on judgment lanes where tolerance is zero"
+(§3.2).
+
+#### 4.4.1 The ladder is authored config, generated from the registry
+
+The commander built tonight's ladder by hand — sol → glm → park — from knowledge of which
+subscriptions were alive. That is precisely a **registry-derived artifact**: ctower's routing policy
+generates each profile's `fallback_providers` list (and each aux `fallback_chain`) from the registry
+of pools, subscriptions, and current windows, and the adapter writes it as configuration.
+
+Two rules govern how it is written, and the second is the engine's own, honored verbatim:
+
+- **Generated, revision-pinned, and diffable.** A chain is authored desired state with a revision and
+  digest, exactly as D12 already requires of configuration; the adapter applies it, and the engine
+  reads it. Ctower still never writes `auth.json` — one writer per file (§4.1.3).
+- **Config only. No environment variables.** Hermes's stated principle is that "fallback
+  configuration is a deliberate choice, not something a stale shell export should override", and the
+  seam adopts it as written. This is the same law ctower already holds from the other direction —
+  authored configuration is data, runtime truth is never inferred from a shell — and a ladder that
+  can be silently altered by an exported variable is not a pinned composition at all.
+
+#### 4.4.2 What the ledger must model about a fallback
+
+- **Turn-scoped.** The primary is restored each turn, with at most one activation per turn. A
+  fallback is therefore an *event within a turn*, not a mode the seat is in; a ledger that records it
+  as a state would report a seat as "on glm" for an hour when it was on glm for one turn.
+- **Reset-aware.** An unelapsed `reset_at` skips the doomed retry and stays on the fallback until the
+  reset passes — avoiding a second cache invalidation. That skip must be a **ledger-readable fact**
+  ("did not retry primary: reset_at unelapsed"), because otherwise the absence of a retry is
+  indistinguishable from a bug, and the next person to read it will helpfully "fix" the skip.
+- **Every activation is a metered cost event, and it is charged twice.** Switching away invalidates
+  the prompt cache, and switching back invalidates it again: one activation = **two full-price
+  context re-reads**. Combined with §4.3's per-rotation cache reset, this is the arithmetic that makes
+  resilience visibly expensive rather than invisibly expensive, and it is why the ladder's *order*
+  is a budget decision and not just an availability one.
+- **Aux spend is attributed separately.** A seat's cost is main-model spend **plus** its aux chains
+  (compression, vision, web-extract, and the rest). Folding aux into the main line hides a real and
+  variable cost — compression in particular runs on long-context lanes, which are exactly the
+  expensive ones. The ledger keeps them as separate attributed lines under the same seat and attempt.
+- **Degradation is recorded, not silent.** Compression that cannot run degrades to no-summary rather
+  than failing the turn. That is correct behaviour and a *quality* event: the seat's context fidelity
+  changed, and this design's standing rule is that a degraded state must never render as a healthy
+  one.
+
+#### 4.4.3 Capacity errors bypass an explicit choice; transient ones respect it
+
+The aux ladder's semantics map onto the seam's error taxonomy and must agree with the runbook's
+diagnosis table (§4.5):
+
+| Class | Examples | Behaviour |
+|---|---|---|
+| Transient | 429 after retries | The explicitly configured provider is **respected** — retry it, then rotate within its pool |
+| Capacity | 402, daily-quota phrasings, connection failures | The explicit choice is **bypassed**: primary-aux → task `fallback_chain` → main model → warn and raise |
+
+The rule underneath: an explicit configuration choice binds while the chosen thing is merely *busy*,
+and yields when it is *out of capacity*. Encoding that distinction is the same auth-versus-quota split
+of §4.2 appearing one layer up — and mis-mapping it produces exactly the two failures we have already
+seen, a doomed retry against an exhausted balance, and a stubborn respect for a provider that cannot
+serve at all.
+
+#### 4.4.4 Delegation and cron inherit the ladder
+
+Subagents and cron-launched agents inherit the parent chain, and the engine shares the parent pool
+with them through per-task credential leasing. Two consequences: `spawn` passes the resolved ladder
+down as part of the attempt's pinned composition, so **subagent resilience comes for free rather than
+as a second mechanism**; and the per-task lease is scoped metadata *beneath* ctower's outer job lease
+and fencing epoch, exactly as D13 already requires of provider allocation and session identifiers. A
+subagent's credential lease is never job identity, completion proof, or audit authority.
+
+### 4.5 Fail-loud exhaustion: observed → meaning → action, in the refusal itself
+
+When no entry is selectable, `spawn` performs **zero dispatch** and refuses `credential-pool-exhausted`.
+The refusal is not a string dump: it carries the runbook's fast-diagnosis mapping **as fields**, so the
+reader is not asked to re-derive what an operator already learned the hard way.
+
+```
+credential-pool-exhausted
+  harness, model_ref, tier
+  observed:  the exact substrate string + HTTP status
+  meaning:   the classified cause (pool-state | capped | lineage-dead | chain-burned | unfunded)
+  action:    what clears it (restart+re-probe | wait until reset_at | re-mint profile | fresh mint | top up)
+  entries:   [{identity, auth, quota, reset_at | unknown}]      # §4.2's two axes
+  earliest_return: reset_at | explicit unknown
+```
+
+The classification table is the runbook's, imported whole because each row cost an incident:
+
+| Observed | Meaning | Action |
+|---|---|---|
+| `No available … credentials` | Pool-state refusal — **often a stale cache**, not real exhaustion | Run the invalidation hook, re-probe (§4.1) |
+| `usage_limit_reached … resets_at` | Account **capped, auth fine** | Wait for the reset, or use another entry |
+| Lineage 401 while the shell reports "logged in" | Per-profile lineage expired | Re-mint that profile |
+| `refresh_token_reused` | A copy burned the chain | Fresh mint — never a copy (§4.1) |
+| Probe passes, real call 402 | Prepaid balance near zero | Top up (and see §4.6: the probe was too small) |
+
+The first row is the one that most justifies structure over prose: **a pool-state refusal and a real
+exhaustion look identical to the caller**, and treating the first as the second is what let a stale
+proxy report `No available credentials` for an entire night while the accounts underneath were merely
+resting. A refusal that carries `meaning` cannot make that mistake silently.
+
+`credential-pool-exhausted` never downgrades to another model, never retries into another family,
+never returns a receipt, and never lets the lane render as idle.
 
 The incidents this is written from, in one line each:
 
@@ -480,38 +809,75 @@ The incidents this is written from, in one line each:
 | z.ai flaps | Hold-one-cycle before an entry becomes selectable again (§4.4) |
 | Claude slot marked capped with `capped_until: "unknown"` | Unknown reset is not availability (§4.2) |
 
-### 4.6 The probe must draw from the pool it reports on
+### 4.6 Probe validity: same pool, realistic size, after invalidation
 
-This is the requirement the operator singled out, and today's state proves why. The fleet sentinel's
-codex value is not a probe at all: it reads a human-marked state file and **defaults to `alive`** when
-that file is absent, because OAuth quota is not cheaply probe-able without burning a turn. So at
-04:30Z the sentinel reported `codex=alive` while three minutes later every reviewer seat took a
-non-retryable 401 from an empty pool — and `state/capacity.json` still carries `codex: alive` on an
-813-sweep streak while the pool has been dry all day.
+Three conditions, each from a different incident. A probe failing any of them reports `unknown`, never
+`available`.
 
-The requirement: **a pool's reported health is an observation drawn from the same pool entries it
-reports on.** A probe that authenticates by a different credential path than the one seats will use
-is reporting on a different thing and must be labelled as such; a constant, a default, or a
-human-marked file is not an observation and reports `unknown`, never `available`. Where a real probe
-would cost a turn, the honest answer is `unknown` plus the last real observation's age — the pool
-learns from the refusals seats actually receive (`observe()`), which costs nothing and is the only
-evidence that is never stale in the wrong direction.
+**1. Drawn from the pool it reports on.** The fleet sentinel's codex value is not a probe at all: it
+reads a human-marked state file and **defaults to `alive`** when that file is absent, because OAuth
+quota is not cheaply probe-able without burning a turn. So at 04:30Z it reported `codex=alive` while
+three minutes later every reviewer seat took a non-retryable 401 from an empty pool — and
+`state/capacity.json` still carries `codex: alive` on an 813-sweep streak while the pool has been dry
+all day. **The answer was readable the whole time:** the engine's own pool entries carry
+`last_status: exhausted` in this box's `auth.json` right now. A pool's reported health is an
+observation drawn from its own entries; a probe on a different credential path reports on a different
+thing; a constant, a default, or a hand-marked file is not an observation at all.
+
+**2. Realistically sized.** A one-token probe passes a nearly-empty prepaid account that 402s on
+real-sized work. Size is therefore part of probe validity, not a performance detail: the `HarnessSpec`
+declares the probe shape — a workload-shaped request with a real token budget — and anything smaller
+is not evidence of capacity. The fleet already learned the neighbouring half of this rule for z.ai,
+where a 200 OK with empty content is a hang rather than capacity, so a valid probe asserts on
+*content*, not only on status.
+
+**3. Taken after invalidation, never across it.** A probe against a stale cache measures the cache.
+Any observation taken before the invalidation hook of §4.1 has completed is discarded rather than
+recorded — this is the discipline the runbook states as clear the markers, restart the proxy, *then*
+send one request per entry.
+
+Where a valid probe would cost a real turn, the honest answer is `unknown` plus the age of the last
+real observation — and the pool keeps learning from the refusals seats actually receive via `meter()`,
+which costs nothing and is the only evidence that is never stale in the wrong direction.
 
 The same rule already exists one layer up in this design for models (a source that proves only the
 request is a conflict, never truth) and for liveness (`substrate-unobservable:<probe>` rather than a
 guess). Credentials get it too, for the same reason: **an availability signal that cannot fail is not
 a signal.**
 
+### 4.7 The bindings wrap the existing tool family; they do not reinvent it
+
+The ceremonies already exist and are the product of a year of incidents. The `codex` and `claude-code`
+bindings wrap them rather than growing parallel implementations:
+
+| Tool | Seam use |
+|---|---|
+| `tools/codex-auth-all` | The one-shot enrolment ceremony: every account into the shared pool plus a fresh primary per persona profile, ending with the pool-proxy restart. The seam's `request_mint` surfaces *this*, not a new flow. |
+| `tools/codex-grant-ceremony [account]` | The per-account subset, for a single-identity re-mint |
+| `hermes auth list / reset / status` | Per-profile inspection and marker clearing. Its `status` reports **auth, not quota** — the §4.2 split, in the tool's own words |
+| `tools/codex-rotate-fallback` | Raw-CLI account rotation, generation-guarded against installing an older snapshot |
+| `tools/codex-pool` | The older raw-CLI multi-account rotation on a ~5h cooldown model |
+
+One inherited safety property is worth carrying into the seam's own CLI surface: a mutating tool must
+refuse unknown flags. `--help` once *executed a rotation* on live credentials because the tool ignored
+what it did not recognize. A verb that mutates credentials answers questions with usage, never with
+side effects.
+
 ---
 
 ## 5. Draft acceptance criteria for T0 (freezable)
 
-Fifteen: twelve for the seam, then three for the credentials pool of §4 (`AC-HAD-13..15`, added by
-the 2026-08-17 18:04Z scope addition). Every one is falsifiable by a fixture, and no criterion is
-satisfiable by a screenshot or a seat's self-report. Draft ids `AC-HAD-*` are placeholders: the spec
-lane mints final ids and **must add a matching row to the evidence-manifest fixture**, or the release
-gate fails late. If the frozen set must stay within the brief's original 8–12, the pool rows are the
-ones to fold into 06 and 11 rather than the ones to drop — the pool is now scope, not commentary.
+Nineteen: twelve for the seam, then seven for the credentials and resilience layer of §4
+(`AC-HAD-13..19`, from the 18:04Z scope addition and the T4 design inputs). Every one is falsifiable
+by a fixture, and no criterion is satisfiable by a screenshot or a seat's self-report. Draft ids
+`AC-HAD-*` are placeholders: the spec lane mints final ids and **must add a matching row to the
+evidence-manifest fixture**, or the release gate fails late.
+
+The count has grown past the brief's original 8–12 because the scope did: from "build a pool" to
+"survey every harness, configure the layers it has, provide the ones it lacks, and meter both". If
+the frozen set must return to that range, the honest reduction is to merge 14+15 (both are
+entry-state fidelity) and 17+18 (both are ledger-and-config fidelity) rather than to drop coverage —
+13, 16, and 19 each pin a distinct structural refusal and do not compress.
 
 | Draft id | Criterion | Evidence |
 |---|---|---|
@@ -527,9 +893,13 @@ ones to fold into 06 and 11 rather than the ones to drop — the pool is now sco
 | AC-HAD-10 | An unknown harness value is carried byte-for-byte through spawn, liveness, and writeback, displayed as observed, included in equality and cross-checks, and never normalized, downgraded, or collapsed. No kernel, reporter, projection, CLI, or Board path imports or parses a harness-private transcript or session format; harness-private observation exists only inside a binding and crosses the seam as typed facts. | Unknown-harness carry/display fixture; import-boundary inventory; per-binding private-parser containment check |
 | AC-HAD-11 | Composition fails closed. An unknown, incompatible, revoked, or digest-mismatched `HarnessSpec` performs zero dispatch with no fallback to a generic process. Credential rotation affects future attempts only: a rotation during a live attempt changes nothing about that attempt and is visible as a pinned difference on the next one. | Four fail-closed component fixtures; live-rotation no-op proof; manifest digest comparison across attempts |
 | AC-HAD-12 | Every `spawn` obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; a receipt that cannot be durably recorded before dispatch yields zero dispatch; a changed plan, expired or replayed grant, or direct bypass fails closed. | Guard invocation trace per binding; zero-execution-on-block assertion; receipt-first ordering; replay/expiry/bypass refusals |
-| AC-HAD-13 | Each harness has exactly one pool whose entries are credential **references** with per-(entry × model) windows. `exhausted` with an unknown reset, `unknown`, `needs_login`, and `unfunded` are all non-selectable; only an observed `available` window is selectable. No pool surface, status output, log line, error body, or refusal contains a credential value. A fixture entry marked capped with an unknown reset is never selected and never reported as available. | Window-state matrix over the six states; unknown-reset non-selection fixture; credential-value scan across pool status, logs, refusals, and telemetry; one-pool-per-harness registry assertion |
-| AC-HAD-14 | Rotation writes the live credential back to its own entry **before** swapping the next one in, and a refresh-token-reuse fixture proves the old ordering fails while the new one survives. Entries are minted, never copied: a duplicated refresh chain is refused rather than stored. Exactly one live holder per entry is enforced. A rotation during a live attempt changes nothing about that attempt; the new credential reference appears only in the next attempt's pinned composition. | Write-back-before-swap ordering trace; `refresh_token_reused` regression fixture; duplicate-chain refusal; concurrent-holder lock test; live-rotation no-op plus next-attempt pin diff |
-| AC-HAD-15 | With no selectable entry, `spawn` performs zero dispatch and refuses `credential-pool-exhausted` carrying the harness, requested model/tier, the exact observed substrate refusal string and HTTP status, per-entry window states, the earliest known reset or an explicit unknown, and the clearing action. No model downgrade, cross-family retry, receipt, or idle-looking lane results. Pool health is reported only from observations drawn from that pool's own entries: a constant, a default, or a human-marked file reports `unknown`, never `available`, and a window returning to `available` is not selectable until it holds a full observation cycle. | Exhaustion refusal body assertions for 401 pool-empty, 402 unfunded, and 429 cap; zero-dispatch and no-downgrade proofs; default-alive-constant rejected-as-evidence fixture; probe-credential-identity check; flap hold-one-cycle fixture |
+| AC-HAD-13 | Every binding's `HarnessSpec` carries a complete credentials survey — native pool, native fallback, config surface and whether it is authored-config-only, identity proof, reset/window semantics, rotation cache semantics, and subagent inheritance — and a binding with any answer unfilled cannot register or enter the conformance suite. Per layer, the adapter either configures the harness's own or provides ctower's, **never both**: a fixture declaring a native pool and also enabling ctower rotation is refused at registration. The same five verbs are satisfied by a configure-and-observe binding and a ctower-provided one over one shared suite. | Survey-completeness refusal fixture; both-layers-enabled registration refusal; two-role conformance run over one suite; per-layer role resolution table derived from surveys rather than harness names |
+| AC-HAD-14 | Every entry carries **two orthogonal states** — `auth ∈ {healthy, lineage-dead, chain-burned}` and `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}` — and no code path collapses them into one status. A mint ceremony changes only the `auth` axis and leaves `quota` untouched. `capped(reset_unknown)`, `unknown`, `unfunded`, `lineage-dead`, and `chain-burned` are all non-selectable. Observation projects a **strict named-field allowlist** from the engine's state, so no credential value reaches a ledger row, status output, log, refusal, or telemetry event even though token fields sit adjacent to the metadata being read. | Two-axis matrix including auth-healthy/quota-capped and auth-dead/quota-available cells; no-ceremony-adds-quota assertion; non-selectable set proof; adjacent-token projection scan over ledger, logs, refusals, and telemetry |
+| AC-HAD-15 | With no selectable entry, `spawn` performs zero dispatch and refuses `credential-pool-exhausted` carrying `observed`, `meaning`, `action`, per-entry two-axis states, and the earliest known reset or an explicit unknown. Each row of the diagnosis table maps to its exact `meaning`/`action` pair — in particular a pool-state refusal from a stale cache classifies as `pool-state` with a restart-and-re-probe action, never as real exhaustion. No model downgrade, cross-family retry, receipt, or idle-looking lane results. | Refusal-body assertions per diagnosis row (pool-state, capped, lineage-401, `refresh_token_reused`, probe-passes-402); stale-cache misclassification fixture; zero-dispatch and no-downgrade proofs |
+| AC-HAD-16 | `rotate` is incomplete until its declared cache-invalidation hook completes: a rotation whose hook did not run returns `rotation-incomplete`, and no entry state may be recorded from an observation taken before it. `probe` is valid only when drawn from the pool's own entries, sized to the declared workload shape, and taken after invalidation; a one-token probe, a constant, a default, or a hand-marked file each report `unknown`, never `available`. A window returning to `available` is not selectable until it holds a full observation cycle. | Hook-incomplete refusal and pre-hook-observation discard; tiny-probe-passes-then-real-call-402 fixture; empty-content-200 rejection; default-alive-constant rejected as evidence; flap hold-one-cycle fixture |
+| AC-HAD-17 | The ledger meters every rotation and every fallback activation as a cost event, with a fallback charged **two** context re-reads (switch and return) and a rotation charged one. Fallback is recorded turn-scoped with at most one activation per turn, never as a mode; a skipped retry against an unelapsed `reset_at` is recorded as an explicit fact rather than as an absence; aux-task spend is attributed on separate lines from main-model spend under the same seat and attempt; and a compression degradation is recorded as a quality event rather than passing silently. | Cost-event arithmetic assertions for rotation and round-trip fallback; turn-scoped-not-modal ledger shape; explicit reset-skip fact; main-versus-aux attribution split; degradation event fixture |
+| AC-HAD-18 | Each profile's `fallback_providers` list and aux `fallback_chain` entries are **generated from the registry** as revision-pinned authored configuration, applied by the adapter and read by the engine; ctower writes configuration and never `auth.json`, proven by a one-writer-per-file inventory. No environment variable can alter a chain: an exported override is ignored, and the effective chain equals the pinned configuration. Layer identity is preserved end to end — a same-provider rotation is never recorded as a cross-provider fallback, and a transient 429 respects an explicitly configured provider while a capacity error (402, daily-quota, connection) bypasses it. | Registry-to-chain generation diff with revision/digest pins; env-override-ignored fixture; one-writer-per-file inventory; layer-attribution fixture; transient-versus-capacity ladder matrix |
+| AC-HAD-19 | For a binding whose survey answers "no native fallback", a cross-provider failover produces a **new attempt** with its own pinned composition — new harness or credential reference and a new manifest digest — preceded by a successful `teardown(checkpoint)` that preserves the work, and never an in-place credential or model swap inside the running session. The attempt boundary is visible in the ledger and carries the context re-read as a metered cost. A fixture attempting an in-session swap on such a harness is refused. | Failover-to-new-attempt trace with digest diff; checkpoint-precedes-teardown ordering; in-session-swap refusal fixture; cost event on the new attempt |
 
 ---
 
@@ -605,15 +975,25 @@ Three ctower-specific reasons make the answer firmer than a taxonomy argument:
 4. **Saturation threshold as policy, not constant.** The fleet uses 90% of the declared window. Where
    that number lives — Execution Policy, `HarnessSpec`, or both — is a plan-stage decision; this
    design only requires that it be declared and per-binding proven, never hard-coded in a monitor.
-5. **Where the credentials pool lives, and who may read it.** §4 fixes the pool's *behaviour* but not
-   its home. Secrets are references and never values here, and secret truth is kernel-owned, so the
-   plausible shapes are a Catalog/secret-broker-backed pool inside the trusted control plane versus a
-   thinner pool that only records window observations and defers every credential reference to the
-   existing secret boundary. That choice decides whether an adapter can call `select()` at all or
-   receives an already-resolved reference from Runtime, and it should be settled before AC-HAD-13's
-   credential-value scan is frozen — the scan's boundary is only meaningful once the boundary is.
+5. **Where the credentials pool lives — now narrowed to the managed class only.** The T4 inputs answer
+   it for native-engine harnesses: the credentials live in the engine, ctower holds references and
+   history, and `acquire` leases rather than resolves. The question survives only for the managed
+   class (`claude-code`), where ctower operates the checkout topology itself and therefore does touch
+   credential material: does that store sit behind the existing kernel secret boundary, or is it an
+   executor-side store holding only references? AC-HAD-14's projection scan is meaningful either way,
+   but its *boundary* is only definable once this is settled.
 6. **Whether pool observations are Record facts.** A pool that learns from real refusals produces
    exactly the kind of durable operational history this system records elsewhere (append-only, typed,
    attributable). Making them Record facts buys audit and cross-seat learning; keeping them local
    state keeps the pool out of the kernel's write path. The design deliberately does not decide it,
-   but AC-HAD-15's "earliest known reset" is only trustworthy if some store outlives one runner.
+   but AC-HAD-15's "earliest known reset" and AC-HAD-17's cost arithmetic are only trustworthy if some
+   store outlives one runner.
+7. **What authority a generated ladder needs.** §4.4.1 has ctower generating each profile's
+   `fallback_providers` chain from the registry and the adapter writing it as configuration. In this
+   repository, applying configuration revisions is an operator-only command — a Commander may author
+   or propose a revision but cannot apply it. A generated ladder is therefore either (a) authored
+   desired state that still requires the operator's apply, which makes automatic re-generation on a
+   substrate flip impossible by design, or (b) a narrower executor-side artifact that is not a Catalog
+   revision at all. Tonight's hand-built sol → glm → park ladder was a commander decision made in
+   minutes; the plan stage has to say plainly which of those two shapes it becomes, because the answer
+   decides whether cap-aware re-routing is automatic or ceremonial.
