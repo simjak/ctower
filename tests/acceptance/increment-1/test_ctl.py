@@ -21,6 +21,13 @@ import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 from support.acceptance import accept_pending_commands
+from support.catalog import (
+    FileSchemas,
+    MemoryObjectStore,
+    actor_for,
+    apply_initial_bundle,
+    minimal_bundle,
+)
 from support.postgres import DatabaseFixture
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
@@ -109,6 +116,7 @@ def test_ticket_capture_and_query_use_stable_queued_command(
     cli_state: _MemoryBackend,
 ) -> None:
     del cli_state
+    _activate_project_prefixes(tenant)
     create_id = uuid4()
     with _server(tenant.database.runtime_dsn) as base_url:
         create_status, created_text, create_error = _run(
@@ -137,6 +145,7 @@ def test_ticket_capture_and_query_use_stable_queued_command(
     assert created["state"] == "queued"
     assert created["reason_code"] == "durability_pending"
     assert created["result"]["durability_state"] == "durability_pending"
+    assert shown["display_key"] == "CTW-1"
     assert shown == created["result"]["ticket"]
     assert tenant.operator_credential not in created_text + shown_text
 
@@ -601,6 +610,19 @@ def _run(arguments: list[str], *, authority: str) -> tuple[int, str, str]:
         stderr=stderr,
     )
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+def _activate_project_prefixes(tenant: TenantFixture) -> None:
+    """Materialize the authored Project prefixes so capture assigns a real display key."""
+
+    catalog = PostgresCatalog(
+        tenant.database.runtime_dsn,
+        FileSchemas(),
+        MemoryObjectStore(),
+        key_reference="vault:catalog-key",
+        clock=lambda: datetime(2026, 8, 17, tzinfo=UTC),
+    )
+    apply_initial_bundle(catalog, actor_for(tenant.tenant_id, tenant.operator_id), minimal_bundle())
 
 
 @contextmanager

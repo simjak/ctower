@@ -73,6 +73,7 @@ from ctower_kernel.record._setup_sql import (
 )
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
 from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
+from ctower_kernel.record._ticket_sql import resolve_display_key as _resolve_display_key
 from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.credentials import (
@@ -534,6 +535,19 @@ class PostgresRecord:
 
         outcome = _get_ticket(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
         self._emit("record.get_ticket", telemetry, outcome)
+        return outcome
+
+    def resolve_display_key(
+        self,
+        actor: Actor,
+        display_key: str,
+        *,
+        telemetry: TelemetryContext,
+    ) -> UUID | RecordProblem:
+        """Resolve one display key to its canonical ticket UUID."""
+
+        outcome = _resolve_display_key(self._dsn, actor, display_key, telemetry=telemetry)
+        self._emit("record.resolve_display_key", telemetry, outcome)
         return outcome
 
     def ticket_timeline(

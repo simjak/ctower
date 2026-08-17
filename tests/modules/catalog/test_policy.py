@@ -18,6 +18,7 @@ from ctower_kernel.catalog import (
 from ctower_kernel.catalog.interface import (
     BundleActionKind,
     CompanyBundleResource,
+    ComponentKind,
     JsonValue,
 )
 from modules.catalog.support import FileSchemas, minimal_bundle
@@ -25,6 +26,47 @@ from modules.catalog.support import FileSchemas, minimal_bundle
 __all__: tuple[str, ...] = ()
 _COMMAND_ID = UUID("00000000-0000-4000-8000-000000000001")
 _ACTOR_ID = UUID("00000000-0000-4000-8000-000000000002")
+
+
+def test_one_bundle_refuses_duplicate_and_reserved_project_display_prefixes() -> None:
+    """AC-TM-09: authored prefixes are unique per company and never CT or R."""
+
+    bundle = minimal_bundle()
+    policy = CatalogPolicy(FileSchemas())
+    projects = tuple(
+        resource
+        for resource in bundle.resources
+        if resource.component.kind is ComponentKind.PROJECT
+    )
+    authored = {str(resource.payload["prefix"]) for resource in projects}
+    assert authored == {"CTW", "MNB", "BHL"}
+    assert not isinstance(policy.validate(bundle.company.key, bundle), CatalogProblem)
+
+    borrower, lender = projects[0], projects[1]
+    duplicated = _replace_payload(
+        bundle, borrower, {**borrower.payload, "prefix": lender.payload["prefix"]}
+    )
+    duplicate_problem = policy.validate(bundle.company.key, duplicated)
+
+    assert isinstance(duplicate_problem, CatalogProblem)
+    assert duplicate_problem.code == "bundle-reference-invalid"
+    assert "display prefix may occur only once" in duplicate_problem.detail
+
+    reserved = _replace_payload(bundle, borrower, {**borrower.payload, "prefix": "CT"})
+    reserved_problem = policy.validate(bundle.company.key, reserved)
+
+    assert isinstance(reserved_problem, CatalogProblem)
+    assert reserved_problem.code == "bundle-reference-invalid"
+    assert "reserved" in reserved_problem.detail
+
+    # `R` needs no reserved-set entry to be unreachable: the authored two-to-five
+    # character contract refuses a one-letter prefix before any bundle rule runs.
+    ledger = _replace_payload(bundle, borrower, {**borrower.payload, "prefix": "R"})
+    ledger_problem = policy.validate(bundle.company.key, ledger)
+
+    assert isinstance(ledger_problem, CatalogProblem)
+    assert ledger_problem.code == "bundle-schema-invalid"
+    assert "declared authored schema" in ledger_problem.detail
 
 
 def test_minimal_bundle_validates_and_reordering_is_semantically_stable() -> None:

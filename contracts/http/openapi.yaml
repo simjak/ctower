@@ -5486,6 +5486,7 @@
         "required": [
           "created_at",
           "custodian_id",
+          "display_key",
           "durability_state",
           "priority",
           "source",
@@ -6237,7 +6238,7 @@
       },
       "BoardCard": {
         "type": "object", "additionalProperties": false,
-        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "human_waiting", "inbox_thread_ids", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
+        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "display_key", "human_waiting", "inbox_thread_ids", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
         "properties": {
           "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
           "applied_labels": {"type": "array", "items": {"$ref": "#/components/schemas/AppliedLabel"}},

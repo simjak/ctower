@@ -38,23 +38,25 @@ def test_project_component_requires_a_unique_uppercase_display_prefix() -> None:
     assert set(prefixes) == _APPROVED_PREFIXES
 
 
-def test_project_prefix_contract_rejects_reserved_and_duplicate_values() -> None:
-    schema = _load(_PROJECT_SCHEMA)
-    validator = Draft202012Validator(schema)
+def test_project_prefix_contract_admits_only_two_to_five_uppercase_letters() -> None:
+    """The authored contract alone decides the prefix alphabet; refusal rules live in Catalog.
+
+    The CompanyBundle refusals for duplicate and reserved prefixes are proven against the
+    real validator in `tests/modules/catalog/test_policy.py`.
+    """
+
+    validator = Draft202012Validator(_load(_PROJECT_SCHEMA))
     base = {
         "schema": "ctower.project/v1",
         "key": "example.project",
         "display_name": "Example",
         "repository_ref": "repository:github/example/project",
         "goal_refs": ["company.goal@1"],
-        "prefix": "CT",
+        "prefix": "CTW",
     }
     assert not list(validator.iter_errors(base))
-    assert base["prefix"] in {"CT", "R"}
-
-    malformed = {**base, "prefix": "ctw"}
-    assert list(validator.iter_errors(malformed))
-
-    duplicate = ("CTW", "CTW")
-    assert len(duplicate) != len(set(duplicate))
-    assert {"CT", "R"}.isdisjoint(_APPROVED_PREFIXES)
+    for refused in ("ctw", "R", "CTOWER", "CT-1", "", "C1W"):
+        assert list(validator.iter_errors({**base, "prefix": refused})), refused
+    assert list(
+        validator.iter_errors({key: value for key, value in base.items() if key != "prefix"})
+    )

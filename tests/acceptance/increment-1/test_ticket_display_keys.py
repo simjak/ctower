@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -40,6 +40,7 @@ from ctower_kernel.work import Work
 
 __all__: tuple[str, ...] = ()
 HTTP_OK = 200
+HTTP_PENDING = 202
 
 
 def test_fresh_apply_creates_display_key_authority_objects(tenant: TenantFixture) -> None:
@@ -254,6 +255,91 @@ def test_capture_replay_lookup_and_immutable_gap_are_project_scoped(
     assert response.status_code == HTTP_OK
     assert response.json()["ticket_id"] == str(first.ticket.ticket_id)
     assert response.json()["display_key"] == "CTW-1"
+
+
+def test_every_ticket_operation_addresses_by_display_key_without_foreign_disclosure(
+    tenant: TenantFixture,
+) -> None:
+    _apply_prefix_bundle(tenant)
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    work = Work(record)
+    command = _command(tenant, "addressable")
+    captured = work.create_ticket(
+        actor, command, telemetry=telemetry_for(actor, command.client_command_id)
+    )
+    assert isinstance(captured, TicketCommandResult)
+    assert captured.ticket.display_key == "CTW-1"
+    _seed_foreign_project_ticket(tenant)
+
+    with TestClient(create_app(record, work=work), client=("127.0.0.1", 51000)) as client:
+        commented = client.post(
+            "/v1/tickets/CTW-1/comments",
+            json={"body": "Addressed by the server-assigned display key."},
+            headers=_headers(tenant, uuid4()),
+        )
+        timeline = client.get(
+            "/v1/tickets/CTW-1/timeline",
+            params={"project_key": "ctower"},
+            headers=_headers(tenant, uuid4()),
+        )
+        foreign = client.post(
+            "/v1/tickets/MNB-1/comments",
+            json={"body": "Addressed across a project the seat cannot reach."},
+            headers=_headers(tenant, uuid4()),
+        )
+        unknown = client.post(
+            "/v1/tickets/CTW-4242/comments",
+            json={"body": "Addressed to a number nobody has been assigned."},
+            headers=_headers(tenant, uuid4()),
+        )
+        malformed = client.post(
+            "/v1/tickets/ctw-1/comments",
+            json={"body": "Addressed outside the authored reference contract."},
+            headers=_headers(tenant, uuid4()),
+        )
+
+    assert commented.status_code == HTTP_PENDING
+    assert commented.json()["ticket_id"] == str(captured.ticket.ticket_id)
+    assert timeline.json()["ticket_id"] == str(captured.ticket.ticket_id)
+    assert {event["kind"] for event in timeline.json()["events"]} == {
+        "ticket.created",
+        "ticket.comment_added",
+    }
+    assert (foreign.status_code, foreign.json()["code"]) == (404, "tenant-scope-denied")
+    assert foreign.json() == unknown.json()
+    assert (malformed.status_code, malformed.json()["code"]) == (422, "validation-error")
+
+
+def _seed_foreign_project_ticket(tenant: TenantFixture) -> None:
+    """Insert one MNB-1 ticket in a project this tenant's commander holds no seat for."""
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO tickets (
+                ticket_id, tenant_id, title, source_kind, source_ref, priority,
+                custodian_principal_id, version, durability_state, created_by, created_at,
+                project_key, display_key
+            ) VALUES (%s, %s, 'Foreign', 'test', 'display-key:foreign', 'P1', %s, 1,
+                'durability_pending', %s, %s, 'manibo', 'MNB-1')
+            """,
+            (
+                uuid4(),
+                tenant.tenant_id,
+                tenant.operator_id,
+                tenant.operator_id,
+                datetime(2026, 8, 1, tzinfo=UTC),
+            ),
+        )
+
+
+def _headers(tenant: TenantFixture, command_id: UUID) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(),
+    }
 
 
 def _apply_prefix_bundle(tenant: TenantFixture) -> None:
