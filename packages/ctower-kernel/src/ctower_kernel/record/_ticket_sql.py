@@ -35,7 +35,7 @@ from ctower_kernel.record.transaction import (
 )
 from ctower_kernel.telemetry import TelemetryContext
 
-__all__ = ["create_ticket", "get_ticket", "ticket_timeline"]
+__all__ = ["create_ticket", "get_ticket", "resolve_display_key", "ticket_timeline"]
 
 
 def create_ticket(
@@ -280,6 +280,42 @@ def ticket_timeline(
     return TicketTimeline(parsed_ticket_id, events)
 
 
+def resolve_display_key(
+    dsn: str,
+    actor: Actor,
+    display_key: str,
+    *,
+    telemetry: TelemetryContext,
+) -> UUID | RecordProblem:
+    """Resolve one display key to its canonical UUID without disclosing foreign scope.
+
+    A key that names no ticket and a key naming a ticket the caller may not read are
+    refused identically, so enumerating `PREFIX-N` reveals no more than guessing a UUID.
+    """
+
+    del telemetry
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        row = connection.execute(
+            """
+            SELECT ticket_id, project_key
+            FROM tickets
+            WHERE tenant_id = %s AND display_key = %s
+            """,
+            (actor.tenant_id, display_key),
+        ).fetchone()
+        if row is None:
+            return _scope_problem()
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(str(row["project_key"]),),
+            allow_operator_read=True,
+        )
+    return _scope_problem() if refusal is not None else cast(UUID, row["ticket_id"])
+
+
 def _resolve_ticket_reference(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
@@ -364,12 +400,14 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
-        display_key=cast(str | None, row.get("display_key")),
+        display_key=cast(str | None, row["display_key"]),
         durability_state=DurabilityState(str(row["durability_state"])),
     )
 
 
 def _result_from_payload(payload: dict[str, object]) -> TicketCommandResult:
+    # Command results committed before migration 0075 carry no display key; exact replay
+    # returns the handle that was recorded, which for those results is no handle at all.
     ticket_payload = cast(dict[str, object], payload["ticket"])
     source_payload = cast(dict[str, object], ticket_payload["source"])
     ticket = Ticket(

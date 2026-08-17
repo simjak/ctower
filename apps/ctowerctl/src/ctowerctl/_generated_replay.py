@@ -107,7 +107,7 @@ def _path_arguments(path: str, values: JsonObject) -> tuple[UUID | str, ...]:
 
 
 def _success_response(result: BaseModel) -> ReplayResponse:
-    payload = cast(JsonObject, json.loads(result.model_dump_json(by_alias=True, exclude_none=True)))
+    payload = cast(JsonObject, json.loads(result.model_dump_json(by_alias=True)))
     raw_command_id = payload.get("command_id")
     raw_state = payload.get("durability_state")
     event_ids = payload.get("event_ids")

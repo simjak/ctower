@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import problem_response as _problem_response
 from ctower_api._http_support import telemetry_context as _telemetry
+from ctower_api._http_support import ticket_uuid as _ticket_uuid
 from ctower_api._http_support import uuid_value as _uuid
 from ctower_api._http_support import validation_problem as _validation_problem
 from ctower_api._mutation_response import mutation_response as _mutation_response
@@ -56,19 +57,22 @@ def _install_change_reference_route(
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
-            parsed_ticket_id = _uuid(ticket_id)
             command_id = _uuid(request.headers.get("Idempotency-Key"))
             payload = ChangeReferenceRequest.model_validate_json(await request.body())
-            command = ChangeReferenceCommand(
-                command_id,
-                parsed_ticket_id,
-                payload.repository,
-                payload.change_identity,
-                payload.reference,
-            )
+            context = _telemetry(request)
         except (ValidationError, ValueError):
             return _problem_response(_validation_problem())
-        telemetry = _telemetry(request).bind(
+        parsed_ticket_id = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+        if isinstance(parsed_ticket_id, RecordProblem):
+            return _problem_response(parsed_ticket_id)
+        command = ChangeReferenceCommand(
+            command_id,
+            parsed_ticket_id,
+            payload.repository,
+            payload.change_identity,
+            payload.reference,
+        )
+        telemetry = context.bind(
             tenant_id=str(actor.tenant_id),
             actor_id=str(actor.principal_id),
             command_id=str(command_id),
@@ -107,13 +111,16 @@ def _install_apply_label_route(
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
-            parsed_ticket_id = _uuid(ticket_id)
             command_id = _uuid(request.headers.get("Idempotency-Key"))
             payload = ApplyLabelRequest.model_validate_json(await request.body())
-            command = ApplyLabelCommand(command_id, parsed_ticket_id, payload.label_key)
+            context = _telemetry(request)
         except (ValidationError, ValueError):
             return _problem_response(_validation_problem())
-        telemetry = _telemetry(request).bind(
+        parsed_ticket_id = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+        if isinstance(parsed_ticket_id, RecordProblem):
+            return _problem_response(parsed_ticket_id)
+        command = ApplyLabelCommand(command_id, parsed_ticket_id, payload.label_key)
+        telemetry = context.bind(
             tenant_id=str(actor.tenant_id),
             actor_id=str(actor.principal_id),
             command_id=str(command_id),

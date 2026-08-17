@@ -240,6 +240,7 @@ def _result(actor: Actor) -> TicketCommandResult:
             custodian_id=actor.principal_id,
             version=1,
             created_at=datetime.now(UTC),
+            display_key="CTW-1",
         ),
     )
 

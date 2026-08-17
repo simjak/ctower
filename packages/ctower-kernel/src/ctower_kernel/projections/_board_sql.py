@@ -538,6 +538,7 @@ def _card(row: dict[str, object], context: _ContextSets) -> BoardCard:
     return BoardCard(
         ticket_id=ticket_id,
         project_key=str(row["project_key"]),
+        display_key=cast(str | None, row["display_key"]),
         title=str(row["title"]),
         lane=BoardLane(str(row["lane"])),
         underlying_lane=(
@@ -553,7 +554,6 @@ def _card(row: dict[str, object], context: _ContextSets) -> BoardCard:
         risk=cast(str | None, row["risk"]),
         delivery_facts=tuple(str(item) for item in delivery),
         version=int(cast(int, row["ticket_version"])),
-        display_key=cast(str | None, row["display_key"]),
         tenant_display_identity=context.tenant_display_identity,
         change_references=context.change_references.get(ticket_id, ()),
         applied_labels=context.applied_labels.get(ticket_id, ()),
