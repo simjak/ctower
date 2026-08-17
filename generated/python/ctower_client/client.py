@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:9ae78d2c8f36a267486fb57bd091e33652b0dee0dc4e399111536e01ee611581
+Authored contract digest: sha256:4208ed95a16a9bcec349edcf1c8d002f135665367ad1de4131be5b93c46de71e
 """
 
 from __future__ import annotations
@@ -149,7 +149,7 @@ __all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey", "TicketId"]
 
 
 type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-type TicketId = Annotated[str, Field(pattern="^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$")] | UUID
+type TicketId = Annotated[str, Field(pattern="^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$")] | UUID
 
 
 class _ProblemModel(Protocol):
