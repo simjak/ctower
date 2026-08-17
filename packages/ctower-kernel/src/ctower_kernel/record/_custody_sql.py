@@ -154,7 +154,7 @@ def _locked_ticket(
         """
         SELECT ticket_id, title, source_kind, source_ref, priority,
             custodian_principal_id, version, durability_state, created_at, current_episode,
-            project_key
+            project_key, display_key
         FROM tickets WHERE tenant_id = %s AND ticket_id = %s
         FOR UPDATE
         """,

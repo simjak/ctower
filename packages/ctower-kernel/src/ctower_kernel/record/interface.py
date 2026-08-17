@@ -6,7 +6,7 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 from uuid import UUID
 
 import ctower_kernel.record.events as record_events
@@ -31,6 +31,9 @@ from ctower_kernel.record.sessions import (
     TicketSessionList,
 )
 from ctower_kernel.telemetry import TelemetryContext
+
+if TYPE_CHECKING:
+    from ctower_kernel.record.tickets import TicketStore
 
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 _MAX_RETRY_SECONDS = 60
@@ -450,6 +453,7 @@ class Ticket:
     custodian_id: UUID
     version: int
     created_at: datetime
+    display_key: str | None
     durability_state: DurabilityState = DurabilityState.PENDING
 
     def response_payload(self) -> dict[str, object]:
@@ -458,6 +462,7 @@ class Ticket:
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
+            "display_key": self.display_key,
             "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
@@ -676,19 +681,8 @@ class Record(Protocol):
 
         ...
 
-    def get_ticket(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
-    ) -> Ticket | RecordProblem:
-        """Read one tenant-scoped ticket without cross-tenant disclosure."""
-
-        ...
-
-    def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
-    ) -> TicketTimeline | RecordProblem:
-        """Read the ordered tenant-scoped event timeline."""
-
-        ...
+    tickets: TicketStore
+    """Cohesive tenant-scoped ticket read boundary; see `record.tickets`."""
 
     def transfer_custody(
         self,

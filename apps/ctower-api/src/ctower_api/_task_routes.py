@@ -14,6 +14,7 @@ from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
 from ctower_api._http_support import telemetry_context as _telemetry
+from ctower_api._http_support import ticket_uuid as _ticket_uuid
 from ctower_api._http_support import uuid_value as _uuid
 from ctower_api._http_support import validation_problem as _validation_problem
 from ctower_api._mutation_response import mutation_response as _mutation_response
@@ -75,7 +76,7 @@ def install_task_routes(
     _install_priority(app, access, record, work, recorder)
     _install_assignment(app, access, record, work, recorder)
     _install_review_dispatch_consumption(app, access, record, work, recorder)
-    _install_assignment_list(app, access, work, recorder)
+    _install_assignment_list(app, access, record, work, recorder)
     _install_intent(app, access, record, work, recorder)
     _install_relation(app, access, record, work, recorder)
     _install_audit(app, access, record, recorder)
@@ -92,7 +93,7 @@ def _install_start(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/workflow/start")
     async def start(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, WorkflowStartRequest)
+        parsed = await _parse(access, record, recorder, request, ticket_id, WorkflowStartRequest)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -120,7 +121,7 @@ def _install_priority(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/priority")
     async def priority(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, PriorityChangeRequest)
+        parsed = await _parse(access, record, recorder, request, ticket_id, PriorityChangeRequest)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -149,7 +150,7 @@ def _install_assignment(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/assignments")
     async def assignment(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, AssignmentChangeRequest)
+        parsed = await _parse(access, record, recorder, request, ticket_id, AssignmentChangeRequest)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -181,7 +182,9 @@ def _install_review_dispatch_consumption(
     async def consume_review_dispatch(
         ticket_id: str, effect_id: str, request: Request
     ) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, ReviewDispatchConsumeRequest)
+        parsed = await _parse(
+            access, record, recorder, request, ticket_id, ReviewDispatchConsumeRequest
+        )
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -210,13 +213,13 @@ def _install_review_dispatch_consumption(
 
 
 def _install_assignment_list(
-    app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder
+    app: FastAPI, access: Access, record: Record, work: Work, recorder: TelemetryRecorder
 ) -> None:
     @app.get("/v1/tickets/{ticket_id}/assignments")
     def assignment_list(
         ticket_id: str, request: Request, project_key: str | None = None
     ) -> JSONResponse:
-        parsed = _read_actor(access, recorder, request, ticket_id)
+        parsed = _read_actor(access, record, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, _ = parsed
@@ -247,7 +250,7 @@ def _install_intent(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/intents")
     async def intent(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, TicketIntentRequest)
+        parsed = await _parse(access, record, recorder, request, ticket_id, TicketIntentRequest)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -294,7 +297,7 @@ def _install_relation(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/relations")
     async def relation(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, RelationRequest)
+        parsed = await _parse(access, record, recorder, request, ticket_id, RelationRequest)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -329,7 +332,7 @@ def _install_audit(
         cursor: int = 0,
         limit: int = 50,
     ) -> JSONResponse:
-        parsed = _read_actor(access, recorder, request, ticket_id)
+        parsed = _read_actor(access, record, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, telemetry = parsed
@@ -351,6 +354,7 @@ def _project_key(value: str | None) -> str:
 
 async def _parse[Payload: BaseModel](
     access: Access,
+    record: Record,
     recorder: TelemetryRecorder,
     request: Request,
     ticket_id: str,
@@ -365,22 +369,19 @@ async def _parse[Payload: BaseModel](
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
-        ticket = _uuid(ticket_id)
         command_id = _uuid(request.headers.get("Idempotency-Key"))
         payload = model.model_validate_json(await request.body())
-        telemetry = _telemetry(request).bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            command_id=str(command_id),
-            ticket_id=str(ticket),
-        )
+        telemetry = _telemetry(request)
     except (ValidationError, ValueError):
         return _problem_response(_validation_problem())
-    return actor, ticket, command_id, payload, telemetry
+    ticket = _ticket_uuid(record, actor, ticket_id, telemetry=telemetry)
+    if isinstance(ticket, RecordProblem):
+        return _problem_response(ticket)
+    return actor, ticket, command_id, payload, _bound(telemetry, actor, ticket, command_id)
 
 
 def _read_actor(
-    access: Access, recorder: TelemetryRecorder, request: Request, ticket_id: str
+    access: Access, record: Record, recorder: TelemetryRecorder, request: Request, ticket_id: str
 ) -> tuple[Actor, UUID, TelemetryContext] | JSONResponse:
     actor = _authenticate(
         access,
@@ -391,15 +392,24 @@ def _read_actor(
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
-        ticket = _uuid(ticket_id)
-        telemetry = _telemetry(request).bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            ticket_id=str(ticket),
-        )
+        telemetry = _telemetry(request)
     except ValueError:
         return _problem_response(_validation_problem())
-    return actor, ticket, telemetry
+    ticket = _ticket_uuid(record, actor, ticket_id, telemetry=telemetry)
+    if isinstance(ticket, RecordProblem):
+        return _problem_response(ticket)
+    return actor, ticket, _bound(telemetry, actor, ticket, None)
+
+
+def _bound(
+    telemetry: TelemetryContext, actor: Actor, ticket: UUID, command_id: UUID | None
+) -> TelemetryContext:
+    return telemetry.bind(
+        tenant_id=str(actor.tenant_id),
+        actor_id=str(actor.principal_id),
+        command_id=None if command_id is None else str(command_id),
+        ticket_id=str(ticket),
+    )
 
 
 def _work_response(

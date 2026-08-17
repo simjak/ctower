@@ -4,11 +4,12 @@
   "title": "ProjectComponent",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "key", "display_name", "repository_ref", "goal_refs"],
+  "required": ["schema", "key", "display_name", "repository_ref", "goal_refs", "prefix"],
   "properties": {
     "schema": { "const": "ctower.project/v1" },
     "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
     "display_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "prefix": { "type": "string", "pattern": "^[A-Z]{2,5}$" },
     "repository_ref": {
       "type": "string",
       "pattern": "^repository:[a-z][a-z0-9._/-]{2,255}$"

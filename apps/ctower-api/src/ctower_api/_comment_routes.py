@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import problem_response as _problem_response
 from ctower_api._http_support import telemetry_context as _telemetry
+from ctower_api._http_support import ticket_uuid as _ticket_uuid
 from ctower_api._http_support import uuid_value as _uuid
 from ctower_api._http_support import validation_problem as _validation_problem
 from ctower_api._mutation_response import mutation_response as _mutation_response
@@ -38,7 +39,7 @@ def install_comment_routes(
 
     @app.post("/v1/tickets/{ticket_id}/comments")
     async def add_comment(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id)
+        parsed = await _parse(access, record, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, command, telemetry = parsed
@@ -70,6 +71,7 @@ def install_comment_routes(
 
 async def _parse(
     access: Access,
+    record: Record,
     recorder: TelemetryRecorder,
     request: Request,
     ticket_id: str,
@@ -83,17 +85,20 @@ async def _parse(
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
-        parsed_ticket_id = _uuid(ticket_id)
         command_id = _uuid(request.headers.get("Idempotency-Key"))
         payload = TicketCommentRequest.model_validate_json(await request.body())
-        telemetry = _telemetry(request).bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            command_id=str(command_id),
-            ticket_id=str(parsed_ticket_id),
-        )
+        context = _telemetry(request)
     except (ValidationError, ValueError):
         return _problem_response(_validation_problem())
+    parsed_ticket_id = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+    if isinstance(parsed_ticket_id, RecordProblem):
+        return _problem_response(parsed_ticket_id)
+    telemetry = context.bind(
+        tenant_id=str(actor.tenant_id),
+        actor_id=str(actor.principal_id),
+        command_id=str(command_id),
+        ticket_id=str(parsed_ticket_id),
+    )
     try:
         command = TicketCommentCommand(command_id, parsed_ticket_id, payload.body)
     except ValueError:
