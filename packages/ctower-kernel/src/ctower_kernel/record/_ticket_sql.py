@@ -37,6 +37,7 @@ from ctower_kernel.record.transaction import (
     authority_connection,
     project_scope_refusal,
 )
+from ctower_kernel.record.workflow_validation import workflow_payload_for_read
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["create_ticket", "get_ticket", "ticket_timeline"]
@@ -383,38 +384,46 @@ def _timeline_event(row: dict[str, object]) -> TimelineEvent:
 
 
 def _workflow_payload_from_mapping(payload: dict[str, object]) -> WorkflowChangedPayload:
+    normalized = workflow_payload_for_read(payload)
     expected = {
+        "evaluation_ref",
         "lifecycle_facts",
         "operation",
+        "source_stage",
         "stage",
         "ticket_id",
         "workflow_ref",
         "workflow_version",
     }
-    if set(payload) != expected:
+    if set(normalized) != expected:
         raise ValueError("event payload fields do not match the authored variant")
-    lifecycle_facts = payload["lifecycle_facts"]
+    lifecycle_facts = normalized["lifecycle_facts"]
     if not isinstance(lifecycle_facts, list) or any(
         not isinstance(item, str) for item in lifecycle_facts
     ):
         raise TypeError("lifecycle_facts must be a list of strings")
-    workflow_version = payload["workflow_version"]
+    workflow_version = normalized["workflow_version"]
     if type(workflow_version) is not int:
         raise TypeError("workflow_version must be an integer")
-    operation = cast(str, payload["operation"])
-    stage = cast(str, payload["stage"])
-    ticket_id = cast(str, payload["ticket_id"])
-    workflow_ref = cast(str, payload["workflow_ref"])
-    if not all(isinstance(value, str) for value in (operation, stage, workflow_ref, ticket_id)):
-        raise TypeError("workflow payload string fields must be strings")
+    strings = _workflow_payload_strings(normalized)
     return WorkflowChangedPayload(
-        operation=operation,
-        ticket_id=UUID(ticket_id),
-        workflow_ref=workflow_ref,
+        operation=strings["operation"],
+        ticket_id=UUID(strings["ticket_id"]),
+        workflow_ref=strings["workflow_ref"],
         workflow_version=workflow_version,
-        stage=stage,
+        stage=strings["stage"],
         lifecycle_facts=tuple(lifecycle_facts),
+        source_stage=strings["source_stage"],
+        evaluation_ref=strings["evaluation_ref"],
     )
+
+
+def _workflow_payload_strings(payload: dict[str, object]) -> dict[str, str]:
+    names = ("evaluation_ref", "operation", "source_stage", "stage", "ticket_id", "workflow_ref")
+    values = {name: payload[name] for name in names}
+    if not all(isinstance(value, str) for value in values.values()):
+        raise TypeError("workflow payload string fields must be strings")
+    return {name: cast(str, value) for name, value in values.items()}
 
 
 def _scope_problem(command_id: UUID | None = None) -> RecordProblem:
