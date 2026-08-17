@@ -42,6 +42,15 @@
       "description": "A v1 assertion may only narrow or exactly restate the resolved layer-4 definition, so the negative form is not authorable.",
       "const": true
     },
+    "roleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_plane", "key"],
+      "properties": {
+        "authority_plane": {"enum": ["project-seat", "human-binding"]},
+        "key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+      }
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": false,
@@ -90,6 +99,14 @@
         "owner": {
           "description": "Eligible responsibility/capability key. It grants no authority and is never an assigned or signing seat.",
           "$ref": "#/$defs/sourceKey"
+        },
+        "role_keys": {
+          "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/roleRef"}
         },
         "group": {"$ref": "#/$defs/sourceKey"},
         "evidence": {"$ref": "#/$defs/evidenceList"},

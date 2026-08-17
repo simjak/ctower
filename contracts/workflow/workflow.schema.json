@@ -64,13 +64,30 @@
     "activityClass": {
       "enum": ["work", "verification"]
     },
+    "roleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_plane", "key"],
+      "properties": {
+        "authority_plane": {"enum": ["project-seat", "human-binding"]},
+        "key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+      }
+    },
     "stage": {
       "type": "object",
       "additionalProperties": false,
       "required": ["key", "activity_class"],
       "properties": {
         "key": {"$ref": "#/$defs/stableKey"},
-        "activity_class": {"$ref": "#/$defs/activityClass"}
+        "activity_class": {"$ref": "#/$defs/activityClass"},
+        "role_keys": {
+          "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/roleRef"}
+        }
       }
     },
     "transition": {

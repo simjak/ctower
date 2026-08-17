@@ -70,6 +70,8 @@ INCREMENT 1 — durable task-management dogfood
               |
  [CT-I1-021: contextual Console viewer server foundation]
               |
+ [CT-I1-036: authenticated role facts and authored seat/role binding]
+              |
 ============== FULL NORMATIVE I1 EXIT ==============
               |
 INCREMENT 2 — autonomous generic workflow + one golden path
@@ -546,6 +548,22 @@ and private/tailnet shadow evidence is digest-only and current; exact expiry, re
 are typed; and same-candidate concept, reference, operator, security, architecture, and roadmap docs pass.
 This exit adds no product UI, safe terminal renderer, typing, or Phase-2 activation.
 
+### I1.16 — Authenticated role facts and authored stage-role inputs
+
+**Stable work:** `CT-I1-036`.
+
+After the existing CompanyBundle, seat-catalog, project-seat, and human-binding authorities are available,
+publish one derived RoleFact read. A role-bearing assignment carries its exact `seat_key`/`role_key` pair in
+the operator-applied CompanyBundle; the read pins the assignment subject, project scope, bundle/component and
+seat-catalog revisions/digests, and keeps the project-seat and human-binding planes disjoint. Operator,
+commander, and viewer outcomes are explicit, with viewer remaining read-only. The candidate owns no Workflow
+membership evaluator, policy narrowing, transition refusal, new role store, or live mutation.
+
+**Exit:** AC-ROLE-01..02 pass the authored-binding, project-seat/human-binding resolution, revision,
+revocation, foreign-scope, and exact human-plane matrices; the generated contract mirrors and source inventory
+show no new principal, grant, credential, bearer format, persistence store, or roster branch. CT-I2-006 may
+start its role-aware consumer only after this authority exit and the full normative I1 gate.
+
 ## Increment 2 — autonomous generic workflow and one factory golden path
 
 ### I2.1 — Deepen generic Workflow and Proof/policy
@@ -555,6 +573,13 @@ This exit adds no product UI, safe terminal renderer, typing, or Phase-2 activat
 **Authorization gate:** CT-I2-001's dependency on CT-I1-008 means the full normative I1 exit, not the
 development dogfood verdict. Do not start this checkpoint while CP3-D is red, even if CT-I1-008 recorded
 `GO` or `GO_WITH_LIMITS` for the development cohort.
+
+CT-I1-036 is the preceding authority prerequisite for the role-aware portion of this checkpoint. It publishes
+the exact CompanyBundle seat/role binding and the revision-pinned project-seat or human-binding `RoleFact`,
+including explicit operator/commander/viewer outcomes, but it does not evaluate stage membership. CT-I2-006
+depends on CT-I1-036 and is the sole owner of stage-role membership, the total refusal precedence, the
+`participant_resolution` narrowing consumer, and the software-factory base-role package use. CT-I2-001 may
+carry the generic closed `role_keys` field; it does not duplicate CT-I2-006's enforcement.
 
 Deepen the same I1 Workflow Interface with arbitrary stage attempts/jobs, package-defined classification,
 mandatory stage gates, required perspectives, finite anti-spin bounds, stable cross-digest failure lineages,
