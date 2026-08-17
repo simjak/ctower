@@ -240,6 +240,7 @@ def test_assigned_unassigned_and_signing_seats_project_from_explicit_facts(
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
         "ctower",
     )
+    assert not isinstance(after_removal, RecordProblem), after_removal
     assert after_removal is not None
     pinned = next(row for row in after_removal.rows if row.checkpoint_key == "evidence.alpha")
     pinned_slot = next(slot for slot in pinned.qualifying_stage_slots if slot.key == "link-alpha")
@@ -250,6 +251,7 @@ def test_assigned_unassigned_and_signing_seats_project_from_explicit_facts(
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
         "ctower",
     )
+    assert not isinstance(rebuilt_view, RecordProblem), rebuilt_view
     assert rebuilt_view is not None
     rebuilt = next(row for row in rebuilt_view.rows if row.checkpoint_key == "evidence.alpha")
     assert rebuilt.semantic_digest == pinned.semantic_digest
@@ -297,6 +299,7 @@ def _reconciled_rows(tenant: TenantFixture) -> dict[str, ProjectDeliveryRow]:
     )
 
     assert affected == len(_CHECKPOINT_LINKS)
+    assert not isinstance(view, RecordProblem), view
     assert view is not None
     # A row whose sources are incomplete cannot speak for its slots at all. This
     # landscape is complete by construction, so any source_incomplete reason means the

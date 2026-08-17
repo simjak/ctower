@@ -30,6 +30,7 @@ __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[3]
 UUID = "018f7a40-1234-7abc-8def-1234567890ab"
 LEAP_YEAR = 2024
+HTTP_FORBIDDEN = 403
 JSON_SAFE_INTEGER_MAXIMUM = 9_007_199_254_740_991
 JSON_UNSAFE_INTEGER = 9_007_199_254_740_993
 
@@ -117,6 +118,28 @@ def test_generated_python_client_validates_problem_payloads() -> None:
     with pytest.raises(ValueError, match="Problem status does not match"):
         mismatch.submit_intake(_python_request(), command_id=uuid4())
     mismatch.close()
+
+
+def test_generated_python_client_declares_project_scope_refusals() -> None:
+    problem = {
+        **_problem(),
+        "code": "project-scope-denied",
+        "detail": "The authenticated project seat cannot reach this project.",
+        "status": 403,
+        "title": "Project scope denied",
+    }
+
+    board_client = _python_client(problem, status=403, problem=True)
+    with pytest.raises(CtowerProblemError) as board_raised:
+        board_client.get_board(project_key="ctower")
+    assert cast(Problem, board_raised.value.problem).status == HTTP_FORBIDDEN
+    board_client.close()
+
+    delivery_client = _python_client(problem, status=403, problem=True)
+    with pytest.raises(CtowerProblemError) as delivery_raised:
+        delivery_client.get_project_delivery("ctower")
+    assert cast(Problem, delivery_raised.value.problem).status == HTTP_FORBIDDEN
+    delivery_client.close()
 
 
 def test_generated_python_client_rejects_undeclared_success_status() -> None:
@@ -326,6 +349,8 @@ const promote = () => client.promoteIntakeEvent({{
   body: {{expected_thread_version: 1, intent: "create_ticket"}},
 }});
 const getTicket = () => client.getTicket({{ticketId: "{UUID}", projectKey: "ctower"}});
+const getBoard = () => client.getBoard({{projectKey: "ctower"}});
+const getProjectDelivery = () => client.getProjectDelivery({{projectKey: "ctower"}});
 async function expectTypeError(
   payload,
   operation = submit,
@@ -395,6 +420,26 @@ await expectTypeError({{
     + "T\u0662\u0660:\u0660\u0660:\u0660\u0660Z",
 }}, getTicket, 200);
 await expectTypeError(unsafeTicketJson, getTicket, 200, false, true);
+
+const scopeProblem = {{
+  ...problem,
+  code: "project-scope-denied",
+  detail: "The authenticated project seat cannot reach this project.",
+  status: 403,
+  title: "Project scope denied",
+}};
+async function expectProjectScopeRefusal(operation) {{
+  responses.push({{payload: scopeProblem, status: 403, problem: true}});
+  try {{
+    await operation();
+    throw new Error("project scope refusal was returned as success");
+  }} catch (error) {{
+    if (!(error instanceof CtowerProblemError)) throw error;
+    if (error.problem.status !== 403) throw new Error("project scope status was not preserved");
+  }}
+}}
+await expectProjectScopeRefusal(getBoard);
+await expectProjectScopeRefusal(getProjectDelivery);
 
 responses.push({{payload: problem, status: 409, problem: true}});
 try {{

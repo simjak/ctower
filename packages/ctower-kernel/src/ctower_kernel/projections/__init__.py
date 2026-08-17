@@ -14,6 +14,7 @@ from ctower_kernel.projections.interface import (
     HealthDimension,
     HealthStatus,
     ProjectionHealth,
+    ProjectionMaintenanceResult,
     Projections,
     derive_board_card,
 )
@@ -49,6 +50,7 @@ __all__ = [
     "ProjectDeliveryRow",
     "ProjectDeliveryView",
     "ProjectionHealth",
+    "ProjectionMaintenanceResult",
     "Projections",
     "SeatCatalogReference",
     "SeatIdentity",

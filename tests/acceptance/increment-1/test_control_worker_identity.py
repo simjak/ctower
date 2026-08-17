@@ -70,6 +70,7 @@ def test_bootstrap_display_collision_completes_worker_and_accepted_outbox(
         project_grants=frozenset({"ctower"}),
     )
     board = projections.board(actor, BoardQuery(project_key="ctower"))
+    assert not isinstance(board, RecordProblem), board
     assert [card.ticket_id for card in board.cards] == [ticket_id]
     workers = _worker_rows(database.admin_dsn, tenant.tenant_id)
     assert len(workers) == 1

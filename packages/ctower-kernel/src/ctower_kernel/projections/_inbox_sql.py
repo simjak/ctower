@@ -10,14 +10,12 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ctower_kernel.projections.inbox import (
-    InboxDeliveryState,
-    InboxMessageReadState,
-    InboxReadState,
-)
-from ctower_kernel.projections.interface import (
     InboxCorrespondent,
     InboxCorrespondentList,
+    InboxDeliveryState,
     InboxMessage,
+    InboxMessageReadState,
+    InboxReadState,
     InboxThread,
     InboxThreadList,
     InboxThreadSummary,

@@ -1452,6 +1452,7 @@
         "responses": {
           "200": {"description": "Watermark-bearing Board view", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BoardView"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
@@ -2446,6 +2447,7 @@
         "responses": {
           "200": {"description": "Compact read-only Project Delivery rows", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectDeliveryView"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
