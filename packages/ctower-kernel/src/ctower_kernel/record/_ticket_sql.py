@@ -20,7 +20,11 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
-from ctower_kernel.record.events import EventKind, ticket_payload_from_mapping
+from ctower_kernel.record.events import (
+    EventKind,
+    ticket_payload_from_mapping,
+    workflow_payload_from_mapping,
+)
 from ctower_kernel.record.ticket_creation import (
     TicketCreationIds,
     initial_custody_project,
@@ -248,18 +252,20 @@ def ticket_timeline(
             SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,
                 event.client_command_id, event.server_time, event.payload,
                 ticket.project_key AS authoritative_project_key
-            FROM events AS event
+            FROM event_links AS link
+            JOIN events AS event
+              ON event.event_id = link.event_id AND event.tenant_id = link.tenant_id
             JOIN tickets AS ticket
-              ON ticket.tenant_id = event.tenant_id
-             AND ticket.ticket_id = event.aggregate_id
-            WHERE event.tenant_id = %s AND ticket.project_key = %s
-              AND event.aggregate_id = %s
+              ON ticket.tenant_id = link.tenant_id AND ticket.ticket_id = link.subject_id
+            WHERE link.tenant_id = %s AND link.subject_kind = 'ticket'
+              AND ticket.project_key = %s AND link.subject_id = %s
               AND kind IN (
                 'ticket.created',
                 'ticket.custody_transferred',
-                'ticket.comment_added'
+                'ticket.comment_added',
+                'workflow.changed'
               )
-            ORDER BY sequence
+            ORDER BY event.record_position
             """,
             (actor.tenant_id, project_key, ticket_id),
         ).fetchall()
@@ -368,10 +374,10 @@ def _timeline_event(row: dict[str, object]) -> TimelineEvent:
         kind=kind,
         occurred_at=cast(datetime, row["server_time"]),
         payload=ticket_payload_from_mapping(
-            kind,
-            payload,
-            legacy_project_key=str(row["authoritative_project_key"]),
-        ),
+            kind, payload, legacy_project_key=str(row["authoritative_project_key"])
+        )
+        if kind is not EventKind.WORKFLOW_CHANGED
+        else workflow_payload_from_mapping(payload),
         sequence=int(cast(int, row["sequence"])),
     )
 

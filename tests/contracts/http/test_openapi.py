@@ -326,6 +326,30 @@ def test_problem_vocabulary_is_exact() -> None:
     assert problem_codes == _EXPECTED_PROBLEM_CODES
 
 
+def test_ticket_timeline_contract_includes_workflow_change_payloads() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    schemas = cast(dict[str, dict[str, object]], document["components"]["schemas"])
+    timeline = schemas["TimelineEvent"]
+    properties = cast(dict[str, object], timeline["properties"])
+    kind = cast(dict[str, object], properties["kind"])
+    payload = cast(dict[str, object], properties["payload"])
+
+    assert kind["enum"] == [
+        "ticket.created",
+        "ticket.custody_transferred",
+        "ticket.comment_added",
+        "workflow.changed",
+    }
+    assert [
+        item["$ref"].rsplit("/", 1)[-1] for item in cast(list[dict[str, str]], payload["oneOf"])
+    ] == [
+        "TicketCreatedPayload",
+        "CustodyTransferredPayload",
+        "TicketCommentAddedPayload",
+        "WorkflowChangedAuditPayload",
+    ]
+
+
 def test_i1_7b_reuses_paths_adds_only_planned_paths_and_refuses_i1_7c() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])

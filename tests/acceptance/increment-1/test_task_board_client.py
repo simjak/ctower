@@ -93,6 +93,61 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
     }
 
 
+def test_ticket_timeline_carries_workflow_receipts_in_record_order(
+    tenant: TenantFixture,
+) -> None:
+    graph = _graph()
+    with (
+        running_api(tenant.database.runtime_dsn) as base_url,
+        CtowerClient(base_url, credential=tenant.commander_credential) as commander,
+    ):
+        ticket_id = _new_ticket(commander, tenant.commander_id, "timeline-workflow-fold")
+        commander.start_ticket_workflow(ticket_id, _start(graph), command_id=uuid4())
+        commander.apply_ticket_intent(
+            ticket_id,
+            TicketIntentRequest(
+                intent=AdmitIntent(
+                    kind="admit", expected_version=1, reason="Ready for Workflow"
+                )
+            ),
+            command_id=uuid4(),
+        )
+        commander.transition_workflow(
+            ticket_id,
+            WorkflowTransitionRequest(
+                expected_version=1,
+                workflow_ref=graph.reference,
+                source_stage="capture",
+                destination_stage="frame",
+            ),
+            command_id=uuid4(),
+        )
+        _freeze_criterion(commander, ticket_id, "sha256:" + "d" * 64)
+        commander.transition_workflow(
+            ticket_id,
+            WorkflowTransitionRequest(
+                expected_version=2,
+                workflow_ref=graph.reference,
+                source_stage="frame",
+                destination_stage="verify",
+            ),
+            command_id=uuid4(),
+        )
+        timeline = commander.get_ticket_timeline(ticket_id, project_key="ctower")
+
+    workflow_events = [event for event in timeline.events if event.kind == "workflow.changed"]
+    assert [event.payload.model_dump()["stage"] for event in workflow_events] == [
+        "capture",
+        "frame",
+        "verify",
+    ]
+    assert [event.payload.model_dump()["workflow_version"] for event in workflow_events] == [
+        1,
+        2,
+        3,
+    ]
+
+
 def _assert_close_reopen_custody(
     client: CtowerClient, ticket_id: UUID, tenant: TenantFixture
 ) -> None:

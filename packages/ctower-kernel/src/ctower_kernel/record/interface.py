@@ -22,6 +22,7 @@ from ctower_kernel.record.events import (
     TicketCommentAddedPayload,
     TicketCreatedPayload,
     TicketEventPayload,
+    WorkflowChangedPayload,
 )
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
@@ -501,7 +502,7 @@ class TimelineEvent:
     event_id: UUID
     kind: EventKind
     occurred_at: datetime
-    payload: TicketEventPayload
+    payload: TicketEventPayload | WorkflowChangedPayload
     sequence: int
 
     def __post_init__(self) -> None:
@@ -509,9 +510,10 @@ class TimelineEvent:
             EventKind.TICKET_CREATED: TicketCreatedPayload,
             EventKind.CUSTODY_TRANSFERRED: CustodyTransferredPayload,
             EventKind.TICKET_COMMENT_ADDED: TicketCommentAddedPayload,
+            EventKind.WORKFLOW_CHANGED: WorkflowChangedPayload,
         }.get(self.kind)
         if expected_payload is None:
-            raise ValueError("timeline kind must be a ticket event")
+            raise ValueError("timeline kind must be a ticket or workflow event")
         if not isinstance(self.payload, expected_payload):
             raise TypeError(f"{self.kind} requires {expected_payload.__name__}")
 

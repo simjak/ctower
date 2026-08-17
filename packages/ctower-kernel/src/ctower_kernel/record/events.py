@@ -121,6 +121,7 @@ __all__ = [
     "event_catalog",
     "event_digest",
     "ticket_payload_from_mapping",
+    "workflow_payload_from_mapping",
 ]
 
 
@@ -365,6 +366,49 @@ def ticket_payload_from_mapping(
         payload,
         legacy_project_key=legacy_project_key,
     )
+
+
+def workflow_payload_from_mapping(payload: Mapping[str, object]) -> WorkflowChangedPayload:
+    """Rebuild one typed Workflow payload at the persistence read boundary."""
+
+    expected = {
+        "lifecycle_facts",
+        "operation",
+        "stage",
+        "ticket_id",
+        "workflow_ref",
+        "workflow_version",
+    }
+    if set(payload) != expected:
+        raise ValueError("event payload fields do not match the authored variant")
+    lifecycle_facts = payload["lifecycle_facts"]
+    if not isinstance(lifecycle_facts, list) or any(
+        not isinstance(item, str) for item in lifecycle_facts
+    ):
+        raise TypeError("lifecycle_facts must be a list of strings")
+    workflow_version = payload["workflow_version"]
+    if type(workflow_version) is not int:
+        raise TypeError("workflow_version must be an integer")
+    return WorkflowChangedPayload(
+        operation=_event_string(payload["operation"], "operation"),
+        ticket_id=_event_uuid(payload["ticket_id"], "ticket_id"),
+        workflow_ref=_event_string(payload["workflow_ref"], "workflow_ref"),
+        workflow_version=workflow_version,
+        stage=_event_string(payload["stage"], "stage"),
+        lifecycle_facts=tuple(lifecycle_facts),
+    )
+
+
+def _event_string(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{label} must be a string")
+    return value
+
+
+def _event_uuid(value: object, label: str) -> UUID:
+    if not isinstance(value, str):
+        raise TypeError(f"{label} must be a UUID string")
+    return UUID(value)
 
 
 @dataclass(frozen=True, slots=True)
