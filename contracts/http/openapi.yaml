@@ -6831,14 +6831,15 @@
           "event_id": {"type": "string", "format": "uuid"},
           "kind": {
             "type": "string",
-            "enum": ["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
+            "enum": ["ticket.created", "ticket.custody_transferred", "ticket.comment_added", "workflow.changed"]
           },
           "occurred_at": {"type": "string", "format": "date-time"},
           "payload": {
             "oneOf": [
               {"$ref": "#/components/schemas/TicketCreatedPayload"},
               {"$ref": "#/components/schemas/CustodyTransferredPayload"},
-              {"$ref": "#/components/schemas/TicketCommentAddedPayload"}
+              {"$ref": "#/components/schemas/TicketCommentAddedPayload"},
+              {"$ref": "#/components/schemas/WorkflowChangedAuditPayload"}
             ]
           },
           "sequence": {"type": "integer", "minimum": 1}

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+// Authored contract digest: sha256:908ed9b033faddecade3c0adb0d2ecc052243840e3b0b1b44419293e820ff430
 
 export type ActivityClass = "work" | "verification";
 
@@ -2488,9 +2488,9 @@ export type TimelineEvent = Readonly<{
   readonly "actor_principal_id": string;
   readonly "command_id": string;
   readonly "event_id": string;
-  readonly "kind": "ticket.created" | "ticket.custody_transferred" | "ticket.comment_added";
+  readonly "kind": "ticket.created" | "ticket.custody_transferred" | "ticket.comment_added" | "workflow.changed";
   readonly "occurred_at": string;
-  readonly "payload": TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload;
+  readonly "payload": TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload | WorkflowChangedAuditPayload;
   readonly "sequence": number;
 }>;
 
