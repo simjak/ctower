@@ -32,6 +32,23 @@ def test_inbox_v2_contract_carries_strict_delivery_and_read_facts() -> None:
         validator.validate(corrupt)
 
 
+def test_inbox_message_requires_closed_severity_contract() -> None:
+    schema = json.loads(
+        (ROOT / "contracts/domain/inbox/inbox-v2.schema.json").read_text(encoding="utf-8")
+    )
+    validator = Draft202012Validator(schema)
+    document = _inbox_document()
+    message = cast(dict[str, object], cast(list[object], document["messages"])[0])
+    message["severity"] = "P0"
+
+    validator.validate(document)
+
+    for invalid in ("P2", "p0", ""):
+        message["severity"] = invalid
+        with pytest.raises(ValidationError):
+            validator.validate(document)
+
+
 def test_event_envelope_has_distinct_strict_delivered_and_read_branches() -> None:
     schema = json.loads(
         (ROOT / "contracts/domain/events/event-envelope.schema.json").read_text(encoding="utf-8")
