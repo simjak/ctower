@@ -205,6 +205,7 @@ def _result(command_id: UUID, *, state: DurabilityState) -> TicketCommandResult:
         ticket=TicketResource(
             created_at=datetime(2026, 7, 24, tzinfo=UTC),
             custodian_id=uuid4(),
+            display_key="CTW-1",
             durability_state=state,
             priority=Priority.P1,
             source=SourceReference(kind="test", ref="test:generated-replay"),

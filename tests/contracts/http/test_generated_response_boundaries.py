@@ -66,6 +66,7 @@ def test_generated_python_client_rejects_malformed_success_payloads(
         {
             "created_at": "2026-07-25T20:00:00Z",
             "custodian_id": UUID,
+            "display_key": "CTW-4",
             "durability_state": "accepted",
             "priority": "P2",
             "source": {"kind": "test", "ref": "wrong-operation"},
@@ -274,6 +275,7 @@ def _ticket(created_at: str, *, version: int = 1) -> dict[str, object]:
     return {
         "created_at": created_at,
         "custodian_id": UUID,
+        "display_key": "CTW-4",
         "durability_state": "accepted",
         "priority": "P2",
         "source": {"kind": "test", "ref": "generated:ticket"},
@@ -401,6 +403,7 @@ await expectTypeError(missingNullable);
 await expectTypeError({{
   created_at: "2026-07-25T20:00:00Z",
   custodian_id: "{UUID}",
+  display_key: "CTW-4",
   durability_state: "accepted",
   priority: "P2",
   source: {{kind: "test", ref: "wrong-operation"}},

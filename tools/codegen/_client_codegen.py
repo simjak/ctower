@@ -136,11 +136,13 @@ class CtowerClient:
             "Authorization": f"Bearer {{self._credential}}",
         }}
 
-    def _context(self, command_id: UUID, *, ticket_id: UUID | None = None) -> TelemetryContext:
+    def _context(
+        self, command_id: UUID, *, ticket_id: UUID | str | None = None
+    ) -> TelemetryContext:
         if self._telemetry is not None:
             payload = self._telemetry.model_dump(mode="json", by_alias=True, exclude_none=True)
             payload["command_id"] = str(command_id)
-            payload["ticket_id"] = str(ticket_id) if ticket_id is not None else None
+            payload["ticket_id"] = str(ticket_id) if isinstance(ticket_id, UUID) else None
             return TelemetryContext.model_validate(payload)
         return TelemetryContext(
             schema_id="ctower.telemetry-context/v1",
@@ -152,7 +154,7 @@ class CtowerClient:
             tenant_id="unresolved",
             actor_id="unresolved",
             command_id=str(command_id),
-            ticket_id=str(ticket_id) if ticket_id is not None else None,
+            ticket_id=str(ticket_id) if isinstance(ticket_id, UUID) else None,
         )
 
     def _telemetry_headers(
@@ -491,11 +493,13 @@ def _schema_reference(schema: Mapping[str, object]) -> str:
 def _parameter_type(schema: Mapping[str, object], *, include_pattern: bool = False) -> str:
     schema_type = schema.get("type")
     if schema_type == "string":
-        base = "UUID" if schema.get("format") == "uuid" else "str"
         constraint_names = [("minLength", "min_length"), ("maxLength", "max_length")]
         if include_pattern:
             constraint_names.append(("pattern", "pattern"))
         constraints = _bounds(schema, tuple(constraint_names))
+        if schema.get("format") == "ticket-ref":
+            return f"{_annotated('str', constraints)} | UUID"
+        base = "UUID" if schema.get("format") == "uuid" else "str"
         return _annotated(base, constraints)
     if schema_type == "array":
         items = _mapping(schema.get("items"), "parameter array items")

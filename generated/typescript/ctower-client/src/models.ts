@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
+// Authored contract digest: sha256:9ae78d2c8f36a267486fb57bd091e33652b0dee0dc4e399111536e01ee611581
 
 export type ActivityClass = "work" | "verification";
 
@@ -194,6 +194,7 @@ export type BoardCard = Readonly<{
   readonly "custodian_id": string;
   readonly "delivery_facts": ReadonlyArray<string>;
   readonly "delivery_surface_availability": DeliverySurfaceAvailability;
+  readonly "display_key": string | null;
   readonly "human_waiting": HumanWaiting;
   readonly "inbox_thread_ids": ReadonlyArray<string>;
   readonly "lane": BoardLane;
@@ -2451,6 +2452,7 @@ export type TicketIntentRequest = Readonly<{
 export type TicketResource = Readonly<{
   readonly "created_at": string;
   readonly "custodian_id": string;
+  readonly "display_key": string | null;
   readonly "durability_state": DurabilityState;
   readonly "priority": Priority;
   readonly "source": SourceReference;

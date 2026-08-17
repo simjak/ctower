@@ -17,6 +17,7 @@ from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
 from ctower_api._http_support import telemetry_context as _telemetry
+from ctower_api._http_support import ticket_uuid as _ticket_uuid
 from ctower_api._http_support import uuid_value as _uuid
 from ctower_api._http_support import validation_problem as _validation_problem
 from ctower_api._mutation_response import mutation_response as _mutation_response
@@ -71,7 +72,7 @@ def _install_session_commands(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/sessions")
     async def start_session(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _command_actor(access, recorder, request, ticket_id)
+        parsed = await _command_actor(access, record, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, parsed_ticket_id, command_id, telemetry = parsed
@@ -102,7 +103,7 @@ def _install_session_commands(
     async def record_session_fact(
         ticket_id: str, session_id: str, request: Request
     ) -> JSONResponse:
-        parsed = await _command_actor(access, recorder, request, ticket_id)
+        parsed = await _command_actor(access, record, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, parsed_ticket_id, command_id, telemetry = parsed
@@ -136,12 +137,14 @@ def _install_session_reads(
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
-            telemetry = _telemetry(request)
-            parsed_ticket_id = _uuid(ticket_id)
+            context = _telemetry(request)
             parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
-        telemetry = telemetry.bind(
+        parsed_ticket_id = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+        if isinstance(parsed_ticket_id, RecordProblem):
+            return _problem_response(parsed_ticket_id)
+        telemetry = context.bind(
             tenant_id=str(actor.tenant_id),
             actor_id=str(actor.principal_id),
             ticket_id=str(parsed_ticket_id),
@@ -232,6 +235,7 @@ def _fact_command(
 
 async def _command_actor(
     access: Access,
+    record: Record,
     recorder: TelemetryRecorder,
     request: Request,
     ticket_id: str,
@@ -245,16 +249,19 @@ async def _command_actor(
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
-        parsed_ticket_id = _uuid(ticket_id)
         command_id = _uuid(request.headers.get("Idempotency-Key"))
-        telemetry = _telemetry(request).bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            command_id=str(command_id),
-            ticket_id=str(parsed_ticket_id),
-        )
+        context = _telemetry(request)
     except ValueError:
         return _problem_response(_validation_problem())
+    parsed_ticket_id = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+    if isinstance(parsed_ticket_id, RecordProblem):
+        return _problem_response(parsed_ticket_id)
+    telemetry = context.bind(
+        tenant_id=str(actor.tenant_id),
+        actor_id=str(actor.principal_id),
+        command_id=str(command_id),
+        ticket_id=str(parsed_ticket_id),
+    )
     recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
     return actor, parsed_ticket_id, command_id, telemetry
 
