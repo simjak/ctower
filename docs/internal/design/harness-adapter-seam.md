@@ -14,10 +14,11 @@ rather than maintained as a second architecture source.
 code, hermes, codex, later openclaw, qwen code, zcode, deepseek harness — so we need decent
 abstraction"*. Scope addition (operator via director, 2026-08-17 18:04Z): a per-harness credentials
 pool — create and maintain a pool per harness, track usage limits, rotate automatically — specified
-in §4, carried by frozen criteria `AC-HAD-10..12`. That section is written against three operator-supplied
+in §4, carried by frozen criteria `AC-HAD-10..12`. That section is written against four operator-supplied
 inputs rather than from first principles: the Hermes credential-pools and fallback-providers docs
 (preserved at mission-control `board/assets/hermes-credential-pools-doc.md`), the operational law in
-mission-control `playbooks/codex-hermes-auth-runbook.md`, and the live state of this box's own pools.
+mission-control `playbooks/codex-hermes-auth-runbook.md`, the operator's own plan weights and reset
+clocks, and the live state of this box's own pools.
 
 **Prior art it is derived from:** D10 (compositional execution, the Supervisor Interface, and the
 two-real-Adapters-plus-fake rule that has kept adapters design-only until now), D11 (extension host,
@@ -303,7 +304,7 @@ never proved the contract.
 
 Every binding fills the same template before implementation, and the credentials half of it is a
 **capability survey** — because the one thing that varies most between harnesses is not how they are
-launched but how much resilience they already have. A binding that has not answered these seven
+launched but how much resilience they already have. A binding that has not answered these ten
 questions cannot be implemented, because the answers decide whether ctower configures a layer or
 provides it (§4.1).
 
@@ -317,6 +318,8 @@ provides it (§4.1).
 | f | **Cache semantics on rotation** | What a rotation costs, and which invalidation hook must complete before an observation counts |
 | g | **Subagent credential inheritance** | Whether delegation is covered by the parent's ladder or needs its own acquisition |
 | h | **Egress path — shared across entries, or per entry?** | A shared egress means a CDN challenge hits every entry at once (§4.2): correlated failure is then evidence about the path, not about N credentials |
+| i | **Probe target — which product, endpoint, and model, and is it the one seats run?** | A probe aimed at a model no seat uses reports on something else; this is live on this fleet today (§4.6) |
+| j | **Credit weights — per model, per direction, and where published?** | Tokens are not the billing unit; without the weight table the ledger cannot say which model drained a plan (§4.4.3) |
 
 The rest of the template is the seam-verb mapping, the liveness evidence sources, the ACK predicate,
 and the declared probe shape — each of which appears in the per-binding tables below.
@@ -400,8 +403,8 @@ declaration to be honest: `qwen-code` and `zcode` declare their liveness evidenc
 `liveness` returns `unknown` by name — never a guess.
 
 **And each of them owes the §3.0 credentials survey before implementation, not after.** Their native
-pool, native fallback, config surface, identity proof, reset semantics, cache semantics, and subagent
-inheritance are all currently unknown to us, and §4.1's resolution rule cannot be applied to an
+pool, native fallback, config surface, identity proof, reset semantics, cache semantics, subagent
+inheritance, egress topology, probe target, and credit weights are all currently unknown to us, and §4.1's resolution rule cannot be applied to an
 unknown: the choice between *configure* and *provide* is exactly what the survey decides. The
 `deepseek` row shows why the survey is cheap insurance — answering (a) and (b) for it reveals that it
 is served through a profile that already has both layers, so the correct amount of adapter work is
@@ -514,6 +517,9 @@ fleet has both cases *today* to prove it against.
    The live shape to register against is `auth.json`'s `credential_pool.<provider>[]` with its `id`,
    `label`, `auth_type`, `priority`, and `source`, across the providers actually present here:
    `openai-codex`, `zai`, `openrouter`, `alibaba`.
+   **The registry also carries each subscription's per-model weight table** — the provider's own
+   credit cost per model, per direction. Tokens are not the billing unit and do not answer the
+   operator's question; credits are (§4.4.3).
    **The registry key is the credential's own decoded identity claim, never its label.** Labels have
    pointed at the wrong account twice — a `simasjak-gmail` label was actually a jakit.lt mint, and two
    identically-named labels hid two different accounts. So identity (the JWT email claim, decoded from
@@ -618,6 +624,15 @@ Quota is tracked per **(entry × model) window**, not per account — the shape 
 already computes as an exhausted window with a `reset_at` and a rotation trigger, rather than the
 binary `alive|capped` the fleet sentinel writes.
 
+**Reset clocks are per account, and pool status is therefore never a scalar.** The three codex
+subscriptions reset at three different times — 2026-08-20 06:29, 2026-08-20 08:00, and 2026-08-22
+09:01 — and as of tonight the third is at roughly **99% remaining**. That single fact retires a phrase
+this design has been using loosely all evening: the pool was never "dry". It had an exhausted
+majority and an almost untouched member, and a status model with one word per substrate cannot say
+so. `limits()` therefore returns per-entry rows with their own clocks and never an aggregate verdict,
+and `acquire` fails only when **every** entry is unselectable — which is a different and much rarer
+condition than the one the fleet paged on this morning.
+
 Consumption is observed, never predicted. Where a substrate reports usage against a window
 (percentage, tokens, requests), the pool records it; where it does not, exhaustion is learned from
 the refusal the substrate actually returned. A pool never estimates that an entry is *probably* fine.
@@ -657,7 +672,7 @@ nothing still costs a full context re-read.
 same egress is equally unreachable, so rotation cannot help — it merely pays a prompt-cache reset per
 attempt while the edge keeps answering 403. A rotation requested against an edge-challenged
 classification is refused, not attempted. The correct response is one layer up (cross-provider
-fallback, §4.4.3) plus an infra-plane escalation, because a different provider is a different edge
+fallback, §4.4.4) plus an infra-plane escalation, because a different provider is a different edge
 while a different credential is the same one.
 
 For a **managed** harness (`claude-code`), ctower performs the rotation itself and inherits the rules
@@ -768,7 +783,41 @@ Two rules govern how it is written, and the second is the engine's own, honored 
   changed, and this design's standing rule is that a degraded state must never render as a healthy
   one.
 
-#### 4.4.3 Capacity errors bypass an explicit choice; transient ones respect it
+#### 4.4.3 Meter in provider-native credits, not tokens
+
+Tokens are the wrong unit. They are what the model consumed; **credits are what the subscription
+paid**, and only the second answers "why is this account draining". The two differ by more than a
+constant factor, because providers weight per model *and* per direction. The operator's codex plan,
+as the concrete case the registry must carry:
+
+| Model | Input | Cached input | **Output** |
+|---|---|---|---|
+| `gpt-5.6-sol` | 125 | 12.5 | **750** |
+| `gpt-5.6-terra` | 50 | 5 | 300 |
+| `gpt-5.6-luna` | 5 | 0.5 | 30 |
+
+A **25× spread** between the cheapest and dearest rung, concentrated in the output direction — and
+our judgment lanes are exactly the ones that run at max effort and emit long verdicts on the dearest
+rung. So the fleet's intuition was inverted: **sol-max judgment was the quota burner, while luna
+engineering barely dents the plan**, even though the engineering lanes look busier by every
+token-shaped measure we had. A token-only ledger cannot show this; it would rank a chatty build lane
+above a terse reviewer that cost thirty times more.
+
+Three requirements follow:
+
+- **The registry carries the weight table per subscription** (§4.1.3), versioned like any other
+  authored fact, because the provider can change it and a stale table silently misprices history.
+- **The ledger attributes spend as credits by model × account**, alongside the raw token counts it
+  already keeps. The question it must answer directly, without a join anyone has to invent, is
+  "which model on which account drained this plan".
+- **Routing policy may weigh cost class** (§4.4): volume work belongs on cheap-weight rungs, and
+  scarce-weight rungs are reserved for the work that needs them — which is a *policy* statement
+  ctower owns, expressed in the generated ladder, not a preference an adapter improvises. Note the
+  interaction with §4.3: cached input is an order of magnitude cheaper than fresh input, so every
+  rotation and fallback that invalidates a prompt cache converts cached credits into full-price ones.
+  The cache-reset cost event and the weight table are the same arithmetic seen twice.
+
+#### 4.4.4 Capacity errors bypass an explicit choice; transient ones respect it
 
 The aux ladder's semantics map onto the seam's error taxonomy and must agree with the runbook's
 diagnosis table (§4.5):
@@ -786,7 +835,7 @@ seen, a doomed retry against an exhausted balance, and a stubborn respect for a 
 serve at all. The reachability row is the third axis appearing here for the same reason: it is the one
 class where the *pool* layer has nothing to offer and only the *provider* layer does.
 
-#### 4.4.4 Delegation and cron inherit the ladder
+#### 4.4.5 Delegation and cron inherit the ladder
 
 Subagents and cron-launched agents inherit the parent chain, and the engine shares the parent pool
 with them through per-task credential leasing. Two consequences: `spawn` passes the resolved ladder
@@ -881,6 +930,24 @@ The cost of getting this wrong is asymmetric and immediate: the lineage-dead rea
 re-mint, which consumes a single-use device flow, cannot succeed against a challenged edge, and leaves
 the operator believing the credential was the problem.
 
+**5. Aimed at what the seats actually use.** A probe is a claim about a specific product, endpoint,
+*and model*; if any of the three differs from what seats will run, the verdict is about something
+else. This is not hypothetical, and it is checkable in this repository's own fleet tonight: the
+capacity sentinel probes z.ai with **`glm-5.2`**, while the engineer profile's z.ai rungs are
+**`glm-5.3`** and `glm-5-turbo` on that same endpoint. Its `capped` verdict — unbroken on every sweep
+through the evening — is therefore a statement about a model no seat runs, and it is the state that
+parked lanes and armed the substrate park.
+
+The same probe compounds the error by flattening: it maps `401`, `402`, `403`, and `429` all to the
+single word `capped`, which merges dead auth, no funding, **not entitled to this model**, and a real
+rate limit. Those are three different axes and four different actions in §4.2's model — and an
+entitlement 403 on an unused model is the reading most consistent with a coding plan the operator
+reports as `0/140K` used and resetting 2026-08-25. I have not made a live call to settle which cause
+it is; that is an infra-plane action, not a design lane's. What the design takes from it is the rule:
+**probe target identity is part of probe validity**, recorded in survey question (i), and a probe
+whose target differs from the seats' is reported as `unknown` for the seats' rung rather than as that
+rung's state.
+
 Where a valid probe would cost a real turn, the honest answer is `unknown` plus the age of the last
 real observation — and the pool keeps learning from the refusals seats actually receive via `meter()`,
 which costs nothing and is the only evidence that is never stale in the wrong direction.
@@ -917,9 +984,14 @@ fixture, and none is satisfiable by a screenshot or a seat's self-report. Draft 
 placeholders: the spec lane mints final ids and **must add a matching row to the evidence-manifest
 fixture**, or the release gate fails late.
 
-The scope additions of §4 grew the underlying requirement set to nineteen. Rather than hand the plan
+The scope additions of §4 grew the underlying requirement set to nineteen, and the post-seal ledger
+addendum added a twentieth (credit-unit metering with per-model weights). Rather than hand the plan
 stage an over-count, the set below is folded to twelve by merging criteria that share one failure
-mode — no requirement is dropped, and §5.1 maps every one of the nineteen to the row that carries it.
+mode — no requirement is dropped, and §5.1 maps every one of the twenty to the row that carries it.
+The addendum was folded into rows 10, 11, and 12 rather than opened as `AC-HAD-20`, because credit
+metering is the same ledger-fidelity failure as the cost events already there, per-account reset
+clocks are the same entry-state failure, and probe-target identity is the same
+observation-validity failure. The freeze stays at twelve.
 
 | Id | Criterion | Evidence |
 |---|---|---|
@@ -932,11 +1004,11 @@ mode — no requirement is dropped, and §5.1 maps every one of the nineteen to 
 | AC-HAD-07 | Lane termination preserves work and continuation. A `saturated` or `capped` fact triggers `teardown(checkpoint)` — work committed and pushed, handoff carrying done / in progress / not started / next three steps — before the lane stops; a `park` carries a stated basis and explicit expiry, re-proves its basis, and fails loud on expiry or when a wake condition turns true; `reap` refuses while sole work is unpushed and refuses a `dead_auth` lane, which is preserved for resume, with one nudge offered before any replacement. For a binding whose survey says "no native fallback", cross-provider failover is a **new attempt** with its own pinned composition after a successful checkpoint, never an in-session swap. After pane, tmux-server, or host loss the adapter reconstructs from ctower state, rejects old epochs, and never treats pane disappearance as success. | Saturation-to-checkpoint trace; handoff-section assertion; park expiry and basis-broken fixtures; sole-work and dead-auth refusals; nudge-before-respawn ordering; failover-to-new-attempt digest diff plus in-session-swap refusal; kill/restart reconstruction with epoch rejection |
 | AC-HAD-08 | An unknown harness value is carried byte-for-byte through spawn, liveness, and writeback, displayed as observed, included in equality and cross-checks, and never normalized, downgraded, or collapsed. No kernel, reporter, projection, CLI, or Board path imports or parses a harness-private transcript or session format; harness-private observation exists only inside a binding and crosses the seam as typed facts. | Unknown-harness carry/display fixture; import-boundary inventory; per-binding private-parser containment check |
 | AC-HAD-09 | Nothing dispatches unless the composition and the guard both clear. An unknown, incompatible, revoked, or digest-mismatched `HarnessSpec` performs zero dispatch with no fallback to a generic process; every `spawn` obtains and enforces a current versioned CommandGuard decision for the exact normalized plan at its final pre-dispatch boundary, where `block` and `needs_operator` dispatch nothing and a receipt that cannot be durably recorded first yields zero dispatch; a changed plan, expired or replayed grant, or direct bypass fails closed. | Four fail-closed component fixtures; guard invocation trace per binding; zero-execution-on-block assertion; receipt-first ordering; replay/expiry/bypass refusals |
-| AC-HAD-10 | Every pool entry carries **three orthogonal states** — `auth ∈ {healthy, lineage-dead, chain-burned}`, `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}`, `reach ∈ {ok, edge-challenged, unknown}` — with no path collapsing them, selectable only when all three are clear, and a mint moving only the `auth` axis so an `edge-challenged` entry is never routed to a mint, rotation, or restart. Entries are keyed by decoded identity, never by label; a `discovered` identity is non-selectable pending operator keep-or-evict; the Interface exposes **no copy verb**. With no selectable entry, `spawn` performs zero dispatch and refuses `credential-pool-exhausted` carrying `observed`, `meaning`, `action`, per-entry three-axis states, and the earliest known reset or explicit unknown — each diagnosis row mapping to its exact meaning/action pair, with a stale-cache pool-state refusal never classified as real exhaustion. Observation projects a strict named-field allowlist, so no credential value reaches any ledger row, status output, log, refusal, or telemetry event despite adjacent token fields. | Three-axis matrix including auth-healthy/quota-available/reach-challenged; mint-changes-only-auth and no-ceremony-for-reachability proofs; mislabelled-entry and duplicate-label identity fixtures; discovered-not-selectable assertion; Interface inventory proving no copy path; refusal-body assertions per diagnosis row; stale-cache misclassification fixture; adjacent-token projection scan |
-| AC-HAD-11 | `rotate` is incomplete until its declared cache-invalidation hook completes — `rotation-incomplete` otherwise, with no entry state recorded from a pre-hook observation — and is **refused rather than attempted** against an `edge-challenged` classification. For a ctower-provided pool, rotation writes the live credential back before swapping, refuses a snapshot older than the live generation, and enforces one live holder. `probe` is valid only when drawn from the pool's own entries, sized to the declared workload shape, taken after invalidation, and classified on the response body rather than the status line: a 403 with a challenge page is `reach: edge-challenged`, never `auth: lineage-dead`; a 200 with empty content is a hang, never capacity; a one-token probe, a constant, a default, or a hand-marked file each report `unknown`. A window returning to `available` is not selectable until it holds a full observation cycle, and a rotation during a live attempt changes nothing about that attempt. | Hook-incomplete refusal and pre-hook discard; rotate-refused-on-reachability fixture; write-back-before-swap ordering plus `refresh_token_reused` regression; generation-guard and concurrent-holder tests; challenge-page-versus-401 classification pair; empty-content-200 rejection; tiny-probe-then-402 fixture; correlated-failure inference over a shared-egress survey answer; default-alive-constant rejected; flap hold-one-cycle; live-rotation no-op with next-attempt pin diff |
-| AC-HAD-12 | The ledger and the generated configuration stay faithful to what happened. Every rotation is metered at one context re-read and every fallback activation at two (switch and return); fallback is recorded turn-scoped with at most one activation per turn, never as a mode; a retry skipped against an unelapsed `reset_at` is an explicit fact, not an absence; aux-task spend is attributed separately from main-model spend under the same seat and attempt; a compression degradation is a recorded quality event. Each profile's `fallback_providers` and aux `fallback_chain` are generated from the registry as revision-pinned authored configuration, applied by the adapter and read by the engine, with ctower never writing `auth.json`; no environment variable can alter a chain; and layer identity is preserved — a same-provider rotation is never recorded as a cross-provider fallback, while a transient 429 respects an explicitly configured provider and a capacity error (402, daily-quota, connection) bypasses it. | Cost-event arithmetic for rotation and round-trip fallback; turn-scoped-not-modal ledger shape; explicit reset-skip fact; main-versus-aux attribution split; degradation event; registry-to-chain generation diff with revision/digest pins; env-override-ignored fixture; one-writer-per-file inventory; layer-attribution fixture; transient-versus-capacity ladder matrix |
+| AC-HAD-10 | Every pool entry carries **three orthogonal states** — `auth ∈ {healthy, lineage-dead, chain-burned}`, `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}`, `reach ∈ {ok, edge-challenged, unknown}` — with no path collapsing them, selectable only when all three are clear, and a mint moving only the `auth` axis so an `edge-challenged` entry is never routed to a mint, rotation, or restart. Entries are keyed by decoded identity, never by label; a `discovered` identity is non-selectable pending operator keep-or-evict; the Interface exposes **no copy verb**. With no selectable entry, `spawn` performs zero dispatch and refuses `credential-pool-exhausted` carrying `observed`, `meaning`, `action`, per-entry three-axis states, and the earliest known reset or explicit unknown — each diagnosis row mapping to its exact meaning/action pair, with a stale-cache pool-state refusal never classified as real exhaustion. Observation projects a strict named-field allowlist, so no credential value reaches any ledger row, status output, log, refusal, or telemetry event despite adjacent token fields. `limits()` returns per-entry rows carrying each account's own reset clock and never an aggregate substrate verdict, and `acquire` fails only when every entry is unselectable: a fixture pool holding two exhausted entries and one near-full entry acquires successfully and reports three distinct clocks. | Three-axis matrix including auth-healthy/quota-available/reach-challenged; mint-changes-only-auth and no-ceremony-for-reachability proofs; mislabelled-entry and duplicate-label identity fixtures; discovered-not-selectable assertion; Interface inventory proving no copy path; refusal-body assertions per diagnosis row; stale-cache misclassification fixture; adjacent-token projection scan; mixed-exhaustion pool acquiring from its healthy entry; per-account reset-clock rows with no aggregate verdict |
+| AC-HAD-11 | `rotate` is incomplete until its declared cache-invalidation hook completes — `rotation-incomplete` otherwise, with no entry state recorded from a pre-hook observation — and is **refused rather than attempted** against an `edge-challenged` classification. For a ctower-provided pool, rotation writes the live credential back before swapping, refuses a snapshot older than the live generation, and enforces one live holder. `probe` is valid only when drawn from the pool's own entries, sized to the declared workload shape, taken after invalidation, and classified on the response body rather than the status line: a 403 with a challenge page is `reach: edge-challenged`, never `auth: lineage-dead`; a 200 with empty content is a hang, never capacity; a one-token probe, a constant, a default, or a hand-marked file each report `unknown`. The probe's product, endpoint, and **model** must be the ones seats run: a probe aimed at a different model reports `unknown` for the seats' rung rather than that rung's state, and a status-code-only classifier that maps 401, 402, 403, and 429 to one word is refused as a state source. A window returning to `available` is not selectable until it holds a full observation cycle, and a rotation during a live attempt changes nothing about that attempt. | Hook-incomplete refusal and pre-hook discard; rotate-refused-on-reachability fixture; write-back-before-swap ordering plus `refresh_token_reused` regression; generation-guard and concurrent-holder tests; challenge-page-versus-401 classification pair; empty-content-200 rejection; tiny-probe-then-402 fixture; correlated-failure inference over a shared-egress survey answer; default-alive-constant rejected; probe-target-mismatch reports unknown; four-status-codes-to-one-word classifier refused; flap hold-one-cycle; live-rotation no-op with next-attempt pin diff |
+| AC-HAD-12 | The ledger and the generated configuration stay faithful to what happened. Spend is metered in **provider-native credit units** using the subscription's versioned per-model, per-direction weight table from the registry, attributed as credits by model × account alongside raw token counts, so "which model on which account drained this plan" is answerable directly; a fixture whose weights span 25× ranks a low-token high-weight lane above a high-token low-weight one, and a stale or missing weight table refuses rather than silently mispricing. Every rotation is metered at one context re-read and every fallback activation at two (switch and return); fallback is recorded turn-scoped with at most one activation per turn, never as a mode; a retry skipped against an unelapsed `reset_at` is an explicit fact, not an absence; aux-task spend is attributed separately from main-model spend under the same seat and attempt; a compression degradation is a recorded quality event. Each profile's `fallback_providers` and aux `fallback_chain` are generated from the registry as revision-pinned authored configuration, applied by the adapter and read by the engine, with ctower never writing `auth.json`; no environment variable can alter a chain; and layer identity is preserved — a same-provider rotation is never recorded as a cross-provider fallback, while a transient 429 respects an explicitly configured provider and a capacity error (402, daily-quota, connection) bypasses it. | Credit-unit arithmetic against a weight-table fixture with a 25× spread; credits-by-model×account attribution query; stale/missing weight-table refusal; cached-versus-fresh input pricing across a cache reset; cost-event arithmetic for rotation and round-trip fallback; turn-scoped-not-modal ledger shape; explicit reset-skip fact; main-versus-aux attribution split; degradation event; registry-to-chain generation diff with revision/digest pins; env-override-ignored fixture; one-writer-per-file inventory; layer-attribution fixture; transient-versus-capacity ladder matrix |
 
-### 5.1 Coverage map — the nineteen underlying requirements
+### 5.1 Coverage map — the twenty underlying requirements
 
 Nothing was dropped in the fold. Each row above carries these:
 
@@ -951,9 +1023,9 @@ Nothing was dropped in the fold. Each row above carries these:
 | AC-HAD-07 | checkpoint/park · teardown refusals · failover-as-new-attempt | Work or continuation lost at lane end |
 | AC-HAD-08 | harness independence | Harness-private shape leaking across the seam |
 | AC-HAD-09 | fail-closed composition · CommandGuard | Dispatch on an uncleared precondition |
-| AC-HAD-10 | three-axis entry state · identity keying · no-copy verb · exhaustion refusal | A collapsed state prescribing the wrong ceremony |
-| AC-HAD-11 | invalidation hook · rotation rules · probe validity · flap hold | An observation that measured the wrong thing |
-| AC-HAD-12 | cost metering · fallback semantics · generated ladder · layer identity | The ledger or config disagreeing with reality |
+| AC-HAD-10 | three-axis entry state · identity keying · no-copy verb · exhaustion refusal · per-account reset clocks | A collapsed state prescribing the wrong ceremony |
+| AC-HAD-11 | invalidation hook · rotation rules · probe validity (5 conditions) · probe-target identity · flap hold | An observation that measured the wrong thing |
+| AC-HAD-12 | credit-unit metering · weight tables · cost events · fallback semantics · generated ladder · layer identity | The ledger or config disagreeing with reality |
 
 ---
 
