@@ -560,6 +560,62 @@ performs, and "logging in does not add quota — capped accounts stay capped unt
 acquires, meters, and reports; it never creates an entry, and it never treats a credential it can
 reach as a credential it is entitled to.
 
+#### 4.1.4 The target topology is authored desired state, and drift is a finding
+
+The registry does not merely describe what exists; it **declares what should exist per profile**, and
+the adapter reconciles actual against it. The operator's ruling fixes that desired state:
+
+| Plane | Desired per unit | Yields |
+|---|---|---|
+| Each hermes profile | **five subscriptions** — three codex accounts (its *own* OAuth mint of each) plus a z.ai key and an Alibaba key | **three provider rungs**: codex primary → glm → qwen, in policy order |
+| `claude-code` | **three Claude Code subscriptions** as per-seat credential homes (topology A, §3.1) | one rung per home; failover is a new attempt (§4.1.1) |
+
+**Five subscriptions yielding three rungs is the layer split made arithmetic.** The three codex
+accounts are not three rungs — they are one rung with three entries, rotated *within* the provider by
+layer 1, while layer 2's ordered chain has three stops. Anyone who models subscriptions and rungs as
+the same list gets 5 = 3 and knows something is wrong; the seam gets it right because §4.4 already
+separates them.
+
+**Mint-never-copy sets the ceremony's price, and it is not small.** Because each profile needs its
+own mint of each account, the cost is *profiles × accounts* interactive device flows — for the
+current eight persona profiles and three accounts, **24 sign-ins**, which is exactly what the fleet's
+own `tools/codex-auth-all` now computes and sequences in one guided run. The cheap alternative —
+mint once, copy the file into eight profiles — is the thing that revokes every grant at once, so the
+price is the invariant's cost and not an implementation inefficiency to optimize away later.
+
+**Enactment splits by subscription kind, and the registry carries which:**
+
+| Subscription kind | `enactment` | How it is wired |
+|---|---|---|
+| Codex accounts (OAuth) | `operator-ceremony` | An interactive device flow per profile per account; ctower can *request* and sequence it, never perform it |
+| z.ai, Alibaba (API keys) | `secret-reference` | Wired non-interactively from a secret reference — a reference, never a value, per this repository's standing rule |
+
+That distinction is what makes a drift finding actionable rather than a complaint: a missing z.ai key
+is automation's problem, while a missing codex grant is an item on the operator's ceremony list.
+
+**Drift is a derived read, not a sixth verb.** Comparing the desired set to `limits()`'s actual set
+yields findings in two directions, and both already have homes in the state model:
+
+- **`missing`** — desired but absent. A finding routed to its enactment path. **Never silence**: an
+  absent grant is not an exhausted one, and a topology that is 19 of 24 minted must say so rather
+  than report the five gaps as ordinary unavailability.
+- **`unregistered`** — present but not desired. This is precisely the fourth codex identity found
+  minted in the pool, and it maps to the existing non-selectable `discovered` state pending an
+  operator keep-or-evict decision (§4.1.3).
+
+**Enactment is sequenced, because the current shape is mid-migration.** The forge pool and its local
+proxy are legacy under this ruling, and the order is fixed by a dependency rather than by preference:
+mint the grid, re-point each profile's provider off the proxy, *then* retire the proxy and forge
+home. Reversing those steps breaks every profile whose configured provider still resolves to the
+proxy — which today includes the engineer profile, whose primary provider is the proxy endpoint. The
+registry's reconciliation must therefore express ordering, not just a target set; a desired state
+that cannot say "not yet, and here is what must land first" will happily propose a step that breaks
+the fleet.
+
+**Weight tables attach per subscription** (§4.4.3), so all five carry their own — the three codex
+accounts sharing a plan's weights while z.ai and Alibaba carry their own units. Cost-class routing is
+only meaningful once every rung in a generated ladder is priced.
+
 ### 4.2 Usage and limit tracking — three axes, never one status
 
 **AUTH ≠ QUOTA ≠ REACH.** This is the invariant that most changes the data shape, so it is modelled
@@ -748,6 +804,13 @@ The commander built tonight's ladder by hand — sol → glm → park — from k
 subscriptions were alive. That is precisely a **registry-derived artifact**: ctower's routing policy
 generates each profile's `fallback_providers` list (and each aux `fallback_chain`) from the registry
 of pools, subscriptions, and current windows, and the adapter writes it as configuration.
+
+Under the target topology of §4.1.4 the generation is fully determined: five subscriptions per
+profile produce the three-rung chain **codex → glm → qwen** in policy order, with the three codex
+accounts rotating beneath the first rung rather than appearing as rungs of their own. The generator's
+input is the desired topology plus current windows; its output is a pinned revision. A rung whose
+subscription is `missing` is a drift finding, not a silently shorter ladder — a chain that quietly
+drops an unminted rung is how a profile ends up one substrate deep without anyone deciding that.
 
 Two rules govern how it is written, and the second is the engine's own, honored verbatim:
 
@@ -984,10 +1047,11 @@ fixture, and none is satisfiable by a screenshot or a seat's self-report. Draft 
 placeholders: the spec lane mints final ids and **must add a matching row to the evidence-manifest
 fixture**, or the release gate fails late.
 
-The scope additions of §4 grew the underlying requirement set to nineteen, and the post-seal ledger
-addendum added a twentieth (credit-unit metering with per-model weights). Rather than hand the plan
+The scope additions of §4 grew the underlying requirement set to nineteen; the post-seal ledger
+addendum added a twentieth (credit-unit metering with per-model weights) and the target-topology
+ruling four more (desired state, drift findings, the enactment split, and ordered reconciliation). Rather than hand the plan
 stage an over-count, the set below is folded to twelve by merging criteria that share one failure
-mode — no requirement is dropped, and §5.1 maps every one of the twenty to the row that carries it.
+mode — no requirement is dropped, and §5.1 maps every one of the twenty-four to the row that carries it.
 The addendum was folded into rows 10, 11, and 12 rather than opened as `AC-HAD-20`, because credit
 metering is the same ledger-fidelity failure as the cost events already there, per-account reset
 clocks are the same entry-state failure, and probe-target identity is the same
@@ -1006,9 +1070,9 @@ observation-validity failure. The freeze stays at twelve.
 | AC-HAD-09 | Nothing dispatches unless the composition and the guard both clear. An unknown, incompatible, revoked, or digest-mismatched `HarnessSpec` performs zero dispatch with no fallback to a generic process; every `spawn` obtains and enforces a current versioned CommandGuard decision for the exact normalized plan at its final pre-dispatch boundary, where `block` and `needs_operator` dispatch nothing and a receipt that cannot be durably recorded first yields zero dispatch; a changed plan, expired or replayed grant, or direct bypass fails closed. | Four fail-closed component fixtures; guard invocation trace per binding; zero-execution-on-block assertion; receipt-first ordering; replay/expiry/bypass refusals |
 | AC-HAD-10 | Every pool entry carries **three orthogonal states** — `auth ∈ {healthy, lineage-dead, chain-burned}`, `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}`, `reach ∈ {ok, edge-challenged, unknown}` — with no path collapsing them, selectable only when all three are clear, and a mint moving only the `auth` axis so an `edge-challenged` entry is never routed to a mint, rotation, or restart. Entries are keyed by decoded identity, never by label; a `discovered` identity is non-selectable pending operator keep-or-evict; the Interface exposes **no copy verb**. With no selectable entry, `spawn` performs zero dispatch and refuses `credential-pool-exhausted` carrying `observed`, `meaning`, `action`, per-entry three-axis states, and the earliest known reset or explicit unknown — each diagnosis row mapping to its exact meaning/action pair, with a stale-cache pool-state refusal never classified as real exhaustion. Observation projects a strict named-field allowlist, so no credential value reaches any ledger row, status output, log, refusal, or telemetry event despite adjacent token fields. `limits()` returns per-entry rows carrying each account's own reset clock and never an aggregate substrate verdict, and `acquire` fails only when every entry is unselectable: a fixture pool holding two exhausted entries and one near-full entry acquires successfully and reports three distinct clocks. | Three-axis matrix including auth-healthy/quota-available/reach-challenged; mint-changes-only-auth and no-ceremony-for-reachability proofs; mislabelled-entry and duplicate-label identity fixtures; discovered-not-selectable assertion; Interface inventory proving no copy path; refusal-body assertions per diagnosis row; stale-cache misclassification fixture; adjacent-token projection scan; mixed-exhaustion pool acquiring from its healthy entry; per-account reset-clock rows with no aggregate verdict |
 | AC-HAD-11 | `rotate` is incomplete until its declared cache-invalidation hook completes — `rotation-incomplete` otherwise, with no entry state recorded from a pre-hook observation — and is **refused rather than attempted** against an `edge-challenged` classification. For a ctower-provided pool, rotation writes the live credential back before swapping, refuses a snapshot older than the live generation, and enforces one live holder. `probe` is valid only when drawn from the pool's own entries, sized to the declared workload shape, taken after invalidation, and classified on the response body rather than the status line: a 403 with a challenge page is `reach: edge-challenged`, never `auth: lineage-dead`; a 200 with empty content is a hang, never capacity; a one-token probe, a constant, a default, or a hand-marked file each report `unknown`. The probe's product, endpoint, and **model** must be the ones seats run: a probe aimed at a different model reports `unknown` for the seats' rung rather than that rung's state, and a status-code-only classifier that maps 401, 402, 403, and 429 to one word is refused as a state source. A window returning to `available` is not selectable until it holds a full observation cycle, and a rotation during a live attempt changes nothing about that attempt. | Hook-incomplete refusal and pre-hook discard; rotate-refused-on-reachability fixture; write-back-before-swap ordering plus `refresh_token_reused` regression; generation-guard and concurrent-holder tests; challenge-page-versus-401 classification pair; empty-content-200 rejection; tiny-probe-then-402 fixture; correlated-failure inference over a shared-egress survey answer; default-alive-constant rejected; probe-target-mismatch reports unknown; four-status-codes-to-one-word classifier refused; flap hold-one-cycle; live-rotation no-op with next-attempt pin diff |
-| AC-HAD-12 | The ledger and the generated configuration stay faithful to what happened. Spend is metered in **provider-native credit units** using the subscription's versioned per-model, per-direction weight table from the registry, attributed as credits by model × account alongside raw token counts, so "which model on which account drained this plan" is answerable directly; a fixture whose weights span 25× ranks a low-token high-weight lane above a high-token low-weight one, and a stale or missing weight table refuses rather than silently mispricing. Every rotation is metered at one context re-read and every fallback activation at two (switch and return); fallback is recorded turn-scoped with at most one activation per turn, never as a mode; a retry skipped against an unelapsed `reset_at` is an explicit fact, not an absence; aux-task spend is attributed separately from main-model spend under the same seat and attempt; a compression degradation is a recorded quality event. Each profile's `fallback_providers` and aux `fallback_chain` are generated from the registry as revision-pinned authored configuration, applied by the adapter and read by the engine, with ctower never writing `auth.json`; no environment variable can alter a chain; and layer identity is preserved — a same-provider rotation is never recorded as a cross-provider fallback, while a transient 429 respects an explicitly configured provider and a capacity error (402, daily-quota, connection) bypasses it. | Credit-unit arithmetic against a weight-table fixture with a 25× spread; credits-by-model×account attribution query; stale/missing weight-table refusal; cached-versus-fresh input pricing across a cache reset; cost-event arithmetic for rotation and round-trip fallback; turn-scoped-not-modal ledger shape; explicit reset-skip fact; main-versus-aux attribution split; degradation event; registry-to-chain generation diff with revision/digest pins; env-override-ignored fixture; one-writer-per-file inventory; layer-attribution fixture; transient-versus-capacity ladder matrix |
+| AC-HAD-12 | The ledger and the generated configuration stay faithful to what happened. Spend is metered in **provider-native credit units** using the subscription's versioned per-model, per-direction weight table from the registry, attributed as credits by model × account alongside raw token counts, so "which model on which account drained this plan" is answerable directly; a fixture whose weights span 25× ranks a low-token high-weight lane above a high-token low-weight one, and a stale or missing weight table refuses rather than silently mispricing. Every rotation is metered at one context re-read and every fallback activation at two (switch and return); fallback is recorded turn-scoped with at most one activation per turn, never as a mode; a retry skipped against an unelapsed `reset_at` is an explicit fact, not an absence; aux-task spend is attributed separately from main-model spend under the same seat and attempt; a compression degradation is a recorded quality event. The registry declares the **desired topology per profile** — five subscriptions yielding three rungs — and reconciliation against actual emits typed drift findings in both directions: a desired-but-absent subscription is `missing` and routed to its declared enactment path (`operator-ceremony` for OAuth grants, `secret-reference` for API keys), never reported as ordinary unavailability or silently dropped from the chain, while a present-but-undesired entry is `unregistered` and non-selectable pending operator keep-or-evict. A reconciliation plan whose steps have a dependency order states it, so no proposed step retires a provider that a profile still resolves to. Each profile's `fallback_providers` and aux `fallback_chain` are generated from that topology as revision-pinned authored configuration, applied by the adapter and read by the engine, with ctower never writing `auth.json`; no environment variable can alter a chain; and layer identity is preserved — a same-provider rotation is never recorded as a cross-provider fallback, while a transient 429 respects an explicitly configured provider and a capacity error (402, daily-quota, connection) bypasses it. | Credit-unit arithmetic against a weight-table fixture with a 25× spread; credits-by-model×account attribution query; stale/missing weight-table refusal; cached-versus-fresh input pricing across a cache reset; cost-event arithmetic for rotation and round-trip fallback; turn-scoped-not-modal ledger shape; explicit reset-skip fact; main-versus-aux attribution split; degradation event; desired-versus-actual reconciliation over a partially-minted topology (19 of 24) proving `missing` findings rather than silence; enactment-path routing per subscription kind; `unregistered` keep-or-evict fixture; ordered-plan assertion that no step precedes its dependency; five-subscriptions-to-three-rungs generation fixture; registry-to-chain generation diff with revision/digest pins; env-override-ignored fixture; one-writer-per-file inventory; layer-attribution fixture; transient-versus-capacity ladder matrix |
 
-### 5.1 Coverage map — the twenty underlying requirements
+### 5.1 Coverage map — the twenty-four underlying requirements
 
 Nothing was dropped in the fold. Each row above carries these:
 
@@ -1025,7 +1089,7 @@ Nothing was dropped in the fold. Each row above carries these:
 | AC-HAD-09 | fail-closed composition · CommandGuard | Dispatch on an uncleared precondition |
 | AC-HAD-10 | three-axis entry state · identity keying · no-copy verb · exhaustion refusal · per-account reset clocks | A collapsed state prescribing the wrong ceremony |
 | AC-HAD-11 | invalidation hook · rotation rules · probe validity (5 conditions) · probe-target identity · flap hold | An observation that measured the wrong thing |
-| AC-HAD-12 | credit-unit metering · weight tables · cost events · fallback semantics · generated ladder · layer identity | The ledger or config disagreeing with reality |
+| AC-HAD-12 | credit-unit metering · weight tables · cost events · fallback semantics · desired-state reconciliation · drift findings · enactment split · generated ladder · layer identity | The ledger or config disagreeing with reality |
 
 ---
 
