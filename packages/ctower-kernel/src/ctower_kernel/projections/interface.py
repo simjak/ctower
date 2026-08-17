@@ -38,6 +38,7 @@ __all__ = [
     "InboxThreadList",
     "InboxThreadSummary",
     "ProjectionHealth",
+    "ProjectionMaintenanceResult",
     "Projections",
     "TenantDisplayIdentity",
     "TenantDisplayState",
@@ -59,6 +60,15 @@ class BoardLane(StrEnum):
 class ProjectionHealth(StrEnum):
     CURRENT = "CURRENT"
     STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectionMaintenanceResult:
+    """Typed watermark metadata returned by internal projection maintenance."""
+
+    health: ProjectionHealth
+    source_watermark: int
+    projection_watermark: int
 
 
 class HealthStatus(StrEnum):
@@ -509,7 +519,9 @@ class InboxThread:
 
 
 class _ProjectionStore(Protocol):
-    def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView: ...
+    def catch_up(
+        self, tenant_id: UUID, through_watermark: int | None = None
+    ) -> ProjectionMaintenanceResult: ...
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem: ...
 
@@ -521,7 +533,7 @@ class _ProjectionStore(Protocol):
 
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None: ...
 
-    def rebuild(self, tenant_id: UUID) -> BoardView: ...
+    def rebuild(self, tenant_id: UUID) -> ProjectionMaintenanceResult: ...
 
     def health(
         self, tenant_id: UUID, durability: DurabilityHealth, *, now: datetime
@@ -544,7 +556,9 @@ class Projections:
     def __init__(self, store: _ProjectionStore) -> None:
         self._store = store
 
-    def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView:
+    def catch_up(
+        self, tenant_id: UUID, through_watermark: int | None = None
+    ) -> ProjectionMaintenanceResult:
         return self._store.catch_up(tenant_id, through_watermark)
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
@@ -564,7 +578,7 @@ class Projections:
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None:
         return self._store.inbox_read_state(actor, thread_id)
 
-    def rebuild(self, tenant_id: UUID) -> BoardView:
+    def rebuild(self, tenant_id: UUID) -> ProjectionMaintenanceResult:
         return self._store.rebuild(tenant_id)
 
     def health(self, actor: Actor, durability: DurabilityHealth, *, now: datetime) -> ControlHealth:

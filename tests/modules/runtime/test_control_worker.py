@@ -25,6 +25,7 @@ from ctower_kernel.projections import (
     CtowerProjectCutoverHealth,
     ProjectDeliveryView,
     ProjectionHealth,
+    ProjectionMaintenanceResult,
     Projections,
 )
 from ctower_kernel.projections.inbox import InboxReadState
@@ -91,10 +92,12 @@ class _ProjectionStore:
         self.tenants: list[UUID] = []
         self.delivery_tenants: list[UUID] = []
 
-    def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView:
+    def catch_up(
+        self, tenant_id: UUID, through_watermark: int | None = None
+    ) -> ProjectionMaintenanceResult:
         assert through_watermark is None
         self.tenants.append(tenant_id)
-        return BoardView((), ProjectionHealth.CURRENT, 0, 0)
+        return ProjectionMaintenanceResult(ProjectionHealth.CURRENT, 0, 0)
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView:
         raise NotImplementedError
@@ -111,7 +114,7 @@ class _ProjectionStore:
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> InboxReadState | None:
         raise NotImplementedError
 
-    def rebuild(self, tenant_id: UUID) -> BoardView:
+    def rebuild(self, tenant_id: UUID) -> ProjectionMaintenanceResult:
         raise NotImplementedError
 
     def health(

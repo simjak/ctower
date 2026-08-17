@@ -75,80 +75,86 @@ def read_view(
 ) -> BoardView | RecordProblem:
     """Read one authenticated Project-scoped Board view."""
 
-    return _read_view(dsn, actor.tenant_id, query, source=source, actor=actor)
+    return _read_view(dsn, actor=actor, query=query, source=source)
 
 
 def _read_view_for_catch_up(dsn: str, tenant_id: UUID, *, source: int) -> BoardView:
     """Read the tenant projection after an internal accepted-outbox catch-up."""
 
-    result = _read_view(dsn, tenant_id, None, source=source, actor=None)
-    if isinstance(result, RecordProblem):
-        raise TypeError("unscoped catch-up Board read unexpectedly requested authorization")
-    return result
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        return _read_view_data(connection, tenant_id, None, source=source)
 
 
 def _read_view(
-    dsn: str,
+    dsn: str, actor: Actor, query: BoardQuery, *, source: int
+) -> BoardView | RecordProblem:
+    """Read one Board view after composing the authenticated scope predicate."""
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        project_key, _source_kind, _source_ref = _query_filters(query)
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(project_key,) if project_key is not None else (),
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
+        return _read_view_data(connection, actor.tenant_id, query, source=source)
+
+
+def _read_view_data(
+    connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     query: BoardQuery | None,
     *,
     source: int,
-    actor: Actor | None,
-) -> BoardView | RecordProblem:
+) -> BoardView:
     project_key, source_kind, source_ref = _query_filters(query)
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        connection.execute("SET ROLE ctower_projection")
-        if actor is not None:
-            refusal = project_scope_refusal(
-                connection,
-                tenant_id=actor.tenant_id,
-                principal_id=actor.principal_id,
-                project_keys=(project_key,) if project_key is not None else (),
-                allow_operator_read=True,
-            )
-            if refusal is not None:
-                return refusal
-        cursor = connection.execute(
-            """
-            SELECT acceptance_position, health, blocked_outbox_id
-            FROM outbox_consumer_cursors
-            WHERE consumer_key = 'board_projection' AND tenant_id = %s
-              AND topic = 'record.events'
-            """,
-            (tenant_id,),
-        ).fetchone()
-        row_count = connection.execute(
-            """
-            SELECT count(*) AS value
-            FROM board_projection_rows
-            WHERE tenant_id = %s
-              AND (%s::text IS NULL OR project_key = %s)
-            """,
-            (tenant_id, project_key, project_key),
-        ).fetchone()
-        rows = connection.execute(
-            """
-            SELECT * FROM board_projection_rows
-            WHERE tenant_id = %s
-              AND (%s::text IS NULL OR project_key = %s)
-              AND (%s::text IS NULL OR source_kind = %s)
-              AND (%s::text IS NULL OR source_ref = %s)
-            ORDER BY ticket_id
-            """,
-            (
-                tenant_id,
-                project_key,
-                project_key,
-                source_kind,
-                source_kind,
-                source_ref,
-                source_ref,
-            ),
-        ).fetchall()
-        expected_cards = _expected_card_count(connection, tenant_id, project_key)
-        scoped_source = _project_source(connection, tenant_id, project_key)
-        scoped_projection = _scoped_projection_position(connection, tenant_id, project_key)
-        context = _read_context_sets(connection, tenant_id, rows)
+    cursor = connection.execute(
+        """
+        SELECT acceptance_position, health, blocked_outbox_id
+        FROM outbox_consumer_cursors
+        WHERE consumer_key = 'board_projection' AND tenant_id = %s
+          AND topic = 'record.events'
+        """,
+        (tenant_id,),
+    ).fetchone()
+    row_count = connection.execute(
+        """
+        SELECT count(*) AS value
+        FROM board_projection_rows
+        WHERE tenant_id = %s
+          AND (%s::text IS NULL OR project_key = %s)
+        """,
+        (tenant_id, project_key, project_key),
+    ).fetchone()
+    rows = connection.execute(
+        """
+        SELECT * FROM board_projection_rows
+        WHERE tenant_id = %s
+          AND (%s::text IS NULL OR project_key = %s)
+          AND (%s::text IS NULL OR source_kind = %s)
+          AND (%s::text IS NULL OR source_ref = %s)
+        ORDER BY ticket_id
+        """,
+        (
+            tenant_id,
+            project_key,
+            project_key,
+            source_kind,
+            source_kind,
+            source_ref,
+            source_ref,
+        ),
+    ).fetchall()
+    expected_cards = _expected_card_count(connection, tenant_id, project_key)
+    scoped_source = _project_source(connection, tenant_id, project_key)
+    scoped_projection = _scoped_projection_position(connection, tenant_id, project_key)
+    context = _read_context_sets(connection, tenant_id, rows)
     global_projection = _cursor_position(cursor)
     view_source, projection = _scoped_watermarks(
         project_key,

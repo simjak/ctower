@@ -16,8 +16,9 @@ from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.projections import ProjectionHealth, Projections
+from ctower_kernel.projections import BoardQuery, ProjectionHealth, Projections
 from ctower_kernel.projections.postgres import PostgresProjections
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
@@ -59,9 +60,13 @@ def test_thread_first_intake_is_atomic_replay_safe_and_board_neutral(
         accepted = _submit(client, tenant, body, command_id)
     assert accepted.status_code == HTTP_CREATED
     assert accepted.json() == {**result, "durability_state": "accepted"}
-    board = Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(
-        tenant.tenant_id
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    projections.catch_up(tenant.tenant_id)
+    board = projections.board(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        BoardQuery(project_key=None),
     )
+    assert not isinstance(board, RecordProblem), board
     assert board.cards == ()
     assert _authority_counts(tenant) == (1, 1, 1, 0, 0, 0)
 

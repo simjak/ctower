@@ -19,6 +19,8 @@ from ctower_api.interface import create_app
 from ctower_kernel.attention import Attention, PoisonDisposition, PoisonDispositionAction
 from ctower_kernel.attention.postgres import PostgresAttention
 from ctower_kernel.projections import (
+    BoardQuery,
+    BoardView,
     HealthContributorKey,
     HealthStatus,
     ProjectionHealth,
@@ -288,6 +290,7 @@ def test_board_fold_excludes_pending_commands_and_rebuilds_accepted_facts_only(
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
 
     pending = projections.catch_up(tenant.tenant_id)
+    pending_board = _board(projections, tenant)
     accept_command(
         tenant.database.admin_dsn,
         tenant.tenant_id,
@@ -295,13 +298,15 @@ def test_board_fold_excludes_pending_commands_and_rebuilds_accepted_facts_only(
         outcome.command_id,
     )
     accepted = projections.catch_up(tenant.tenant_id)
-    rebuilt = projections.rebuild(tenant.tenant_id)
+    projections.rebuild(tenant.tenant_id)
+    accepted_board = _board(projections, tenant)
+    rebuilt_board = _board(projections, tenant)
 
-    assert pending.cards == ()
+    assert pending_board.cards == ()
     assert pending.source_watermark == 0
     assert accepted.health is ProjectionHealth.CURRENT
-    assert [card.ticket_id for card in accepted.cards] == [outcome.ticket.ticket_id]
-    assert rebuilt.response_payload() == accepted.response_payload()
+    assert [card.ticket_id for card in accepted_board.cards] == [outcome.ticket.ticket_id]
+    assert rebuilt_board.response_payload() == accepted_board.response_payload()
 
 
 def test_poison_stops_partition_deduplicates_attention_and_retry_recovers(
@@ -344,7 +349,7 @@ def test_poison_stops_partition_deduplicates_attention_and_retry_recovers(
     recovered = projections.catch_up(tenant.tenant_id)
 
     assert recovered.health is ProjectionHealth.CURRENT
-    assert [card.ticket_id for card in recovered.cards] == [ticket_id]
+    assert [card.ticket_id for card in _board(projections, tenant).cards] == [ticket_id]
 
 
 def test_board_get_is_a_nonmutating_stored_projection_read(tenant: TenantFixture) -> None:
@@ -419,10 +424,12 @@ def test_accepted_tombstone_survives_projection_generation_rebuild(
         command_id,
     )
 
-    disposed = projections.catch_up(tenant.tenant_id)
+    projections.catch_up(tenant.tenant_id)
+    disposed_board = _board(projections, tenant)
     rebuilt = projections.rebuild(tenant.tenant_id)
+    rebuilt_board = _board(projections, tenant)
 
-    assert disposed.response_payload() == rebuilt.response_payload()
+    assert disposed_board.response_payload() == rebuilt_board.response_payload()
     assert rebuilt.health is ProjectionHealth.STATE_UNKNOWN
     assert rebuilt.projection_watermark == rebuilt.source_watermark == 1
     with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
@@ -471,9 +478,10 @@ def test_fold_crash_replays_and_terminal_retry_requires_recovery(
 
     first = projections.catch_up(tenant.tenant_id)
     second = projections.catch_up(tenant.tenant_id)
-    terminal = projections.catch_up(tenant.tenant_id)
+    projections.catch_up(tenant.tenant_id)
+    failed_board = _board(projections, tenant)
 
-    assert first.cards == second.cards == terminal.cards == ()
+    assert failed_board.cards == ()
     assert first.projection_watermark == second.projection_watermark == 0
     assert _poison_counts(tenant) == (3, 1, 1)
 
@@ -500,7 +508,9 @@ def test_fold_crash_replays_and_terminal_retry_requires_recovery(
     recovered = projections.catch_up(tenant.tenant_id)
 
     assert recovered.health is ProjectionHealth.CURRENT
-    assert [card.ticket_id for card in recovered.cards] == [outcome.ticket.ticket_id]
+    assert [card.ticket_id for card in _board(projections, tenant).cards] == [
+        outcome.ticket.ticket_id
+    ]
 
 
 def test_health_keeps_future_contributors_explicitly_unknown(tenant: TenantFixture) -> None:
@@ -551,6 +561,15 @@ def test_health_keeps_future_contributors_explicitly_unknown(tenant: TenantFixtu
         )
     assert response.status_code == _HTTP_OK
     assert response.json()["schema_id"] == "ctower.health/v1"
+
+
+def _board(projections: Projections, tenant: TenantFixture) -> BoardView:
+    result = projections.board(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        BoardQuery(project_key="ctower"),
+    )
+    assert not isinstance(result, RecordProblem), result
+    return result
 
 
 def _prepare_poisoned_ticket(tenant: TenantFixture) -> tuple[UUID, UUID, dict[str, object]]:

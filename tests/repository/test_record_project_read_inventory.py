@@ -27,6 +27,8 @@ class _InventoryRow:
     function_name: str
     predicate_line: int | None
     materialization_line: int | None
+    identity_flow: bool = True
+    refusal_dominates: bool = True
 
     @property
     def composes_predicate(self) -> bool:
@@ -34,6 +36,8 @@ class _InventoryRow:
             self.predicate_line is not None
             and self.materialization_line is not None
             and self.predicate_line < self.materialization_line
+            and self.identity_flow
+            and self.refusal_dominates
         )
 
     def output(self) -> str:
@@ -50,6 +54,26 @@ class _InventoryRow:
 
 
 class RecordProjectReadInventoryTests(unittest.TestCase):
+    def test_projection_maintenance_returns_metadata_not_board_data(self) -> None:
+        interface = ast.parse(_PROJECTION_ROOT.joinpath("interface.py").read_text(encoding="utf-8"))
+        public = next(
+            node
+            for node in interface.body
+            if isinstance(node, ast.ClassDef) and node.name == "Projections"
+        )
+        returns = {
+            node.name: ast.unparse(node.returns)
+            for node in public.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name in {"catch_up", "rebuild"}
+            and node.returns is not None
+        }
+        self.assertEqual({"catch_up", "rebuild"}, set(returns))
+        self.assertEqual(
+            {"ProjectionMaintenanceResult"},
+            {return_type.replace(" | None", "") for return_type in returns.values()},
+        )
+
     def test_every_project_scoped_record_read_composes_grant_before_materialization(self) -> None:
         inventory = _discover_inventory()
         self.assertTrue(inventory, "the Project-read inventory discovered no reads")
@@ -87,6 +111,24 @@ class RecordProjectReadInventoryTests(unittest.TestCase):
             )
             self.assertTrue(restored)
             self.assertTrue(all(row.composes_predicate for row in restored))
+
+    def test_projection_read_inventory_rejects_identity_discard(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            projection_root = Path(temporary) / "projections"
+            shutil.copytree(_PROJECTION_ROOT, projection_root)
+            board_sql = projection_root / "_board_sql.py"
+            original = board_sql.read_text(encoding="utf-8")
+            mutated = original.replace("actor=actor", "actor=None", 1)
+            self.assertNotEqual(original, mutated)
+            board_sql.write_text(mutated, encoding="utf-8")
+
+            inventory = _discover_projection_inventory(projection_root)
+            failures = [row.output() for row in inventory if not row.composes_predicate]
+            print("identity-discard projection guard failures:", failures)
+            self.assertTrue(
+                failures,
+                "the identity-discard projection read unexpectedly passed the guard",
+            )
 
 
 def _discover_inventory() -> tuple[_InventoryRow, ...]:
@@ -165,7 +207,7 @@ def _discover_projection_inventory(
             source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
             function = _function(source, function_name)
             predicate_line = _first_call_line(function, "project_scope_refusal")
-            materialization_line = _first_materialization_execute_line(function)
+            materialization_line = _projection_materialization_line(source, function)
             rows.append(
                 _InventoryRow(
                     public_owner=owner,
@@ -175,6 +217,12 @@ def _discover_projection_inventory(
                     function_name=function_name,
                     predicate_line=predicate_line,
                     materialization_line=materialization_line,
+                    identity_flow=_projection_identity_flow(
+                        postgres, method, target, projection_root
+                    ),
+                    refusal_dominates=_scope_guard_dominates_materialization(
+                        function, materialization_line
+                    ),
                 )
             )
     return tuple(rows)
@@ -267,6 +315,188 @@ def _resolve_board_target(target: tuple[Path, str]) -> tuple[Path, str]:
     if _calls(function, "_read_view"):
         return source_path, "_read_view"
     return target
+
+
+def _projection_identity_flow(
+    postgres: ast.Module,
+    method_name: str,
+    target: tuple[Path, str],
+    projection_root: Path,
+) -> bool:
+    if method_name != "board":
+        source = ast.parse(target[0].read_text(encoding="utf-8"), filename=str(target[0]))
+        return _actor_arguments_reach_predicate(_function(source, target[1]))
+
+    board = _function(postgres, "board")
+    aliases = _postgres_sql_aliases(
+        postgres,
+        module_prefix="ctower_kernel.projections._",
+        module_root=projection_root,
+    )
+    read_view_call = next(
+        (
+            call
+            for call in ast.walk(board)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and aliases.get(call.func.id) == target
+        ),
+        None,
+    )
+    if read_view_call is None or not _positional_argument_is_name(read_view_call, 1, "actor"):
+        return False
+
+    board_sql = ast.parse(
+        (projection_root / "_board_sql.py").read_text(encoding="utf-8"),
+        filename=str(projection_root / "_board_sql.py"),
+    )
+    read_view = _function(board_sql, "read_view")
+    inner_call = next(
+        (
+            call
+            for call in ast.walk(read_view)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == "_read_view"
+        ),
+        None,
+    )
+    if inner_call is None or not _keyword_argument_is_name(inner_call, "actor", "actor"):
+        return False
+    return _actor_arguments_reach_predicate(_function(board_sql, "_read_view"))
+
+
+def _actor_arguments_reach_predicate(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    actor = next(
+        (
+            argument
+            for argument in (
+                *function.args.posonlyargs,
+                *function.args.args,
+                *function.args.kwonlyargs,
+            )
+            if argument.arg == "actor"
+        ),
+        None,
+    )
+    if actor is None or actor.annotation is None or ast.unparse(actor.annotation) != "Actor":
+        return False
+    calls = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "project_scope_refusal"
+    ]
+    if len(calls) != 1:
+        return False
+    arguments = {keyword.arg: keyword.value for keyword in calls[0].keywords if keyword.arg}
+    return all(
+        _is_actor_attribute(arguments.get(name), attribute)
+        for name, attribute in (("tenant_id", "tenant_id"), ("principal_id", "principal_id"))
+    )
+
+
+def _projection_materialization_line(
+    source: ast.Module, function: ast.FunctionDef | ast.AsyncFunctionDef
+) -> int | None:
+    direct = _first_materialization_execute_line(function)
+    if direct is not None:
+        return direct
+    for call in ast.walk(function):
+        if (
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == "_read_view_data"
+        ):
+            return _first_materialization_execute_line(_function(source, "_read_view_data"))
+    return None
+
+
+def _is_actor_attribute(node: ast.AST | None, attribute: str) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == attribute
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "actor"
+    )
+
+
+def _positional_argument_is_name(call: ast.Call, position: int, name: str) -> bool:
+    if position >= len(call.args):
+        return False
+    argument = call.args[position]
+    return isinstance(argument, ast.Name) and argument.id == name
+
+
+def _keyword_argument_is_name(call: ast.Call, keyword: str, name: str) -> bool:
+    return any(
+        item.arg == keyword and isinstance(item.value, ast.Name) and item.value.id == name
+        for item in call.keywords
+    )
+
+
+def _scope_guard_dominates_materialization(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+    materialization_line: int | None = None,
+) -> bool:
+    predicate_line = _first_call_line(function, "project_scope_refusal")
+    materialization_line = (
+        materialization_line
+        if materialization_line is not None
+        else _first_materialization_execute_line(function)
+    )
+    if (
+        predicate_line is None
+        or materialization_line is None
+        or predicate_line >= materialization_line
+    ):
+        return False
+    predicate_assignments = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == "project_scope_refusal"
+            for call in ast.walk(node.value)
+        )
+    ]
+    if len(predicate_assignments) != 1:
+        return False
+    targets = {
+        target.id for target in predicate_assignments[0].targets if isinstance(target, ast.Name)
+    }
+    if not targets:
+        return False
+    for node in ast.walk(function):
+        if not isinstance(node, ast.If) or node.lineno <= predicate_line:
+            continue
+        if node.end_lineno is None or node.end_lineno >= materialization_line:
+            continue
+        if not any(_is_not_none_test(node.test, target) for target in targets):
+            continue
+        if any(
+            isinstance(child, ast.Return)
+            for statement in node.body
+            for child in ast.walk(statement)
+        ):
+            return True
+    return False
+
+
+def _is_not_none_test(node: ast.AST, name: str) -> bool:
+    return (
+        isinstance(node, ast.Compare)
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.IsNot)
+        and len(node.comparators) == 1
+        and isinstance(node.left, ast.Name)
+        and node.left.id == name
+        and isinstance(node.comparators[0], ast.Constant)
+        and node.comparators[0].value is None
+    )
 
 
 def _calls(function: ast.AST, name: str) -> bool:
