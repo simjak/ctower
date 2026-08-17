@@ -101,6 +101,20 @@ class CatalogAdmissionTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 self._assert_non_waivable_report(root, relative)
 
+    def test_semantic_documents_refuse_wherever_the_class_occurs(self) -> None:
+        for label, relative, tenant_content, public_content in _documents_outside_catalog():
+            with self.subTest(label=label):
+                self._assert_admission(relative, tenant_content, refused=True)
+                self._assert_admission(relative, public_content, refused=False)
+
+    def test_unparsable_document_carrying_the_field_refuses_wherever_it_occurs(self) -> None:
+        self._assert_admission(
+            "docs/private-catalog-broken.yaml", "catalog_content: [tenant\n", refused=True
+        )
+
+    def test_unparsable_document_without_the_field_is_admitted_outside_the_registry(self) -> None:
+        self._assert_admission("docs/notes/draft.json", '{"name": "private",\n', refused=False)
+
     def test_public_synthetic_catalog_artifact_is_admitted(self) -> None:
         with self._repository() as root:
             artifact = root / "examples/catalog/synthetic-skill.yaml"
@@ -137,6 +151,24 @@ class CatalogAdmissionTests(unittest.TestCase):
             clean_report = verify(root, "full")
 
         self.assertTrue(clean_report.ok, clean_report.findings)
+
+    def _assert_admission(self, relative: str, content: str, *, refused: bool) -> None:
+        with self._repository() as root:
+            artifact = root / relative
+            artifact.parent.mkdir(parents=True, exist_ok=True)
+            artifact.write_text(content, encoding="utf-8")
+
+            report = verify(root, "full")
+
+        refusals = [
+            (finding.rule_id, finding.path)
+            for finding in report.errors
+            if finding.rule_id == _STABLE_REFUSAL
+        ]
+        self.assertEqual(
+            refusals, [(_STABLE_REFUSAL, relative)] if refused else [], report.findings
+        )
+        self.assertEqual(report.ok, not refused, report.findings)
 
     def _assert_public_artifact_admitted(self, relative: str, content: str) -> None:
         with self._repository() as root:
@@ -204,6 +236,59 @@ class CatalogAdmissionTests(unittest.TestCase):
             if policy_source is not None:
                 shutil.copyfile(policy_source, root / "tools/checks/policy.toml")
             yield root
+
+
+def _documents_outside_catalog() -> Iterator[tuple[str, str, str, str]]:
+    """Semantic documents at paths the catalog artifact registry never covers."""
+
+    for label, key, value in _spellings():
+        yield (
+            f"json-{label}",
+            "docs/private-catalog.json",
+            f'{{"{key}":"{value}","name":"private"}}\n',
+            f'{{"{key}":"synthetic","name":"generic example"}}\n',
+        )
+        yield (
+            f"yaml-{label}",
+            "contracts/private-catalog.yml",
+            f'metadata:\n  "{key}": "{value}"\nname: private\n',
+            f'metadata:\n  "{key}": "synthetic"\nname: generic example\n',
+        )
+        yield (
+            f"frontmatter-{label}",
+            "docs/notes/private-runbook.md",
+            f'---\nmetadata:\n  "{key}": "{value}"\nname: private\n---\n\n# Runbook\n',
+            f'---\nmetadata:\n  "{key}": "synthetic"\nname: generic example\n---\n\n# Runbook\n',
+        )
+    for label, key, value in _yaml_only_spellings():
+        yield (
+            f"yaml-{label}",
+            "contracts/private-catalog.yml",
+            f'metadata:\n  "{key}": "{value}"\nname: private\n',
+            f'metadata:\n  "{key}": "synthetic"\nname: generic example\n',
+        )
+        yield (
+            f"frontmatter-{label}",
+            "docs/notes/private-runbook.md",
+            f'---\nmetadata:\n  "{key}": "{value}"\nname: private\n---\n\n# Runbook\n',
+            f'---\nmetadata:\n  "{key}": "synthetic"\nname: generic example\n---\n\n# Runbook\n',
+        )
+
+
+def _spellings() -> tuple[tuple[str, str, str], ...]:
+    """The one semantic field, written the ways JSON and YAML both decode."""
+
+    return (
+        ("literal", "catalog_content", "tenant"),
+        ("unicode-escaped-key", "\\u0063atalog_content", "tenant"),
+        ("unicode-escaped-value", "catalog_content", "\\u0074enant"),
+    )
+
+
+def _yaml_only_spellings() -> tuple[tuple[str, str, str], ...]:
+    """Hexadecimal escapes are legal YAML and rejected by JSON."""
+
+    return (("hex-escaped-key-and-value", "\\x63atalog_content", "\\x74enant"),)
 
 
 def _catalog_representations() -> Iterator[tuple[str, str, str, str]]:
