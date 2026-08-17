@@ -42,8 +42,22 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9._-]*:[a-z][a-z0-9._-]*$"
           },
+          "seat_key": {
+            "description": "Exact project-seat key bound to this authored assignment; never inferred from subject or display text.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{1,95}$"
+          },
+          "role_key": {
+            "description": "Exact configured role key bound to this authored assignment; never inferred from subject or display text.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{1,95}$"
+          },
           "slot": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$" },
           "component": { "$ref": "#/$defs/componentRef" }
+        },
+        "dependentRequired": {
+          "seat_key": ["role_key"],
+          "role_key": ["seat_key"]
         }
       }
     },

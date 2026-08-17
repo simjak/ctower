@@ -1618,6 +1618,70 @@ execution_policy:
   max_nonprogressing_candidate_mutations: 2
 ```
 
+#### Authenticated role facts and stage-role narrowing
+
+CT-I1-036's role record is a derived read over existing authorities, not a new identity plane or role store.
+For a role-bearing assignment, the authored CompanyBundle assignment contains the exact `seat_key` and exact
+`role_key` alongside its `subject`, `slot`, and component reference. The operator writes that binding with the
+authenticated `company bundle apply` command. The active bundle revision, assignment/component revision and
+digest, and referenced seat-catalog revision and digest are pinned source facts. A project-seat grant resolves
+only when its `project_seats.seat_key` equals the assignment's authored `seat_key` exactly. The assignment
+subject remains the configured role identity; `role_key` is the exact membership key. Existing non-role
+assignments may omit the pair, but a role-bearing assignment cannot. No caller, token claim, principal ID,
+display name, profile, model, harness, crew label, seat spelling, or stage name supplies either value.
+
+The resulting role fact is typed by authority plane. A project-seat fact carries `authority_plane=project-seat`,
+the authenticated principal, tenant, project, exact seat key, assignment subject, role key, scope, and all
+source revision/digest pins. A human fact carries `authority_plane=human-binding`, the authenticated principal,
+exact bound project scope, the human binding's exact authored role value, and its binding/access-policy revision
+and digest. The planes remain disjoint: neither fact grants the other plane's scope or credential capability.
+Missing, ambiguous, revoked, expired, stale, or foreign-scope resolution returns
+`role-resolution-unavailable` with zero mutation. The resolved fact and its source pins are part of the
+immutable Workflow run/transition participant digest; later authority changes affect future resolution only.
+
+A Workflow stage may declare an optional nonempty unique `role_keys` list of exact
+`{authority_plane, key}` references. `authority_plane` is `project-seat` or `human-binding`, and `key` is an
+opaque configured role key. A missing field means that the stage is role-neutral and requires no membership
+check. An empty field is invalid and is never a wildcard. The stage role set, its order, and the effective
+policy-narrowed set are carried into the normalized Workflow/effective-participant digest. The
+`engineering.software-factory@1` pack declares a nonempty base set for every stage; those values are package
+data and never a product-code roster.
+
+CT-I2-006 is the sole owner of stage-role membership, refusal, and `participant_resolution` enforcement.
+CT-I1-036 owns the authenticated role fact and source-binding contract only. For a transition, membership is
+checked for the destination stage being entered, not the source stage. For a stage attempt, membership is
+checked for the current stage. A non-member returns `workflow-stage-role-not-permitted` before authoritative
+transition mutation. Its refusal body carries the checked stage, source/destination when applicable, declared
+and effective role sets, actor plane, resolved role (or null), and one transition evaluation. It changes no
+stage, job, gate, Evidence, or delivery fact.
+
+The evaluator's refusal precedence is total: after `workflow-version-unknown` and `workflow-run-not-started`,
+it selects the requested edge; an absent edge returns `workflow-transition-not-declared` without a role check.
+For a declared edge into a role-bearing stage it resolves the role, returns `role-resolution-unavailable` if
+that fact cannot be established, checks membership, and returns `workflow-stage-role-not-permitted` before
+checking the edge predicate. Only a resolved member reaches `workflow-predicate-unsatisfied`; a role-neutral
+stage skips the role checks. Thus undeclared plus non-member is `workflow-transition-not-declared`,
+predicate-unsatisfied plus non-member is `workflow-stage-role-not-permitted`, and permitted member plus an
+unsatisfied predicate is `workflow-predicate-unsatisfied`. AC-ROLE-03's combined-failure matrix proves these
+cells and the zero-mutation result.
+
+The human plane has explicit outcomes. An authenticated operator is the exact `human-binding/operator` fact
+and can satisfy a stage only when that exact reference is declared and all protected-operation rules pass. An
+authenticated commander is the exact `human-binding/commander` fact and can satisfy only an explicitly
+declaring stage; no project-seat scope is invented. A viewer remains read-only: mutation is refused by the
+existing human authorization boundary before transition evaluation, and any read/attempt evaluation that
+reaches a stage-role check uses the exact `human-binding/viewer` fact and returns the named stage-role refusal
+when it is not declared. Missing or ambiguous human binding is `role-resolution-unavailable`; no human path
+is silent or equated with a project-seat role.
+
+`participant_resolution` is an optional unique list of stage mappings. Each mapping names a declared stage and
+a nonempty unique subset of that stage's authored base `role_keys`. The effective set preserves base order
+after filtering to policy members. An absent mapping leaves the base set unchanged and is not a wildcard for
+a role-bearing stage. A mapping for a role-neutral stage, an empty effective set, duplicate/unknown reference,
+widened set, or ambiguous stage mapping is refused before publication or dispatch. The policy cannot add a
+role, stage, edge, capability, or participant; its exact ref/digest and effective set are pinned in the
+participant digest.
+
 The five required configurable controls and the separate observed execution count have precise meanings:
 
 - `required_perspectives` is the complete set of independently attributable verdict perspectives required
