@@ -58,8 +58,10 @@ class PostgresProjections:
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         return _list_threads(self._dsn, actor, unread=unread)
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
-        return _list_correspondents(self._dsn, actor)
+    def list_inbox_correspondents(
+        self, actor: Actor, project_key: str | None = None
+    ) -> InboxCorrespondentList:
+        return _list_correspondents(self._dsn, actor, project_key)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return _read_thread(self._dsn, actor, thread_id)

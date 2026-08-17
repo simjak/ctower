@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0074_restore_routine_retirement_kind.sql",
-    "schema_sha256": "sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea",
+    "through": "0075_inbox_message_severity.sql",
+    "schema_sha256": "sha256:0b0cd1fc1aac9139eb17dc5785b5813993c1423807189a05269c4c965f53ede0",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:b35533df20f94ae7eb67dfd9cdea4a15884de96213d6e43521c3413fb2a6732e"
   },
@@ -702,6 +702,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_operator_retires_active_beat_append_only_and_future_ticks_do_not_reactivate",
       "rollback_or_forward_compensation": "Preserve every immutable Routine retirement, beat effect, canonical event, command result, and outbox row; append a reviewed forward compensation rather than editing or deleting an accepted runtime fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify routine-trigger, routine-retirement, event, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no runtime rows."
+    },
+    {
+      "path": "0075_inbox_message_severity.sql",
+      "sha256": "sha256:6ea6f5592ab0e0876c5dd50283c8670774eb8a0fa4dda6d6a4b44d19b86281b5",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_inbox.py::test_native_inbox_message_round_trip_preserves_severity",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves immutable inbox facts; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify inbox message, projection message, event, command-result, and outbox counts plus a verified database backup; existing messages are explicitly backfilled as info."
     }
   ]
 }

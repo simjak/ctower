@@ -3840,6 +3840,58 @@
       "verifier": "00000000-0000-4000-8000-000000000003",
       "verdict_id": "00000000-0000-4000-8000-000000000004",
       "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-COMMS-01",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-comms-01 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-036",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-COMMS-02",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-comms-02 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-036",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-COMMS-03",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-comms-03 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-036",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-COMMS-04",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-comms-04 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-036",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
   ],
   "deferred_suites": [

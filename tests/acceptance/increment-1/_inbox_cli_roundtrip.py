@@ -246,6 +246,8 @@ def _accepted_send(
     credential: str,
     to: str,
     text: str,
+    severity: str = "info",
+    project_key: str = "ctower",
     thread_id: UUID | None = None,
 ) -> dict[str, object]:
     command_id = uuid4()
@@ -258,6 +260,10 @@ def _accepted_send(
         str(command_id),
         "--to",
         to,
+        "--severity",
+        severity,
+        "--project-key",
+        project_key,
     ]
     if thread_id is not None:
         arguments.extend(("--thread", str(thread_id)))

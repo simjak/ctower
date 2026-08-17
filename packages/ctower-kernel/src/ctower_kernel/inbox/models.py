@@ -8,6 +8,7 @@ from enum import StrEnum
 from uuid import UUID
 
 from ctower_kernel.record.events import EventOrigin
+from ctower_kernel.record.inbox_events import InboxSeverity
 
 __all__ = [
     "InboxAcknowledgeCommand",
@@ -18,6 +19,7 @@ __all__ = [
     "InboxPromotionResult",
     "InboxSendCommand",
     "InboxSendResult",
+    "InboxSeverity",
 ]
 
 
@@ -82,12 +84,23 @@ class InboxSendCommand:
     sender_principal_id: UUID | None = None
     sender_seat: str | None = None
     origin: EventOrigin = EventOrigin.API
+    severity: InboxSeverity = InboxSeverity.INFO
+    project_key: str | None = None
+
+    def __post_init__(self) -> None:
+        try:
+            severity = InboxSeverity(self.severity)
+        except ValueError as error:
+            raise ValueError("inbox severity is outside the authored contract") from error
+        object.__setattr__(self, "severity", severity)
 
     def request_payload(self) -> dict[str, object]:
         return {
             "text": self.text,
             "thread_id": str(self.thread_id) if self.thread_id is not None else None,
             "to": self.to,
+            "severity": self.severity.value,
+            "project_key": self.project_key,
         }
 
 
@@ -102,6 +115,14 @@ class InboxSendResult:
     thread_id: UUID
     thread_version: int
     to: str
+    severity: InboxSeverity = InboxSeverity.INFO
+
+    def __post_init__(self) -> None:
+        try:
+            severity = InboxSeverity(self.severity)
+        except ValueError as error:
+            raise ValueError("inbox severity is outside the authored contract") from error
+        object.__setattr__(self, "severity", severity)
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -115,6 +136,7 @@ class InboxSendResult:
             "thread_id": str(self.thread_id),
             "thread_version": self.thread_version,
             "to": self.to,
+            "severity": self.severity.value,
         }
 
 

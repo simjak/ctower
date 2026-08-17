@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+Authored contract digest: sha256:852214e9950f66c77c32b3b2e824bf01bec9e59845579088a4a9a1000e49cec0
 """
 
 from __future__ import annotations
@@ -1239,9 +1239,12 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_inbox_correspondents(
         self,
+        *,
+        project_key: str | None = None,
     ) -> InboxCorrespondentList:
         response = self._http.get(
             "/v1/inbox/correspondents",
+            params={**({"project_key": project_key} if project_key is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {

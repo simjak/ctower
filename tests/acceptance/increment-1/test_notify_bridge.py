@@ -116,7 +116,9 @@ def test_notification_command_key_cannot_replay_a_standard_inbox_send(
 ) -> None:
     _qa_id, _qa_credential = _provision_seat(tenant, "digest-qa")
     command_id = uuid4()
-    request = InboxSendRequest(to="digest-qa", text="Domain-separated body.")
+    request = InboxSendRequest(
+        project_key="ctower", severity="info", to="digest-qa", text="Domain-separated body."
+    )
 
     with (
         running_api(
@@ -128,7 +130,12 @@ def test_notification_command_key_cannot_replay_a_standard_inbox_send(
         client.send_inbox_message(request, command_id=command_id)
         with pytest.raises(CtowerProblemError) as raised:
             client.ingest_inbox_notification(
-                InboxNotificationRequest(to=request.to, text=request.text),
+                InboxNotificationRequest(
+                    project_key=request.project_key,
+                    severity=request.severity,
+                    to=request.to,
+                    text=request.text,
+                ),
                 command_id=command_id,
             )
 
@@ -165,7 +172,9 @@ def _notification(to: str, *, subject: str) -> _Notification:
 
 def _ingest(client: CtowerClient, notification: _Notification) -> InboxSendResult:
     return client.ingest_inbox_notification(
-        InboxNotificationRequest(to=notification.to, text=notification.text),
+        InboxNotificationRequest(
+            project_key="ctower", severity="info", to=notification.to, text=notification.text
+        ),
         command_id=notification.delivery_id,
     )
 

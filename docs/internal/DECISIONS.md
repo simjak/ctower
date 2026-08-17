@@ -2992,3 +2992,29 @@ bounded candidate below; it does not derive that scope from D62.
 6. **CT-I1-035 is admitted** to deliver items 1-5 as one bounded candidate under this D67
    authority and operator order R3016. It adds no product UI, no new principal, no session
    write path, no second Inbox store, and no expression language in the gate set.
+
+## D70 — Inbox transport severity and pull delivery contract (product, 2026-08-17, operator order)
+
+The native Inbox has one delivery contract rather than caller folklore about whether a message should wake a
+seat or wait for a routine. This decision takes the second number after D67, leaving D68 and D69 reserved for
+concurrent branches whose merge order will renumber the append-only history.
+
+1. **Every send carries one closed severity.** Native send and notification requests, canonical
+   `message.appended` payloads, durable inbox facts, projections, generated responses, and CLI builders carry
+   exactly `P0`, `P1`, or `info`. Invalid or absent values refuse at the boundary; exact replay includes the
+   value in the request digest and returns the original result.
+2. **P0 is the only interrupt.** A P0 row may use the push/wake path. P1 and `info` are durable rows consumed
+   by the existing n-minute pull, and the already registered beat Routines are that pull. This decision adds
+   no scheduler, wake class, session injection path, or second Inbox store.
+3. **Acknowledgement does not choose transport.** Read and delivery facts remain recipient-only, monotonic,
+   and independent of severity. One unacknowledged P0 may create one typed escalation after its declared
+   acknowledgement window. P1 and `info` have no timer and never escalate solely because a pull is late.
+4. **Addressing is project-qualified and server-derived.** Correspondent reads may filter by project; send and
+   notify require that project key for recipient resolution. Shared, foreign, unknown, and self addresses
+   refuse by existing typed codes, and the caller cannot supply the sender identity.
+5. **Mission Control remains an additive bridge.** `tools/notify` appends rail 1 first, preserves its stable
+   delivery UUID and typed severity, and then best-effort mirrors to native Inbox. Refusal or unavailability
+   on rail 2 is visible but cannot undo rail-1 success. No redirect, live cutover, new environment setting,
+   or live credential/migration rollout is authorized by this decision.
+6. **CT-I1-036 is admitted** to implement and evidence this bounded contract, including the disposable schema
+   migration required to retain severity in authority and projection message rows.

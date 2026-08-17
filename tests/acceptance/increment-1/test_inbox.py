@@ -13,6 +13,7 @@ import httpx
 import psycopg
 import pytest
 from _inbox_cli_roundtrip import RoundTrip as _RoundTrip
+from _inbox_cli_roundtrip import _accepted_send as _accepted_cli_send
 from _inbox_cli_roundtrip import promote as _promote_cli
 from _inbox_cli_roundtrip import roundtrip as _roundtrip
 from psycopg.rows import dict_row
@@ -56,6 +57,7 @@ _AUTHORED_SEND_FIELDS = (
     "message_id",
     "position",
     "sent_at",
+    "severity",
     "thread_id",
     "thread_version",
     "to",
@@ -154,6 +156,62 @@ def test_native_inbox_authority_replay_refusals_and_recipient_projection(
     )
     _assert_send_refusals(tenant, inbox, commander, first.thread_id)
     _assert_recipient_projection(tenant, inbox, commander, qa, first)
+
+
+def test_native_inbox_message_round_trip_preserves_severity(
+    tenant: TenantFixture,
+    protected_state: None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    del protected_state
+    qa_id, _qa_credential = _provision_qa_seat(tenant)
+    accepted = _roundtrip_single_send(
+        tenant,
+        monkeypatch,
+        tmp_path,
+        severity="P0",
+    )
+    result = cast(dict[str, object], accepted["result"])
+    message_id = UUID(str(result["message_id"]))
+    assert result["severity"] == "P0"
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        authority = connection.execute(
+            "SELECT severity FROM inbox_messages WHERE tenant_id = %s AND message_id = %s",
+            (tenant.tenant_id, message_id),
+        ).fetchone()
+    assert authority == {"severity": "P0"}
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    projections.catch_up(tenant.tenant_id)
+    read = projections.read_inbox(
+        Actor(qa_id, tenant.tenant_id, PrincipalKind.COMMANDER), UUID(str(result["thread_id"]))
+    )
+    assert read is not None
+    assert read.messages[0].severity.value == "P0"
+
+
+def _roundtrip_single_send(
+    tenant: TenantFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    severity: str,
+) -> dict[str, object]:
+    with running_api(
+        tenant.database.runtime_dsn,
+        projection_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        return _accepted_cli_send(
+            tenant,
+            monkeypatch,
+            state=tmp_path / "commander",
+            base_url=base_url,
+            credential=tenant.commander_credential,
+            to="qa-agent",
+            text="Severity round-trip.",
+            severity=severity,
+        )
 
 
 def _assert_send_refusals(
@@ -383,7 +441,12 @@ def test_the_send_response_puts_the_authored_field_names_on_the_wire(
                 "Idempotency-Key": str(command_id),
                 **telemetry_headers(command_id),
             },
-            json={"to": "wire-shape-agent", "text": "The wire carries the authored names."},
+            json={
+                "project_key": "ctower",
+                "severity": "info",
+                "to": "wire-shape-agent",
+                "text": "The wire carries the authored names.",
+            },
             timeout=30,
         )
 
@@ -419,7 +482,12 @@ def test_a_send_is_not_accepted_until_its_durable_receipt_commits(
         "Idempotency-Key": str(command_id),
         **telemetry_headers(command_id),
     }
-    request = {"to": "durability-state-agent", "text": "Not sent until the record says so."}
+    request = {
+        "project_key": "ctower",
+        "severity": "info",
+        "to": "durability-state-agent",
+        "text": "Not sent until the record says so.",
+    }
 
     with running_api(
         tenant.database.runtime_dsn,
