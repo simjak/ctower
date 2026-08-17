@@ -9,7 +9,6 @@ non_waivable_rules = [
   "generated.drift",
   "generated.manifest",
   "generated.notice",
-  "tenant-catalog-content-in-public-repository",
 ]
 
 [budgets.file]
