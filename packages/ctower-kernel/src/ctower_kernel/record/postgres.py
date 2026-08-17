@@ -525,7 +525,7 @@ class PostgresRecord:
     def get_ticket(
         self,
         actor: Actor,
-        ticket_id: UUID,
+        ticket_id: UUID | str,
         project_key: str,
         *,
         telemetry: TelemetryContext,
@@ -539,7 +539,7 @@ class PostgresRecord:
     def ticket_timeline(
         self,
         actor: Actor,
-        ticket_id: UUID,
+        ticket_id: UUID | str,
         project_key: str,
         *,
         telemetry: TelemetryContext,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -79,6 +80,19 @@ def uuid_value(value: str | None) -> UUID:
     if value is None:
         raise ValueError("UUID transport value is missing")
     return UUID(value)
+
+
+def ticket_reference(value: str | None) -> UUID | str:
+    """Parse a canonical UUID or a server-assigned PREFIX-N ticket reference."""
+
+    if value is None:
+        raise ValueError("ticket reference is missing")
+    try:
+        return UUID(value)
+    except ValueError:
+        if re.fullmatch(r"[A-Z]{2,5}-[1-9][0-9]*", value):
+            return value
+    raise ValueError("ticket reference is outside the authored contract")
 
 
 def validation_problem() -> RecordProblem:
