@@ -280,8 +280,9 @@ promotion endpoints. Its browser submits message text and the answer it last rec
 identity and is resolved server-side, and the only field read back out of that previous answer is the command
 identity a still-unconfirmed send retries under. A `durability_pending` answer is rendered as an unsent
 message, never as a sent one. It adds no browser authority, product route, record-tier connection, or I1/I2.4
-completion claim. D42 as amended by D44 activates one required suite for that boundary,
-`dogfood-inbox-controls`, which drives it in a headless browser on ephemeral loopback ports; the product
+completion claim. D42 as amended by D44 and D56 activates one required suite for that boundary,
+`dogfood-surface-e2e`, which drives its Inbox controls and isolated live terminal reader in a headless
+browser on ephemeral loopback ports; the product
 `browser-e2e` suite stays deferred to CT-I2-005.
 Service-per-noun units such as a separate reconciler are not implied.
 
