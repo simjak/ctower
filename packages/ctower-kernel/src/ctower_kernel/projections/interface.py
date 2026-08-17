@@ -9,7 +9,6 @@ from typing import Protocol
 from uuid import UUID
 
 from ctower_kernel.projections.inbox import (
-    InboxCorrespondent,
     InboxCorrespondentList,
     InboxMessage,
     InboxThread,

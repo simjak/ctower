@@ -28,9 +28,8 @@ from ctower_kernel.projections import (
     ProjectionMaintenanceResult,
     Projections,
 )
-from ctower_kernel.projections.inbox import InboxReadState
+from ctower_kernel.projections.inbox import InboxCorrespondentList, InboxReadState
 from ctower_kernel.projections.interface import (
-    InboxCorrespondentList,
     InboxThread,
     InboxThreadList,
 )

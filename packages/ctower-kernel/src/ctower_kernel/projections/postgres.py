@@ -29,9 +29,8 @@ from ctower_kernel.projections._project_delivery_sql import cutover_health as _c
 from ctower_kernel.projections._project_delivery_sql import (
     project_delivery as _project_delivery,
 )
-from ctower_kernel.projections.inbox import InboxReadState
+from ctower_kernel.projections.inbox import InboxCorrespondentList, InboxReadState
 from ctower_kernel.projections.interface import (
-    InboxCorrespondentList,
     InboxThread,
     InboxThreadList,
 )

@@ -287,7 +287,7 @@ def test_project_scope_refusals_are_declared_for_board_and_delivery() -> None:
 def test_http_reference_response_sets_match_the_authored_contract() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     authored: dict[str, list[str]] = {}
-    for path, path_item in cast(dict[str, dict[str, object]], document["paths"]).items():
+    for path_item in cast(dict[str, dict[str, object]], document["paths"]).values():
         for method, operation in cast(dict[str, dict[str, object]], path_item).items():
             if method in {"get", "post"}:
                 operation_id = cast(str, operation["operationId"])
@@ -309,13 +309,12 @@ def test_http_reference_response_sets_match_the_authored_contract() -> None:
 
     assert set(documented) <= set(authored), "reference rows name unknown operations"
     mismatches = sorted(
-        f"{operation_id}: documented={documented[operation_id]} "
-        f"authored={authored[operation_id]}"
+        f"{operation_id}: documented={documented[operation_id]} authored={authored[operation_id]}"
         for operation_id in documented
         if documented[operation_id] != authored[operation_id]
     )
-    assert not mismatches, "documented response sets drifted from the authored contract: " + "; ".join(
-        mismatches
+    assert not mismatches, (
+        "documented response sets drifted from the authored contract: " + "; ".join(mismatches)
     )
 
 
