@@ -70,7 +70,7 @@ class GeneratedReplayExecutor:
 
 def _invoke(
     method: Callable[..., BaseModel],
-    path_arguments: tuple[UUID, ...],
+    path_arguments: tuple[UUID | str, ...],
     request: BaseModel,
     command: SpoolCommand,
 ) -> tuple[ReplayResponse, Problem | None]:
@@ -88,21 +88,26 @@ def _invoke(
     return _success_response(result), None
 
 
-def _path_arguments(path: str, values: JsonObject) -> tuple[UUID, ...]:
+def _path_arguments(path: str, values: JsonObject) -> tuple[UUID | str, ...]:
     names = tuple(_PATH_PARAMETER.findall(path))
     if set(values) != set(names):
         raise ValueError("stored path parameters do not match generated operation")
-    parsed: list[UUID] = []
+    parsed: list[UUID | str] = []
     for name in names:
         value = values[name]
         if not isinstance(value, str):
             raise TypeError("stored path parameter is not a UUID string")
-        parsed.append(UUID(value))
+        try:
+            parsed.append(UUID(value))
+        except ValueError:
+            if not re.fullmatch(r"[A-Z]{2,5}-[1-9][0-9]*", value):
+                raise ValueError("stored path parameter is not a UUID or display key") from None
+            parsed.append(value)
     return tuple(parsed)
 
 
 def _success_response(result: BaseModel) -> ReplayResponse:
-    payload = cast(JsonObject, json.loads(result.model_dump_json(by_alias=True)))
+    payload = cast(JsonObject, json.loads(result.model_dump_json(by_alias=True, exclude_none=True)))
     raw_command_id = payload.get("command_id")
     raw_state = payload.get("durability_state")
     event_ids = payload.get("event_ids")

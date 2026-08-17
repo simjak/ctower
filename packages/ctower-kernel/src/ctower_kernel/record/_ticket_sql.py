@@ -66,6 +66,14 @@ def create_ticket(
         )
         if not isinstance(project, str):
             return project
+        display_key = insert_ticket_state(
+            connection,
+            actor,
+            command,
+            project_key=project,
+            identifiers=identifiers,
+            now=now,
+        )
         ticket = Ticket(
             ticket_id=identifiers.ticket,
             title=command.title,
@@ -74,16 +82,9 @@ def create_ticket(
             custodian_id=command.initial_custodian_id,
             version=1,
             created_at=now,
+            display_key=display_key,
         )
         result = TicketCommandResult(command.client_command_id, (identifiers.event,), ticket)
-        insert_ticket_state(
-            connection,
-            actor,
-            command,
-            project_key=project,
-            identifiers=identifiers,
-            now=now,
-        )
         _append_ticket_created(
             connection,
             actor,
@@ -176,7 +177,7 @@ def _reserve_ticket_outcome(
 def get_ticket(
     dsn: str,
     actor: Actor,
-    ticket_id: UUID,
+    ticket_id: UUID | str,
     project_key: str,
     *,
     telemetry: TelemetryContext,
@@ -195,12 +196,17 @@ def get_ticket(
         )
         if refusal is not None:
             return refusal
+        parsed_ticket_id = _resolve_ticket_reference(
+            connection, actor.tenant_id, project_key, ticket_id
+        )
+        if parsed_ticket_id is None:
+            return _scope_problem()
         row = connection.execute(
             """
             SELECT ticket.ticket_id, ticket.title, ticket.project_key,
                 ticket.source_kind, ticket.source_ref,
                 ticket.priority, ticket.custodian_principal_id, ticket.version,
-                ticket.created_at,
+                ticket.created_at, ticket.display_key,
                 CASE WHEN confirmation.client_command_id IS NULL
                     THEN 'durability_pending' ELSE 'accepted'
                 END AS durability_state
@@ -216,7 +222,7 @@ def get_ticket(
             WHERE ticket.tenant_id = %s AND ticket.project_key = %s
               AND ticket.ticket_id = %s
             """,
-            (actor.tenant_id, project_key, ticket_id),
+            (actor.tenant_id, project_key, parsed_ticket_id),
         ).fetchone()
     return _ticket_from_row(row) if row is not None else _scope_problem()
 
@@ -224,7 +230,7 @@ def get_ticket(
 def ticket_timeline(
     dsn: str,
     actor: Actor,
-    ticket_id: UUID,
+    ticket_id: UUID | str,
     project_key: str,
     *,
     telemetry: TelemetryContext,
@@ -243,6 +249,11 @@ def ticket_timeline(
         )
         if refusal is not None:
             return refusal
+        parsed_ticket_id = _resolve_ticket_reference(
+            connection, actor.tenant_id, project_key, ticket_id
+        )
+        if parsed_ticket_id is None:
+            return _scope_problem()
         rows = connection.execute(
             """
             SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,
@@ -261,12 +272,31 @@ def ticket_timeline(
               )
             ORDER BY sequence
             """,
-            (actor.tenant_id, project_key, ticket_id),
+            (actor.tenant_id, project_key, parsed_ticket_id),
         ).fetchall()
     if not rows:
         return _scope_problem()
     events = tuple(_timeline_event(row) for row in rows)
-    return TicketTimeline(ticket_id, events)
+    return TicketTimeline(parsed_ticket_id, events)
+
+
+def _resolve_ticket_reference(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str,
+    reference: UUID | str,
+) -> UUID | None:
+    if isinstance(reference, UUID):
+        return reference
+    row = connection.execute(
+        """
+        SELECT ticket_id
+        FROM tickets
+        WHERE tenant_id = %s AND project_key = %s AND display_key = %s
+        """,
+        (tenant_id, project_key, reference),
+    ).fetchone()
+    return cast(UUID, row["ticket_id"]) if row is not None else None
 
 
 def _refuse(
@@ -334,6 +364,7 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
+        display_key=cast(str | None, row.get("display_key")),
         durability_state=DurabilityState(str(row["durability_state"])),
     )
 
@@ -349,6 +380,7 @@ def _result_from_payload(payload: dict[str, object]) -> TicketCommandResult:
         custodian_id=UUID(str(ticket_payload["custodian_id"])),
         version=int(cast(int, ticket_payload["version"])),
         created_at=datetime.fromisoformat(str(ticket_payload["created_at"])),
+        display_key=cast(str | None, ticket_payload.get("display_key")),
     )
     event_ids = cast(list[str], payload["event_ids"])
     return TicketCommandResult(

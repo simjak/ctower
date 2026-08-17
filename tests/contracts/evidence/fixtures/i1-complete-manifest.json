@@ -3840,33 +3840,74 @@
       "verifier": "00000000-0000-4000-8000-000000000003",
       "verdict_id": "00000000-0000-4000-8000-000000000004",
       "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-09",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-09 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-10",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-10 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-11",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-11 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-12",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-12 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-TM-13",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-tm-13 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-037",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
   ],
   "deferred_suites": [
-    {
-      "suite_id": "estate-import-acceptance",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
-    },
-    {
-      "suite_id": "estate-import-contracts",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
-    },
-    {
-      "suite_id": "estate-import-modules",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
-    },
-    {
-      "suite_id": "estate-import-tooling",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
-    },
     {
       "suite_id": "activity-gated-routine-acceptance",
       "status": "not_exercised",
@@ -3892,6 +3933,30 @@
       "reason": "expected-suite registry defers this suite to phase CT-I2-005; not required and not counted as passing"
     },
     {
+      "suite_id": "estate-import-acceptance",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
+      "suite_id": "estate-import-contracts",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
+      "suite_id": "estate-import-modules",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
+      "suite_id": "estate-import-tooling",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-032; not required and not counted as passing"
+    },
+    {
       "suite_id": "increment-1-acceptance",
       "status": "not_exercised",
       "source_count": 0,
@@ -3902,6 +3967,12 @@
       "status": "not_exercised",
       "source_count": 0,
       "reason": "expected-suite registry defers this suite to phase CT-I2-010; not required and not counted as passing"
+    },
+    {
+      "suite_id": "ticket-display-keys-acceptance",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-037; not required and not counted as passing"
     }
   ]
 }

@@ -407,8 +407,6 @@ class TicketCommand:
     title: str
 
     def request_payload(self) -> dict[str, object]:
-        """Return the request body without transport authority."""
-
         payload: dict[str, object] = {
             "initial_custodian_id": str(self.initial_custodian_id),
             "priority": self.priority,
@@ -457,13 +455,13 @@ class Ticket:
     version: int
     created_at: datetime
     durability_state: DurabilityState = DurabilityState.PENDING
+    display_key: str | None = None
 
     def response_payload(self) -> dict[str, object]:
-        """Return the generated HTTP resource shape."""
-
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
+            **({"display_key": self.display_key} if self.display_key is not None else {}),
             "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
@@ -482,8 +480,6 @@ class TicketCommandResult:
     ticket: Ticket
 
     def response_payload(self) -> dict[str, object]:
-        """Return the exact authoritative command response."""
-
         return {
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
@@ -682,14 +678,14 @@ class Record(Protocol):
         ...
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID | str, project_key: str, *, telemetry: TelemetryContext
     ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket without cross-tenant disclosure."""
 
         ...
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID | str, project_key: str, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
 

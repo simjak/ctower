@@ -2492,7 +2492,11 @@
         "name": "ticket_id",
         "in": "path",
         "required": true,
-        "schema": {"type": "string", "format": "uuid"}
+        "schema": {
+          "type": "string",
+          "format": "ticket-ref",
+          "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$"
+        }
       },
       "SessionId": {
         "name": "session_id",
@@ -5492,6 +5496,7 @@
         "properties": {
           "created_at": {"type": "string", "format": "date-time"},
           "custodian_id": {"type": "string", "format": "uuid"},
+          "display_key": {"type": ["string", "null"], "pattern": "^[A-Z]{2,5}-[1-9][0-9]*$"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "priority": {"$ref": "#/components/schemas/Priority"},
           "source": {"$ref": "#/components/schemas/SourceReference"},
@@ -6243,6 +6248,7 @@
           "custodian_id": {"type": "string", "format": "uuid"},
           "delivery_facts": {"type": "array", "items": {"type": "string"}},
           "delivery_surface_availability": {"$ref": "#/components/schemas/DeliverySurfaceAvailability"},
+          "display_key": {"type": ["string", "null"], "pattern": "^[A-Z]{2,5}-[1-9][0-9]*$"},
           "human_waiting": {"$ref": "#/components/schemas/HumanWaiting"},
           "inbox_thread_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
           "lane": {"$ref": "#/components/schemas/BoardLane"},
