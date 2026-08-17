@@ -251,7 +251,8 @@ def _append_message(
         INSERT INTO inbox_projection_messages (
             tenant_id, thread_id, message_id, position, sender_id, sender_seat,
             recipient_id, recipient_seat, content, sent_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            , severity
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT DO NOTHING
         """,
         (
@@ -265,6 +266,7 @@ def _append_message(
             recipient["seat_key"],
             payload["text"],
             sent_at,
+            payload.get("severity", "info"),
         ),
     )
     connection.execute(
@@ -355,6 +357,7 @@ def _message(row: dict[str, object]) -> InboxMessage:
         sent_at=cast(datetime, row["sent_at"]),
         text=str(row["content"]),
         to=str(row["recipient_seat"]),
+        severity=str(row.get("severity", "info")),
     )
 
 

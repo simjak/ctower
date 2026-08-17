@@ -15,6 +15,7 @@ from ctower_kernel.projections.project_delivery import (
     ProjectDeliveryView,
 )
 from ctower_kernel.record import Actor, DurabilityHealth
+from ctower_kernel.record.inbox_events import InboxSeverity
 
 __all__ = [
     "AppliedLabel",
@@ -476,6 +477,14 @@ class InboxMessage:
     sent_at: datetime
     text: str
     to: str
+    severity: InboxSeverity = InboxSeverity.INFO
+
+    def __post_init__(self) -> None:
+        try:
+            severity = InboxSeverity(self.severity)
+        except ValueError as error:
+            raise ValueError("inbox message severity is outside the authored contract") from error
+        object.__setattr__(self, "severity", severity)
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -483,6 +492,7 @@ class InboxMessage:
             "message_id": str(self.message_id),
             "position": self.position,
             "sent_at": self.sent_at.isoformat(),
+            "severity": self.severity.value,
             "text": self.text,
             "to": self.to,
         }

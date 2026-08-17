@@ -125,6 +125,10 @@ def test_inbox_notify_builds_the_strict_generated_request() -> None:
             str(uuid4()),
             "--to",
             "qa-agent",
+            "--severity",
+            "P1",
+            "--project-key",
+            "ctower",
             "Strict notification body.",
         ]
     )
@@ -133,7 +137,40 @@ def test_inbox_notify_builds_the_strict_generated_request() -> None:
 
     assert isinstance(payload.request, InboxNotificationRequest)
     assert payload.request.model_dump(mode="json") == {
+        "project_key": "ctower",
+        "severity": "P1",
         "text": "Strict notification body.",
+        "to": "qa-agent",
+    }
+    assert payload.path_parameters == {}
+
+
+def test_inbox_send_builds_the_strict_generated_request() -> None:
+    arguments = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "inbox",
+            "send",
+            "--command-id",
+            str(uuid4()),
+            "--to",
+            "qa-agent",
+            "--severity",
+            "info",
+            "--project-key",
+            "ctower",
+            "Strict inbox body.",
+        ]
+    )
+
+    payload = build_inbox_mutation(arguments)
+
+    assert payload.request.model_dump(mode="json") == {
+        "project_key": "ctower",
+        "severity": "info",
+        "text": "Strict inbox body.",
+        "thread_id": None,
         "to": "qa-agent",
     }
     assert payload.path_parameters == {}

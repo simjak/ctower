@@ -28,6 +28,8 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
                 to=cast(str, arguments.to),
                 thread_id=cast(UUID | None, arguments.thread_id),
                 text=cast(str, arguments.text),
+                severity=cast(Literal["P0", "P1", "info"], arguments.severity),
+                project_key=cast(str, arguments.project_key),
             ),
             path_parameters={},
         )
@@ -36,6 +38,8 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
             request=InboxNotificationRequest(
                 to=cast(str, arguments.to),
                 text=cast(str, arguments.text),
+                severity=cast(Literal["P0", "P1", "info"], arguments.severity),
+                project_key=cast(str, arguments.project_key),
             ),
             path_parameters={},
         )

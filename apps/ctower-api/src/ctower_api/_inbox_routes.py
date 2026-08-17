@@ -87,7 +87,13 @@ def _install_notification_route(
                 actor_id=str(actor.principal_id),
                 command_id=str(command_id),
             )
-            command = InboxSendCommand(command_id, payload.to, payload.text)
+            command = InboxSendCommand(
+                command_id,
+                payload.to,
+                payload.text,
+                project_key=payload.project_key,
+                severity=payload.severity,
+            )
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
@@ -178,7 +184,14 @@ def _install_send_route(
                 actor_id=str(actor.principal_id),
                 command_id=str(command_id),
             )
-            command = InboxSendCommand(command_id, payload.to, payload.text, payload.thread_id)
+            command = InboxSendCommand(
+                command_id,
+                payload.to,
+                payload.text,
+                payload.thread_id,
+                project_key=payload.project_key,
+                severity=payload.severity,
+            )
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")

@@ -5230,8 +5230,10 @@
       "InboxSendRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["to", "text"],
+        "required": ["project_key", "severity", "to", "text"],
         "properties": {
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "severity": {"type": "string", "enum": ["P0", "P1", "info"]},
           "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "thread_id": {"type": ["string", "null"], "format": "uuid"},
           "text": {"type": "string", "minLength": 1, "maxLength": 65536}
@@ -5240,8 +5242,10 @@
       "InboxNotificationRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["to", "text"],
+        "required": ["project_key", "severity", "to", "text"],
         "properties": {
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "severity": {"type": "string", "enum": ["P0", "P1", "info"]},
           "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "text": {"type": "string", "minLength": 1, "maxLength": 65536}
         }
@@ -5296,7 +5300,7 @@
       "InboxSendResult": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["command_id", "durability_state", "event_ids", "from", "message_id", "position", "sent_at", "thread_id", "thread_version", "to"],
+        "required": ["command_id", "durability_state", "event_ids", "from", "message_id", "position", "sent_at", "severity", "thread_id", "thread_version", "to"],
         "properties": {
           "command_id": {"type": "string", "format": "uuid"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
@@ -5305,6 +5309,7 @@
           "message_id": {"type": "string", "format": "uuid"},
           "position": {"type": "integer", "minimum": 1},
           "sent_at": {"type": "string", "format": "date-time"},
+          "severity": {"type": "string", "enum": ["P0", "P1", "info"]},
           "thread_id": {"type": "string", "format": "uuid"},
           "thread_version": {"type": "integer", "minimum": 2},
           "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
@@ -5355,12 +5360,13 @@
       "InboxMessage": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["from", "message_id", "position", "sent_at", "text", "to"],
+        "required": ["from", "message_id", "position", "sent_at", "severity", "text", "to"],
         "properties": {
           "from": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "message_id": {"type": "string", "format": "uuid"},
           "position": {"type": "integer", "minimum": 1},
           "sent_at": {"type": "string", "format": "date-time"},
+          "severity": {"type": "string", "enum": ["P0", "P1", "info"]},
           "text": {"type": "string", "minLength": 1, "maxLength": 65536},
           "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
         }
