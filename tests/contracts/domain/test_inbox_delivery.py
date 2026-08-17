@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import cast
@@ -47,6 +48,53 @@ def test_inbox_message_requires_closed_severity_contract() -> None:
         message["severity"] = invalid
         with pytest.raises(ValidationError):
             validator.validate(document)
+
+
+def test_spec_notification_transport_names_the_authored_request_fields() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    components = cast(dict[str, object], document["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    request = cast(dict[str, object], schemas["InboxNotificationRequest"])
+    required = cast(list[str], request["required"])
+    section = _spec_section("### Mission-control notification transport")
+
+    assert "contains only `to`, `text`" not in section
+    for field in required:
+        assert f"`{field}`" in section, f"SPEC omits the authored notification field: {field}"
+
+
+def test_spec_declares_the_notify_redirect_readiness_mapping() -> None:
+    section = _spec_section("### Inbox transport severity and pull contract")
+
+    rows = (
+        "| Mission Control notification fact | Native Inbox field | Rule |",
+        "| durable rail-1 delivery identifier |",
+        "| declared severity | `severity` |",
+        "| recipient seat | `to` |",
+        "| recipient project | `project_key` |",
+        "| sender seat | none |",
+        "| subject and body | `text` |",
+        "| rail-2 outcome | command result |",
+    )
+    for row in rows:
+        assert row in section, f"SPEC omits the readiness mapping row: {row}"
+
+    prose = re.sub(r"\s+", " ", section)
+    fragments = (
+        "A redirect is ready only when its caller sends both `project_key` and `severity`",
+        "is refused by the strict request contract rather than defaulted",
+        "This mapping activates no redirect",
+        "An Inbox fact appended before this contract carries `info`",
+    )
+    for fragment in fragments:
+        assert fragment in prose, f"SPEC omits the readiness fragment: {fragment}"
+
+
+def _spec_section(heading: str) -> str:
+    spec = (ROOT / "docs/internal/SPEC.md").read_text(encoding="utf-8")
+    start = spec.index(heading)
+    end = spec.index("\n### ", start + len(heading))
+    return spec[start:end]
 
 
 def test_event_envelope_has_distinct_strict_delivered_and_read_branches() -> None:

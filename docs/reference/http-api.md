@@ -291,7 +291,8 @@ key for recipient resolution. Only a `P0` delivery may use the push/wake path; `
 durable rows consumed by the existing n-minute beat-Routine pull, and `readInboxMessageState` reports
 the transported `severity` beside each message's state. Read state is independent of the interrupt
 class: one unacknowledged `P0` produces one typed escalation after its declared acknowledgement
-window, while `P1` and `info` have no timer.
+window, while `P1` and `info` have no timer. A message appended before this contract reads as `info`
+because the field did not exist when it was recorded, not because a sender chose that value.
 `listInboxThreads` is participant-scoped; its optional `unread` query defaults to `false`, and `true` keeps
 only threads with unread incoming messages. `readInboxThread` returns messages in position order plus the
 fact-derived `read_through_position`; reading does not advance it or reduce unread counts.

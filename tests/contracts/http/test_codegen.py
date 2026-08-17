@@ -246,6 +246,7 @@ def test_inbox_transport_contract_is_documented_in_the_http_reference() -> None:
         "existing n-minute beat-Routine pull",
         "optional `project_key` query parameter that narrows the listed correspondents",
         "transported `severity`",
+        "A message appended before this contract reads as `info`",
     )
     for fragment in fragments:
         assert fragment in reference, f"missing HTTP reference fragment: {fragment}"

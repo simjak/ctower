@@ -56,6 +56,40 @@ def test_inbox_severity_only_p0_is_interrupt_eligible() -> None:
     assert InboxSeverity.INFO.interrupts is False
 
 
+def test_pre_contract_message_fact_folds_as_info_severity() -> None:
+    stored = {
+        "message_id": "018f0d5e-7b9a-7c01-8000-000000000602",
+        "position": 1,
+        "recipient": {
+            "principal_id": "018f0d5e-7b9a-7c01-8000-000000000004",
+            "seat_key": "qa-agent",
+        },
+        "sender": {
+            "principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+            "seat_key": "ctower-commander",
+        },
+        "text": "Appended before severity was authored.",
+        "thread_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+    }
+
+    folded = _inbox_vector_payload(EventKind.INBOX_MESSAGE_APPENDED, stored)
+
+    assert isinstance(folded, InboxMessageAppendedPayload)
+    assert folded.severity is InboxSeverity.INFO
+    assert folded.to_mapping()["severity"] == "info"
+
+    with pytest.raises(ValueError, match="severity is outside the authored contract"):
+        InboxMessageAppendedPayload(
+            folded.message_id,
+            folded.position,
+            folded.recipient,
+            folded.sender,
+            folded.text,
+            folded.thread_id,
+            severity=cast(InboxSeverity, "P2"),
+        )
+
+
 def test_record_event_authority_matches_authored_canonical_vectors() -> None:
     document = json.loads(
         (ROOT / "contracts/domain/events/canonical-vectors.json").read_text(encoding="utf-8")

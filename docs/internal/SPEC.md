@@ -3725,8 +3725,9 @@ product browser control and does not advance CT-I1-005 or CT-I2-005.
 ### Mission-control notification transport
 
 The transitional mission-control adapter is a second transport after the existing durable `tools/notify`
-append, never a replacement or a coupled dual write. Its strict rail-2 request contains only `to`, `text`,
-and the original delivery UUID as the idempotency key. The authenticated project-seat credential resolves
+append, never a replacement or a coupled dual write. Its strict rail-2 request contains `to`, `project_key`,
+`severity`, and `text`, with the original delivery UUID as the idempotency key. Every one of those fields is
+required: the request has no optional member and no defaulted member. The authenticated project-seat credential resolves
 the sender Actor; a caller label, `--from` value, process name, or message field cannot assert identity.
 The recipient must already exist as exactly one persisted project seat. An unknown or ambiguous seat is the
 ordinary recorded Inbox refusal and creates no thread, principal, event, or projection row.
@@ -3760,6 +3761,31 @@ them. An acknowledged P0 remains a P0 fact, and reading a P1 or `info` row does 
 interrupt. Mission Control `tools/notify` remains additive and rail-1-first: its typed severity and stable
 delivery UUID are mirrored to native Inbox only after the durable append, with typed refusal/unavailable
 outcomes and no redirect/cutover in this slice.
+
+An Inbox fact appended before this contract carries `info`: severity is required of every new send, and the
+absence of the field on a pre-contract fact is folded as `info` rather than refused, so a rebuild of
+historical threads reproduces the same state it recorded. `info` on such a fact is a folded default, not an
+observation that the sender chose it.
+
+The table below is the exact readiness mapping from Mission Control's existing notification semantics to
+this contract. It is the contract a redirect flips onto, stated once so a caller does not have to infer it.
+This mapping activates no redirect: it adds no Mission Control tool change, schedule, wake class,
+environment setting, or credential.
+
+| Mission Control notification fact | Native Inbox field | Rule |
+|---|---|---|
+| durable rail-1 delivery identifier | `Idempotency-Key` / `--command-id` | Rail 1 completes first; exact replay of that identifier returns the original result, and a changed payload under it is `idempotency-conflict` |
+| declared severity | `severity` | Carried as the typed closed value, never folded into the message body |
+| recipient seat | `to` | Must resolve to exactly one persisted project seat |
+| recipient project | `project_key` | Qualifies recipient resolution; the recipient's project, not the sender's |
+| sender seat | none | Selects the caller's own credential authority only; the server derives the recorded sender |
+| subject and body | `text` | One 1–65536 character body; there is no subject field |
+| rail-1 wake policy | none | Only `P0` may take the native push/wake path; a wider rail-1 wake policy stays a Mission Control fact and is never mirrored as an interrupt |
+| rail-2 outcome | command result | Accepted is `mirrored`, a typed Inbox refusal is `refused`, and any transport failure is `unavailable`; none of the three can reverse rail 1 |
+
+A redirect is ready only when its caller sends both `project_key` and `severity`; a caller that omits either
+is refused by the strict request contract rather than defaulted. A caller that carried severity inside the
+message body before the redirect must stop doing so, because the body is preserved exactly as sent.
 
 Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
 `hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
