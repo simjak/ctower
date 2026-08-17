@@ -157,13 +157,6 @@ def test_composing_twice_to_one_seat_stays_one_pair_grouped_thread(
 def test_the_offered_addresses_are_exactly_the_ones_the_command_accepts(
     tenant: TenantFixture,
 ) -> None:
-    """One project-qualified closed world, driven from both ends.
-
-    A seat key is unique only within a project, so the same key may be registered
-    in two projects. The filtered correspondent read exposes the project with the
-    key, and the command accepts each listed project/key pair. A foreign/unknown
-    address, the reader's own seat, and a principal holding no seat still refuse.
-    """
     provision_seat(tenant, "director")
     provision_seat(tenant, "shared-seat")
     provision_seat(tenant, "shared-seat", project_key="apex")
@@ -207,20 +200,6 @@ def test_the_offered_addresses_are_exactly_the_ones_the_command_accepts(
         seatless = seatless_client.list_inbox_correspondents()
         seatless_send = _compose(base_url, unseated, "director", "No seat of my own.")
 
-    # printed before the assertions, so a failing run says what the two ends
-    # actually answered rather than only which assertion noticed the difference
-    print(
-        "REAL_COMPOSE_EQUALITY offered="
-        + json.dumps({"/".join(key): answer.status_code for key, answer in opened.items()})
-        + f" foreign={foreign.status_code}"
-        + f" unknown={unknown.status_code}/{_refusal_code(unknown)}"
-        f" self={mine.status_code}/{_refusal_code(mine)}"
-        + " filtered="
-        + json.dumps([f"{item.project_key}/{item.seat_key}" for item in filtered.correspondents])
-        + " seatless_offered="
-        + json.dumps([item.seat_key for item in seatless.correspondents])
-        + f" seatless_send={seatless_send.status_code}/{_refusal_code(seatless_send)}"
-    )
     assert sorted(opened) == [
         ("apex", "shared-seat"),
         ("ctower", "director"),
