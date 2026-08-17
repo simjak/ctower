@@ -40,8 +40,9 @@ class CliFirstScopeTests(unittest.TestCase):
         The count is the load-bearing part: exactly one dogfood suite is
         activated, and its exact name is spelled in the record. D44 widened the
         boundary to the send control and renamed the suite to
-        ``dogfood-inbox-controls``; adding a second one is a new decision, not a
-        reading of D42.
+        ``dogfood-inbox-controls``. D56 widens that same one suite to the
+        terminal reader and renames it ``dogfood-surface-e2e``; adding a second
+        one is still a new decision, not a reading of D42.
         """
         manifest = tomllib.loads(
             (self.root / "tools/checks/expected-suites.toml").read_text(encoding="utf-8")
@@ -54,7 +55,7 @@ class CliFirstScopeTests(unittest.TestCase):
             for suite in suites
             if suite["id"].startswith("dogfood-") and suite["status"] == "required"
         )
-        self.assertEqual(activated, ["dogfood-inbox-controls"])
+        self.assertEqual(activated, ["dogfood-surface-e2e"])
         for suite_id in activated:
             self.assertIn(f"`{suite_id}`", decisions)
 
@@ -66,6 +67,9 @@ class CliFirstScopeTests(unittest.TestCase):
         self.assertIn("`browser-e2e` stays deferred to `CT-I2-005`", decisions)
         self.assertIn("## D44 — The dogfood Inbox boundary carries the send control", decisions)
         self.assertIn("`dogfood-inbox-promotion` becomes `dogfood-inbox-controls`", decisions)
+        self.assertIn("## D56 — Decision 11 extends the one dogfood browser suite", decisions)
+        self.assertIn("`dogfood-inbox-controls` becomes", decisions)
+        self.assertIn("`dogfood-surface-e2e`", decisions)
 
     def test_d23_preserves_i1_semantics_and_defers_only_browser_realization(self) -> None:
         decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
