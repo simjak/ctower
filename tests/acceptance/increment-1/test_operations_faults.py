@@ -8,7 +8,7 @@ import psycopg
 from support.acceptance import accept_command
 from support.tenant_fixture import TenantFixture
 
-from ctower_kernel.projections import ProjectionHealth, Projections
+from ctower_kernel.projections import BoardQuery, BoardView, ProjectionHealth, Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceReference, TicketCommand
 from ctower_kernel.record.postgres import PostgresRecord
@@ -40,18 +40,17 @@ def test_projection_restart_replays_retryable_fold_without_partial_cursor(
     )
     _install_one_fold_failure(tenant)
 
-    failed = Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(
-        tenant.tenant_id
-    )
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    failed = projections.catch_up(tenant.tenant_id)
+    failed_board = _board(projections, tenant)
     _remove_fold_failure(tenant)
-    restarted = Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(
-        tenant.tenant_id
-    )
+    restarted = projections.catch_up(tenant.tenant_id)
 
-    assert failed.cards == ()
+    restarted_board = _board(projections, tenant)
+    assert failed_board.cards == ()
     assert failed.projection_watermark == 0
     assert restarted.health is ProjectionHealth.CURRENT
-    assert [card.ticket_id for card in restarted.cards] == [outcome.ticket.ticket_id]
+    assert [card.ticket_id for card in restarted_board.cards] == [outcome.ticket.ticket_id]
     assert _attempt_outcomes(tenant) == ("retryable_failure", "delivered")
 
 
@@ -80,6 +79,15 @@ def _attempt_outcomes(tenant: TenantFixture) -> tuple[str, ...]:
             "SELECT outcome FROM outbox_delivery_attempts ORDER BY recorded_at, attempt_number"
         ).fetchall()
     return tuple(str(row[0]) for row in rows)
+
+
+def _board(projections: Projections, tenant: TenantFixture) -> BoardView:
+    result = projections.board(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        BoardQuery(project_key="ctower"),
+    )
+    assert not isinstance(result, RecordProblem), result
+    return result
 
 
 def _telemetry() -> TelemetryContext:

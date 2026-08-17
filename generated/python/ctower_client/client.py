@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
 """
 
 from __future__ import annotations
@@ -878,7 +878,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: BoardView}, {401: Problem, 422: Problem})
+        return _response(response, {200: BoardView}, {401: Problem, 403: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_control_health(
@@ -978,7 +978,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_request_maintenance_review(

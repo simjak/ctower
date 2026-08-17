@@ -1452,6 +1452,7 @@
         "responses": {
           "200": {"description": "Watermark-bearing Board view", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BoardView"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
@@ -2446,6 +2447,7 @@
         "responses": {
           "200": {"description": "Compact read-only Project Delivery rows", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectDeliveryView"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -6831,14 +6833,15 @@
           "event_id": {"type": "string", "format": "uuid"},
           "kind": {
             "type": "string",
-            "enum": ["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
+            "enum": ["ticket.created", "ticket.custody_transferred", "ticket.comment_added", "workflow.changed"]
           },
           "occurred_at": {"type": "string", "format": "date-time"},
           "payload": {
             "oneOf": [
               {"$ref": "#/components/schemas/TicketCreatedPayload"},
               {"$ref": "#/components/schemas/CustodyTransferredPayload"},
-              {"$ref": "#/components/schemas/TicketCommentAddedPayload"}
+              {"$ref": "#/components/schemas/TicketCommentAddedPayload"},
+              {"$ref": "#/components/schemas/WorkflowChangedAuditPayload"}
             ]
           },
           "sequence": {"type": "integer", "minimum": 1}

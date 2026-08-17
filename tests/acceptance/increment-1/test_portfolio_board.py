@@ -35,7 +35,7 @@ from ctower_api.interface import create_app
 from ctower_kernel.catalog import CatalogProblem, CompanyBundle, PostgresCatalog
 from ctower_kernel.projections import BoardQuery, Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
@@ -95,13 +95,11 @@ def test_three_projects_prove_disjoint_boards_via_independent_feed_replay(
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
     projections.catch_up(tenant.tenant_id)
     actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
-    boards = {
-        project: {
-            card.ticket_id
-            for card in projections.board(actor, BoardQuery(project_key=project)).cards
-        }
-        for project in _PROJECTS
-    }
+    boards: dict[str, set[UUID]] = {}
+    for project in _PROJECTS:
+        board = projections.board(actor, BoardQuery(project_key=project))
+        assert not isinstance(board, RecordProblem), board
+        boards[project] = {card.ticket_id for card in board.cards}
 
     # AC-PORT-06: exactly one ticket per project, three mutually disjoint Board rows.
     for project in _PROJECTS:

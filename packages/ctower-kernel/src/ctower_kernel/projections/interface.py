@@ -8,13 +8,20 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
+from ctower_kernel.projections.inbox import (
+    InboxCorrespondentList,
+    InboxMessage,
+    InboxThread,
+    InboxThreadList,
+    InboxThreadSummary,
+)
 from ctower_kernel.projections.inbox import InboxReadState as _InboxReadState
 from ctower_kernel.projections.project_delivery import (
     CtowerProjectCutoverHealth,
     DeliverySurfaceDeclaration,
     ProjectDeliveryView,
 )
-from ctower_kernel.record import Actor, DurabilityHealth
+from ctower_kernel.record import Actor, DurabilityHealth, RecordProblem
 
 __all__ = [
     "AppliedLabel",
@@ -59,6 +66,15 @@ class BoardLane(StrEnum):
 class ProjectionHealth(StrEnum):
     CURRENT = "CURRENT"
     STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectionMaintenanceResult:
+    """Typed watermark metadata returned by internal projection maintenance."""
+
+    health: ProjectionHealth
+    source_watermark: int
+    projection_watermark: int
 
 
 class HealthStatus(StrEnum):
@@ -371,6 +387,10 @@ class BoardCard:
 
 @dataclass(frozen=True, slots=True)
 class BoardQuery:
+    # One named Project per query. A query that could carry no Project would reach the
+    # refusal chokepoint with an empty requested set, which that chokepoint reads as
+    # "nothing requested" and allows; portfolio reads therefore have their own
+    # operator-gated entry point instead of an emptied scope on this query.
     project_key: str
     lane: BoardLane | None = None
     priority: str | None = None
@@ -398,120 +418,14 @@ class BoardView:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class InboxThreadSummary:
-    last_message_at: datetime
-    last_message_preview: str
-    other_agent: str
-    promoted_ticket_id: UUID | None
-    thread_id: UUID
-    unread_count: int
-
-    def response_payload(self) -> dict[str, object]:
-        return {
-            "last_message_at": self.last_message_at.isoformat(),
-            "last_message_preview": self.last_message_preview,
-            "other_agent": self.other_agent,
-            "promoted_ticket_id": (
-                str(self.promoted_ticket_id) if self.promoted_ticket_id is not None else None
-            ),
-            "thread_id": str(self.thread_id),
-            "unread_count": self.unread_count,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class InboxThreadList:
-    recipient: str
-    threads: tuple[InboxThreadSummary, ...]
-    total_unread: int
-    unread_only: bool
-
-    def response_payload(self) -> dict[str, object]:
-        return {
-            "recipient": self.recipient,
-            "threads": [item.response_payload() for item in self.threads],
-            "total_unread": self.total_unread,
-            "unread_only": self.unread_only,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class InboxCorrespondent:
-    project_key: str
-    seat_key: str
-
-    def response_payload(self) -> dict[str, object]:
-        return {"project_key": self.project_key, "seat_key": self.seat_key}
-
-
-@dataclass(frozen=True, slots=True)
-class InboxCorrespondentList:
-    """Every address the authenticated principal can open a thread to, and its own seat.
-
-    These are fewer than the registered seats, and that is the point: the send
-    command resolves a recipient by ``(tenant_id, seat_key)``, so a key two
-    seats share resolves to nobody, the reader's own seat resolves to itself,
-    and a reader with no seat row cannot send at all. Each of those is left out
-    here for the same reason the command refuses it, so a picker built on this
-    list can offer nothing the record would not accept as an address. ``sender``
-    is ``unaddressable`` exactly when this principal holds no seat row.
-    """
-
-    correspondents: tuple[InboxCorrespondent, ...]
-    sender: str
-
-    def response_payload(self) -> dict[str, object]:
-        return {
-            "correspondents": [item.response_payload() for item in self.correspondents],
-            "sender": self.sender,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class InboxMessage:
-    from_seat: str
-    message_id: UUID
-    position: int
-    sent_at: datetime
-    text: str
-    to: str
-
-    def response_payload(self) -> dict[str, object]:
-        return {
-            "from": self.from_seat,
-            "message_id": str(self.message_id),
-            "position": self.position,
-            "sent_at": self.sent_at.isoformat(),
-            "text": self.text,
-            "to": self.to,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class InboxThread:
-    messages: tuple[InboxMessage, ...]
-    participants: tuple[str, str]
-    promoted_ticket_id: UUID | None
-    read_through_position: int
-    thread_id: UUID
-
-    def response_payload(self) -> dict[str, object]:
-        return {
-            "messages": [item.response_payload() for item in self.messages],
-            "participants": list(self.participants),
-            "promoted_ticket_id": (
-                str(self.promoted_ticket_id) if self.promoted_ticket_id is not None else None
-            ),
-            "read_through_position": self.read_through_position,
-            "thread_id": str(self.thread_id),
-        }
-
-
 class _ProjectionStore(Protocol):
-    def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView: ...
+    def catch_up(
+        self, tenant_id: UUID, through_watermark: int | None = None
+    ) -> ProjectionMaintenanceResult: ...
 
-    def board(self, actor: Actor, query: BoardQuery) -> BoardView: ...
+    def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem: ...
+
+    def portfolio_board(self, actor: Actor) -> BoardView | RecordProblem: ...
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
@@ -521,7 +435,7 @@ class _ProjectionStore(Protocol):
 
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None: ...
 
-    def rebuild(self, tenant_id: UUID) -> BoardView: ...
+    def rebuild(self, tenant_id: UUID) -> ProjectionMaintenanceResult: ...
 
     def health(
         self, tenant_id: UUID, durability: DurabilityHealth, *, now: datetime
@@ -529,7 +443,9 @@ class _ProjectionStore(Protocol):
 
     def cutover_health(self, actor: Actor) -> CtowerProjectCutoverHealth: ...
 
-    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None: ...
+    def project_delivery(
+        self, actor: Actor, project_key: str
+    ) -> ProjectDeliveryView | RecordProblem | None: ...
 
     def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int: ...
 
@@ -542,11 +458,18 @@ class Projections:
     def __init__(self, store: _ProjectionStore) -> None:
         self._store = store
 
-    def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView:
+    def catch_up(
+        self, tenant_id: UUID, through_watermark: int | None = None
+    ) -> ProjectionMaintenanceResult:
         return self._store.catch_up(tenant_id, through_watermark)
 
-    def board(self, actor: Actor, query: BoardQuery) -> BoardView:
+    def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
         return self._store.board(actor, query)
+
+    def portfolio_board(self, actor: Actor) -> BoardView | RecordProblem:
+        """Read every Project's cards at once; refused unless the principal is an operator."""
+
+        return self._store.portfolio_board(actor)
 
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)
@@ -562,7 +485,7 @@ class Projections:
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None:
         return self._store.inbox_read_state(actor, thread_id)
 
-    def rebuild(self, tenant_id: UUID) -> BoardView:
+    def rebuild(self, tenant_id: UUID) -> ProjectionMaintenanceResult:
         return self._store.rebuild(tenant_id)
 
     def health(self, actor: Actor, durability: DurabilityHealth, *, now: datetime) -> ControlHealth:
@@ -573,7 +496,9 @@ class Projections:
 
         return self._store.cutover_health(actor)
 
-    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None:
+    def project_delivery(
+        self, actor: Actor, project_key: str
+    ) -> ProjectDeliveryView | RecordProblem | None:
         """Read stored compact rows without accepting a desired status."""
 
         return self._store.project_delivery(actor, project_key)

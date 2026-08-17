@@ -24,7 +24,7 @@ from ctower_kernel.catalog import (
 from ctower_kernel.catalog.interface import JsonValue
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 __all__: tuple[str, ...] = ()
 
@@ -83,6 +83,7 @@ def test_reconcile_reads_the_active_checkpoint_snapshot_exactly_once_for_a_three
     operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
     for project_key, checkpoint_keys in _THREE_PROJECT_CHECKPOINTS.items():
         board = projections.project_delivery(operator, project_key)
+        assert not isinstance(board, RecordProblem), board
         assert board is not None
         assert {row.checkpoint_key for row in board.rows} == set(checkpoint_keys)
         assert all("source_incomplete" not in row.derivation_reasons for row in board.rows), (

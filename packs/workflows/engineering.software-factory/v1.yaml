@@ -11,24 +11,24 @@
     "gates": "engineering.software-factory.gates@1"
   },
   "stages": [
-    {"key": "intake", "activity_class": "work"},
-    {"key": "think", "activity_class": "work"},
-    {"key": "plan", "activity_class": "work"},
-    {"key": "design", "activity_class": "work"},
-    {"key": "implement", "activity_class": "work"},
-    {"key": "local-verification-qa", "activity_class": "verification"},
-    {"key": "risk-derived-review", "activity_class": "verification"},
-    {"key": "documentation", "activity_class": "work"},
-    {"key": "release-preflight", "activity_class": "work"},
-    {"key": "merge", "activity_class": "work"},
-    {"key": "staging-deploy", "activity_class": "work"},
-    {"key": "staging-qa", "activity_class": "verification"},
-    {"key": "production-deploy", "activity_class": "work"},
-    {"key": "production-smoke-live-qa", "activity_class": "verification"},
-    {"key": "retro", "activity_class": "work"},
-    {"key": "resolve-close", "activity_class": "work"}
+    {"key": "intake", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "commander"}, {"authority_plane": "human-binding", "key": "operator"}, {"authority_plane": "human-binding", "key": "commander"}]},
+    {"key": "think", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "commander"}, {"authority_plane": "project-seat", "key": "eng-manager"}, {"authority_plane": "human-binding", "key": "operator"}, {"authority_plane": "human-binding", "key": "commander"}]},
+    {"key": "plan", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "commander"}, {"authority_plane": "project-seat", "key": "eng-manager"}, {"authority_plane": "human-binding", "key": "operator"}, {"authority_plane": "human-binding", "key": "commander"}]},
+    {"key": "design", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "eng-manager"}, {"authority_plane": "project-seat", "key": "engineer-1"}, {"authority_plane": "project-seat", "key": "engineer-2"}]},
+    {"key": "implement", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "engineer-1"}, {"authority_plane": "project-seat", "key": "engineer-2"}, {"authority_plane": "project-seat", "key": "eng-manager"}]},
+    {"key": "local-verification-qa", "activity_class": "verification", "role_keys": [{"authority_plane": "project-seat", "key": "qa"}, {"authority_plane": "project-seat", "key": "engineer-1"}, {"authority_plane": "project-seat", "key": "engineer-2"}]},
+    {"key": "risk-derived-review", "activity_class": "verification", "role_keys": [{"authority_plane": "project-seat", "key": "review"}, {"authority_plane": "project-seat", "key": "cso"}, {"authority_plane": "project-seat", "key": "eng-manager"}]},
+    {"key": "documentation", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "tech-writer"}, {"authority_plane": "project-seat", "key": "engineer-1"}, {"authority_plane": "project-seat", "key": "engineer-2"}]},
+    {"key": "release-preflight", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "release-manager"}, {"authority_plane": "project-seat", "key": "eng-manager"}]},
+    {"key": "merge", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "release-manager"}, {"authority_plane": "project-seat", "key": "commander"}]},
+    {"key": "staging-deploy", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "release-manager"}]},
+    {"key": "staging-qa", "activity_class": "verification", "role_keys": [{"authority_plane": "project-seat", "key": "qa"}]},
+    {"key": "production-deploy", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "release-manager"}]},
+    {"key": "production-smoke-live-qa", "activity_class": "verification", "role_keys": [{"authority_plane": "project-seat", "key": "qa"}, {"authority_plane": "project-seat", "key": "cso"}]},
+    {"key": "retro", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "retro"}, {"authority_plane": "project-seat", "key": "commander"}, {"authority_plane": "project-seat", "key": "eng-manager"}, {"authority_plane": "human-binding", "key": "commander"}]},
+    {"key": "resolve-close", "activity_class": "work", "role_keys": [{"authority_plane": "project-seat", "key": "commander"}, {"authority_plane": "human-binding", "key": "operator"}, {"authority_plane": "human-binding", "key": "commander"}]}
   ],
   "transitions": [],
   "failure_routes": [],
-  "note": "Skeleton only. Publication requires typed transitions, contracts, failure routes, invalidation, skip predicates, and conformance evidence from SPEC."
+  "note": "Skeleton only. The role_keys arrays are the authored base stage-role set; publication still requires typed transitions, contracts, failure routes, invalidation, skip predicates, participant narrowing, and conformance evidence from SPEC."
 }
