@@ -94,10 +94,10 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0078_pool_credential_observations.sql",
-    "schema_sha256": ("sha256:77d44fd4ea853e2ae6ea1c4b5e74e45df717c69b8f85667932eaff4341470f59"),
+    "schema_sha256": ("sha256:4630057e6f35d29170eb81bbbbba07f30b111768eea876b6e5843339273af16b"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:c5e353dc9570d2e7bd9109d564c9d3287ce5f6a789ebcd2ef59b8f1d03b23a70"
+        "sum256:43f81cd514df45f35673462563dd16d2bc6bfded5493004721e0ef5c4a1a3558"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [

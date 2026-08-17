@@ -17,7 +17,7 @@ ALTER TABLE events DROP CONSTRAINT events_kind_check;
 ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
     'bootstrap.first_tenant_created', 'ticket.created', 'ticket.custody_transferred',
     'ticket.comment_added', 'proof.changed', 'workflow.changed', 'work.changed',
-    'routine.occurrence_recorded', 'runtime.dream_dispatch_consumed',
+    'routine.occurrence_recorded', 'routine.retired', 'runtime.dream_dispatch_consumed',
     'runtime.dream_lane_bound', 'attention.poison_disposition_recorded',
     'catalog.component_published', 'catalog.bundle_activated', 'migration.changed',
     'intake.inbound_event_recorded', 'intake.inbound_event_promoted',
@@ -27,7 +27,8 @@ ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
     'attention.finding_appended', 'attention.finding_disposition_recorded',
     'thread.opened', 'message.appended', 'message.delivered', 'message.read',
     'thread.promoted_to_ticket', 'knowledge.document_registered', 'request.changed',
-    'ruling.recorded', 'estate.import_changed', 'company.record_appended',
+    'request.proposal_changed', 'ruling.recorded', 'estate.import_changed',
+    'company.record_appended', 'spawn.recorded', 'spawn.transitioned',
     'pools.observation_recorded'
 ));
 
@@ -37,8 +38,8 @@ ALTER TABLE event_links ADD CONSTRAINT event_links_subject_kind_check CHECK (
         'ticket', 'work', 'workflow', 'proof', 'catalog', 'migration',
         'inbound_thread', 'inbound_event', 'access', 'session',
         'attention_finding', 'attention_finding_disposition', 'inbox_thread',
-        'knowledge_document', 'request', 'ruling', 'company_record',
-        'pool_observation'
+        'knowledge_document', 'request', 'ruling', 'request_proposal',
+        'company_record', 'spawn_record', 'pool_observation'
     )
 );
 
@@ -50,8 +51,8 @@ ALTER TABLE durability_subject_heads
             'ticket', 'work', 'workflow', 'proof', 'catalog', 'migration',
             'inbound_thread', 'inbound_event', 'access', 'session',
             'attention_finding', 'attention_finding_disposition', 'inbox_thread',
-            'knowledge_document', 'request', 'ruling', 'company_record',
-            'pool_observation'
+            'knowledge_document', 'request', 'ruling', 'request_proposal',
+            'company_record', 'spawn_record', 'pool_observation'
         )
     );
 

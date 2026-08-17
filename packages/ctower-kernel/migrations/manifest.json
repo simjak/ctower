@@ -2,9 +2,9 @@
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
     "through": "0078_pool_credential_observations.sql",
-    "schema_sha256": "sha256:77d44fd4ea853e2ae6ea1c4b5e74e45df717c69b8f85667932eaff4341470f59",
+    "schema_sha256": "sha256:4630057e6f35d29170eb81bbbbba07f30b111768eea876b6e5843339273af16b",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:c5e353dc9570d2e7bd9109d564c9d3287ce5f6a789ebcd2ef59b8f1d03b23a70"
+    "schema_object_sum256": "sum256:43f81cd514df45f35673462563dd16d2bc6bfded5493004721e0ef5c4a1a3558"
   },
   "ledger_advance_transitions": [
     {
@@ -733,7 +733,7 @@
     },
     {
       "path": "0078_pool_credential_observations.sql",
-      "sha256": "sha256:45c8eedd742319448c368d3f5fc3a0ef4c95dcada75fbece63233007813ae660",
+      "sha256": "sha256:fa123981be89fbae9844407369fb452e1949657f813f23e06bcb1ce5f65b2b39",
       "scope": "database",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",

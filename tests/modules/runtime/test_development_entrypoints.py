@@ -406,6 +406,19 @@ def test_development_finalizer_progress_recorder_is_monotonic_and_typed(
     assert written[1].detail_code == "finalizer-exception"
 
 
+def _read_side_stub(runtime_dsn: str, projection_dsn: str) -> SimpleNamespace:
+    """Stand in for the read-side composition the entry point delegates to."""
+
+    return SimpleNamespace(
+        projections=f"Projections:{runtime_dsn}:{projection_dsn}",
+        attention="Attention",
+        board_context="BoardContext",
+        inbox="Inbox",
+        knowledge="Knowledge",
+        pools="Pools",
+    )
+
+
 def test_development_api_composes_only_typed_same_artifact_adapters(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -432,12 +445,10 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
         "PostgresRuntime",
         "PostgresCatalog",
         "PostgresProjections",
-        "PostgresAttention",
         "Proof",
         "Workflow",
         "Work",
         "Projections",
-        "Attention",
         "FixedOperations",
     ):
         monkeypatch.setattr(
@@ -451,6 +462,7 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
         lambda *args, **kwargs: observed.update(app=(args, kwargs)) or "app",
     )
     monkeypatch.setattr(runtime_module, "development_catalog_store", lambda: "catalog-store")
+    monkeypatch.setattr(runtime_module, "read_side_modules", _read_side_stub)
     monkeypatch.setattr(
         uvicorn,
         "run",
