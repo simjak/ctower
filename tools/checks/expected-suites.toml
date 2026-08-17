@@ -31,6 +31,7 @@ phase_order = [
   "CT-I1-024",
   "CT-I1-032",
   "CT-I1-033",
+  "CT-I1-037",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -1155,6 +1156,22 @@ command = [
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_routines.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "ticket-display-keys-acceptance"
+owner = "CT-I1-037"
+phase = "CT-I1-037"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_ticket_display_keys.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_ticket_display_keys.py",
   "-q",
 ]
 timeout_seconds = 900

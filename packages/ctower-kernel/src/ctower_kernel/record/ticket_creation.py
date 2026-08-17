@@ -28,6 +28,7 @@ __all__ = [
     "TicketCreationIds",
     "initial_custody_problem",
     "initial_custody_project",
+    "allocate_ticket_display_key",
     "insert_ticket_state",
     "new_ticket_creation_ids",
     "ticket_created_commit",
@@ -119,16 +120,18 @@ def insert_ticket_state(
     project_key: str,
     identifiers: TicketCreationIds,
     now: datetime,
-) -> None:
+) -> str | None:
     """Persist the ticket and its initial lifecycle, custody, and priority facts."""
+
+    display_key = allocate_ticket_display_key(connection, actor.tenant_id, project_key)
 
     connection.execute(
         """
         INSERT INTO tickets (
             ticket_id, tenant_id, title, source_kind, source_ref, priority,
             custodian_principal_id, version, durability_state, created_by, created_at,
-            project_key
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s, %s)
+            project_key, display_key
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s, %s, %s)
         """,
         (
             identifiers.ticket,
@@ -141,6 +144,7 @@ def insert_ticket_state(
             actor.principal_id,
             now,
             project_key,
+            display_key,
         ),
     )
     connection.execute(
@@ -153,6 +157,55 @@ def insert_ticket_state(
     )
     _insert_initial_custody(connection, actor, command, identifiers=identifiers, now=now)
     _insert_initial_priority(connection, actor, command, identifiers=identifiers, now=now)
+    return display_key
+
+
+def allocate_ticket_display_key(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str,
+) -> str | None:
+    """Read the active authored prefix and reserve one project-local number atomically."""
+
+    prefix_rows = connection.execute(
+        """
+        SELECT revision.project_prefix
+        FROM company_bundle_active AS active
+        JOIN company_bundle_members AS member
+          ON member.tenant_id = active.tenant_id
+         AND member.bundle_revision_id = active.bundle_revision_id
+        JOIN catalog_component_revisions AS revision
+          ON revision.tenant_id = member.tenant_id
+         AND revision.component_revision_id = member.component_revision_id
+        JOIN catalog_components AS component
+          ON component.tenant_id = revision.tenant_id
+         AND component.component_id = revision.component_id
+        WHERE active.tenant_id = %s
+          AND component.kind = 'project'
+          AND split_part(component.component_key, '.', 1) = %s
+          AND revision.project_prefix IS NOT NULL
+        """,
+        (tenant_id, project_key),
+    ).fetchall()
+    if not prefix_rows:
+        return None
+    prefixes = {str(row["project_prefix"]) for row in prefix_rows}
+    if len(prefixes) != 1:
+        raise RuntimeError("active project prefix is ambiguous")
+    prefix = next(iter(prefixes))
+    sequence = connection.execute(
+        """
+        INSERT INTO ticket_display_sequences (tenant_id, project_key, next_number)
+        VALUES (%s, %s, 2)
+        ON CONFLICT (tenant_id, project_key) DO UPDATE
+        SET next_number = ticket_display_sequences.next_number + 1
+        RETURNING next_number - 1 AS allocated_number
+        """,
+        (tenant_id, project_key),
+    ).fetchone()
+    if sequence is None:
+        raise RuntimeError("ticket display sequence did not allocate a number")
+    return f"{prefix}-{int(sequence['allocated_number'])}"
 
 
 def ticket_created_commit(

@@ -491,7 +491,13 @@ def _schema_reference(schema: Mapping[str, object]) -> str:
 def _parameter_type(schema: Mapping[str, object], *, include_pattern: bool = False) -> str:
     schema_type = schema.get("type")
     if schema_type == "string":
-        base = "UUID" if schema.get("format") == "uuid" else "str"
+        base = (
+            "UUID | str"
+            if schema.get("format") == "ticket-ref"
+            else "UUID"
+            if schema.get("format") == "uuid"
+            else "str"
+        )
         constraint_names = [("minLength", "min_length"), ("maxLength", "max_length")]
         if include_pattern:
             constraint_names.append(("pattern", "pattern"))

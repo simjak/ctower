@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0074_restore_routine_retirement_kind.sql",
-    "schema_sha256": "sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea",
+    "through": "0075_ticket_display_keys.sql",
+    "schema_sha256": "sha256:03221e0f1e0505dda74f6768d23c9338f6d6935ab81d0cd072136c9ff1568140",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:b35533df20f94ae7eb67dfd9cdea4a15884de96213d6e43521c3413fb2a6732e"
+    "schema_object_sum256": "sum256:37a61de2a21773c339cfd5eb78c442fe618cc46bd5dd9d9298f85c81c6b39b05"
   },
   "ledger_advance_transitions": [
     {
@@ -702,6 +702,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_operator_retires_active_beat_append_only_and_future_ticks_do_not_reactivate",
       "rollback_or_forward_compensation": "Preserve every immutable Routine retirement, beat effect, canonical event, command result, and outbox row; append a reviewed forward compensation rather than editing or deleting an accepted runtime fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify routine-trigger, routine-retirement, event, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no runtime rows."
+    },
+    {
+      "path": "0075_ticket_display_keys.sql",
+      "sha256": "sha256:703ad790af0b8c38ec31e5c6e89102baf8d771f65cfb80a43a515611be7711aa",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/contracts/domain/test_ticket_display_keys_contract.py::test_ticket_display_key_migration_is_additive_and_backfills_by_creation_order",
+      "rollback_or_forward_compensation": "Preserve immutable ticket display keys and sequence high-water facts; append reviewed forward compensation and never rewrite, delete, or renumber an assigned display key.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture ticket counts grouped by tenant/project, current catalog project-prefix revisions, ticket display keys, board rows, and a verified database backup; the allocator and display columns are additive."
     }
   ]
 }

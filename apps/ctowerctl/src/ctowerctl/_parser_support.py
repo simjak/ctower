@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from typing import Never
 from uuid import UUID
 
@@ -121,7 +122,17 @@ class _Parser(argparse.ArgumentParser):
 
 
 def _ticket_id(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("ticket_id", type=UUID)
+    parser.add_argument("ticket_id", type=_ticket_reference)
+
+
+def _ticket_reference(value: str) -> str:
+    try:
+        UUID(value)
+        return value
+    except ValueError:
+        if re.fullmatch(r"[A-Z]{2,5}-[1-9][0-9]*", value):
+            return value
+    raise argparse.ArgumentTypeError("must be a UUID or PREFIX-N display key")
 
 
 def _session_id(parser: argparse.ArgumentParser) -> None:
