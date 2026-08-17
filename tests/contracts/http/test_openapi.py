@@ -272,6 +272,17 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
     }
 
 
+def test_project_scope_refusals_are_declared_for_board_and_delivery() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
+
+    for path in ("/v1/board", "/v1/projects/{project_key}/delivery"):
+        responses = cast(dict[str, object], paths[path]["get"]["responses"])
+        assert cast(dict[str, str], responses["403"])["$ref"] == (
+            "#/components/responses/ProblemResponse"
+        )
+
+
 def test_project_and_credential_refusals_have_one_definition_each() -> None:
     kernel = ROOT / "packages/ctower-kernel/src/ctower_kernel"
 

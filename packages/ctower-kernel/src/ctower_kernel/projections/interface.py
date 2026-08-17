@@ -38,7 +38,6 @@ __all__ = [
     "InboxThreadList",
     "InboxThreadSummary",
     "ProjectionHealth",
-    "ProjectionMaintenanceResult",
     "Projections",
     "TenantDisplayIdentity",
     "TenantDisplayState",
@@ -381,7 +380,7 @@ class BoardCard:
 
 @dataclass(frozen=True, slots=True)
 class BoardQuery:
-    project_key: str
+    project_key: str | None
     lane: BoardLane | None = None
     priority: str | None = None
     stage_key: str | None = None
