@@ -408,6 +408,7 @@ def _inbox_vector_payload(
             _inbox_participant(cast(dict[str, object], payload["sender"])),
             str(payload["text"]),
             UUID(str(payload["thread_id"])),
+            severity=str(payload.get("severity", "info")),
         )
     if kind in {EventKind.INBOX_MESSAGE_DELIVERED, EventKind.INBOX_MESSAGE_READ}:
         payload_type = (

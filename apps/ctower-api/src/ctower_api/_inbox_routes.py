@@ -87,7 +87,13 @@ def _install_notification_route(
                 actor_id=str(actor.principal_id),
                 command_id=str(command_id),
             )
-            command = InboxSendCommand(command_id, payload.to, payload.text)
+            command = InboxSendCommand(
+                command_id,
+                payload.to,
+                payload.text,
+                project_key=payload.project_key,
+                severity=payload.severity,
+            )
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
@@ -178,7 +184,14 @@ def _install_send_route(
                 actor_id=str(actor.principal_id),
                 command_id=str(command_id),
             )
-            command = InboxSendCommand(command_id, payload.to, payload.text, payload.thread_id)
+            command = InboxSendCommand(
+                command_id,
+                payload.to,
+                payload.text,
+                payload.thread_id,
+                project_key=payload.project_key,
+                severity=payload.severity,
+            )
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
@@ -270,13 +283,13 @@ def _install_correspondents_route(
     recorder: TelemetryRecorder,
 ) -> None:
     @app.get("/v1/inbox/correspondents")
-    def list_correspondents(request: Request) -> JSONResponse:
+    def list_correspondents(request: Request, *, project_key: str | None = None) -> JSONResponse:
         actor = authenticate(
             access, recorder, request, required_scope=UnscopedAuthentication.ALLOWED
         )
         if isinstance(actor, RecordProblem):
             return problem_response(actor)
-        result = projections.list_inbox_correspondents(actor)
+        result = projections.list_inbox_correspondents(actor, project_key)
         boundary = HttpInboxCorrespondentList.model_validate_json(
             encoded(result.response_payload())
         )

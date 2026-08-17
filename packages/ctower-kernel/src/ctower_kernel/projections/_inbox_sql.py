@@ -102,7 +102,9 @@ def list_threads(dsn: str, actor: Actor, *, unread: bool) -> InboxThreadList:
     )
 
 
-def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
+def list_correspondents(
+    dsn: str, actor: Actor, project_key: str | None = None
+) -> InboxCorrespondentList:
     """Read the addresses this principal can open a thread to, and only those.
 
     The seats are the persisted ones, not a catalog of names a fleet might use,
@@ -125,6 +127,7 @@ def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
                 """
                 SELECT project_key, seat_key FROM project_seats AS seat
                 WHERE tenant_id = %s AND principal_id <> %s
+                  AND (%s::text IS NULL OR project_key = %s)
                   AND NOT EXISTS (
                       SELECT 1 FROM project_seats AS sharing
                       WHERE sharing.tenant_id = seat.tenant_id
@@ -133,7 +136,7 @@ def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
                   )
                 ORDER BY seat_key
                 """,
-                (actor.tenant_id, actor.principal_id),
+                (actor.tenant_id, actor.principal_id, project_key, project_key),
             ).fetchall()
     return InboxCorrespondentList(
         correspondents=tuple(
@@ -251,7 +254,8 @@ def _append_message(
         INSERT INTO inbox_projection_messages (
             tenant_id, thread_id, message_id, position, sender_id, sender_seat,
             recipient_id, recipient_seat, content, sent_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            , severity
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT DO NOTHING
         """,
         (
@@ -265,6 +269,7 @@ def _append_message(
             recipient["seat_key"],
             payload["text"],
             sent_at,
+            payload.get("severity", "info"),
         ),
     )
     connection.execute(
@@ -355,6 +360,7 @@ def _message(row: dict[str, object]) -> InboxMessage:
         sent_at=cast(datetime, row["sent_at"]),
         text=str(row["content"]),
         to=str(row["recipient_seat"]),
+        severity=str(row.get("severity", "info")),
     )
 
 

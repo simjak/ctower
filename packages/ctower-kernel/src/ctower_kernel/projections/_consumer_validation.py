@@ -149,6 +149,7 @@ def _validate_inbox_payload(kind: EventKind, payload: Mapping[str, object]) -> N
             _participant(cast(Mapping[str, object], payload["sender"])),
             str(payload["text"]),
             UUID(str(payload["thread_id"])),
+            severity=str(payload.get("severity", "info")),
         )
         return
     if kind in {EventKind.INBOX_MESSAGE_DELIVERED, EventKind.INBOX_MESSAGE_READ}:
