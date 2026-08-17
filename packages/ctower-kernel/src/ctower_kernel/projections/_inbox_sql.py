@@ -132,6 +132,7 @@ def list_correspondents(
                   AND NOT EXISTS (
                       SELECT 1 FROM project_seats AS sharing
                       WHERE sharing.tenant_id = seat.tenant_id
+                        AND sharing.project_key = seat.project_key
                         AND sharing.seat_key = seat.seat_key
                         AND sharing.principal_id <> seat.principal_id
                   )

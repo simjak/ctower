@@ -213,16 +213,15 @@ def _new_participants(
 
 
 def _actor_seat(
-    connection: psycopg.Connection[dict[str, object]], actor: Actor, project_key: str | None
+    connection: psycopg.Connection[dict[str, object]], actor: Actor
 ) -> InboxParticipant | None:
     row = connection.execute(
         """
         SELECT principal_id, seat_key FROM project_seats
         WHERE tenant_id = %s AND principal_id = %s
-          AND (%s::text IS NULL OR project_key = %s)
         ORDER BY project_key, seat_key
         """,
-        (actor.tenant_id, actor.principal_id, project_key, project_key),
+        (actor.tenant_id, actor.principal_id),
     ).fetchone()
     if row is None:
         return None
@@ -235,7 +234,7 @@ def _requested_sender(
     command: InboxSendCommand,
 ) -> InboxParticipant | RecordProblem:
     if command.sender_principal_id is None and command.sender_seat is None:
-        sender = _actor_seat(connection, actor, command.project_key)
+        sender = _actor_seat(connection, actor)
         return sender or _problem(
             command.client_command_id,
             "inbox-sender-unaddressable",
@@ -253,15 +252,8 @@ def _requested_sender(
         """
         SELECT principal_id, seat_key FROM project_seats
         WHERE tenant_id = %s AND principal_id = %s AND seat_key = %s
-          AND (%s::text IS NULL OR project_key = %s)
         """,
-        (
-            actor.tenant_id,
-            command.sender_principal_id,
-            command.sender_seat,
-            command.project_key,
-            command.project_key,
-        ),
+        (actor.tenant_id, command.sender_principal_id, command.sender_seat),
     ).fetchone()
     if row is None:
         return _problem(

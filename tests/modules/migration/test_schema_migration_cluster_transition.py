@@ -35,7 +35,7 @@ RECORDED_THROUGH = "0063_routine_revision_activation.sql"
 RECORDED_SCHEMA_SHA256 = "sha256:cc7fffb7ce2f4fd55d3f5ed8746e42e8b6679847fc47de40d51262a9dad5423c"
 TRANSITION_SCHEMA_SHA256 = "sha256:a0aad539aed6b65580daf16ac047856ef48fcbd72b82c396220e44ebe1a85d03"
 RECORDED_OBJECT_SUM256 = "sum256:9496a4684ee94bb236c93cbab81d8a6e6cedf10555048665a594d717402e2644"
-FINAL_SCHEMA_SHA256 = "sha256:48ce3bb7e862629c49f15da28504704b0794e303f4d475aae2f1303d81e40aea"
+FINAL_SCHEMA_SHA256 = "sha256:0b0cd1fc1aac9139eb17dc5785b5813993c1423807189a05269c4c965f53ede0"
 POSTGRES_16_SCHEMA_SHA256 = (
     "sha256:2ee604d20af64d52254e8c1e0d2b40ee4b28afa81b8cf85e09c047d66538c9d8"
 )
@@ -101,10 +101,10 @@ def test_declared_cluster_transition_advances_the_recorded_0063_instance(
     assert [row[:5] for row in recorded_after[: len(recorded_before)]] == recorded_before
     assert all(row[5] is None for row in recorded_after[: len(recorded_before)])
     assert [row[0] for row in recorded_after[-4:]] == [
-        "0071_estate_import_idempotency.sql",
         "0072_estate_import_authority.sql",
         "0073_restore_request_proposal_constraints.sql",
         "0074_restore_routine_retirement_kind.sql",
+        "0075_inbox_message_severity.sql",
     ]
     assert all(
         isinstance(row[5], int)
@@ -185,10 +185,10 @@ def test_retry_after_cluster_phase_and_two_concurrent_callers_converge_once(
 
     rows = _versioned_ledger_rows(migration_database)
     assert [row[0] for row in rows[-4:]] == [
-        "0071_estate_import_idempotency.sql",
         "0072_estate_import_authority.sql",
         "0073_restore_request_proposal_constraints.sql",
         "0074_restore_routine_retirement_kind.sql",
+        "0075_inbox_message_severity.sql",
     ]
     assert len({row[0] for row in rows}) == len(rows)
 
