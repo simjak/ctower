@@ -54,6 +54,30 @@ class CatalogAdmissionTests(unittest.TestCase):
             report.findings,
         )
 
+    def test_unterminated_frontmatter_refuses_by_stable_name(self) -> None:
+        for label, content in (
+            ("no-delimiter", "---\ncatalog_content: tenant\nname: private\n"),
+            ("scanner-error", "---\ncatalog_content: tenant\n\tname: private\n"),
+        ):
+            with self.subTest(label=label):
+                with self._repository() as root:
+                    artifact = root / "packs/components/skills/private-skill/SKILL.md"
+                    artifact.parent.mkdir(parents=True)
+                    artifact.write_text(content, encoding="utf-8")
+
+                    report = verify(root, "full")
+
+                self.assertFalse(report.ok, report.findings)
+                self.assertTrue(
+                    any(
+                        finding.rule_id == _STABLE_REFUSAL
+                        and finding.path == "packs/components/skills/private-skill/SKILL.md"
+                        and "could not be classified" in finding.message
+                        for finding in report.errors
+                    ),
+                    report.findings,
+                )
+
     def test_tenant_catalog_refusal_is_not_waivable(self) -> None:
         with self._repository(policy_source=_CANONICAL_POLICY) as root:
             relative = "packs/components/private-skill.yaml"
@@ -206,6 +230,30 @@ def _catalog_representations() -> Iterator[tuple[str, str, str, str]]:
             tenant,
             public,
         )
+    for label, scalar_prefix in _frontmatter_scalar_prefixes():
+        tenant = (
+            f"---\n{scalar_prefix}catalog_content: tenant\n"
+            "name: private operating instructions\n---\n\n# Private\n"
+        )
+        public = (
+            f"---\n{scalar_prefix}catalog_content: synthetic\n"
+            "name: generic example\n---\n\n# Public\n"
+        )
+        yield (
+            f"frontmatter-scalar-{label}",
+            "packs/components/skills/private-skill/SKILL.md",
+            tenant,
+            public,
+        )
+
+
+def _frontmatter_scalar_prefixes() -> tuple[tuple[str, str], ...]:
+    return (
+        ("block-dash", "description: |\n  public preface\n  ---\n"),
+        ("block-dots", "description: |\n  public preface\n  ...\n"),
+        ("double-quoted-delimiters", 'description: "public preface\n  ---\n  ..."\n'),
+        ("folded-nested-dots", "metadata:\n  description: >\n    public preface\n    ...\n"),
+    )
 
 
 def _catalog_documents() -> tuple[tuple[str, dict[str, object]], ...]:
