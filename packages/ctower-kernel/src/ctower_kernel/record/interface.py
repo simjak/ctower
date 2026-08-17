@@ -461,7 +461,7 @@ class Ticket:
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
-            "display_key": self.display_key,
+            **({"display_key": self.display_key} if self.display_key is not None else {}),
             "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
@@ -480,8 +480,6 @@ class TicketCommandResult:
     ticket: Ticket
 
     def response_payload(self) -> dict[str, object]:
-        """Return the exact authoritative command response."""
-
         return {
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",

@@ -364,7 +364,7 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
-        display_key=cast(str | None, row["display_key"]),
+        display_key=cast(str | None, row.get("display_key")),
         durability_state=DurabilityState(str(row["durability_state"])),
     )
 
