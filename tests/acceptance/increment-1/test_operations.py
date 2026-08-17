@@ -294,8 +294,8 @@ def test_board_fold_excludes_pending_commands_and_rebuilds_accepted_facts_only(
         outcome.command_id,
     )
     accepted = projections.catch_up(tenant.tenant_id)
-    projections.rebuild(tenant.tenant_id)
     accepted_board = _board(projections, tenant)
+    projections.rebuild(tenant.tenant_id)
     rebuilt_board = _board(projections, tenant)
 
     assert pending_board.cards == ()

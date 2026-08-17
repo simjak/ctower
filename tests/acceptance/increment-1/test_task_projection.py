@@ -101,8 +101,9 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
     stale = projections.board(actor, BoardQuery(project_key="ctower"))
     assert not isinstance(stale, RecordProblem), stale
     ready = projections.catch_up(tenant.tenant_id)
-    rebuilt = projections.rebuild(tenant.tenant_id)
     ready_board = _board(projections, actor, "ctower")
+    rebuilt = projections.rebuild(tenant.tenant_id)
+    rebuilt_board = _board(projections, actor, "ctower")
     ProjectionFaults(tenant.database.admin_dsn).remove_projected_card(tenant.tenant_id, ticket_id)
     missing = projections.board(actor, BoardQuery(project_key="ctower"))
     assert not isinstance(missing, RecordProblem), missing
@@ -116,7 +117,37 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
     assert rebuilt.health is ready.health
     assert rebuilt.source_watermark == ready.source_watermark
     assert rebuilt.projection_watermark == ready.projection_watermark
+    assert rebuilt_board.response_payload() == ready_board.response_payload()
     assert missing.health is ProjectionHealth.STATE_UNKNOWN
+
+
+def test_rebuild_equality_turns_red_when_the_rebuild_corrupts_a_card(
+    tenant: TenantFixture,
+) -> None:
+    """The pre/post oracle the three rebuild tests use must see rebuild-time drift."""
+
+    actor = Actor(
+        tenant.commander_id,
+        tenant.tenant_id,
+        PrincipalKind.COMMANDER,
+        project_grants=frozenset({"ctower"}),
+    )
+    _ticket(tenant)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    caught_up = projections.catch_up(tenant.tenant_id)
+    accepted_board = _board(projections, actor, "ctower")
+
+    with ProjectionFaults(tenant.database.admin_dsn).corrupt_projected_priority("P0"):
+        rebuilt = projections.rebuild(tenant.tenant_id)
+    rebuilt_board = _board(projections, actor, "ctower")
+
+    assert accepted_board.cards[0].priority == "P2"
+    assert rebuilt_board.cards[0].priority == "P0"
+    assert rebuilt.health is caught_up.health
+    assert rebuilt.source_watermark == caught_up.source_watermark
+    assert rebuilt.projection_watermark == caught_up.projection_watermark
+    assert rebuilt_board.response_payload() != accepted_board.response_payload()
 
 
 def test_rolled_back_outbox_append_retries_without_poisoning_board(
@@ -145,8 +176,9 @@ def test_rolled_back_outbox_append_retries_without_poisoning_board(
     retried = work.execute(actor, command, telemetry=_telemetry())
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     caught_up = projections.catch_up(tenant.tenant_id)
-    rebuilt = projections.rebuild(tenant.tenant_id)
     caught_up_board = _board(projections, actor, "ctower")
+    rebuilt = projections.rebuild(tenant.tenant_id)
+    rebuilt_board = _board(projections, actor, "ctower")
     positions = faults.record_positions()
 
     assert isinstance(retried, WorkReceipt)
@@ -157,6 +189,7 @@ def test_rolled_back_outbox_append_retries_without_poisoning_board(
     assert rebuilt.source_watermark == caught_up.source_watermark
     assert rebuilt.projection_watermark == caught_up.projection_watermark
     assert caught_up_board.cards
+    assert rebuilt_board.response_payload() == caught_up_board.response_payload()
 
 
 @pytest.mark.parametrize("fault", ("behind", "ahead"))
