@@ -193,6 +193,8 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "promoteInboxThread": ("inbox promote", True, "allowed", None, False),
     "readInboxThread": ("inbox read", False, "forbidden", None, False),
     "readInboxMessageState": ("inbox read-state", False, "forbidden", None, False),
+    "readPoolLimits": ("pools show", False, "forbidden", "authenticated", False),
+    "recordPoolObservation": ("pools observe", True, "allowed", None, False),
     "recordAttentionFindingDisposition": (
         "attention finding disposition",
         True,

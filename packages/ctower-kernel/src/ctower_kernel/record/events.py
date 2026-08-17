@@ -66,6 +66,7 @@ from ctower_kernel.record.knowledge_events import (
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
+from ctower_kernel.record.pool_events import PoolObservationRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
 from ctower_kernel.record.request_events import _validate_identity as _validate_request_identity
 from ctower_kernel.record.request_proposal_events import RequestProposalChangedPayload
@@ -292,6 +293,7 @@ type EventPayload = (
     | RulingRecordedPayload
     | EstateImportChangedPayload
     | CompanyRecordAppendedPayload
+    | PoolObservationRecordedPayload
 )
 
 
@@ -522,6 +524,11 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             CompanyRecordAppendedPayload,
             "company-record",
             _API_OR_IMPORT,
+        ),
+        EventCatalogEntry(
+            EventKind.POOL_OBSERVATION_RECORDED,
+            PoolObservationRecordedPayload,
+            "pool-observation",
         ),
     )
 }

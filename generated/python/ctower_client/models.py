@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:908ed9b033faddecade3c0adb0d2ecc052243840e3b0b1b44419293e820ff430
+Authored contract digest: sha256:a1f90410125e4c911623673ce8cc5e4797cb22def0ba15b5bcf1272fc7990063
 """
 
 from __future__ import annotations
@@ -205,6 +205,21 @@ __all__ = [
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",
     "PoisonDispositionRequest",
+    "PoolAuthState",
+    "PoolCreditState",
+    "PoolDriftFinding",
+    "PoolDriftFindingKind",
+    "PoolEnactmentPath",
+    "PoolEntryState",
+    "PoolLimitsView",
+    "PoolModelWeight",
+    "PoolObservationRequest",
+    "PoolObservationResult",
+    "PoolObservedEntry",
+    "PoolProfileLimits",
+    "PoolQuotaState",
+    "PoolReachState",
+    "PoolRegistrationState",
     "Priority",
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
@@ -1476,6 +1491,53 @@ class PoisonDispositionAction(StrEnum):
     TOMBSTONE = "tombstone"
 
 
+class PoolAuthState(StrEnum):
+    HEALTHY = "healthy"
+    LINEAGE_DEAD = "lineage-dead"
+    CHAIN_BURNED = "chain-burned"
+
+
+class PoolCreditState(StrEnum):
+    METERED = "metered"
+    UNMETERED = "unmetered"
+
+
+class PoolDriftFindingKind(StrEnum):
+    MISSING = "missing"
+    UNREGISTERED = "unregistered"
+
+
+class PoolEnactmentPath(StrEnum):
+    OPERATOR_CEREMONY = "operator-ceremony"
+    SECRET_REFERENCE = "secret-reference"
+
+
+class PoolModelWeight(_BoundaryModel):
+    subscription_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    model_ref: Annotated[str, Field(pattern="^[a-z0-9][a-z0-9._-]{1,63}$")]
+    input_millicredits_per_mtok: Annotated[int, Field(ge=0, le=9007199254740991)]
+    cached_input_millicredits_per_mtok: Annotated[int, Field(ge=0, le=9007199254740991)]
+    output_millicredits_per_mtok: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
+class PoolQuotaState(StrEnum):
+    AVAILABLE = "available"
+    CAPPED = "capped"
+    UNFUNDED = "unfunded"
+    UNKNOWN = "unknown"
+
+
+class PoolReachState(StrEnum):
+    OK = "ok"
+    EDGE_CHALLENGED = "edge-challenged"
+    UNKNOWN = "unknown"
+
+
+class PoolRegistrationState(StrEnum):
+    ENROLLED = "enrolled"
+    DISCOVERED = "discovered"
+
+
 class Priority(StrEnum):
     P0 = "P0"
     P1 = "P1"
@@ -2465,6 +2527,53 @@ class PoisonDispositionRequest(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
+class PoolDriftFinding(_BoundaryModel):
+    finding: PoolDriftFindingKind
+    provider_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    subscription_identity: Annotated[str, Field(min_length=3, max_length=254)] | None
+    enactment: PoolEnactmentPath
+    detail: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class PoolEntryState(_BoundaryModel):
+    provider_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    subscription_identity: Annotated[str, Field(min_length=3, max_length=254)] | None
+    entry_label: Annotated[str, Field(min_length=1, max_length=128)] | None
+    registration_state: PoolRegistrationState
+    auth_state: PoolAuthState
+    quota_state: PoolQuotaState
+    quota_reset_at: _Rfc3339DateTime | None
+    reach_state: PoolReachState
+    selectable: bool
+    request_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    last_status_observed: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,63}$")] | None
+    credit_state: PoolCreditState
+    metered_millicredits: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    observed_at: _Rfc3339DateTime
+
+
+class PoolObservationResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: tuple[UUID, ...]
+    observation_id: UUID
+    recorded_at: _Rfc3339DateTime
+
+
+class PoolObservedEntry(_BoundaryModel):
+    provider_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    subscription_identity: Annotated[str, Field(min_length=3, max_length=254)] | None
+    entry_label: Annotated[str, Field(min_length=1, max_length=128)] | None
+    registration_state: PoolRegistrationState
+    auth_state: PoolAuthState
+    quota_state: PoolQuotaState
+    quota_reset_at: _Rfc3339DateTime | None
+    reach_state: PoolReachState
+    request_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    last_status_observed: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,63}$")] | None
+    secret_fingerprint: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+
+
 class PriorityChangeRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     priority: Priority
@@ -3327,6 +3436,23 @@ class MorningDigestRulingSection(_BoundaryModel):
     visible_count: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
+class PoolObservationRequest(_BoundaryModel):
+    harness_key: Literal["hermes", "claude-code"]
+    profile_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    observed_at: _Rfc3339DateTime
+    entries: Annotated[tuple[PoolObservedEntry, ...], Field(max_length=64)]
+
+
+class PoolProfileLimits(_BoundaryModel):
+    harness_key: Literal["hermes", "claude-code"]
+    profile_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    entries: tuple[PoolEntryState, ...]
+    drift: tuple[PoolDriftFinding, ...]
+    selectable_entry_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    earliest_known_reset_at: _Rfc3339DateTime | None
+    observed_at: _Rfc3339DateTime
+
+
 class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):
     state: Literal["assigned"]
     seat: ProjectDeliverySeat
@@ -3542,6 +3668,12 @@ class MorningDigestDecisionSection(_BoundaryModel):
     total_count: Annotated[int, Field(ge=0, le=9007199254740991)] | None
     unreached: tuple[DigestUnreachedScope, ...]
     visible_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
+class PoolLimitsView(_BoundaryModel):
+    profiles: tuple[PoolProfileLimits, ...]
+    weights: tuple[PoolModelWeight, ...]
+    topology_revision: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment

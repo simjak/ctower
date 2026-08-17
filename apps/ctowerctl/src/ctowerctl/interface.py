@@ -37,6 +37,7 @@ from ctowerctl import (
     _knowledge_commands,
     _migration_commands,
     _ops_commands,
+    _pool_commands,
     _request_commands,
     _ruling_commands,
     _session_commands,
@@ -230,6 +231,7 @@ _MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "intake": _intake_commands.build_mutation,
     "inbox": _inbox_commands.build_mutation,
     "knowledge": _knowledge_commands.build_mutation,
+    "pools": _pool_commands.build_mutation,
     "company": _company_commands.build_mutation,
     "ops": _ops_commands.build_mutation,
     "session": _session_commands.build_mutation,
@@ -294,6 +296,7 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         "ticket",
         "inbox",
         "knowledge",
+        "pools",
         "dream-dispatch",
         "beat-dispatch",
         "request",
@@ -314,8 +317,13 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
 def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
     if arguments.area == "ticket":
         return _ticket_commands.execute_query(arguments, client)
-    if arguments.area == "knowledge":
-        return _knowledge_commands.execute_query(arguments, client)
+    if arguments.area in {"knowledge", "pools"}:
+        handler = (
+            _knowledge_commands.execute_query
+            if arguments.area == "knowledge"
+            else _pool_commands.execute_query
+        )
+        return handler(arguments, client)
     if arguments.area in {"dream-dispatch", "beat-dispatch"}:
         handler = (
             _dream_dispatch_commands.execute_query

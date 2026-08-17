@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:908ed9b033faddecade3c0adb0d2ecc052243840e3b0b1b44419293e820ff430
+// Authored contract digest: sha256:a1f90410125e4c911623673ce8cc5e4797cb22def0ba15b5bcf1272fc7990063
 
 export type ActivityClass = "work" | "verification";
 
@@ -1591,6 +1591,98 @@ export type PoisonDispositionRequest = Readonly<{
   readonly "reason": string;
   readonly "topic": string;
 }>;
+
+export type PoolAuthState = "healthy" | "lineage-dead" | "chain-burned";
+
+export type PoolCreditState = "metered" | "unmetered";
+
+export type PoolDriftFinding = Readonly<{
+  readonly "detail": string;
+  readonly "enactment": PoolEnactmentPath;
+  readonly "finding": PoolDriftFindingKind;
+  readonly "provider_key": string;
+  readonly "subscription_identity": string | null;
+}>;
+
+export type PoolDriftFindingKind = "missing" | "unregistered";
+
+export type PoolEnactmentPath = "operator-ceremony" | "secret-reference";
+
+export type PoolEntryState = Readonly<{
+  readonly "auth_state": PoolAuthState;
+  readonly "credit_state": PoolCreditState;
+  readonly "entry_label": string | null;
+  readonly "last_status_observed": string | null;
+  readonly "metered_millicredits": number | null;
+  readonly "observed_at": string;
+  readonly "provider_key": string;
+  readonly "quota_reset_at": string | null;
+  readonly "quota_state": PoolQuotaState;
+  readonly "reach_state": PoolReachState;
+  readonly "registration_state": PoolRegistrationState;
+  readonly "request_count": number;
+  readonly "selectable": boolean;
+  readonly "subscription_identity": string | null;
+}>;
+
+export type PoolLimitsView = Readonly<{
+  readonly "profiles": ReadonlyArray<PoolProfileLimits>;
+  readonly "topology_revision": number;
+  readonly "weights": ReadonlyArray<PoolModelWeight>;
+}>;
+
+export type PoolModelWeight = Readonly<{
+  readonly "cached_input_millicredits_per_mtok": number;
+  readonly "input_millicredits_per_mtok": number;
+  readonly "model_ref": string;
+  readonly "output_millicredits_per_mtok": number;
+  readonly "subscription_key": string;
+}>;
+
+export type PoolObservationRequest = Readonly<{
+  readonly "entries": ReadonlyArray<PoolObservedEntry>;
+  readonly "harness_key": "hermes" | "claude-code";
+  readonly "observed_at": string;
+  readonly "profile_key": string;
+}>;
+
+export type PoolObservationResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "observation_id": string;
+  readonly "recorded_at": string;
+}>;
+
+export type PoolObservedEntry = Readonly<{
+  readonly "auth_state": PoolAuthState;
+  readonly "entry_label": string | null;
+  readonly "last_status_observed": string | null;
+  readonly "provider_key": string;
+  readonly "quota_reset_at": string | null;
+  readonly "quota_state": PoolQuotaState;
+  readonly "reach_state": PoolReachState;
+  readonly "registration_state": PoolRegistrationState;
+  readonly "request_count": number;
+  readonly "secret_fingerprint": string | null;
+  readonly "subscription_identity": string | null;
+}>;
+
+export type PoolProfileLimits = Readonly<{
+  readonly "drift": ReadonlyArray<PoolDriftFinding>;
+  readonly "earliest_known_reset_at": string | null;
+  readonly "entries": ReadonlyArray<PoolEntryState>;
+  readonly "harness_key": "hermes" | "claude-code";
+  readonly "observed_at": string;
+  readonly "profile_key": string;
+  readonly "selectable_entry_count": number;
+}>;
+
+export type PoolQuotaState = "available" | "capped" | "unfunded" | "unknown";
+
+export type PoolReachState = "ok" | "edge-challenged" | "unknown";
+
+export type PoolRegistrationState = "enrolled" | "discovered";
 
 export type Priority = "P0" | "P1" | "P2";
 

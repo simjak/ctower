@@ -41,6 +41,7 @@ from ctower_kernel.knowledge import (
     StaticFileKnowledgeSource,
     bundled_static_root,
 )
+from ctower_kernel.pools import Pools, PostgresPools
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
@@ -163,6 +164,7 @@ def api_main() -> None:
                     source=StaticFileKnowledgeSource(bundled_static_root()),
                 )
             ),
+            pools=Pools(PostgresPools(runtime_dsn)),
             estate_imports=PostgresEstateImports(
                 runtime_dsn,
                 trusted_keys={},

@@ -81,6 +81,7 @@ from ctower_kernel.attention import Attention
 from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.inbox import Inbox
 from ctower_kernel.knowledge import Knowledge
+from ctower_kernel.pools import Pools
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
@@ -182,6 +183,7 @@ def create_app(
     board_context: BoardContextFacts | None = None,
     inbox: Inbox | None = None,
     knowledge: Knowledge | None = None,
+    pools: Pools | None = None,
     estate_imports: EstateImportPort | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
@@ -222,6 +224,7 @@ def create_app(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        pools=pools,
         estate_imports=estate_imports,
         catalog=catalog,
     )
@@ -254,6 +257,7 @@ def _install_application_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    pools: Pools | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
 ) -> None:
@@ -284,6 +288,7 @@ def _install_application_routes(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        pools=pools,
         estate_imports=estate_imports,
         catalog=catalog,
         recorder=recorder,
@@ -342,6 +347,7 @@ def _install_optional_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    pools: Pools | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
     recorder: TelemetryRecorder,
@@ -357,6 +363,7 @@ def _install_optional_routes(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        pools=pools,
         estate_imports=estate_imports,
         catalog=catalog,
         recorder=recorder,
