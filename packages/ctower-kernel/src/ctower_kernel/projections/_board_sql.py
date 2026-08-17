@@ -269,14 +269,15 @@ def _create_card(
     position: int,
 ) -> None:
     project_key = _created_project(connection, tenant_id, message, payload)
+    display_key = _created_display_key(connection, tenant_id, message)
     connection.execute(
         """
         INSERT INTO board_projection_rows (
-            tenant_id, ticket_id, project_key, title, source_kind, source_ref,
+            tenant_id, ticket_id, project_key, display_key, title, source_kind, source_ref,
             lane, underlying_lane, priority,
             stage_key, activity_class, custodian_id, assignee_id, blocker_reason,
             blocker_opened_at, risk, delivery_facts, ticket_version, source_position
-        ) VALUES (%s, %s, %s, %s, %s, %s, 'backlog', NULL, %s,
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'backlog', NULL, %s,
             NULL, NULL, %s, NULL, NULL, NULL, NULL, '[]'::jsonb, 1, %s)
         ON CONFLICT (tenant_id, ticket_id) DO NOTHING
         """,
@@ -284,6 +285,7 @@ def _create_card(
             tenant_id,
             message["aggregate_id"],
             project_key,
+            display_key,
             payload["title"],
             payload["source_kind"],
             payload["source_ref"],
@@ -309,6 +311,18 @@ def _created_project(
     if row is None:
         raise ValueError("legacy ticket event has no authoritative project binding")
     return str(row["project_key"])
+
+
+def _created_display_key(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    message: dict[str, object],
+) -> str | None:
+    row = connection.execute(
+        "SELECT display_key FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
+        (tenant_id, message["aggregate_id"]),
+    ).fetchone()
+    return cast(str | None, row["display_key"]) if row is not None else None
 
 
 def _apply_custody_transfer(
@@ -539,6 +553,7 @@ def _card(row: dict[str, object], context: _ContextSets) -> BoardCard:
         risk=cast(str | None, row["risk"]),
         delivery_facts=tuple(str(item) for item in delivery),
         version=int(cast(int, row["ticket_version"])),
+        display_key=cast(str | None, row["display_key"]),
         tenant_display_identity=context.tenant_display_identity,
         change_references=context.change_references.get(ticket_id, ()),
         applied_labels=context.applied_labels.get(ticket_id, ()),

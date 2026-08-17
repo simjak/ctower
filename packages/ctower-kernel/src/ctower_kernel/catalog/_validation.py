@@ -159,6 +159,28 @@ def _validate_resources(bundle: CompanyBundle, schemas: SchemaCatalog) -> Catalo
         problem = _validate_resource(resource, schemas)
         if problem is not None:
             return problem
+    projects = tuple(
+        resource
+        for resource in bundle.resources
+        if resource.component.kind is ComponentKind.PROJECT
+    )
+    project_keys = tuple(resource.component.key.split(".", 1)[0] for resource in projects)
+    if len(project_keys) != len(set(project_keys)):
+        return _problem(
+            "bundle-reference-invalid",
+            "A company bundle may name only one project component per project key.",
+        )
+    prefixes = tuple(str(resource.payload["prefix"]) for resource in projects)
+    if len(prefixes) != len(set(prefixes)):
+        return _problem(
+            "bundle-reference-invalid",
+            "A project display prefix may occur only once in one active company bundle.",
+        )
+    if any(prefix in {"CT", "R"} for prefix in prefixes):
+        return _problem(
+            "bundle-reference-invalid",
+            "The CT and R display prefixes are reserved for other identities.",
+        )
     return None
 
 

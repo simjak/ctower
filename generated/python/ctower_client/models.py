@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+Authored contract digest: sha256:018119aadbe3c39ff384098d27c037cca547d21f81132643bbfa647c46b31c35
 """
 
 from __future__ import annotations
@@ -3068,6 +3068,7 @@ class TicketIntentRequest(_BoundaryModel):
 class TicketResource(_BoundaryModel):
     created_at: _Rfc3339DateTime
     custodian_id: UUID
+    display_key: Annotated[str, Field(pattern="^[A-Z]{2,5}-[1-9][0-9]*$")] | None = None
     durability_state: DurabilityState
     priority: Priority
     source: SourceReference
@@ -3596,6 +3597,7 @@ class BoardCard(_BoundaryModel):
     custodian_id: UUID
     delivery_facts: tuple[str, ...]
     delivery_surface_availability: DeliverySurfaceAvailability
+    display_key: Annotated[str, Field(pattern="^[A-Z]{2,5}-[1-9][0-9]*$")] | None = None
     human_waiting: HumanWaiting
     inbox_thread_ids: tuple[UUID, ...]
     lane: BoardLane

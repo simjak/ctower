@@ -45,6 +45,7 @@ from ctowerctl._parser_support import (
     _review_dispatch,
     _session_id,
     _ticket_id,
+    _ticket_reference,
     _version,
     _version_reason,
 )
@@ -218,7 +219,7 @@ def _inbox_parser(parser: argparse.ArgumentParser) -> None:
     promote.set_defaults(cli_name="inbox promote")
     _command_id(promote)
     promote.add_argument("thread_id", type=UUID)
-    promote.add_argument("--ticket", dest="ticket_id", type=UUID)
+    promote.add_argument("--ticket", dest="ticket_id", type=_ticket_reference)
     list_parser = actions.add_parser("list")
     list_parser.set_defaults(cli_name="inbox list")
     list_parser.add_argument("--unread", action="store_true")
@@ -236,7 +237,7 @@ def _intake_ticket_fields(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--initial-custodian-id", type=UUID)
     parser.add_argument("--priority", choices=tuple(Priority))
     parser.add_argument("--title")
-    parser.add_argument("--target-ticket-id", type=UUID)
+    parser.add_argument("--target-ticket-id", type=_ticket_reference)
     parser.add_argument("--expected-ticket-version", type=_positive_int)
 
 
