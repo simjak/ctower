@@ -191,6 +191,23 @@ def test_inbox_correspondents_accepts_an_optional_project_filter() -> None:
     assert arguments.project_key == "ctower"
 
 
+def test_inbox_transport_contract_is_documented_in_the_cli_reference() -> None:
+    reference = (Path(__file__).parents[3] / "docs/reference/cli.md").read_text(
+        encoding="utf-8"
+    )
+
+    fragments = (
+        "required: `--project-key`, `--severity {P0,P1,info}`, `--to <seat_key>`",
+        "optional: `--command-id`, `--thread <thread_id>`",
+        "optional: `--project-key`",
+        "closed `severity` of `P0`, `P1`, or `info`",
+        "only a `P0` delivery may use the push/wake path",
+        "existing n-minute beat-Routine pull",
+    )
+    for fragment in fragments:
+        assert fragment in reference, f"missing CLI reference fragment: {fragment}"
+
+
 def test_review_dispatch_commands_parse_the_exact_effect_and_routing_facts() -> None:
     ticket_id = uuid4()
     effect_id = uuid4()
