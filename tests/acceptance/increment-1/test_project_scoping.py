@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import cast
 
-from support.project_scoping import _assert_pair_disjoint, _scoped_projection_fixture
+from support.project_scoping import (
+    HTTP_FORBIDDEN,
+    _assert_pair_disjoint,
+    _scoped_projection_fixture,
+)
 from support.tenant_fixture import TenantFixture
 
 from ctower_kernel.projections import BoardQuery
@@ -48,6 +52,33 @@ def test_granted_project_projection_reads_still_work(tenant: TenantFixture) -> N
     assert not isinstance(cast(object, operator_board), RecordProblem), (
         operator_board.response_payload()
     )
+
+
+def test_portfolio_board_reads_are_operator_only(tenant: TenantFixture) -> None:
+    """Four persisted cells: own Project, foreign Project, and both portfolio reads."""
+
+    projections, scoped_actor, operator, manibo_ticket = _scoped_projection_fixture(tenant)
+
+    own = projections.board(scoped_actor, BoardQuery(project_key="manibo"))
+    foreign = projections.board(scoped_actor, BoardQuery(project_key="ctower"))
+    operator_portfolio = projections.portfolio_board(operator)
+    scoped_portfolio = projections.portfolio_board(scoped_actor)
+
+    assert not isinstance(own, RecordProblem), own
+    assert {card.ticket_id for card in own.cards} == {manibo_ticket}
+    assert isinstance(cast(object, foreign), RecordProblem), _project_keys(foreign)
+    assert not isinstance(operator_portfolio, RecordProblem), operator_portfolio
+    assert _project_keys(operator_portfolio) == ("ctower", "manibo")
+    assert isinstance(scoped_portfolio, RecordProblem), (
+        "a project-scoped non-operator received the portfolio Board: "
+        f"projects={_project_keys(scoped_portfolio)}"
+    )
+    assert scoped_portfolio.code == "project-scope-denied"
+    assert scoped_portfolio.status == HTTP_FORBIDDEN
+
+
+def _project_keys(view: object) -> tuple[str, ...]:
+    return tuple(sorted({str(card.project_key) for card in getattr(view, "cards", ())}))
 
 
 def test_bhloop_and_ctower_boards_are_disjoint(tenant: TenantFixture) -> None:

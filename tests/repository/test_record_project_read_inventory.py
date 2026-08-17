@@ -35,6 +35,7 @@ class _InventoryRow:
     materialization_line: int | None
     identity_flow: bool = True
     refusal_dominates: bool = True
+    scope_gate: bool = True
 
     @property
     def composes_predicate(self) -> bool:
@@ -44,6 +45,7 @@ class _InventoryRow:
             and self.predicate_line < self.materialization_line
             and self.identity_flow
             and self.refusal_dominates
+            and self.scope_gate
         )
 
     def output(self) -> str:
@@ -118,6 +120,43 @@ class RecordProjectReadInventoryTests(unittest.TestCase):
             self.assertTrue(restored)
             self.assertTrue(all(row.composes_predicate for row in restored))
 
+    def test_no_projection_query_type_can_omit_its_project_scope(self) -> None:
+        interface = _PROJECTION_ROOT / "interface.py"
+        scoped_query = "    project_key: str\n    lane: BoardLane | None = None\n"
+        self.assertIn(scoped_query, interface.read_text(encoding="utf-8"))
+        widened = interface.read_text(encoding="utf-8").replace(
+            scoped_query, scoped_query.replace("project_key: str", "project_key: str | None"), 1
+        )
+        self.assertEqual(
+            [],
+            analyzer.optional_scope_fields(
+                ast.parse(interface.read_text(encoding="utf-8")),
+                scope_names={"project_key", "project_keys"},
+            ),
+        )
+        rewidened = analyzer.optional_scope_fields(
+            ast.parse(widened), scope_names={"project_key", "project_keys"}
+        )
+        print("re-widened projection scope fields:", rewidened)
+        self.assertTrue(rewidened, "a re-widened Project scope was not reported")
+
+    def test_projection_read_inventory_rejects_an_ungated_empty_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            projection_root = Path(temporary) / "projections"
+            shutil.copytree(_PROJECTION_ROOT, projection_root)
+            board_sql = projection_root / "_board_sql.py"
+            original = board_sql.read_text(encoding="utf-8")
+            mutated = original.replace("operator_only=True", "operator_only=False", 1)
+            self.assertNotEqual(original, mutated)
+            board_sql.write_text(mutated, encoding="utf-8")
+
+            inventory = _discover_projection_inventory(projection_root)
+            failures = [row.output() for row in inventory if not row.composes_predicate]
+            print("ungated empty-scope guard failures:", failures)
+            self.assertTrue(
+                failures, "the ungated empty-scope projection read unexpectedly passed the guard"
+            )
+
     def test_projection_read_inventory_rejects_identity_discard(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             projection_root = Path(temporary) / "projections"
@@ -144,7 +183,11 @@ def _discover_inventory() -> tuple[_InventoryRow, ...]:
 def _discover_record_inventory() -> tuple[_InventoryRow, ...]:
     interface = ast.parse(_INTERFACE.read_text(encoding="utf-8"), filename=str(_INTERFACE))
     public_reads = tuple(
-        analyzer.public_reads(interface, scope_names={"project_key", "project_keys", "ticket_id"})
+        analyzer.public_reads(
+            interface,
+            scope_names={"project_key", "project_keys", "ticket_id"},
+            scoped_returns=set(),
+        )
     )
     postgres = ast.parse(_POSTGRES.read_text(encoding="utf-8"), filename=str(_POSTGRES))
     aliases = analyzer.postgres_sql_aliases(
@@ -179,6 +222,7 @@ def _discover_record_inventory() -> tuple[_InventoryRow, ...]:
                     function_name=function_name,
                     predicate_line=analyzer.first_call_line(function, "project_scope_refusal"),
                     materialization_line=analyzer.first_materialization_execute_line(function),
+                    scope_gate=analyzer.empty_scope_refusals_are_operator_only(function),
                 )
             )
     return tuple(rows)
@@ -192,7 +236,9 @@ def _discover_projection_inventory(
     interface = ast.parse(interface_path.read_text(encoding="utf-8"), filename=str(interface_path))
     public_reads = tuple(
         analyzer.public_reads(
-            interface, scope_names={"project_key", "project_keys", "ticket_id", "query"}
+            interface,
+            scope_names={"project_key", "project_keys", "ticket_id", "query"},
+            scoped_returns={"BoardView"},
         )
     )
     postgres = ast.parse(postgres_path.read_text(encoding="utf-8"), filename=str(postgres_path))
@@ -237,6 +283,7 @@ def _projection_read_row(
         materialization_line=materialization_line,
         identity_flow=analyzer.projection_identity_flow(postgres, method, target, projection_root),
         refusal_dominates=_scope_guard_dominates_materialization(function, materialization_line),
+        scope_gate=analyzer.empty_scope_refusals_are_operator_only(function),
     )
 
 

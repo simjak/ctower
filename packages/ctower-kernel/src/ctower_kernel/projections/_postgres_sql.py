@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
 from uuid import UUID
 
 from ctower_kernel.projections import (
@@ -11,6 +10,7 @@ from ctower_kernel.projections import (
     ProjectionMaintenanceResult,
 )
 from ctower_kernel.projections._board_sql import _read_view_for_catch_up, read_view
+from ctower_kernel.projections._board_sql import portfolio_board as _portfolio_view
 from ctower_kernel.projections._consumer_sql import (
     consume_one,
     mark_requested_unknown,
@@ -40,22 +40,28 @@ def catch_up(
 def board(dsn: str, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
     """Read stored projection rows and watermarks without mutation."""
 
-    if (
-        query.project_key is not None
-        and actor.kind is not PrincipalKind.OPERATOR
-        and query.project_key not in actor.project_grants
-    ):
-        return cast(
-            BoardView,
-            RecordProblem(
-                "project-scope-denied",
-                "The authenticated project seat cannot reach a ticket from another project.",
-                403,
-                "Project scope denied",
-            ),
-        )
+    if actor.kind is not PrincipalKind.OPERATOR and query.project_key not in actor.project_grants:
+        return _scope_denied()
     source = read_source(dsn, actor.tenant_id)
     return read_view(dsn, actor, query, source=source)
+
+
+def portfolio_board(dsn: str, actor: Actor) -> BoardView | RecordProblem:
+    """Read every Project's rows for an operator, refusing every other principal."""
+
+    if actor.kind is not PrincipalKind.OPERATOR:
+        return _scope_denied()
+    source = read_source(dsn, actor.tenant_id)
+    return _portfolio_view(dsn, actor, source=source)
+
+
+def _scope_denied() -> RecordProblem:
+    return RecordProblem(
+        "project-scope-denied",
+        "The authenticated project seat cannot reach a ticket from another project.",
+        403,
+        "Project scope denied",
+    )
 
 
 def rebuild(dsn: str, tenant_id: UUID) -> ProjectionMaintenanceResult:

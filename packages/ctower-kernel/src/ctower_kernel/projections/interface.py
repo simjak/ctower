@@ -387,7 +387,11 @@ class BoardCard:
 
 @dataclass(frozen=True, slots=True)
 class BoardQuery:
-    project_key: str | None
+    # One named Project per query. A query that could carry no Project would reach the
+    # refusal chokepoint with an empty requested set, which that chokepoint reads as
+    # "nothing requested" and allows; portfolio reads therefore have their own
+    # operator-gated entry point instead of an emptied scope on this query.
+    project_key: str
     lane: BoardLane | None = None
     priority: str | None = None
     stage_key: str | None = None
@@ -420,6 +424,8 @@ class _ProjectionStore(Protocol):
     ) -> ProjectionMaintenanceResult: ...
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem: ...
+
+    def portfolio_board(self, actor: Actor) -> BoardView | RecordProblem: ...
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
@@ -459,6 +465,11 @@ class Projections:
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
         return self._store.board(actor, query)
+
+    def portfolio_board(self, actor: Actor) -> BoardView | RecordProblem:
+        """Read every Project's cards at once; refused unless the principal is an operator."""
+
+        return self._store.portfolio_board(actor)
 
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)

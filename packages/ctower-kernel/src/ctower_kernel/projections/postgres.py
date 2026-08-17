@@ -18,6 +18,7 @@ from ctower_kernel.projections._inbox_sql import read_state as _read_state
 from ctower_kernel.projections._inbox_sql import read_thread as _read_thread
 from ctower_kernel.projections._postgres_sql import board as _board
 from ctower_kernel.projections._postgres_sql import catch_up as _catch_up
+from ctower_kernel.projections._postgres_sql import portfolio_board as _portfolio_board
 from ctower_kernel.projections._postgres_sql import rebuild as _rebuild
 from ctower_kernel.projections._project_delivery_reconcile_sql import (
     rebuild as _rebuild_project_delivery,
@@ -56,6 +57,9 @@ class PostgresProjections:
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView | RecordProblem:
         return _board(self._dsn, actor, query)
+
+    def portfolio_board(self, actor: Actor) -> BoardView | RecordProblem:
+        return _portfolio_board(self._dsn, actor)
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         return _list_threads(self._dsn, actor, unread=unread)

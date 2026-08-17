@@ -101,6 +101,9 @@ class _ProjectionStore:
     def board(self, actor: Actor, query: BoardQuery) -> BoardView:
         raise NotImplementedError
 
+    def portfolio_board(self, actor: Actor) -> BoardView:
+        raise NotImplementedError
+
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         raise NotImplementedError
 

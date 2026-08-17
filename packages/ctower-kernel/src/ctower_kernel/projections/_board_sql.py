@@ -93,17 +93,39 @@ def _read_view(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
-        project_key, _source_kind, _source_ref = _query_filters(query)
         refusal = project_scope_refusal(
             connection,
             tenant_id=actor.tenant_id,
             principal_id=actor.principal_id,
-            project_keys=(project_key,) if project_key is not None else (),
+            project_keys=(query.project_key,),
             allow_operator_read=True,
         )
         if refusal is not None:
             return refusal
         return _read_view_data(connection, actor.tenant_id, query, source=source)
+
+
+def portfolio_board(dsn: str, actor: Actor, *, source: int) -> BoardView | RecordProblem:
+    """Read every Project's cards at once, refusing every non-operator principal.
+
+    The requested Project set is empty here by construction, so this is the one read
+    that asks the chokepoint for persisted operator authority rather than for grants
+    over named Projects.
+    """
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(),
+            operator_only=True,
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
+        return _read_view_data(connection, actor.tenant_id, None, source=source)
 
 
 def _read_view_data(

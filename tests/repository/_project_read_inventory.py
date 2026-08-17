@@ -17,32 +17,123 @@ __all__: tuple[str, ...] = ()
 AdapterAliases = dict[str, tuple[Path, str]]
 
 
-def public_reads(tree: ast.Module, *, scope_names: set[str]) -> list[tuple[str, str]]:
-    """Every public Protocol method that reads Projects through an Actor."""
+def public_reads(
+    tree: ast.Module, *, scope_names: set[str], scoped_returns: set[str]
+) -> list[tuple[str, str]]:
+    """Every public Protocol method that reads Projects through an Actor.
+
+    A read qualifies either by naming a Project scope in its signature or by handing
+    back Project-bearing rows, so a portfolio read that names no scope at all is
+    still inventoried rather than silently exempt.
+    """
 
     reads: list[tuple[str, str]] = []
     for node in tree.body:
         if not isinstance(node, ast.ClassDef) or not _is_protocol(node):
             continue
-        for method in node.body:
-            if not isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef):
-                continue
-            names = {
-                argument.arg
-                for argument in (
-                    *method.args.posonlyargs,
-                    *method.args.args,
-                    *method.args.kwonlyargs,
-                )
-            }
-            if method.name.startswith("_") or "actor" not in names:
-                continue
-            if not names & scope_names:
-                continue
-            if "command" in names:
-                continue
-            reads.append((node.name, method.name))
+        reads.extend(
+            (node.name, method.name)
+            for method in node.body
+            if isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
+            and _is_project_read(method, scope_names=scope_names, scoped_returns=scoped_returns)
+        )
     return reads
+
+
+def _is_project_read(
+    method: ast.FunctionDef | ast.AsyncFunctionDef,
+    *,
+    scope_names: set[str],
+    scoped_returns: set[str],
+) -> bool:
+    names = {
+        argument.arg
+        for argument in (
+            *method.args.posonlyargs,
+            *method.args.args,
+            *method.args.kwonlyargs,
+        )
+    }
+    if method.name.startswith("_") or "actor" not in names or "command" in names:
+        return False
+    return bool(names & scope_names) or _returns_project_rows(method, scoped_returns)
+
+
+def _returns_project_rows(
+    method: ast.FunctionDef | ast.AsyncFunctionDef, scoped_returns: set[str]
+) -> bool:
+    if method.returns is None:
+        return False
+    return bool({part.strip() for part in ast.unparse(method.returns).split("|")} & scoped_returns)
+
+
+def optional_scope_fields(tree: ast.Module, *, scope_names: set[str]) -> list[str]:
+    """Every Interface field naming a Project scope that may be absent.
+
+    An absent scope arrives at ``project_scope_refusal`` as an empty requested set,
+    which that predicate reads as "nothing requested" and allows. Portfolio reads own
+    that case behind their own operator gate, so no query type may express it.
+    """
+
+    fields: list[str] = []
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for statement in node.body:
+            if not isinstance(statement, ast.AnnAssign) or not isinstance(
+                statement.target, ast.Name
+            ):
+                continue
+            annotation = ast.unparse(statement.annotation)
+            if statement.target.id in scope_names and _admits_none(annotation):
+                fields.append(f"{node.name}.{statement.target.id}: {annotation}")
+    return fields
+
+
+def _admits_none(annotation: str) -> bool:
+    return "None" in {part.strip() for part in annotation.split("|")} or annotation.startswith(
+        "Optional["
+    )
+
+
+def empty_scope_refusals_are_operator_only(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """Prove a read that can request no Project at all still demands operator authority."""
+
+    return all(
+        _requires_operator_authority(call)
+        for call in refusal_calls(function)
+        if _requests_an_empty_scope(call)
+    )
+
+
+def _requests_an_empty_scope(call: ast.Call) -> bool:
+    requested = next(
+        (keyword.value for keyword in call.keywords if keyword.arg == "project_keys"), None
+    )
+    if requested is None:
+        return True
+    return any(isinstance(node, ast.Tuple) and not node.elts for node in ast.walk(requested))
+
+
+def _requires_operator_authority(call: ast.Call) -> bool:
+    return any(
+        keyword.arg == "operator_only"
+        and isinstance(keyword.value, ast.Constant)
+        and keyword.value.value is True
+        for keyword in call.keywords
+    )
+
+
+def refusal_calls(function: ast.AST) -> list[ast.Call]:
+    return [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "project_scope_refusal"
+    ]
 
 
 def _is_protocol(node: ast.ClassDef) -> bool:
@@ -145,16 +236,23 @@ def projection_identity_flow(
 ) -> bool:
     """Prove the Actor argument reaches the projection's scope predicate."""
 
-    if method_name != "board":
-        source = ast.parse(target[0].read_text(encoding="utf-8"), filename=str(target[0]))
-        return actor_arguments_reach_predicate(single_function(source, target[1]))
+    if method_name == "board":
+        return _board_identity_flow(postgres, target, projection_root)
+    if target[0] == projection_root / "_postgres_sql.py":
+        return _adapter_identity_flow(postgres, method_name, target, projection_root)
+    source = ast.parse(target[0].read_text(encoding="utf-8"), filename=str(target[0]))
+    return actor_arguments_reach_predicate(single_function(source, target[1]))
 
+
+def _board_identity_flow(
+    postgres: ast.Module, target: tuple[Path, str], projection_root: Path
+) -> bool:
     aliases = postgres_sql_aliases(
         postgres,
         module_prefix="ctower_kernel.projections._",
         module_root=projection_root,
     )
-    read_view_call = _board_read_view_call(postgres, target, aliases)
+    read_view_call = _aliased_call(single_function(postgres, "board"), aliases, target)
     if read_view_call is None or not _positional_argument_is_name(read_view_call, 1, "actor"):
         return False
 
@@ -168,14 +266,44 @@ def projection_identity_flow(
     return actor_arguments_reach_predicate(single_function(board_sql, "_read_view"))
 
 
-def _board_read_view_call(
-    postgres: ast.Module, target: tuple[Path, str], aliases: AdapterAliases
+def _adapter_identity_flow(
+    postgres: ast.Module,
+    method_name: str,
+    target: tuple[Path, str],
+    projection_root: Path,
+) -> bool:
+    """Follow a read through the shared Postgres adapter hop before proving its predicate."""
+
+    module_prefix = "ctower_kernel.projections._"
+    aliases = postgres_sql_aliases(
+        postgres, module_prefix=module_prefix, module_root=projection_root
+    )
+    hop = _aliased_call(single_function(postgres, method_name), aliases, target)
+    if hop is None or not _positional_argument_is_name(hop, 1, "actor"):
+        return False
+
+    adapter = ast.parse(target[0].read_text(encoding="utf-8"), filename=str(target[0]))
+    resolved = resolve_projection_target(target, method_name, projection_root)
+    inner = _aliased_call(
+        single_function(adapter, target[1]),
+        postgres_sql_aliases(adapter, module_prefix=module_prefix, module_root=projection_root),
+        resolved,
+    )
+    if inner is None or not _positional_argument_is_name(inner, 1, "actor"):
+        return False
+    source = ast.parse(resolved[0].read_text(encoding="utf-8"), filename=str(resolved[0]))
+    return actor_arguments_reach_predicate(single_function(source, resolved[1]))
+
+
+def _aliased_call(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+    aliases: AdapterAliases,
+    target: tuple[Path, str],
 ) -> ast.Call | None:
-    board = single_function(postgres, "board")
     return next(
         (
             call
-            for call in ast.walk(board)
+            for call in ast.walk(function)
             if isinstance(call, ast.Call)
             and isinstance(call.func, ast.Name)
             and aliases.get(call.func.id) == target
@@ -215,13 +343,7 @@ def actor_arguments_reach_predicate(
     )
     if actor is None or actor.annotation is None or ast.unparse(actor.annotation) != "Actor":
         return False
-    calls = [
-        node
-        for node in ast.walk(function)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "project_scope_refusal"
-    ]
+    calls = refusal_calls(function)
     if len(calls) != 1:
         return False
     arguments = {keyword.arg: keyword.value for keyword in calls[0].keywords if keyword.arg}
