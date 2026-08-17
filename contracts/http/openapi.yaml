@@ -5394,7 +5394,7 @@
       "InboxMessageReadState": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["delivered_at", "delivered_event_id", "message_id", "position", "read_at", "read_event_id", "recipient", "state"],
+        "required": ["delivered_at", "delivered_event_id", "message_id", "position", "read_at", "read_event_id", "recipient", "severity", "state"],
         "properties": {
           "delivered_at": {"type": ["string", "null"], "format": "date-time"},
           "delivered_event_id": {"type": ["string", "null"], "format": "uuid"},
@@ -5403,6 +5403,7 @@
           "read_at": {"type": ["string", "null"], "format": "date-time"},
           "read_event_id": {"type": ["string", "null"], "format": "uuid"},
           "recipient": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "severity": {"type": "string", "enum": ["P0", "P1", "info"]},
           "state": {"type": "string", "enum": ["sent", "delivered", "read"]}
         }
       },

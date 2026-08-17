@@ -524,6 +524,7 @@ function toMessageDelivery(value: unknown): InboxMessageDelivery {
     messageId: asString(row.message_id, "inbox.read-state.messages[].message_id"),
     position: asInteger(row.position, "inbox.read-state.messages[].position"),
     recipient: asString(row.recipient, "inbox.read-state.messages[].recipient"),
+    severity: asMember(row.severity, "inbox.read-state.messages[].severity", ["P0", "P1", "info"]),
     state: asMember(row.state, "inbox.read-state.messages[].state", DELIVERY_STATES),
     deliveredAt: asStringOrNull(row.delivered_at, "inbox.read-state.messages[].delivered_at"),
     readAt: asStringOrNull(row.read_at, "inbox.read-state.messages[].read_at"),

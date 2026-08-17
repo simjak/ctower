@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:852214e9950f66c77c32b3b2e824bf01bec9e59845579088a4a9a1000e49cec0
+Authored contract digest: sha256:70f333202f104c282317fb447504e53e7701bddf1c2002aed228bb5898ee9006
 """
 
 from __future__ import annotations
@@ -1171,6 +1171,7 @@ class InboxMessageReadState(_BoundaryModel):
     read_at: _Rfc3339DateTime | None
     read_event_id: UUID | None
     recipient: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    severity: Literal["P0", "P1", "info"]
     state: Literal["sent", "delivered", "read"]
 
 

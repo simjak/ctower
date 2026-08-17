@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
+from ctower_kernel.record.inbox_events import InboxSeverity
+
 __all__ = ["InboxDeliveryState", "InboxMessageReadState", "InboxReadState"]
 
 
@@ -26,6 +28,14 @@ class InboxMessageReadState:
     read_event_id: UUID | None
     recipient: str
     state: InboxDeliveryState
+    severity: InboxSeverity = InboxSeverity.INFO
+
+    def __post_init__(self) -> None:
+        try:
+            severity = InboxSeverity(self.severity)
+        except ValueError as error:
+            raise ValueError("inbox message severity is outside the authored contract") from error
+        object.__setattr__(self, "severity", severity)
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -38,6 +48,7 @@ class InboxMessageReadState:
             "read_at": self.read_at.isoformat() if self.read_at else None,
             "read_event_id": str(self.read_event_id) if self.read_event_id else None,
             "recipient": self.recipient,
+            "severity": self.severity.value,
             "state": self.state.value,
         }
 

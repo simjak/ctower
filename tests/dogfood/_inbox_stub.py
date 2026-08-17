@@ -127,6 +127,7 @@ def _read_state(thread_id: str, other: str) -> dict[str, Any]:
                 "message_id": "018f0d5e-7b9a-7c01-8000-000000000601",
                 "position": 1,
                 "recipient": SELF_SEAT,
+                "severity": "info",
                 "state": "read",
                 "delivered_at": DELIVERED_AT,
                 "delivered_event_id": "018f0d5e-7b9a-7c01-8000-0000000006d1",

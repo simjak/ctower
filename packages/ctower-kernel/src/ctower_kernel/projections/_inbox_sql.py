@@ -381,4 +381,5 @@ def _read_state(row: dict[str, object]) -> InboxMessageReadState:
         read_event_id=cast(UUID | None, row["read_event_id"]),
         recipient=str(row["recipient_seat"]),
         state=state,
+        severity=InboxSeverity(str(row.get("severity", "info"))),
     )

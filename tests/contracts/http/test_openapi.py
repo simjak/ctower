@@ -272,6 +272,16 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
     }
 
 
+def test_inbox_read_state_carries_the_closed_severity_contract() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    schemas = cast(dict[str, dict[str, object]], document["components"]["schemas"])
+    read_state = schemas["InboxMessageReadState"]
+    properties = cast(dict[str, dict[str, object]], read_state["properties"])
+
+    assert "severity" in cast(list[str], read_state["required"])
+    assert properties["severity"] == {"type": "string", "enum": ["P0", "P1", "info"]}
+
+
 def test_project_and_credential_refusals_have_one_definition_each() -> None:
     kernel = ROOT / "packages/ctower-kernel/src/ctower_kernel"
 
