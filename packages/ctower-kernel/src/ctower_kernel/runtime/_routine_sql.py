@@ -31,6 +31,7 @@ from ctower_kernel.runtime import (
     ScheduleKind,
     SchedulerScan,
 )
+from ctower_kernel.runtime import _routine_retirement_sql as _retirement
 from ctower_kernel.runtime._beat_dispatch_sql import insert_effect as _insert_beat_dispatch
 from ctower_kernel.runtime._beat_dispatch_sql import register_spec as _register_beat_spec
 from ctower_kernel.runtime._routine_ids import stable_uuid7 as _stable_uuid7
@@ -108,25 +109,12 @@ def register(
         ).fetchone()
         if stored is None or _revision(stored) != revision:
             raise ValueError("Routine revision digest conflicts with stored content")
-        connection.execute(
-            """
-            DELETE FROM routine_triggers AS trigger
-            USING routine_revisions AS registered
-            WHERE trigger.tenant_id = %s
-              AND trigger.revision_digest = registered.revision_digest
-              AND registered.routine_ref = %s
-              AND registered.revision_digest <> %s
-            """,
-            (tenant_id, revision.routine_ref, _digest(revision.revision_digest)),
-        )
-        connection.execute(
-            """
-            INSERT INTO routine_triggers (
-                tenant_id, revision_digest, next_fire_at, updated_at
-            ) VALUES (%s, %s, %s, transaction_timestamp())
-            ON CONFLICT (tenant_id, revision_digest) DO NOTHING
-            """,
-            (tenant_id, _digest(revision.revision_digest), initial_fire),
+        _retirement.activate_trigger_unless_retired(
+            connection,
+            tenant_id,
+            revision.routine_ref,
+            _digest(revision.revision_digest),
+            initial_fire,
         )
 
 
@@ -142,6 +130,7 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         connection.execute("SET ROLE ctower_svc")
         now = _database_now(connection)
         actor_principal_id = _control_worker_principal(connection, tenant_id, now)
+        _retirement.lock_tenant(connection, tenant_id)
         rows = connection.execute(
             """
             SELECT trigger.next_fire_at, revision.*, dream.scope_kind, dream.project_key,
