@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
+Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -195,6 +195,21 @@ from ctower_client.models import (
     PoisonDispositionAction,
     PoisonDispositionReceipt,
     PoisonDispositionRequest,
+    PoolAuthState,
+    PoolCreditState,
+    PoolDriftFinding,
+    PoolDriftFindingKind,
+    PoolEnactmentPath,
+    PoolEntryState,
+    PoolLimitsView,
+    PoolModelWeight,
+    PoolObservationRequest,
+    PoolObservationResult,
+    PoolObservedEntry,
+    PoolProfileLimits,
+    PoolQuotaState,
+    PoolReachState,
+    PoolRegistrationState,
     Priority,
     PriorityChangedAuditData,
     PriorityChangeRequest,
@@ -526,6 +541,21 @@ __all__ = [
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",
     "PoisonDispositionRequest",
+    "PoolAuthState",
+    "PoolCreditState",
+    "PoolDriftFinding",
+    "PoolDriftFindingKind",
+    "PoolEnactmentPath",
+    "PoolEntryState",
+    "PoolLimitsView",
+    "PoolModelWeight",
+    "PoolObservationRequest",
+    "PoolObservationResult",
+    "PoolObservedEntry",
+    "PoolProfileLimits",
+    "PoolQuotaState",
+    "PoolReachState",
+    "PoolRegistrationState",
     "Priority",
     "PriorityChangeRequest",
     "PriorityChangedAuditData",

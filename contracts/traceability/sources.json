@@ -2525,6 +2525,12 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0078_pool_credential_observations.sql",
+      "references": [
+        "SPEC#persistence-authority"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/0064_console_output_reader_role.sql",
       "references": [
         "SPEC#contextual-console-viewer-server-foundation",

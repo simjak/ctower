@@ -1,4 +1,9 @@
-"""Optional HTTP route composition for the control API."""
+"""Optional HTTP route composition, and the optional module inventory it composes.
+
+This module owns which optional kernel Interfaces the control API can be composed with, so
+the composition root reads that inventory from here rather than reaching for each kernel
+package itself.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +17,7 @@ from ctower_api._estate_import_routes import install_estate_import_routes
 from ctower_api._health_routes import install_health_routes
 from ctower_api._inbox_routes import install_inbox_routes
 from ctower_api._knowledge_routes import install_knowledge_routes
+from ctower_api._pool_routes import install_pool_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._spawn_record_routes import install_spawn_record_routes
 from ctower_api.estate_import_port import EstateImportPort
@@ -21,13 +27,25 @@ from ctower_kernel.attention import Attention
 from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.inbox import Inbox
 from ctower_kernel.knowledge import Knowledge
+from ctower_kernel.pools import Pools
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import Record
 from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
 from ctower_kernel.workflow import Workflow
 
-__all__: tuple[str, ...] = ()
+__all__ = [
+    "Attention",
+    "BoardContextFacts",
+    "BundleCatalog",
+    "EstateImportPort",
+    "Inbox",
+    "Knowledge",
+    "Pools",
+    "Projections",
+    "Proof",
+    "install_optional_routes",
+]
 
 
 def install_optional_routes(
@@ -42,6 +60,7 @@ def install_optional_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    pools: Pools | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
     spawn_records: PostgresSpawnRecords | None,
@@ -66,6 +85,7 @@ def install_optional_routes(
         attention=attention,
         inbox=inbox,
         knowledge=knowledge,
+        pools=pools,
         estate_imports=estate_imports,
         recorder=recorder,
     )
@@ -104,6 +124,7 @@ def _install_projection_routes(
     attention: Attention | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    pools: Pools | None,
     estate_imports: EstateImportPort | None,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -114,5 +135,7 @@ def _install_projection_routes(
         install_inbox_routes(app, access, record, inbox, projections, recorder)
     if knowledge is not None:
         install_knowledge_routes(app, access, record, knowledge, recorder)
+    if pools is not None:
+        install_pool_routes(app, access, record, pools, recorder)
     if estate_imports is not None:
         install_estate_import_routes(app, access, record, estate_imports, recorder)

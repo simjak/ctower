@@ -48,6 +48,8 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "inbox read",
         "inbox read-state",
         "knowledge add",
+        "pools observe",
+        "pools show",
         "knowledge list",
         "knowledge get",
         "dream-dispatch list",

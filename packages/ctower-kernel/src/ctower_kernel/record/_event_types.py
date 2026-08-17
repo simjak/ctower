@@ -47,6 +47,7 @@ class EventKind(StrEnum):
     COMPANY_RECORD_APPENDED = "company.record_appended"
     SPAWN_RECORDED = "spawn.recorded"
     SPAWN_TRANSITIONED = "spawn.transitioned"
+    POOL_OBSERVATION_RECORDED = "pools.observation_recorded"
 
 
 class EventOrigin(StrEnum):

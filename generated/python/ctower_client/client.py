@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
+Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
 """
 
 from __future__ import annotations
@@ -89,6 +89,9 @@ from ctower_client.models import (
     MorningDigest,
     PoisonDispositionReceipt,
     PoisonDispositionRequest,
+    PoolLimitsView,
+    PoolObservationRequest,
+    PoolObservationResult,
     PriorityChangeRequest,
     Problem,
     ProjectDeliveryView,
@@ -1687,6 +1690,24 @@ class CtowerClient:
         return _response(response, {200: InboxThread}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def read_pool_limits(
+        self,
+        *,
+        profile_key: str | None = None,
+    ) -> PoolLimitsView:
+        response = self._http.get(
+            "/v1/pools",
+            params={**({"profile_key": profile_key} if profile_key is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: PoolLimitsView}, {401: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_attention_finding_disposition(
         self,
         finding_id: UUID,
@@ -1729,6 +1750,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: PoisonDispositionReceipt, 202: PoisonDispositionReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_pool_observation(
+        self,
+        request: PoolObservationRequest,
+        *,
+        command_id: UUID,
+    ) -> PoolObservationResult:
+        response = self._http.post(
+            "/v1/pools/observations",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: PoolObservationResult, 202: PoolObservationResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_evidence(

@@ -1699,7 +1699,8 @@
       "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
       "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql",
       "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql",
-      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql",
+      "packages/ctower-kernel/migrations/0078_pool_credential_observations.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

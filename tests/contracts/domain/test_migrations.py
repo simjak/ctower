@@ -90,13 +90,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0075_ticket_display_keys.sql",
     "0076_spawn_records.sql",
     "0077_inbox_message_severity.sql",
+    "0078_pool_credential_observations.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0077_inbox_message_severity.sql",
-    "schema_sha256": ("sha256:6c6d47e90c4d25e8adc0a1e9eda449c4b613b44268e59b6265f1f6dd7510ec9c"),
+    "through": "0078_pool_credential_observations.sql",
+    "schema_sha256": ("sha256:77d44fd4ea853e2ae6ea1c4b5e74e45df717c69b8f85667932eaff4341470f59"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:3169fcd7a067bdf3844a1c29ccfd8dbfc7d3f0a7de7e174d4e08a17ef90e6e16"
+        "sum256:c5e353dc9570d2e7bd9109d564c9d3287ce5f6a789ebcd2ef59b8f1d03b23a70"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [

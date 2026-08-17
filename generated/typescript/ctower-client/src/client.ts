@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
+// Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -400,6 +400,10 @@ export type ReadInboxThreadInput = Readonly<{
   readonly "threadId": string;
 }>;
 
+export type ReadPoolLimitsInput = Readonly<{
+  readonly "profileKey"?: string;
+}>;
+
 export type RecordAttentionFindingDispositionInput = Readonly<{
   readonly "findingId": string;
   readonly "IdempotencyKey": string;
@@ -410,6 +414,11 @@ export type RecordOutboxPoisonDispositionInput = Readonly<{
   readonly "outboxId": string;
   readonly "IdempotencyKey": string;
   readonly body: Models.PoisonDispositionRequest;
+}>;
+
+export type RecordPoolObservationInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.PoolObservationRequest;
 }>;
 
 export type RecordProofEvidenceInput = Readonly<{
@@ -602,8 +611,10 @@ export type OperationInputs = Readonly<{
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
   readonly "readInboxMessageState": ReadInboxMessageStateInput;
   readonly "readInboxThread": ReadInboxThreadInput;
+  readonly "readPoolLimits": ReadPoolLimitsInput;
   readonly "recordAttentionFindingDisposition": RecordAttentionFindingDispositionInput;
   readonly "recordOutboxPoisonDisposition": RecordOutboxPoisonDispositionInput;
+  readonly "recordPoolObservation": RecordPoolObservationInput;
   readonly "recordProofEvidence": RecordProofEvidenceInput;
   readonly "recordProofVerdict": RecordProofVerdictInput;
   readonly "recordTicketChangeReference": RecordTicketChangeReferenceInput;
@@ -702,8 +713,10 @@ export type OperationResults = Readonly<{
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
   readonly "readInboxMessageState": Models.InboxReadState;
   readonly "readInboxThread": Models.InboxThread;
+  readonly "readPoolLimits": Models.PoolLimitsView;
   readonly "recordAttentionFindingDisposition": Models.FindingDispositionResult;
   readonly "recordOutboxPoisonDisposition": Models.PoisonDispositionReceipt;
+  readonly "recordPoolObservation": Models.PoolObservationResult;
   readonly "recordProofEvidence": Models.ProofReceipt;
   readonly "recordProofVerdict": Models.ProofReceipt;
   readonly "recordTicketChangeReference": Models.ChangeReferenceResult;
@@ -1195,6 +1208,12 @@ export class CtowerClient {
     return this.execute("readInboxThread", input);
   }
 
+  public async readPoolLimits(
+    input: ReadPoolLimitsInput,
+  ): Promise<Models.PoolLimitsView> {
+    return this.execute("readPoolLimits", input);
+  }
+
   public async recordAttentionFindingDisposition(
     input: RecordAttentionFindingDispositionInput,
   ): Promise<Models.FindingDispositionResult> {
@@ -1205,6 +1224,12 @@ export class CtowerClient {
     input: RecordOutboxPoisonDispositionInput,
   ): Promise<Models.PoisonDispositionReceipt> {
     return this.execute("recordOutboxPoisonDisposition", input);
+  }
+
+  public async recordPoolObservation(
+    input: RecordPoolObservationInput,
+  ): Promise<Models.PoolObservationResult> {
+    return this.execute("recordPoolObservation", input);
   }
 
   public async recordProofEvidence(
