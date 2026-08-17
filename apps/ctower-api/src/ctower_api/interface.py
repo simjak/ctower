@@ -55,7 +55,16 @@ from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
 from ctower_api._morning_digest_routes import install_morning_digest_routes
 from ctower_api._mutation_response import mutation_response as _mutation_response
-from ctower_api._optional_routes import install_optional_routes
+from ctower_api._optional_routes import (
+    Attention,
+    BoardContextFacts,
+    Inbox,
+    Knowledge,
+    Pools,
+    Projections,
+    Proof,
+    install_optional_routes,
+)
 from ctower_api._project_event_routes import install_project_event_routes
 from ctower_api._request_cutover_routes import install_request_cutover_routes
 from ctower_api._request_proposal_routes import install_request_proposal_routes
@@ -77,12 +86,6 @@ from ctower_client.models import (
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
 from ctower_kernel.access.oidc import OidcProvider
-from ctower_kernel.attention import Attention
-from ctower_kernel.board_context import BoardContextFacts
-from ctower_kernel.inbox import Inbox
-from ctower_kernel.knowledge import Knowledge
-from ctower_kernel.projections import Projections
-from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
     Actor,
     BootstrapCommand,
@@ -104,7 +107,7 @@ from ctower_kernel.work.requests import Requests
 from ctower_kernel.work.rulings import Rulings
 from ctower_kernel.workflow import Workflow
 
-__all__ = ["OidcRuntimeConfig", "create_app"]
+__all__ = ["OidcRuntimeConfig", "ResolverConfig", "create_app"]
 
 type _MigrationImporterResolver = Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
@@ -120,7 +123,17 @@ class OidcRuntimeConfig:
     gate_enforcing: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class ResolverConfig:
+    """Deploy-time importer and fence resolvers; absent fields mean no such authority."""
+
+    migration_importer: _MigrationImporterResolver | None = None
+    migration_importer_credential: Callable[[bytes, datetime], Actor | None] | None = None
+    fence_observer: Callable[[bytes, datetime], Actor | None] | None = None
+
+
 _DARK_OIDC_CONFIG = OidcRuntimeConfig()
+_NO_RESOLVERS = ResolverConfig()
 
 
 def _project_key(value: str | None) -> str:
@@ -146,16 +159,13 @@ def _build_access(
     record: Record,
     recorder: TelemetryRecorder,
     oidc: OidcRuntimeConfig,
-    *,
-    migration_importer_resolver: _MigrationImporterResolver | None,
-    migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None,
-    fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None,
+    resolvers: ResolverConfig,
 ) -> Access:
     return Access(
         record,
-        importer_resolver=migration_importer_resolver,
-        importer_credential_resolver=migration_importer_credential_resolver,
-        fence_observer_resolver=fence_observer_resolver,
+        importer_resolver=resolvers.migration_importer,
+        importer_credential_resolver=resolvers.migration_importer_credential,
+        fence_observer_resolver=resolvers.fence_observer,
         oidc_providers=oidc.providers,
         oidc_http_client_factory=oidc.http_client_factory,
         login_attempt_signing_key=oidc.login_attempt_signing_key,
@@ -182,6 +192,7 @@ def create_app(
     board_context: BoardContextFacts | None = None,
     inbox: Inbox | None = None,
     knowledge: Knowledge | None = None,
+    pools: Pools | None = None,
     estate_imports: EstateImportPort | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
@@ -189,9 +200,7 @@ def create_app(
     dream_dispatch_runtime: DreamDispatchRuntime | None = None,
     beat_dispatch_runtime: BeatDispatchRuntime | None = None,
     migration: object | None = None,
-    migration_importer_resolver: _MigrationImporterResolver | None = None,
-    migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
-    fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
+    resolvers: ResolverConfig = _NO_RESOLVERS,
     oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
     telemetry: TelemetryRecorder | None = None,
     console: ConsoleRuntime | None = None,
@@ -199,14 +208,7 @@ def create_app(
     """Compose the private command API without embedding durable decisions."""
 
     app, recorder = _app_runtime(telemetry)
-    access = _build_access(
-        record,
-        recorder,
-        oidc,
-        migration_importer_resolver=migration_importer_resolver,
-        migration_importer_credential_resolver=migration_importer_credential_resolver,
-        fence_observer_resolver=fence_observer_resolver,
-    )
+    access = _build_access(record, recorder, oidc, resolvers)
     route_dependencies = (app, access, record, recorder, oidc)
     _install_application_routes(
         *route_dependencies,
@@ -222,6 +224,7 @@ def create_app(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        pools=pools,
         estate_imports=estate_imports,
         catalog=catalog,
     )
@@ -254,6 +257,7 @@ def _install_application_routes(
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
     knowledge: Knowledge | None,
+    pools: Pools | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
 ) -> None:
@@ -273,7 +277,7 @@ def _install_application_routes(
         request_cutover=request_cutover,
         catalog=catalog,
     )
-    _install_optional_routes(
+    install_optional_routes(
         app,
         access,
         record,
@@ -284,6 +288,7 @@ def _install_application_routes(
         board_context=board_context,
         inbox=inbox,
         knowledge=knowledge,
+        pools=pools,
         estate_imports=estate_imports,
         catalog=catalog,
         recorder=recorder,
@@ -328,39 +333,6 @@ def _install_core_routes(
     install_session_routes(app, access, record, recorder)
     install_project_event_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work, workflow, recorder)
-
-
-def _install_optional_routes(
-    app: FastAPI,
-    access: Access,
-    record: Record,
-    *,
-    proof: Proof | None,
-    workflow: Workflow | None,
-    projections: Projections | None,
-    attention: Attention | None,
-    board_context: BoardContextFacts | None,
-    inbox: Inbox | None,
-    knowledge: Knowledge | None,
-    estate_imports: EstateImportPort | None,
-    catalog: BundleCatalog | None,
-    recorder: TelemetryRecorder,
-) -> None:
-    install_optional_routes(
-        app,
-        access,
-        record,
-        proof=proof,
-        workflow=workflow,
-        projections=projections,
-        attention=attention,
-        board_context=board_context,
-        inbox=inbox,
-        knowledge=knowledge,
-        estate_imports=estate_imports,
-        catalog=catalog,
-        recorder=recorder,
-    )
 
 
 def _install_synthetic_boundary(

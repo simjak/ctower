@@ -15,7 +15,7 @@ from modules.migration.source_tool.fixtures import CUTOVER_ID, REVIEW
 from support.project_delivery import materialize_checkpoint_truth, refresh_project_delivery
 from support.tenant_fixture import TenantFixture
 
-from ctower_api.interface import create_app
+from ctower_api.interface import ResolverConfig, create_app
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_client.models import (
     CtowerProjectEpochRefusalRequest,
@@ -366,9 +366,11 @@ def _app(tenant: TenantFixture, store: PostgresMigration) -> FastAPI:
         PostgresRecord(tenant.database.runtime_dsn),
         projections=Projections(PostgresProjections(tenant.database.projection_dsn)),
         migration=Migration(store),
-        migration_importer_resolver=store.resolve_importer,
-        migration_importer_credential_resolver=store.resolve_importer_credential,
-        fence_observer_resolver=store.resolve_fence_observer,
+        resolvers=ResolverConfig(
+            migration_importer=store.resolve_importer,
+            migration_importer_credential=store.resolve_importer_credential,
+            fence_observer=store.resolve_fence_observer,
+        ),
     )
 
 

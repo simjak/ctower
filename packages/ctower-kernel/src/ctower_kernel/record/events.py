@@ -14,6 +14,12 @@ from ctower_kernel.record._event_encoding import (
     _timestamp,
 )
 from ctower_kernel.record._event_types import EventKind, EventOrigin
+from ctower_kernel.record._event_validation import (
+    _bounded,
+    _require_uuid_fields,
+    _require_uuid_tuple,
+    _validate_timestamp,
+)
 from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
     AttentionFindingDispositionRecordedPayload,
@@ -66,6 +72,7 @@ from ctower_kernel.record.knowledge_events import (
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
+from ctower_kernel.record.pool_events import PoolObservationRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
 from ctower_kernel.record.request_events import _validate_identity as _validate_request_identity
 from ctower_kernel.record.request_proposal_events import RequestProposalChangedPayload
@@ -292,6 +299,7 @@ type EventPayload = (
     | RulingRecordedPayload
     | EstateImportChangedPayload
     | CompanyRecordAppendedPayload
+    | PoolObservationRecordedPayload
 )
 
 
@@ -523,6 +531,11 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             "company-record",
             _API_OR_IMPORT,
         ),
+        EventCatalogEntry(
+            EventKind.POOL_OBSERVATION_RECORDED,
+            PoolObservationRecordedPayload,
+            "pool-observation",
+        ),
     )
 }
 
@@ -595,13 +608,6 @@ def _validate_digest(label: str, value: object) -> None:
         raise TypeError(f"{label} must be bytes")
     if len(value) != _DIGEST_BYTES:
         raise ValueError(f"{label} must contain exactly 32 bytes")
-
-
-def _validate_timestamp(value: object) -> None:
-    if not isinstance(value, datetime):
-        raise TypeError("event timestamps must be datetimes")
-    if value.tzinfo is None:
-        raise ValueError("event timestamps must be timezone-aware")
 
 
 def _validate_event_identity(event: EventEnvelope) -> None:
@@ -682,21 +688,3 @@ def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:
     if kind is EventKind.BOOTSTRAP_CREATED:
         return f"tenant:{aggregate_id}:bootstrap"
     return f"{_EVENT_CATALOG[kind].stream_prefix}:{aggregate_id}"
-
-
-def _bounded(label: str, value: object, *, minimum: int, maximum: int | None = None) -> None:
-    if not isinstance(value, str):
-        raise TypeError(f"{label} must be a string")
-    if len(value) < minimum or (maximum is not None and len(value) > maximum):
-        raise ValueError(f"{label} is outside the authored event contract")
-
-
-def _require_uuid_fields(value: object, names: tuple[str, ...]) -> None:
-    for name in names:
-        if not isinstance(getattr(value, name), UUID):
-            raise TypeError(f"{name} must be a UUID")
-
-
-def _require_uuid_tuple(label: str, value: object) -> None:
-    if not isinstance(value, tuple) or not all(isinstance(item, UUID) for item in value):
-        raise TypeError(f"{label} must be a UUID tuple")

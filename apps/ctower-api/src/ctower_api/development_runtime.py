@@ -15,6 +15,7 @@ import uvicorn
 from ctower_contracts import CATALOG
 
 from ctower_api._development_catalog_store import development_catalog_store
+from ctower_api._development_modules import read_side_modules
 from ctower_api._routine_loop import load_routine_revisions
 from ctower_api.control_worker import build_worker
 from ctower_api.development_config import DevelopmentConfig, load_config, load_state
@@ -29,18 +30,7 @@ from ctower_api.interface import OidcRuntimeConfig, create_app
 from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
 from ctower_client import CtowerClient
 from ctower_kernel.access.oidc import OidcProvider
-from ctower_kernel.attention import Attention
-from ctower_kernel.attention.postgres import PostgresAttention
-from ctower_kernel.board_context import BoardContextFacts
-from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog import PostgresCatalog
-from ctower_kernel.inbox import Inbox, PostgresInbox
-from ctower_kernel.knowledge import (
-    Knowledge,
-    PostgresKnowledge,
-    StaticFileKnowledgeSource,
-    bundled_static_root,
-)
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
@@ -134,6 +124,7 @@ def api_main() -> None:
     )
     runtime_store = PostgresRuntime(runtime_dsn)
     revisions = load_routine_revisions(packs)
+    read_side = read_side_modules(runtime_dsn, projection_dsn)
     uvicorn.run(
         create_app(
             record,
@@ -153,16 +144,12 @@ def api_main() -> None:
                 development_catalog_store(),
                 key_reference="vault:development-catalog-key",
             ),
-            projections=Projections(PostgresProjections(projection_dsn)),
-            attention=Attention(PostgresAttention(runtime_dsn)),
-            board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
-            inbox=Inbox(PostgresInbox(runtime_dsn)),
-            knowledge=Knowledge(
-                PostgresKnowledge(
-                    runtime_dsn,
-                    source=StaticFileKnowledgeSource(bundled_static_root()),
-                )
-            ),
+            projections=read_side.projections,
+            attention=read_side.attention,
+            board_context=read_side.board_context,
+            inbox=read_side.inbox,
+            knowledge=read_side.knowledge,
+            pools=read_side.pools,
             estate_imports=PostgresEstateImports(
                 runtime_dsn,
                 trusted_keys={},

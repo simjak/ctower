@@ -45,6 +45,7 @@ class EventKind(StrEnum):
     RULING_RECORDED = "ruling.recorded"
     ESTATE_IMPORT_CHANGED = "estate.import_changed"
     COMPANY_RECORD_APPENDED = "company.record_appended"
+    POOL_OBSERVATION_RECORDED = "pools.observation_recorded"
 
 
 class EventOrigin(StrEnum):

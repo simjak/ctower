@@ -2450,6 +2450,53 @@
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
+    },
+    "/v1/pools/observations": {
+      "post": {
+        "operationId": "recordPoolObservation",
+        "x-ctower-cli": "pools observe",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/PoolObservationRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Credential-pool sweep committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PoolObservationResult"}}}
+          },
+          "201": {
+            "description": "Credential-pool sweep accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PoolObservationResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/pools": {
+      "get": {
+        "operationId": "readPoolLimits",
+        "x-ctower-cli": "pools show",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "authenticated",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/PoolProfileKey"}],
+        "responses": {
+          "200": {"description": "Per-entry three-axis pool state, drift findings, and the authored weight table", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PoolLimitsView"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
     }
   },
   "components": {
@@ -2550,6 +2597,12 @@
       },
       "KnowledgeProjectQuery": {
         "name": "project_key",
+        "in": "query",
+        "required": false,
+        "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+      },
+      "PoolProfileKey": {
+        "name": "profile_key",
         "in": "query",
         "required": false,
         "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
@@ -6853,6 +6906,177 @@
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "events": {"type": "array", "items": {"$ref": "#/components/schemas/TimelineEvent"}},
           "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "PoolAuthState": {
+        "type": "string",
+        "enum": ["healthy", "lineage-dead", "chain-burned"]
+      },
+      "PoolQuotaState": {
+        "type": "string",
+        "enum": ["available", "capped", "unfunded", "unknown"]
+      },
+      "PoolReachState": {
+        "type": "string",
+        "enum": ["ok", "edge-challenged", "unknown"]
+      },
+      "PoolRegistrationState": {
+        "type": "string",
+        "enum": ["enrolled", "discovered"]
+      },
+      "PoolDriftFindingKind": {
+        "type": "string",
+        "enum": ["missing", "unregistered"]
+      },
+      "PoolEnactmentPath": {
+        "type": "string",
+        "enum": ["operator-ceremony", "secret-reference"]
+      },
+      "PoolCreditState": {
+        "type": "string",
+        "enum": ["metered", "unmetered"]
+      },
+      "PoolObservedEntry": {
+        "description": "The complete named-field allowlist one sweep may carry out of a harness credential store. No token, key, or adjacent secret value has a field here; a credential is representable only as a fingerprint.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_key",
+          "subscription_identity",
+          "entry_label",
+          "registration_state",
+          "auth_state",
+          "quota_state",
+          "quota_reset_at",
+          "reach_state",
+          "request_count",
+          "last_status_observed",
+          "secret_fingerprint"
+        ],
+        "properties": {
+          "provider_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "subscription_identity": {"type": ["string", "null"], "minLength": 3, "maxLength": 254},
+          "entry_label": {"type": ["string", "null"], "minLength": 1, "maxLength": 128},
+          "registration_state": {"$ref": "#/components/schemas/PoolRegistrationState"},
+          "auth_state": {"$ref": "#/components/schemas/PoolAuthState"},
+          "quota_state": {"$ref": "#/components/schemas/PoolQuotaState"},
+          "quota_reset_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+          "reach_state": {"$ref": "#/components/schemas/PoolReachState"},
+          "request_count": {"type": "integer", "minimum": 0},
+          "last_status_observed": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]{0,63}$"},
+          "secret_fingerprint": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "PoolObservationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["harness_key", "profile_key", "observed_at", "entries"],
+        "properties": {
+          "harness_key": {"type": "string", "enum": ["hermes", "claude-code"]},
+          "profile_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "observed_at": {"type": "string", "format": "date-time"},
+          "entries": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {"$ref": "#/components/schemas/PoolObservedEntry"}
+          }
+        }
+      },
+      "PoolObservationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "durability_state", "event_ids", "observation_id", "recorded_at"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "observation_id": {"type": "string", "format": "uuid"},
+          "recorded_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "PoolEntryState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_key",
+          "subscription_identity",
+          "entry_label",
+          "registration_state",
+          "auth_state",
+          "quota_state",
+          "quota_reset_at",
+          "reach_state",
+          "selectable",
+          "request_count",
+          "last_status_observed",
+          "credit_state",
+          "metered_millicredits",
+          "observed_at"
+        ],
+        "properties": {
+          "provider_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "subscription_identity": {"type": ["string", "null"], "minLength": 3, "maxLength": 254},
+          "entry_label": {"type": ["string", "null"], "minLength": 1, "maxLength": 128},
+          "registration_state": {"$ref": "#/components/schemas/PoolRegistrationState"},
+          "auth_state": {"$ref": "#/components/schemas/PoolAuthState"},
+          "quota_state": {"$ref": "#/components/schemas/PoolQuotaState"},
+          "quota_reset_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+          "reach_state": {"$ref": "#/components/schemas/PoolReachState"},
+          "selectable": {"type": "boolean"},
+          "request_count": {"type": "integer", "minimum": 0},
+          "last_status_observed": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]{0,63}$"},
+          "credit_state": {"$ref": "#/components/schemas/PoolCreditState"},
+          "metered_millicredits": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+          "observed_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "PoolDriftFinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding", "provider_key", "subscription_identity", "enactment", "detail"],
+        "properties": {
+          "finding": {"$ref": "#/components/schemas/PoolDriftFindingKind"},
+          "provider_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "subscription_identity": {"type": ["string", "null"], "minLength": 3, "maxLength": 254},
+          "enactment": {"$ref": "#/components/schemas/PoolEnactmentPath"},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "PoolModelWeight": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subscription_key", "model_ref", "input_millicredits_per_mtok", "cached_input_millicredits_per_mtok", "output_millicredits_per_mtok"],
+        "properties": {
+          "subscription_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "model_ref": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$"},
+          "input_millicredits_per_mtok": {"type": "integer", "minimum": 0},
+          "cached_input_millicredits_per_mtok": {"type": "integer", "minimum": 0},
+          "output_millicredits_per_mtok": {"type": "integer", "minimum": 0}
+        }
+      },
+      "PoolProfileLimits": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["harness_key", "profile_key", "entries", "drift", "selectable_entry_count", "earliest_known_reset_at", "observed_at"],
+        "properties": {
+          "harness_key": {"type": "string", "enum": ["hermes", "claude-code"]},
+          "profile_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "entries": {"type": "array", "items": {"$ref": "#/components/schemas/PoolEntryState"}},
+          "drift": {"type": "array", "items": {"$ref": "#/components/schemas/PoolDriftFinding"}},
+          "selectable_entry_count": {"type": "integer", "minimum": 0},
+          "earliest_known_reset_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+          "observed_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "PoolLimitsView": {
+        "description": "Per-entry rows with each account's own reset clock. There is deliberately no aggregate substrate verdict: a pool holding two exhausted entries and one near-full entry is not one word.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profiles", "weights", "topology_revision"],
+        "properties": {
+          "profiles": {"type": "array", "items": {"$ref": "#/components/schemas/PoolProfileLimits"}},
+          "weights": {"type": "array", "items": {"$ref": "#/components/schemas/PoolModelWeight"}},
+          "topology_revision": {"type": "integer", "minimum": 1}
         }
       }
     }
