@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 from typing import cast
 
@@ -281,6 +282,41 @@ def test_project_scope_refusals_are_declared_for_board_and_delivery() -> None:
         assert cast(dict[str, str], responses["403"])["$ref"] == (
             "#/components/responses/ProblemResponse"
         )
+
+
+def test_http_reference_response_sets_match_the_authored_contract() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    authored: dict[str, list[str]] = {}
+    for path, path_item in cast(dict[str, dict[str, object]], document["paths"]).items():
+        for method, operation in cast(dict[str, dict[str, object]], path_item).items():
+            if method in {"get", "post"}:
+                operation_id = cast(str, operation["operationId"])
+                responses = cast(dict[str, object], operation["responses"])
+                assert operation_id not in authored, f"duplicate operationId {operation_id}"
+                authored[operation_id] = sorted(responses)
+
+    reference = (ROOT / "docs/reference/http-api.md").read_text(encoding="utf-8")
+    rows = re.findall(
+        r"^\| `(GET|POST)` \| `[^`]+` \| `(\w+)` \|.*\| ((?:`\d{3}`(?:, )?)+) \|$",
+        reference,
+        re.MULTILINE,
+    )
+    assert rows, "the HTTP reference operation table was not found"
+    documented: dict[str, list[str]] = {}
+    for _method, operation_id, codes in rows:
+        assert operation_id not in documented, f"duplicate reference row {operation_id}"
+        documented[operation_id] = [code.strip("`") for code in codes.split(", ")]
+
+    assert set(documented) <= set(authored), "reference rows name unknown operations"
+    mismatches = sorted(
+        f"{operation_id}: documented={documented[operation_id]} "
+        f"authored={authored[operation_id]}"
+        for operation_id in documented
+        if documented[operation_id] != authored[operation_id]
+    )
+    assert not mismatches, "documented response sets drifted from the authored contract: " + "; ".join(
+        mismatches
+    )
 
 
 def test_project_and_credential_refusals_have_one_definition_each() -> None:

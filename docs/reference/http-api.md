@@ -319,8 +319,8 @@ fact-derived `read_through_position`; reading does not advance it or reduce unre
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
 |---|---|---|---|---|---|---|
 | `GET` | `/health` | `getControlHealth` | `control health` | query | forbidden | `200`, `401` |
-| `GET` | `/v1/board` | `getBoard` | `board query` | query | forbidden | `200`, `401`, `422` |
-| `GET` | `/v1/projects/{project_key}/delivery` | `getProjectDelivery` | `project delivery query` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/board` | `getBoard` | `board query` | query | forbidden | `200`, `401`, `403`, `422` |
+| `GET` | `/v1/projects/{project_key}/delivery` | `getProjectDelivery` | `project delivery query` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 
 Project Delivery rows expose `qualifying_stage_slots[]`. Each item has `slot_key`, `state`, a strict
 `assigned_seat` union (`{"state":"assigned","seat":ProjectDeliverySeat}` or exactly
