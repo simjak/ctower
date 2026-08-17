@@ -49,17 +49,11 @@ def _path_findings(path: Path, root: Path) -> tuple[Finding, ...]:
     is_catalog_artifact = _is_catalog_artifact(path, root)
     text = _read_text(path)
     if text is None:
-        return (
-            (_finding(relative, "catalog artifact could not be classified"),)
-            if is_catalog_artifact
-            else ()
-        )
-    parsed, value, should_refuse = _parse(path, text, is_catalog_artifact=is_catalog_artifact)
+        return _unclassified(relative, must_classify=is_catalog_artifact)
+    parsed, value = _document(path, text)
     if not parsed:
-        if should_refuse:
-            return (_finding(relative, "catalog artifact could not be classified"),)
-        return ()
-    if should_refuse and _contains_tenant_marker(value):
+        return _unclassified(relative, must_classify=is_catalog_artifact or _FIELD in text)
+    if _contains_tenant_marker(value):
         return (_finding(relative, "explicit tenant catalog content marker"),)
     return ()
 
@@ -71,24 +65,38 @@ def _read_text(path: Path) -> str | None:
         return None
 
 
-def _parse(path: Path, text: str, *, is_catalog_artifact: bool) -> tuple[bool, object | None, bool]:
+def _document(path: Path, text: str) -> tuple[bool, object | None]:
+    """Parse the structured document a file carries, wherever that class occurs.
+
+    The parser decodes escaped names and values, so admission judges the decoded
+    content class. Files carrying no structured document parse as empty.
+    """
+
     suffix = path.suffix.lower()
-    should_refuse = is_catalog_artifact or _FIELD in text
     if suffix == ".json":
-        parsed, value = _parse_json(text)
-        return parsed, value, should_refuse
+        return _parse_json(text)
     if suffix in {".yaml", ".yml"}:
-        parsed, value = _parse_yaml(text)
-        return parsed, value, should_refuse
-    if not is_catalog_artifact:
-        return True, None, False
+        return _parse_yaml(text)
     has_frontmatter, frontmatter = _yaml_frontmatter(text)
     if not has_frontmatter:
-        return True, None, False
+        return True, None
     if frontmatter is None:
-        return False, None, True
-    parsed, value = _parse_yaml(frontmatter)
-    return parsed, value, True
+        return False, None
+    return _parse_yaml(frontmatter)
+
+
+def _unclassified(relative: str, *, must_classify: bool) -> tuple[Finding, ...]:
+    """Fail closed where a document owes a class but cannot supply one.
+
+    Classification is owed by the catalog artifact registry, and by any
+    unparsable document whose bytes already show the semantic field. Neither
+    condition can route a parsed document around admission; both only widen
+    refusal where no parse exists to judge.
+    """
+
+    if not must_classify:
+        return ()
+    return (_finding(relative, "catalog artifact could not be classified"),)
 
 
 def _parse_json(text: str) -> tuple[bool, object | None]:
