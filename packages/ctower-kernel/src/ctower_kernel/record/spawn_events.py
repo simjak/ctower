@@ -32,7 +32,7 @@ _MAX_SEAT_KEY = 255
 _MAX_HARNESS = 64
 _MAX_MODEL = 128
 _MAX_EFFORT = 64
-_STABLE_NAME = re.compile(r"^[a-z][a-z0-9._-]{0,95}$")
+_STABLE_NAME = re.compile(r"^[a-z][a-z0-9._-]{1,95}$")
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 
 

@@ -5188,7 +5188,7 @@
               "type": "string"
             },
             "seat_key": {
-              "pattern": "^[a-z][a-z0-9._-]{0,95}$",
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
               "type": "string"
             },
             "spawn_id": {
@@ -19741,7 +19741,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:db3325aa64233f08a2a6d700bf45c795dcc75f6e7588ffa124e52b982e43ac9c"
+      "sha256": "sha256:68ad56ad17db7ba74dd14282b819c498baf042abafb902582747cffa32dae5ab"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",

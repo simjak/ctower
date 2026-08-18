@@ -55,7 +55,7 @@ class SpawnRecordCreateRequest(BaseModel):
     """Request payload to create a new spawn record."""
 
     project_key: str = Field(pattern=r"^[a-z][a-z0-9-]{2,63}$")
-    seat_key: str = Field(pattern=r"^[a-z][a-z0-9._-]{0,95}$")
+    seat_key: str = Field(pattern=r"^[a-z][a-z0-9._-]{1,95}$")
     crew_name: str = Field(min_length=1, max_length=255)
     task_file_ref: str = Field(min_length=1, max_length=1024)
     worktree_path: str = Field(min_length=1, max_length=1024)

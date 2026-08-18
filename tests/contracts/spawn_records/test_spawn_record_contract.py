@@ -16,6 +16,7 @@ _SPAWN_OPERATIONS = {
     "appendSpawnTransition",
 }
 _IMMUTABLE_TABLES = 2
+_HOUSE_SEAT_KEY = r"^[a-z][a-z0-9._-]{1,95}$"
 
 
 def test_spawn_http_surface_is_strict_and_append_only() -> None:
@@ -119,9 +120,15 @@ def test_generated_response_accepts_an_appended_transition_fact() -> None:
 
 
 def test_spawn_openapi_seat_key_matches_event_contract() -> None:
-    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
-    expected_pattern = r"^[a-z][a-z0-9._-]{0,95}$"
+    """One seat-key vocabulary: the event contract states it, HTTP repeats it."""
 
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    envelope = json.loads(
+        (ROOT / "contracts/domain/events/event-envelope.schema.json").read_text(encoding="utf-8")
+    )
+    expected_pattern = envelope["$defs"]["spawnRecorded"]["properties"]["seat_key"]["pattern"]
+
+    assert expected_pattern == _HOUSE_SEAT_KEY
     for schema_name in ("SpawnRecordCreateRequest", "SpawnRecord", "SpawnRecordResult"):
         schema = document["components"]["schemas"][schema_name]
         assert schema["properties"]["seat_key"]["pattern"] == expected_pattern
