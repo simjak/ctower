@@ -226,7 +226,8 @@ inferred from the effect.
   ROUTINE fires ──► occurrence + immutable dispatch effect ──► external consumer may act
        │
        └── suppression while the last occurrence is unconsumed: Status: NOT BUILT —
-           SPECIFIED ONLY (AC-RWI-05 / CT-I1-035); today every fire emits an occurrence
+           SPECIFIED ONLY (the receipt/suppression design in the decision log and the
+           pending routine-items ticket); today every fire emits an occurrence
 ```
 
 - **Software:** every night, check dependencies for new security advisories. Every Monday, produce
@@ -320,7 +321,7 @@ separately; an unbuilt surface is not implied by a route name or a mockup.
 | Surface | Status | What it is for | Software | Accounting |
 |---|---|---|---|---|
 | Board | **Status: BUILT — read-only projection** | Work by stage | Where each feature is | Where each entity's close is |
-| Requests view | **Status: BUILT — Request record/read contract and the dedicated primary surface (`apps/ctower-ui/src/app/requests`, in the navigation rail)** | What was asked, and its outcome | The backlog of asks | The finance team's inbox of requests |
+| Requests view | **Status: BUILT — Request record/read contract and the dedicated read-only shadow Requests surface (`apps/ctower-ui/src/app/requests`, in the navigation rail; the five primary surfaces stay closed)** | What was asked, and its outcome | The backlog of asks | The finance team's inbox of requests |
 | Inbox | **Status: BUILT — development controls** | Work items addressed to you | "Review this change" | "Approve this payment run" |
 | Chat | **Status: BUILT — two-person Inbox thread** | Talking to a commander where the work is | "Why is this ticket blocked?" | "Why is this invoice held?" |
 | File explorer | **Status: BUILT — read-only shadow surface** | Finding the artefacts | The repository tree | Working papers and supporting documents |
