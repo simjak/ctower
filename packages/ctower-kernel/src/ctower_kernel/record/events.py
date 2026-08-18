@@ -514,12 +514,8 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             "company-record",
             _API_OR_IMPORT,
         ),
-        EventCatalogEntry(
-            EventKind.SPAWN_RECORDED, SpawnRecordedPayload, "spawn-record", _API_OR_IMPORT
-        ),
-        EventCatalogEntry(
-            EventKind.SPAWN_TRANSITIONED, SpawnTransitionedPayload, "spawn-record", _API_OR_IMPORT
-        ),
+        EventCatalogEntry(EventKind.SPAWN_RECORDED, SpawnRecordedPayload, "spawn-record"),
+        EventCatalogEntry(EventKind.SPAWN_TRANSITIONED, SpawnTransitionedPayload, "spawn-record"),
     )
 }
 

@@ -1,10 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-<<<<<<< HEAD
-Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
-=======
-Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
->>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
+Authored contract digest: sha256:2ed0249f6fb882b14167fb175e58a3e3a2d53f76ff091f55228805ae9673a3c2
 """
 
 from __future__ import annotations
@@ -63,6 +59,11 @@ from ctower_client.models import (
     DreamDispatchReceipt,
     DreamLaneBindRequest,
     DreamLaneBindingReceipt,
+    EstateCompanyRecordsImportRequest,
+    EstateImportResult,
+    EstateInboxImportRequest,
+    EstateKnowledgeImportRequest,
+    EstateRulingsImportRequest,
     EvidenceRequest,
     FindingDispositionRequest,
     FindingDispositionResult,
@@ -149,10 +150,11 @@ from ctower_client.models import (
     WorkflowTransitionRequest,
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey"]
+__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey", "TicketId"]
 
 
 type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+type TicketId = Annotated[str, Field(pattern="^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$")] | UUID
 
 
 class _ProblemModel(Protocol):
@@ -247,7 +249,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_comment(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: TicketCommentRequest,
         *,
         command_id: UUID,
@@ -269,7 +271,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_relation(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: RelationRequest,
         *,
         command_id: UUID,
@@ -457,7 +459,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_intent(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: TicketIntentRequest,
         *,
         command_id: UUID,
@@ -479,7 +481,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_label(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: ApplyLabelRequest,
         *,
         command_id: UUID,
@@ -630,7 +632,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_assignment(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: AssignmentChangeRequest,
         *,
         command_id: UUID,
@@ -652,7 +654,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_priority(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: PriorityChangeRequest,
         *,
         command_id: UUID,
@@ -739,7 +741,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def consume_review_dispatch_effect(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         effect_id: UUID,
         request: ReviewDispatchConsumeRequest,
         *,
@@ -883,7 +885,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def freeze_proof_criteria(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: FreezeCriteriaRequest,
         *,
         command_id: UUID,
@@ -925,7 +927,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: BoardView}, {401: Problem, 422: Problem})
+        return _response(response, {200: BoardView}, {401: Problem, 403: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_control_health(
@@ -1025,7 +1027,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_request_maintenance_review(
@@ -1093,7 +1095,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         *,
         project_key: str,
     ) -> TicketResource:
@@ -1107,12 +1109,12 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TicketResource}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketResource}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket_timeline(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         *,
         project_key: str,
     ) -> TimelineResponse:
@@ -1126,7 +1128,91 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TimelineResponse}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_company_records(
+        self,
+        request: EstateCompanyRecordsImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/company-records",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_inbox(
+        self,
+        request: EstateInboxImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/inbox",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_knowledge(
+        self,
+        request: EstateKnowledgeImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/knowledge",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def import_estate_rulings(
+        self,
+        request: EstateRulingsImportRequest,
+        *,
+        command_id: UUID,
+    ) -> EstateImportResult:
+        response = self._http.post(
+            "/v1/migrations/estate/rulings",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: EstateImportResult, 202: EstateImportResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def ingest_inbox_notification(
@@ -1349,7 +1435,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_review_dispatch_effects(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
     ) -> ReviewDispatchEffectList:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/workflow/review-dispatches",
@@ -1404,7 +1490,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         *,
         project_key: str,
     ) -> AssignmentList:
@@ -1418,12 +1504,12 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: AssignmentList}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AssignmentList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_audit_events(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         *,
         project_key: str,
         cursor: Annotated[int, Field(ge=0)] | None = None,
@@ -1439,12 +1525,12 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: AuditPage}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AuditPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_sessions(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         *,
         project_key: str,
     ) -> TicketSessionList:
@@ -1458,7 +1544,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: TicketSessionList}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketSessionList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def plan_company_bundle(
@@ -1644,7 +1730,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_evidence(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: EvidenceRequest,
         *,
         command_id: UUID,
@@ -1666,7 +1752,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_verdict(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: VerdictRequest,
         *,
         command_id: UUID,
@@ -1688,7 +1774,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_ticket_change_reference(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: ChangeReferenceRequest,
         *,
         command_id: UUID,
@@ -1710,7 +1796,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_ticket_session_fact(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         session_id: UUID,
         request: SessionFactRequest,
         *,
@@ -1798,7 +1884,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def resolve_close_workflow(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: ResolveCloseRequest,
         *,
         command_id: UUID,
@@ -1925,7 +2011,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_session(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: SessionStartRequest,
         *,
         command_id: UUID,
@@ -1947,7 +2033,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_workflow(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: WorkflowStartRequest,
         *,
         command_id: UUID,
@@ -1990,7 +2076,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transfer_ticket_custody(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: CustodyTransferRequest,
         *,
         command_id: UUID,
@@ -2012,7 +2098,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transition_workflow(
         self,
-        ticket_id: UUID,
+        ticket_id: TicketId,
         request: WorkflowTransitionRequest,
         *,
         command_id: UUID,
@@ -2079,11 +2165,13 @@ class CtowerClient:
             "Authorization": f"Bearer {self._credential}",
         }
 
-    def _context(self, command_id: UUID, *, ticket_id: UUID | None = None) -> TelemetryContext:
+    def _context(
+        self, command_id: UUID, *, ticket_id: UUID | str | None = None
+    ) -> TelemetryContext:
         if self._telemetry is not None:
             payload = self._telemetry.model_dump(mode="json", by_alias=True, exclude_none=True)
             payload["command_id"] = str(command_id)
-            payload["ticket_id"] = str(ticket_id) if ticket_id is not None else None
+            payload["ticket_id"] = str(ticket_id) if isinstance(ticket_id, UUID) else None
             return TelemetryContext.model_validate(payload)
         return TelemetryContext(
             schema_id="ctower.telemetry-context/v1",
@@ -2095,7 +2183,7 @@ class CtowerClient:
             tenant_id="unresolved",
             actor_id="unresolved",
             command_id=str(command_id),
-            ticket_id=str(ticket_id) if ticket_id is not None else None,
+            ticket_id=str(ticket_id) if isinstance(ticket_id, UUID) else None,
         )
 
     def _telemetry_headers(

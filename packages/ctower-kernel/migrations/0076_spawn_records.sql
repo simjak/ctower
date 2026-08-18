@@ -6,6 +6,10 @@
 -- like ticket_work_sessions/ticket_work_session_transitions.
 -- CT-I1-031 workspace_id is OPTIONAL (null until workspaces build lands).
 
+-- Each list below extends the set the immediately preceding migration installed
+-- (0074 for the event kinds, 0073 for both subject kinds) by exactly the spawn
+-- entries. These constraints are closed enumerations replaced wholesale, so a
+-- list authored against an older tip silently drops the kinds that landed since.
 ALTER TABLE events DROP CONSTRAINT events_kind_check;
 ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
     'bootstrap.first_tenant_created', 'ticket.created', 'ticket.custody_transferred',
@@ -21,8 +25,8 @@ ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
     'attention.finding_appended', 'attention.finding_disposition_recorded',
     'thread.opened', 'message.appended', 'message.delivered', 'message.read',
     'thread.promoted_to_ticket', 'knowledge.document_registered', 'request.changed',
-    'ruling.recorded', 'request.proposal_changed', 'spawn.recorded',
-    'spawn.transitioned'
+    'ruling.recorded', 'request.proposal_changed', 'estate.import_changed',
+    'company.record_appended', 'spawn.recorded', 'spawn.transitioned'
 ));
 
 ALTER TABLE event_links DROP CONSTRAINT event_links_subject_kind_check;
@@ -32,7 +36,7 @@ ALTER TABLE event_links ADD CONSTRAINT event_links_subject_kind_check CHECK (
         'inbound_thread', 'inbound_event', 'access', 'session',
         'attention_finding', 'attention_finding_disposition', 'inbox_thread',
         'knowledge_document', 'request', 'ruling', 'request_proposal',
-        'spawn_record'
+        'company_record', 'spawn_record'
     )
 );
 
@@ -45,7 +49,7 @@ ALTER TABLE durability_subject_heads
             'inbound_thread', 'inbound_event', 'access', 'session',
             'attention_finding', 'attention_finding_disposition', 'inbox_thread',
             'knowledge_document', 'request', 'ruling', 'request_proposal',
-            'spawn_record'
+            'company_record', 'spawn_record'
         )
     );
 
