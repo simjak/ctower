@@ -851,6 +851,23 @@
     "AC-TM-08": [
       "contracts/domain/task-management/board-view.schema.json"
     ],
+    "AC-TM-09": [
+      "contracts/components/project.schema.json"
+    ],
+    "AC-TM-10": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
+    ],
+    "AC-TM-11": [
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
+    ],
+    "AC-TM-12": [
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
+    ],
+    "AC-TM-13": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
+    ],
     "AC-WF-01": [
       "contracts/execution/execution-policy.schema.json",
       "packs/policies/execution/trust-spine-four-stage-v1.yaml",
@@ -910,7 +927,8 @@
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
       "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
-      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -937,7 +955,8 @@
       "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
       "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql",
       "packages/ctower-kernel/migrations/0055_connector_framework.sql",
-      "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql"
+      "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql",
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -1655,7 +1674,8 @@
       "packages/ctower-kernel/migrations/0071_estate_import_idempotency.sql",
       "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
       "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
-      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql"
+      "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql",
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
@@ -1766,6 +1786,7 @@
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
       "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql",
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql",
       "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],

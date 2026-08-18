@@ -676,6 +676,8 @@
         "AC-SES-04",
         "AC-TM-04",
         "AC-TM-05",
+        "AC-TM-10",
+        "AC-TM-13",
         "AC-RUL-01",
         "AC-RUL-02",
         "AC-RUL-03",
@@ -815,7 +817,8 @@
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
         "AC-ADM-01",
-        "AC-COMP-01"
+        "AC-COMP-01",
+        "AC-TM-09"
       ]
     },
     {
@@ -2027,6 +2030,19 @@
         "INV-79",
         "AC-INBOX-01",
         "AC-INBOX-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql",
+      "references": [
+        "SPEC#task-management-foundation",
+        "SPEC#persistence-authority",
+        "INV-01",
+        "INV-03",
+        "AC-TM-10",
+        "AC-TM-11",
+        "AC-TM-12",
+        "AC-TM-13"
       ]
     },
     {

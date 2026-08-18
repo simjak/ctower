@@ -180,6 +180,7 @@ class BoardFacts:
 
     ticket_id: UUID
     project_key: str
+    display_key: str | None
     title: str
     priority: str
     lifecycle_state: str
@@ -349,6 +350,7 @@ class BoardCard:
     risk: str | None
     delivery_facts: tuple[str, ...]
     version: int
+    display_key: str | None
     tenant_display_identity: TenantDisplayIdentity = _TENANT_UNKNOWN
     change_references: tuple[ChangeReference, ...] = ()
     applied_labels: tuple[AppliedLabel, ...] = ()
@@ -369,6 +371,7 @@ class BoardCard:
             "custodian_id": str(self.custodian_id),
             "delivery_facts": list(self.delivery_facts),
             "delivery_surface_availability": self.delivery_surface_availability.response_payload(),
+            "display_key": self.display_key,
             "human_waiting": self.human_waiting.response_payload(),
             "inbox_thread_ids": [str(item) for item in self.inbox_thread_ids],
             "lane": self.lane.value,
@@ -527,6 +530,7 @@ def derive_board_card(facts: BoardFacts) -> BoardCard:
     return BoardCard(
         ticket_id=facts.ticket_id,
         project_key=facts.project_key,
+        display_key=facts.display_key,
         title=facts.title,
         lane=lane,
         underlying_lane=underlying,

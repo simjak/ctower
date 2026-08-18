@@ -2494,7 +2494,11 @@
         "name": "ticket_id",
         "in": "path",
         "required": true,
-        "schema": {"type": "string", "format": "uuid"}
+        "schema": {
+          "type": "string",
+          "format": "ticket-ref",
+          "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[A-Z]{2,5}-[1-9][0-9]*)$"
+        }
       },
       "SessionId": {
         "name": "session_id",
@@ -5484,6 +5488,7 @@
         "required": [
           "created_at",
           "custodian_id",
+          "display_key",
           "durability_state",
           "priority",
           "source",
@@ -5494,6 +5499,7 @@
         "properties": {
           "created_at": {"type": "string", "format": "date-time"},
           "custodian_id": {"type": "string", "format": "uuid"},
+          "display_key": {"type": ["string", "null"], "pattern": "^[A-Z]{2,5}-[1-9][0-9]*$"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "priority": {"$ref": "#/components/schemas/Priority"},
           "source": {"$ref": "#/components/schemas/SourceReference"},
@@ -6234,7 +6240,7 @@
       },
       "BoardCard": {
         "type": "object", "additionalProperties": false,
-        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "human_waiting", "inbox_thread_ids", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
+        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "display_key", "human_waiting", "inbox_thread_ids", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
         "properties": {
           "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
           "applied_labels": {"type": "array", "items": {"$ref": "#/components/schemas/AppliedLabel"}},
@@ -6245,6 +6251,7 @@
           "custodian_id": {"type": "string", "format": "uuid"},
           "delivery_facts": {"type": "array", "items": {"type": "string"}},
           "delivery_surface_availability": {"$ref": "#/components/schemas/DeliverySurfaceAvailability"},
+          "display_key": {"type": ["string", "null"], "pattern": "^[A-Z]{2,5}-[1-9][0-9]*$"},
           "human_waiting": {"$ref": "#/components/schemas/HumanWaiting"},
           "inbox_thread_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
           "lane": {"$ref": "#/components/schemas/BoardLane"},
