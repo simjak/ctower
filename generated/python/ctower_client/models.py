@@ -1,10 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-<<<<<<< HEAD
-Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
-=======
-Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
->>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
+Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
 """
 
 from __future__ import annotations
@@ -20,6 +16,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
     "ActivityClass",
+    "ActivityGate",
     "AdmitIntent",
     "AdmittedAuditData",
     "AppendFindingRequest",
@@ -122,6 +119,18 @@ __all__ = [
     "DreamModelRequirement",
     "DreamModelSelection",
     "DurabilityState",
+    "EstateCompanyRecordImportRow",
+    "EstateCompanyRecordsImportRequest",
+    "EstateImportManifest",
+    "EstateImportParity",
+    "EstateImportResult",
+    "EstateImportSignature",
+    "EstateInboxImportRequest",
+    "EstateInboxImportRow",
+    "EstateKnowledgeImportRequest",
+    "EstateKnowledgeImportRow",
+    "EstateRulingImportRow",
+    "EstateRulingsImportRequest",
     "EvidenceRequest",
     "FindingDispositionRequest",
     "FindingDispositionResult",
@@ -281,12 +290,6 @@ __all__ = [
     "SessionTransitionedAuditEvent",
     "SessionTransitionedPayload",
     "SourceReference",
-    "SpawnRecord",
-    "SpawnRecordCreateRequest",
-    "SpawnRecordListResult",
-    "SpawnRecordResult",
-    "SpawnRecordTransitionFact",
-    "SpawnTransitionRequest",
     "SurfaceDeclarationState",
     "SurfaceEnvironmentsField",
     "SurfaceIdentityField",
@@ -631,6 +634,13 @@ class ActivityClass(StrEnum):
     VERIFICATION = "verification"
 
 
+class ActivityGate(_BoundaryModel):
+    kind: Literal["always", "new_movement_since_watermark", "open_tickets_above"]
+    source: Literal["events", "tickets"] | None = None
+    threshold: Annotated[int, Field(ge=0, le=1000000)] | None = None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None = None
+
+
 class AdmitIntent(_BoundaryModel):
     kind: Literal["admit"]
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -685,11 +695,11 @@ class AssignmentKind(StrEnum):
 class BeatDispatchEffect(_BoundaryModel):
     effect_id: UUID
     occurrence_id: UUID
-    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    routine_ref: Annotated[str, Field(pattern="^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     scheduled_for: _Rfc3339DateTime
     beat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    prompt_source: Annotated[str, Field(pattern="^state/beats/[a-z][a-z0-9._-]*\\.txt$")]
+    prompt_source: Annotated[str, Field(pattern="^(state/beats|crontab)/[a-z][a-z0-9._-]*\\.txt$")]
     prompt_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     prompt: Annotated[str, Field(min_length=1, max_length=16384)]
     target_session: Literal["commander", "mc-commander-manibo"]
@@ -1037,6 +1047,57 @@ class DreamModelSelection(_BoundaryModel):
 class DurabilityState(StrEnum):
     DURABILITY_PENDING = "durability_pending"
     ACCEPTED = "accepted"
+
+
+class EstateCompanyRecordImportRow(_BoundaryModel):
+    schema_id: Literal["ctower.company-record-import/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    record_type: Literal["escape"]
+    natural_key: Annotated[str, Field(min_length=1, max_length=256)]
+    occurred_on: str
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    seat: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,127}$")]
+    imported_at: _Rfc3339DateTime
+    payload: dict[str, object]
+
+
+class EstateImportSignature(_BoundaryModel):
+    algorithm: Literal["Ed25519"]
+    signed_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{1,96}$")]
+    key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: Annotated[str, Field(pattern="^[A-Za-z0-9_-]{86}$")]
+
+
+class EstateInboxImportRow(_BoundaryModel):
+    message_id: UUID
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    source_sender: Annotated[str, Field(min_length=1, max_length=128)]
+    source_recipient: Annotated[str, Field(min_length=1, max_length=128)]
+    sent_at: _Rfc3339DateTime
+    subject: Annotated[str, Field(max_length=1024)]
+    body: Annotated[str, Field(min_length=1, max_length=65536)]
+    read_state: Literal["delivered", "read"]
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class EstateKnowledgeImportRow(_BoundaryModel):
+    document_id: UUID
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    title: Annotated[str, Field(min_length=1, max_length=1024)]
+    body: Annotated[str, Field(min_length=1, max_length=1048576)]
+    recorded_at: _Rfc3339DateTime
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class EstateRulingImportRow(_BoundaryModel):
+    source_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
+    recorded_at: _Rfc3339DateTime
+    content_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
 class EvidenceRequest(_BoundaryModel):
@@ -1691,33 +1752,6 @@ class SourceReference(_BoundaryModel):
     ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
-class SpawnRecordCreateRequest(_BoundaryModel):
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,95}$")]
-    crew_name: Annotated[str, Field(min_length=1, max_length=255)]
-    task_file_ref: Annotated[str, Field(min_length=1, max_length=1024)]
-    worktree_path: Annotated[str, Field(min_length=1, max_length=1024)]
-    harness: Annotated[str, Field(min_length=1, max_length=64)]
-    model: Annotated[str, Field(min_length=1, max_length=128)]
-    effort: Annotated[str, Field(min_length=1, max_length=64)] | None = None
-    workspace_id: UUID | None = None
-
-
-class SpawnRecordTransitionFact(_BoundaryModel):
-    transition_id: UUID
-    spawn_id: UUID
-    from_status: Literal["requested", "accepted", "running"]
-    to_status: Literal["accepted", "running", "completed", "failed", "reaped"]
-    reason: Annotated[str, Field(min_length=1, max_length=4096)] | None = None
-    principal_id: UUID
-    transitioned_at: _Rfc3339DateTime
-
-
-class SpawnTransitionRequest(_BoundaryModel):
-    to_status: Literal["accepted", "running", "completed", "failed", "reaped"]
-    reason: Annotated[str, Field(min_length=1, max_length=4096)] | None = None
-
-
 class SurfaceDeclarationState(StrEnum):
     DECLARED_PRESENT = "declared_present"
     DECLARED_ABSENT = "declared_absent"
@@ -1861,21 +1895,22 @@ class BeatDispatchEffectList(_BoundaryModel):
 
 
 class BeatRoutine(_BoundaryModel):
-    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    routine_ref: Annotated[str, Field(pattern="^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     schedule: BeatSchedule
     beat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    prompt_source: Annotated[str, Field(pattern="^state/beats/[a-z][a-z0-9._-]*\\.txt$")]
+    prompt_source: Annotated[str, Field(pattern="^(state/beats|crontab)/[a-z][a-z0-9._-]*\\.txt$")]
     prompt_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     target_session: Literal["commander", "mc-commander-manibo"]
     next_fire_at: _Rfc3339DateTime
+    activity_gate: None | ActivityGate = None
 
 
 class BeatRoutineRetirementReceipt(_BoundaryModel):
     command_id: UUID
     retirement_id: UUID
     event_id: UUID
-    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    routine_ref: Annotated[str, Field(pattern="^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     retired_at: _Rfc3339DateTime
     durability_state: DurabilityState
@@ -2197,6 +2232,38 @@ class DreamModelRequirement(_BoundaryModel):
     excluded_families: Annotated[tuple[Literal["claude"], ...], Field(min_length=1, max_length=1)]
 
 
+class EstateImportManifest(_BoundaryModel):
+    schema_id: Literal["ctower.estate-import-manifest/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,63}$")] | None = None
+    source_identity: dict[str, object]
+    seat_mapping_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None = None
+    counts: dict[str, object]
+    batches: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
+    manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: EstateImportSignature
+
+
+class EstateImportParity(_BoundaryModel):
+    schema_id: Literal["ctower.estate-import-parity/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    source_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    imported_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    refused_prohibited_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    refused_prohibited_rows: tuple[dict[str, object], ...]
+    batches: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
+    sampled_content_hashes: Annotated[tuple[dict[str, object], ...], Field(min_length=1)]
+    source_only_owners: tuple[dict[str, object], ...]
+    emitted_before_closure: Literal[True]
+    parity_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: EstateImportSignature
+
+
 class FindingDispositionResult(_BoundaryModel):
     command_id: UUID
     finding_id: UUID
@@ -2332,6 +2399,7 @@ class IntakeSubmitRequest(_BoundaryModel):
 class KnowledgeAddRequest(_BoundaryModel):
     body: Annotated[str, Field(min_length=1, max_length=1048576)] | None = None
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None
+    recorded_at: _Rfc3339DateTime | None = None
     scope: KnowledgeScope
     source_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,127}$")] | None = None
     title: Annotated[str, Field(min_length=1, max_length=1024)] | None = None
@@ -2497,11 +2565,20 @@ class Problem(_BoundaryModel):
         "dream-dispatch-unavailable",
         "dream-lane-already-bound",
         "dream-lane-binding-operator-required",
+        "estate-import-batch-digest-mismatch",
+        "estate-import-batch-invalid",
+        "estate-import-content-mismatch",
+        "estate-import-count-mismatch",
+        "estate-import-duplicate-source",
+        "estate-import-invalid",
+        "estate-import-operator-required",
+        "estate-import-parity-signer-unavailable",
+        "estate-import-project-required",
+        "estate-import-row-invalid",
+        "estate-import-source-conflict",
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
-        "invalid-status",
-        "invalid-transition",
         "invalid-ruling",
         "inbox-already-promoted",
         "inbox-acknowledgement-not-advancing",
@@ -2606,10 +2683,7 @@ class Problem(_BoundaryModel):
         "session-ineligible",
         "session-not-found",
         "session-transition-invalid",
-        "spawn-not-found",
-        "tenant-not-found",
         "tenant-scope-denied",
-        "transition-conflict",
         "ticket-comment-ineligible",
         "ticket-comment-invalid",
         "unauthorized",
@@ -2914,44 +2988,6 @@ class SessionTransitionedPayload(_BoundaryModel):
     transition_number: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
-class SpawnRecord(_BoundaryModel):
-    spawn_id: UUID
-    project_key: str
-    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,95}$")]
-    crew_name: str
-    task_file_ref: str
-    worktree_path: str
-    harness: str
-    model: str
-    effort: str | None = None
-    workspace_id: UUID | None = None
-    status: Literal["requested", "accepted", "running", "completed", "failed", "reaped"]
-    principal_id: UUID
-    created_at: _Rfc3339DateTime
-    updated_at: _Rfc3339DateTime
-    transitions: tuple[SpawnRecordTransitionFact, ...]
-
-
-class SpawnRecordResult(_BoundaryModel):
-    spawn_id: UUID
-    project_key: str
-    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,95}$")]
-    crew_name: str
-    task_file_ref: str
-    worktree_path: str
-    harness: str
-    model: str
-    effort: str | None = None
-    workspace_id: UUID | None = None
-    status: Literal["requested", "accepted", "running", "completed", "failed", "reaped"]
-    principal_id: UUID
-    created_at: _Rfc3339DateTime
-    updated_at: _Rfc3339DateTime
-    transitions: tuple[SpawnRecordTransitionFact, ...]
-    durability_state: DurabilityState
-    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
-
-
 class SurfaceEnvironmentsField(_BoundaryModel):
     state: SurfaceDeclarationState
     environments: tuple[Annotated[str, Field(min_length=1)], ...]
@@ -3220,6 +3256,41 @@ class DreamDispatchEffect(_BoundaryModel):
     consumption: None | DreamDispatchConsumption
 
 
+class EstateCompanyRecordsImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateCompanyRecordImportRow, ...], Field(min_length=1, max_length=100)]
+
+
+class EstateImportResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    tier: Literal["inbox_history", "agreed_decisions", "knowledge_documents", "company_records"]
+    manifest_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    source_count: Annotated[int, Field(ge=1, le=9007199254740991)]
+    imported_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    parity: EstateImportParity
+
+
+class EstateInboxImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateInboxImportRow, ...], Field(min_length=1, max_length=100)]
+
+
+class EstateKnowledgeImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateKnowledgeImportRow, ...], Field(min_length=1, max_length=100)]
+
+
+class EstateRulingsImportRequest(_BoundaryModel):
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
+    manifest: EstateImportManifest
+    rows: Annotated[tuple[EstateRulingImportRow, ...], Field(min_length=1, max_length=100)]
+
+
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
@@ -3374,10 +3445,6 @@ class SessionTransitionedAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^session:[0-9a-f-]{36}$")]
 
 
-class SpawnRecordListResult(_BoundaryModel):
-    records: tuple[SpawnRecord, ...]
-
-
 class TicketCommandResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -3407,9 +3474,14 @@ class TimelineEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
     event_id: UUID
-    kind: Literal["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
+    kind: Literal[
+        "ticket.created",
+        "ticket.custody_transferred",
+        "ticket.comment_added",
+        "workflow.changed",
+    ]
     occurred_at: _Rfc3339DateTime
-    payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload
+    payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload | WorkflowChangedAuditPayload
     sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 

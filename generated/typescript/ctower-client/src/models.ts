@@ -1,11 +1,14 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-<<<<<<< HEAD
-// Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
-=======
-// Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
->>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
+// Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
 
 export type ActivityClass = "work" | "verification";
+
+export type ActivityGate = Readonly<{
+  readonly "kind": "always" | "new_movement_since_watermark" | "open_tickets_above";
+  readonly "project_key"?: string;
+  readonly "source"?: "events" | "tickets";
+  readonly "threshold"?: number;
+}>;
 
 export type AdmitIntent = Readonly<{
   readonly "expected_version": number;
@@ -121,6 +124,7 @@ export type BeatDispatchEffectList = Readonly<{
 }>;
 
 export type BeatRoutine = Readonly<{
+  readonly "activity_gate"?: null | ActivityGate;
   readonly "beat_key": string;
   readonly "next_fire_at": string;
   readonly "prompt_sha256": string;
@@ -854,6 +858,170 @@ export type DreamModelSelection = Readonly<{
 
 export type DurabilityState = "durability_pending" | "accepted";
 
+export type EstateCompanyRecordImportRow = Readonly<{
+  readonly "content_sha256": string;
+  readonly "imported_at": string;
+  readonly "natural_key": string;
+  readonly "occurred_on": string;
+  readonly "payload": Readonly<{
+    readonly "date"?: string;
+    readonly "defect"?: string;
+    readonly "evidence"?: string;
+    readonly "found_by"?: string;
+    readonly "gate_hardened"?: string;
+    readonly "note"?: string;
+    readonly "seat"?: string;
+    readonly "should_have_caught"?: string;
+    readonly "signed_by"?: string;
+    readonly "status"?: string;
+    readonly "summary"?: string;
+  }>;
+  readonly "record_type": "escape";
+  readonly "schema": "ctower.company-record-import/v1";
+  readonly "seat": string;
+  readonly "source_ref": string;
+}>;
+
+export type EstateCompanyRecordsImportRequest = Readonly<{
+  readonly "batch_index": number;
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateCompanyRecordImportRow>;
+}>;
+
+export type EstateImportManifest = Readonly<{
+  readonly "batches": ReadonlyArray<Readonly<{
+    readonly "batch_digest": string;
+    readonly "batch_index": number;
+    readonly "source_count": number;
+  }>>;
+  readonly "counts": Readonly<{
+    readonly "mapped_rows"?: number;
+    readonly "source_only_rows"?: number;
+    readonly "source_rows": number;
+  }>;
+  readonly "manifest_digest": string;
+  readonly "project_key"?: string;
+  readonly "schema": "ctower.estate-import-manifest/v1";
+  readonly "seat_mapping_digest"?: string | null;
+  readonly "signature": EstateImportSignature;
+  readonly "source_identity": Readonly<{
+    readonly "frozen_at"?: string;
+    readonly "namespace": string;
+    readonly "size_bytes"?: number;
+    readonly "source_path": string;
+    readonly "source_sha256": string;
+  }>;
+  readonly "tier": "inbox_history" | "agreed_decisions" | "knowledge_documents" | "company_records";
+}>;
+
+export type EstateImportParity = Readonly<{
+  readonly "batches": ReadonlyArray<Readonly<{
+    readonly "batch_digest": string;
+    readonly "batch_index": number;
+    readonly "imported_count": number;
+    readonly "refused_prohibited_count": number;
+    readonly "refused_prohibited_rows": ReadonlyArray<Readonly<{
+      readonly "content_sha256": string;
+      readonly "disposition": "refused_prohibited";
+      readonly "problem_code": "prohibited-data-class";
+      readonly "prohibited_classes": ReadonlyArray<"credential_material" | "live_incident_indicator" | "phi_hipaa_covered" | "pii_beyond_staff_identity" | "production_customer_data">;
+      readonly "source_ref": string;
+    }>>;
+    readonly "source_count": number;
+  }>>;
+  readonly "emitted_before_closure": true;
+  readonly "imported_count": number;
+  readonly "manifest_digest": string;
+  readonly "parity_digest": string;
+  readonly "refused_prohibited_count": number;
+  readonly "refused_prohibited_rows": ReadonlyArray<Readonly<{
+    readonly "content_sha256": string;
+    readonly "disposition": "refused_prohibited";
+    readonly "problem_code": "prohibited-data-class";
+    readonly "prohibited_classes": ReadonlyArray<"credential_material" | "live_incident_indicator" | "phi_hipaa_covered" | "pii_beyond_staff_identity" | "production_customer_data">;
+    readonly "source_ref": string;
+  }>>;
+  readonly "sampled_content_hashes": ReadonlyArray<Readonly<{
+    readonly "content_sha256": string;
+    readonly "source_ref": string;
+  }>>;
+  readonly "schema": "ctower.estate-import-parity/v1";
+  readonly "signature": EstateImportSignature;
+  readonly "source_count": number;
+  readonly "source_only_owners": ReadonlyArray<Readonly<{
+    readonly "row_count": number;
+    readonly "source_only_disposition": "source_only";
+    readonly "source_seat": string;
+  }>>;
+  readonly "tier": "inbox_history" | "agreed_decisions" | "knowledge_documents" | "company_records";
+}>;
+
+export type EstateImportResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "imported_count": number;
+  readonly "manifest_digest": string;
+  readonly "parity": EstateImportParity;
+  readonly "source_count": number;
+  readonly "tier": "inbox_history" | "agreed_decisions" | "knowledge_documents" | "company_records";
+}>;
+
+export type EstateImportSignature = Readonly<{
+  readonly "algorithm": "Ed25519";
+  readonly "key_ref": string;
+  readonly "key_version": number;
+  readonly "public_key_digest": string;
+  readonly "signature": string;
+  readonly "signed_digest": string;
+}>;
+
+export type EstateInboxImportRequest = Readonly<{
+  readonly "batch_index": number;
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateInboxImportRow>;
+}>;
+
+export type EstateInboxImportRow = Readonly<{
+  readonly "body": string;
+  readonly "content_sha256": string;
+  readonly "message_id": string;
+  readonly "read_state": "delivered" | "read";
+  readonly "sent_at": string;
+  readonly "source_recipient": string;
+  readonly "source_ref": string;
+  readonly "source_sender": string;
+  readonly "subject": string;
+}>;
+
+export type EstateKnowledgeImportRequest = Readonly<{
+  readonly "batch_index": number;
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateKnowledgeImportRow>;
+}>;
+
+export type EstateKnowledgeImportRow = Readonly<{
+  readonly "body": string;
+  readonly "content_sha256": string;
+  readonly "document_id": string;
+  readonly "recorded_at": string;
+  readonly "source_ref": string;
+  readonly "title": string;
+}>;
+
+export type EstateRulingImportRow = Readonly<{
+  readonly "content_sha256": string;
+  readonly "recorded_at": string;
+  readonly "source_ref": string;
+  readonly "verbatim": string;
+}>;
+
+export type EstateRulingsImportRequest = Readonly<{
+  readonly "batch_index": number;
+  readonly "manifest": EstateImportManifest;
+  readonly "rows": ReadonlyArray<EstateRulingImportRow>;
+}>;
+
 export type EvidenceRequest = Readonly<{
   readonly "artifact_digest": string;
   readonly "candidate_digest"?: string | null;
@@ -1083,6 +1251,7 @@ export type IntakeTaint = "authenticated" | "external_untrusted" | "quarantine_r
 export type KnowledgeAddRequest = Readonly<{
   readonly "body"?: string | null;
   readonly "project_key": string | null;
+  readonly "recorded_at"?: string | null;
   readonly "scope": KnowledgeScope;
   readonly "source_ref"?: string | null;
   readonly "title"?: string | null;
@@ -1442,7 +1611,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-csrf-invalid" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "beat-routine-already-retired" | "beat-routine-not-found" | "beat-routine-retire-forbidden" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "console-actor-suspended" | "console-adapter-malformed" | "console-adapter-unregistered" | "console-allowlist-refused" | "console-assignment-stale" | "console-backend-fenced" | "console-backend-unavailable" | "console-browser-session-required" | "console-continuous-view-limit" | "console-csrf-invalid" | "console-cursor-invalid" | "console-globally-disabled" | "console-grant-expired" | "console-grant-unavailable" | "console-incarnation-fenced" | "console-kill-switch-refused" | "console-loop-kind-refused" | "console-origin-refused" | "console-output-unavailable" | "console-project-fence-mismatch" | "console-project-refused" | "console-renewal-binding-mismatch" | "console-renewal-unavailable" | "console-revocation-refused" | "console-role-refused" | "console-runner-epoch-fenced" | "console-runner-fenced" | "console-runtime-attempt-fenced" | "console-sensitivity-refused" | "console-session-already-allowed" | "console-session-already-revoked" | "console-session-join-stale" | "console-session-not-allowed" | "console-session-revoked" | "console-session-unavailable" | "console-stream-already-open" | "console-stream-query-refused" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "dream-lane-already-bound" | "dream-lane-binding-operator-required" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "invalid-status" | "invalid-transition" | "invalid-ruling" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "proposal-already-decided" | "proposal-append-forbidden" | "proposal-credential-invalid" | "proposal-decision-forbidden" | "proposal-evidence-invalid" | "proposal-evidence-unavailable" | "proposal-invalid" | "proposal-kind-invalid" | "proposal-not-found" | "proposal-project-invalid" | "proposal-project-unavailable" | "proposal-quote-invalid" | "proposal-quote-mismatch" | "proposal-reason-invalid" | "proposal-related-not-found" | "proposal-state-invalid" | "proposal-target-not-found" | "proposal-version-conflict" | "proposal-watermark-invalid" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-capture-forbidden" | "invalid-request" | "request-import-forbidden" | "request-owner-forbidden" | "request-project-unavailable" | "request-source-forbidden" | "request-transition-forbidden" | "request-triage-forbidden" | "ruling-already-superseded" | "ruling-not-found" | "ruling-project-unavailable" | "ruling-request-already-answered" | "ruling-request-not-decision" | "ruling-request-not-found" | "ruling-seat-not-found" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "spawn-not-found" | "tenant-not-found" | "tenant-scope-denied" | "transition-conflict" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-csrf-invalid" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "beat-routine-already-retired" | "beat-routine-not-found" | "beat-routine-retire-forbidden" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "console-actor-suspended" | "console-adapter-malformed" | "console-adapter-unregistered" | "console-allowlist-refused" | "console-assignment-stale" | "console-backend-fenced" | "console-backend-unavailable" | "console-browser-session-required" | "console-continuous-view-limit" | "console-csrf-invalid" | "console-cursor-invalid" | "console-globally-disabled" | "console-grant-expired" | "console-grant-unavailable" | "console-incarnation-fenced" | "console-kill-switch-refused" | "console-loop-kind-refused" | "console-origin-refused" | "console-output-unavailable" | "console-project-fence-mismatch" | "console-project-refused" | "console-renewal-binding-mismatch" | "console-renewal-unavailable" | "console-revocation-refused" | "console-role-refused" | "console-runner-epoch-fenced" | "console-runner-fenced" | "console-runtime-attempt-fenced" | "console-sensitivity-refused" | "console-session-already-allowed" | "console-session-already-revoked" | "console-session-join-stale" | "console-session-not-allowed" | "console-session-revoked" | "console-session-unavailable" | "console-stream-already-open" | "console-stream-query-refused" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "dream-lane-already-bound" | "dream-lane-binding-operator-required" | "estate-import-batch-digest-mismatch" | "estate-import-batch-invalid" | "estate-import-content-mismatch" | "estate-import-count-mismatch" | "estate-import-duplicate-source" | "estate-import-invalid" | "estate-import-operator-required" | "estate-import-parity-signer-unavailable" | "estate-import-project-required" | "estate-import-row-invalid" | "estate-import-source-conflict" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "invalid-ruling" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "proposal-already-decided" | "proposal-append-forbidden" | "proposal-credential-invalid" | "proposal-decision-forbidden" | "proposal-evidence-invalid" | "proposal-evidence-unavailable" | "proposal-invalid" | "proposal-kind-invalid" | "proposal-not-found" | "proposal-project-invalid" | "proposal-project-unavailable" | "proposal-quote-invalid" | "proposal-quote-mismatch" | "proposal-reason-invalid" | "proposal-related-not-found" | "proposal-state-invalid" | "proposal-target-not-found" | "proposal-version-conflict" | "proposal-watermark-invalid" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-capture-forbidden" | "invalid-request" | "request-import-forbidden" | "request-owner-forbidden" | "request-project-unavailable" | "request-source-forbidden" | "request-transition-forbidden" | "request-triage-forbidden" | "ruling-already-superseded" | "ruling-not-found" | "ruling-project-unavailable" | "ruling-request-already-answered" | "ruling-request-not-decision" | "ruling-request-not-found" | "ruling-seat-not-found" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -2133,75 +2302,6 @@ export type SourceReference = Readonly<{
   readonly "ref": string;
 }>;
 
-export type SpawnRecord = Readonly<{
-  readonly "created_at": string;
-  readonly "crew_name": string;
-  readonly "effort"?: string;
-  readonly "harness": string;
-  readonly "model": string;
-  readonly "principal_id": string;
-  readonly "project_key": string;
-  readonly "seat_key": string;
-  readonly "spawn_id": string;
-  readonly "status": "requested" | "accepted" | "running" | "completed" | "failed" | "reaped";
-  readonly "task_file_ref": string;
-  readonly "transitions": ReadonlyArray<SpawnRecordTransitionFact>;
-  readonly "updated_at": string;
-  readonly "workspace_id"?: string;
-  readonly "worktree_path": string;
-}>;
-
-export type SpawnRecordCreateRequest = Readonly<{
-  readonly "crew_name": string;
-  readonly "effort"?: string;
-  readonly "harness": string;
-  readonly "model": string;
-  readonly "project_key": string;
-  readonly "seat_key": string;
-  readonly "task_file_ref": string;
-  readonly "workspace_id"?: string;
-  readonly "worktree_path": string;
-}>;
-
-export type SpawnRecordListResult = Readonly<{
-  readonly "records": ReadonlyArray<SpawnRecord>;
-}>;
-
-export type SpawnRecordResult = Readonly<{
-  readonly "accepted_position": number | null;
-  readonly "created_at": string;
-  readonly "crew_name": string;
-  readonly "durability_state": DurabilityState;
-  readonly "effort"?: string;
-  readonly "harness": string;
-  readonly "model": string;
-  readonly "principal_id": string;
-  readonly "project_key": string;
-  readonly "seat_key": string;
-  readonly "spawn_id": string;
-  readonly "status": "requested" | "accepted" | "running" | "completed" | "failed" | "reaped";
-  readonly "task_file_ref": string;
-  readonly "transitions": ReadonlyArray<SpawnRecordTransitionFact>;
-  readonly "updated_at": string;
-  readonly "workspace_id"?: string;
-  readonly "worktree_path": string;
-}>;
-
-export type SpawnRecordTransitionFact = Readonly<{
-  readonly "from_status": "requested" | "accepted" | "running";
-  readonly "principal_id": string;
-  readonly "reason"?: string;
-  readonly "spawn_id": string;
-  readonly "to_status": "accepted" | "running" | "completed" | "failed" | "reaped";
-  readonly "transition_id": string;
-  readonly "transitioned_at": string;
-}>;
-
-export type SpawnTransitionRequest = Readonly<{
-  readonly "reason"?: string;
-  readonly "to_status": "accepted" | "running" | "completed" | "failed" | "reaped";
-}>;
-
 export type SurfaceDeclarationState = "declared_present" | "declared_absent" | "undeclared";
 
 export type SurfaceEnvironmentsField = Readonly<{
@@ -2388,9 +2488,9 @@ export type TimelineEvent = Readonly<{
   readonly "actor_principal_id": string;
   readonly "command_id": string;
   readonly "event_id": string;
-  readonly "kind": "ticket.created" | "ticket.custody_transferred" | "ticket.comment_added";
+  readonly "kind": "ticket.created" | "ticket.custody_transferred" | "ticket.comment_added" | "workflow.changed";
   readonly "occurred_at": string;
-  readonly "payload": TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload;
+  readonly "payload": TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload | WorkflowChangedAuditPayload;
   readonly "sequence": number;
 }>;
 

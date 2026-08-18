@@ -1,9 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-<<<<<<< HEAD
-// Authored contract digest: sha256:b9e18b8de81f88230c1e1001e0483842b82174b13bf5bbb2f472baf6e86ef529
-=======
-// Authored contract digest: sha256:57df5d8338e17a39e4f5e34719855a5968f90b0b3873c0d8582c06d2529bb493
->>>>>>> 34c42ed2 (fix(spawn): surface pending durability outcomes)
+// Authored contract digest: sha256:198c03f62815883826d774ab512e606dd120ad87d6f3dad636b720e64d85152d
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -62,12 +58,6 @@ export type AppendRequestMaintenanceProposalInput = Readonly<{
 export type AppendRulingInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.RulingAppendRequest;
-}>;
-
-export type AppendSpawnTransitionInput = Readonly<{
-  readonly "IdempotencyKey": string;
-  readonly "spawnId": string;
-  readonly body: Models.SpawnTransitionRequest;
 }>;
 
 export type ApplyCompanyBundleInput = Readonly<{
@@ -165,11 +155,6 @@ export type CreateCtowerProjectImportRunInput = Readonly<{
   readonly body: Models.CtowerProjectImportRunCreateRequest;
 }>;
 
-export type CreateSpawnRecordInput = Readonly<{
-  readonly "IdempotencyKey": string;
-  readonly body: Models.SpawnRecordCreateRequest;
-}>;
-
 export type CreateTicketInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.TicketCreateRequest;
@@ -241,10 +226,6 @@ export type GetRulingInput = Readonly<{
   readonly "rulingId": string;
 }>;
 
-export type GetSpawnRecordInput = Readonly<{
-  readonly "spawnId": string;
-}>;
-
 export type GetSyntheticWorkflowRunInput = Readonly<{
   readonly "runId": string;
 }>;
@@ -257,6 +238,26 @@ export type GetTicketInput = Readonly<{
 export type GetTicketTimelineInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
+}>;
+
+export type ImportEstateCompanyRecordsInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateCompanyRecordsImportRequest;
+}>;
+
+export type ImportEstateInboxInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateInboxImportRequest;
+}>;
+
+export type ImportEstateKnowledgeInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateKnowledgeImportRequest;
+}>;
+
+export type ImportEstateRulingsInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.EstateRulingsImportRequest;
 }>;
 
 export type IngestInboxNotificationInput = Readonly<{
@@ -323,13 +324,6 @@ export type ListReviewDispatchEffectsInput = Readonly<{
 
 export type ListRulingsInput = Readonly<{
   readonly "projectKey"?: string;
-}>;
-
-export type ListSpawnRecordsInput = Readonly<{
-  readonly "projectKey": string;
-  readonly "status"?: "requested" | "accepted" | "running" | "completed" | "failed" | "reaped";
-  readonly "limit"?: number;
-  readonly "offset"?: number;
 }>;
 
 export type ListTicketAssignmentsInput = Readonly<{
@@ -520,7 +514,6 @@ export type OperationInputs = Readonly<{
   readonly "appendCtowerProjectImportCorrection": AppendCtowerProjectImportCorrectionInput;
   readonly "appendRequestMaintenanceProposal": AppendRequestMaintenanceProposalInput;
   readonly "appendRuling": AppendRulingInput;
-  readonly "appendSpawnTransition": AppendSpawnTransitionInput;
   readonly "applyCompanyBundle": ApplyCompanyBundleInput;
   readonly "applyCtowerProjectImportBatch": ApplyCtowerProjectImportBatchInput;
   readonly "applyTicketIntent": ApplyTicketIntentInput;
@@ -538,7 +531,6 @@ export type OperationInputs = Readonly<{
   readonly "consumeDreamDispatchEffect": ConsumeDreamDispatchEffectInput;
   readonly "consumeReviewDispatchEffect": ConsumeReviewDispatchEffectInput;
   readonly "createCtowerProjectImportRun": CreateCtowerProjectImportRunInput;
-  readonly "createSpawnRecord": CreateSpawnRecordInput;
   readonly "createTicket": CreateTicketInput;
   readonly "evaluateRequestClosure": EvaluateRequestClosureInput;
   readonly "exportCompanyBundle": ExportCompanyBundleInput;
@@ -553,10 +545,13 @@ export type OperationInputs = Readonly<{
   readonly "getProjectDelivery": GetProjectDeliveryInput;
   readonly "getRequestMaintenanceReview": GetRequestMaintenanceReviewInput;
   readonly "getRuling": GetRulingInput;
-  readonly "getSpawnRecord": GetSpawnRecordInput;
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
+  readonly "importEstateCompanyRecords": ImportEstateCompanyRecordsInput;
+  readonly "importEstateInbox": ImportEstateInboxInput;
+  readonly "importEstateKnowledge": ImportEstateKnowledgeInput;
+  readonly "importEstateRulings": ImportEstateRulingsInput;
   readonly "ingestInboxNotification": IngestInboxNotificationInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
   readonly "listBeatDispatchEffects": ListBeatDispatchEffectsInput;
@@ -571,7 +566,6 @@ export type OperationInputs = Readonly<{
   readonly "listRequests": ListRequestsInput;
   readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
   readonly "listRulings": ListRulingsInput;
-  readonly "listSpawnRecords": ListSpawnRecordsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
@@ -616,7 +610,6 @@ export type OperationResults = Readonly<{
   readonly "appendCtowerProjectImportCorrection": Models.CtowerProjectMigrationReceipt;
   readonly "appendRequestMaintenanceProposal": Models.RequestMaintenanceProposalAppendResult;
   readonly "appendRuling": Models.RulingAppendResult;
-  readonly "appendSpawnTransition": Models.SpawnRecordResult;
   readonly "applyCompanyBundle": Models.CompanyBundleCommandResult;
   readonly "applyCtowerProjectImportBatch": Models.CtowerProjectImportBatchResult;
   readonly "applyTicketIntent": Models.WorkReceipt;
@@ -634,7 +627,6 @@ export type OperationResults = Readonly<{
   readonly "consumeDreamDispatchEffect": Models.DreamDispatchReceipt;
   readonly "consumeReviewDispatchEffect": Models.WorkReceipt;
   readonly "createCtowerProjectImportRun": Models.CtowerProjectImportRun;
-  readonly "createSpawnRecord": Models.SpawnRecordResult;
   readonly "createTicket": Models.TicketCommandResult;
   readonly "evaluateRequestClosure": Models.RequestChangeResult;
   readonly "exportCompanyBundle": Models.CompanyBundleExportResult;
@@ -649,10 +641,13 @@ export type OperationResults = Readonly<{
   readonly "getProjectDelivery": Models.ProjectDeliveryView;
   readonly "getRequestMaintenanceReview": Models.RequestMaintenanceReview;
   readonly "getRuling": Models.RulingRow;
-  readonly "getSpawnRecord": Models.SpawnRecord;
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
+  readonly "importEstateCompanyRecords": Models.EstateImportResult;
+  readonly "importEstateInbox": Models.EstateImportResult;
+  readonly "importEstateKnowledge": Models.EstateImportResult;
+  readonly "importEstateRulings": Models.EstateImportResult;
   readonly "ingestInboxNotification": Models.InboxSendResult;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
   readonly "listBeatDispatchEffects": Models.BeatDispatchEffectList;
@@ -667,7 +662,6 @@ export type OperationResults = Readonly<{
   readonly "listRequests": Models.RequestList;
   readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
   readonly "listRulings": Models.RulingList;
-  readonly "listSpawnRecords": Models.SpawnRecordListResult;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "listTicketSessions": Models.TicketSessionList;
@@ -775,12 +769,6 @@ export class CtowerClient {
     return this.execute("appendRuling", input);
   }
 
-  public async appendSpawnTransition(
-    input: AppendSpawnTransitionInput,
-  ): Promise<Models.SpawnRecordResult> {
-    return this.execute("appendSpawnTransition", input);
-  }
-
   public async applyCompanyBundle(
     input: ApplyCompanyBundleInput,
   ): Promise<Models.CompanyBundleCommandResult> {
@@ -883,12 +871,6 @@ export class CtowerClient {
     return this.execute("createCtowerProjectImportRun", input);
   }
 
-  public async createSpawnRecord(
-    input: CreateSpawnRecordInput,
-  ): Promise<Models.SpawnRecordResult> {
-    return this.execute("createSpawnRecord", input);
-  }
-
   public async createTicket(
     input: CreateTicketInput,
   ): Promise<Models.TicketCommandResult> {
@@ -973,12 +955,6 @@ export class CtowerClient {
     return this.execute("getRuling", input);
   }
 
-  public async getSpawnRecord(
-    input: GetSpawnRecordInput,
-  ): Promise<Models.SpawnRecord> {
-    return this.execute("getSpawnRecord", input);
-  }
-
   public async getSyntheticWorkflowRun(
     input: GetSyntheticWorkflowRunInput,
   ): Promise<Models.SyntheticRunResource> {
@@ -995,6 +971,30 @@ export class CtowerClient {
     input: GetTicketTimelineInput,
   ): Promise<Models.TimelineResponse> {
     return this.execute("getTicketTimeline", input);
+  }
+
+  public async importEstateCompanyRecords(
+    input: ImportEstateCompanyRecordsInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateCompanyRecords", input);
+  }
+
+  public async importEstateInbox(
+    input: ImportEstateInboxInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateInbox", input);
+  }
+
+  public async importEstateKnowledge(
+    input: ImportEstateKnowledgeInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateKnowledge", input);
+  }
+
+  public async importEstateRulings(
+    input: ImportEstateRulingsInput,
+  ): Promise<Models.EstateImportResult> {
+    return this.execute("importEstateRulings", input);
   }
 
   public async ingestInboxNotification(
@@ -1079,12 +1079,6 @@ export class CtowerClient {
     input: ListRulingsInput,
   ): Promise<Models.RulingList> {
     return this.execute("listRulings", input);
-  }
-
-  public async listSpawnRecords(
-    input: ListSpawnRecordsInput,
-  ): Promise<Models.SpawnRecordListResult> {
-    return this.execute("listSpawnRecords", input);
   }
 
   public async listTicketAssignments(

@@ -7,6 +7,7 @@
     "ctower.capability/v1": "contracts/components/capability.schema.json",
     "ctower.checkpoint/v1": "contracts/components/checkpoint.schema.json",
     "ctower.company-bundle/v1": "contracts/company/company-bundle.schema.json",
+    "ctower.company-record-import/v1": "contracts/domain/migration/company-record-import.schema.json",
     "ctower.compatibility-input/v1": "contracts/compatibility/matrix-input.schema.json",
     "ctower.compatibility-result/v1": "contracts/compatibility/matrix-result.schema.json",
     "ctower.ctower-project-alias-map/v1": "contracts/domain/migration/ctower-project-alias-map.schema.json",
@@ -29,6 +30,9 @@
     "ctower.ctower-project-source-link/v1": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "ctower.ctower-project-source-selection/v1": "contracts/domain/migration/ctower-project-source-selection.schema.json",
     "ctower.environment/v1": "contracts/components/environment.schema.json",
+    "ctower.estate-import-manifest/v1": "contracts/domain/migration/estate-import-manifest.schema.json",
+    "ctower.estate-import-parity/v1": "contracts/domain/migration/estate-import-parity.schema.json",
+    "ctower.estate-seat-mapping/v1": "contracts/domain/migration/estate-seat-mapping.schema.json",
     "ctower.evidence-manifest/v1": "contracts/evidence/evidence-manifest.schema.json",
     "ctower.evidence-manifest/v2": "contracts/evidence/evidence-manifest-v2.schema.json",
     "ctower.evidence-policy/v1": "contracts/execution/evidence-policy.schema.json",
@@ -73,6 +77,7 @@
     "https://ctower.dev/contracts/domain/console/console-stream-event.schema.json": "contracts/domain/console/console-stream-event.schema.json",
     "https://ctower.dev/contracts/domain/console/console-view-grant.schema.json": "contracts/domain/console/console-view-grant.schema.json",
     "https://ctower.dev/contracts/domain/events/event-envelope.schema.json": "contracts/domain/events/event-envelope.schema.json",
+    "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json": "contracts/domain/migration/company-record-import.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json": "contracts/domain/migration/ctower-project-alias-map.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-cutover-health.schema.json": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -92,6 +97,9 @@
     "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation.schema.json": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-link.schema.json": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json": "contracts/domain/migration/ctower-project-source-selection.schema.json",
+    "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json": "contracts/domain/migration/estate-import-manifest.schema.json",
+    "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json": "contracts/domain/migration/estate-import-parity.schema.json",
+    "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json": "contracts/domain/migration/estate-seat-mapping.schema.json",
     "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json": "contracts/domain/migration/migration-boundary.schema.json",
     "https://ctower.dev/contracts/domain/migration/request-batch-proof.schema.json": "contracts/domain/migration/request-batch-proof.schema.json",
     "https://ctower.dev/contracts/domain/migration/request-import-manifest.schema.json": "contracts/domain/migration/request-import-manifest.schema.json",
@@ -121,9 +129,11 @@
     "https://ctower.dev/contracts/runtime/beat-dispatch-effect.schema.json": "contracts/runtime/beat-dispatch-effect.schema.json",
     "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json": "contracts/runtime/dream-dispatch-effect.schema.json",
     "https://ctower.dev/contracts/runtime/operation-job.schema.json": "contracts/runtime/operation-job.schema.json",
+    "https://ctower.dev/contracts/runtime/routine-gate-evaluation.schema.json": "contracts/runtime/routine-gate-evaluation.schema.json",
     "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json": "contracts/runtime/routine-occurrence.schema.json",
     "https://ctower.dev/contracts/runtime/routine-v2.schema.json": "contracts/runtime/routine-v2.schema.json",
     "https://ctower.dev/contracts/runtime/routine-v3.schema.json": "contracts/runtime/routine-v3.schema.json",
+    "https://ctower.dev/contracts/runtime/routine-v4.schema.json": "contracts/runtime/routine-v4.schema.json",
     "https://ctower.dev/contracts/runtime/routine.schema.json": "contracts/runtime/routine.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json": "contracts/evidence/evidence-manifest-v2.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json": "contracts/evidence/evidence-manifest.schema.json",
@@ -317,9 +327,27 @@
         "assignments": {
           "items": {
             "additionalProperties": false,
+            "dependentRequired": {
+              "role_key": [
+                "seat_key"
+              ],
+              "seat_key": [
+                "role_key"
+              ]
+            },
             "properties": {
               "component": {
                 "$ref": "#/$defs/componentRef"
+              },
+              "role_key": {
+                "description": "Exact configured role key bound to this authored assignment; never inferred from subject or display text.",
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
+              },
+              "seat_key": {
+                "description": "Exact project-seat key bound to this authored assignment; never inferred from subject or display text.",
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
               },
               "slot": {
                 "pattern": "^[a-z][a-z0-9._-]{1,63}$",
@@ -3701,6 +3729,54 @@
           ],
           "type": "object"
         },
+        "companyRecordAppended": {
+          "additionalProperties": false,
+          "properties": {
+            "imported_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "natural_key": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "occurred_on": {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            "payload_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "record_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "record_type": {
+              "const": "escape"
+            },
+            "seat": {
+              "pattern": "^[a-z][a-z0-9._-]{1,127}$",
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "imported_at",
+            "natural_key",
+            "occurred_on",
+            "payload_digest",
+            "record_id",
+            "record_type",
+            "seat",
+            "source_ref"
+          ],
+          "type": "object"
+        },
         "componentReference": {
           "additionalProperties": false,
           "properties": {
@@ -3858,6 +3934,41 @@
             "principal_id",
             "probe_evidence",
             "reasoning_effort"
+          ],
+          "type": "object"
+        },
+        "estateImportChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "manifest_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "operation": {
+              "enum": [
+                "parity_reported",
+                "batch_applied",
+                "tier_closed"
+              ]
+            },
+            "source_ref": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "tier": {
+              "enum": [
+                "inbox_history",
+                "agreed_decisions",
+                "knowledge_documents",
+                "company_records"
+              ]
+            }
+          },
+          "required": [
+            "manifest_digest",
+            "operation",
+            "source_ref",
+            "tier"
           ],
           "type": "object"
         },
@@ -5041,125 +5152,6 @@
           "pattern": "^sha256:[0-9a-f]{64}$",
           "type": "string"
         },
-        "spawnRecorded": {
-          "additionalProperties": false,
-          "properties": {
-            "crew_name": {
-              "maxLength": 255,
-              "minLength": 1,
-              "type": "string"
-            },
-            "effort": {
-              "maxLength": 64,
-              "minLength": 1,
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "harness": {
-              "maxLength": 64,
-              "minLength": 1,
-              "type": "string"
-            },
-            "model": {
-              "maxLength": 128,
-              "minLength": 1,
-              "type": "string"
-            },
-            "project_key": {
-              "pattern": "^[a-z][a-z0-9-]{2,63}$",
-              "type": "string"
-            },
-            "seat_key": {
-              "pattern": "^[a-z][a-z0-9._-]{0,95}$",
-              "type": "string"
-            },
-            "spawn_id": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "task_file_ref": {
-              "maxLength": 1024,
-              "minLength": 1,
-              "type": "string"
-            },
-            "workspace_id": {
-              "format": "uuid",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "worktree_path": {
-              "maxLength": 1024,
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          "required": [
-            "crew_name",
-            "effort",
-            "harness",
-            "model",
-            "project_key",
-            "seat_key",
-            "spawn_id",
-            "task_file_ref",
-            "worktree_path",
-            "workspace_id"
-          ],
-          "type": "object"
-        },
-        "spawnTransitioned": {
-          "additionalProperties": false,
-          "properties": {
-            "from_state": {
-              "enum": [
-                "requested",
-                "accepted",
-                "running",
-                "completed",
-                "failed",
-                "reaped"
-              ]
-            },
-            "reason": {
-              "maxLength": 4096,
-              "minLength": 1,
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "spawn_id": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "to_state": {
-              "enum": [
-                "requested",
-                "accepted",
-                "running",
-                "completed",
-                "failed",
-                "reaped"
-              ]
-            },
-            "transition_number": {
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          "required": [
-            "from_state",
-            "reason",
-            "spawn_id",
-            "to_state",
-            "transition_number"
-          ],
-          "type": "object"
-        },
         "ticketCommentAdded": {
           "additionalProperties": false,
           "properties": {
@@ -5413,7 +5405,11 @@
                   "const": "work.changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/workChanged"
@@ -5445,7 +5441,11 @@
                   "const": "ticket.created"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/ticketCreated"
@@ -5637,7 +5637,11 @@
                   "const": "migration.changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/migrationChanged"
@@ -5685,7 +5689,11 @@
                   "const": "thread.opened"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxThreadOpened"
@@ -5701,7 +5709,11 @@
                   "const": "message.appended"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxMessageAppended"
@@ -5717,7 +5729,11 @@
                   "const": "message.delivered"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxMessageDelivery"
@@ -5733,7 +5749,11 @@
                   "const": "message.read"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxMessageDelivery"
@@ -5749,7 +5769,11 @@
                   "const": "thread.promoted_to_ticket"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/inboxThreadPromotedToTicket"
@@ -5909,7 +5933,11 @@
                   "const": "knowledge.document_registered"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/knowledgeDocumentRegistered"
@@ -5925,7 +5953,11 @@
                   "const": "request.changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/requestChanged"
@@ -5957,7 +5989,11 @@
                   "const": "ruling.recorded"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
                   "$ref": "#/$defs/rulingRecorded"
@@ -5970,32 +6006,40 @@
             {
               "properties": {
                 "kind": {
-                  "const": "spawn.recorded"
+                  "const": "estate.import_changed"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
-                  "$ref": "#/$defs/spawnRecorded"
+                  "$ref": "#/$defs/estateImportChanged"
                 },
                 "stream_id": {
-                  "pattern": "^spawn-record:[0-9a-f-]{36}$"
+                  "pattern": "^estate-import:[0-9a-f-]{36}$"
                 }
               }
             },
             {
               "properties": {
                 "kind": {
-                  "const": "spawn.transitioned"
+                  "const": "company.record_appended"
                 },
                 "origin": {
-                  "const": "api"
+                  "enum": [
+                    "api",
+                    "migration_importer",
+                    "estate_import"
+                  ]
                 },
                 "payload": {
-                  "$ref": "#/$defs/spawnTransitioned"
+                  "$ref": "#/$defs/companyRecordAppended"
                 },
                 "stream_id": {
-                  "pattern": "^spawn-record:[0-9a-f-]{36}$"
+                  "pattern": "^company-record:[0-9a-f-]{36}$"
                 }
               }
             }
@@ -6067,8 +6111,8 @@
             "request.changed",
             "request.proposal_changed",
             "ruling.recorded",
-            "spawn.recorded",
-            "spawn.transitioned"
+            "estate.import_changed",
+            "company.record_appended"
           ],
           "type": "string"
         },
@@ -6076,7 +6120,9 @@
           "enum": [
             "api",
             "bootstrap",
-            "control_worker"
+            "control_worker",
+            "migration_importer",
+            "estate_import"
           ],
           "type": "string"
         },
@@ -6101,7 +6147,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -6960,6 +7006,163 @@
         "registered_at"
       ],
       "title": "Ctower registered knowledge document",
+      "type": "object"
+    },
+    "contracts/domain/migration/company-record-import.schema.json": {
+      "$defs": {
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One typed accountability row for the append-only company-record aggregate. Natural key per record type; refuses credential material, production customer data, and other prohibited classes at the contract boundary.",
+      "properties": {
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "natural_key": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "occurred_on": {
+          "format": "date",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "maxProperties": 40,
+          "minProperties": 1,
+          "properties": {
+            "caught_by": {
+              "type": "string"
+            },
+            "class": {
+              "type": "string"
+            },
+            "crew": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "defect": {
+              "type": "string"
+            },
+            "deliverable": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "escape": {
+              "type": "string"
+            },
+            "escape_class": {
+              "type": "string"
+            },
+            "escape_ref": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "string"
+            },
+            "finding": {
+              "type": "string"
+            },
+            "found_by": {
+              "type": "string"
+            },
+            "gate_change": {
+              "type": "string"
+            },
+            "gate_hardened": {
+              "type": "string"
+            },
+            "impact": {
+              "type": "string"
+            },
+            "note": {
+              "type": "string"
+            },
+            "prevention": {
+              "type": "string"
+            },
+            "project": {
+              "type": "string"
+            },
+            "req": {
+              "type": "string"
+            },
+            "retro": {
+              "type": [
+                "boolean",
+                "string"
+              ]
+            },
+            "seat": {
+              "type": "string"
+            },
+            "severity": {
+              "type": "string"
+            },
+            "should_have_caught": {
+              "type": "string"
+            },
+            "signed_by": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "ts": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "what": {
+              "type": "string"
+            },
+            "why_it_escaped": {
+              "type": "string"
+            },
+            "window": {
+              "type": "string"
+            },
+            "window_end_utc": {
+              "type": "string"
+            },
+            "window_start_utc": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "record_type": {
+          "enum": [
+            "escape"
+          ]
+        },
+        "schema": {
+          "const": "ctower.company-record-import/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "record_type",
+        "natural_key",
+        "occurred_on",
+        "payload",
+        "content_sha256"
+      ],
+      "title": "Company record import row",
       "type": "object"
     },
     "contracts/domain/migration/ctower-project-alias-map-v2.schema.json": {
@@ -10994,6 +11197,498 @@
         "signature"
       ],
       "title": "Reviewed ctower-project source selection",
+      "type": "object"
+    },
+    "contracts/domain/migration/estate-import-manifest.schema.json": {
+      "$defs": {
+        "ed25519-signature": {
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "Ed25519"
+            },
+            "key_ref": {
+              "pattern": "^signing-key-ref:[a-z0-9/_-]{1,96}$",
+              "type": "string"
+            },
+            "key_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "public_key_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "signature": {
+              "pattern": "^[A-Za-z0-9_-]{86}$",
+              "type": "string"
+            },
+            "signed_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "algorithm",
+            "signed_digest",
+            "key_ref",
+            "key_version",
+            "public_key_digest",
+            "signature"
+          ],
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "const": "agreed_decisions"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "project_key"
+            ]
+          }
+        }
+      ],
+      "description": "One signed frozen-source manifest binding an external estate ledger to an import tier. Every tier admits the same strict manifest envelope; tier rows vary by tier kind.",
+      "properties": {
+        "batches": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "batch_digest": {
+                "$ref": "#/$defs/sha256"
+              },
+              "batch_index": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "source_count": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "batch_index",
+              "batch_digest",
+              "source_count"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "mapped_rows": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_only_rows": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_rows": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "source_rows"
+          ],
+          "type": "object"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9._-]{2,63}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.estate-import-manifest/v1"
+        },
+        "seat_mapping_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "signature": {
+          "$ref": "#/$defs/ed25519-signature"
+        },
+        "source_identity": {
+          "additionalProperties": false,
+          "properties": {
+            "frozen_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "namespace": {
+              "pattern": "^[a-z][a-z0-9-]{1,63}:[a-z][a-z0-9._-]{1,127}$",
+              "type": "string"
+            },
+            "size_bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_path": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "namespace",
+            "source_path",
+            "source_sha256"
+          ],
+          "type": "object"
+        },
+        "tier": {
+          "enum": [
+            "inbox_history",
+            "agreed_decisions",
+            "knowledge_documents",
+            "company_records"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "tier",
+        "source_identity",
+        "counts",
+        "batches",
+        "manifest_digest",
+        "signature"
+      ],
+      "title": "Estate import manifest",
+      "type": "object"
+    },
+    "contracts/domain/migration/estate-import-parity.schema.json": {
+      "$defs": {
+        "ed25519-signature": {
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "Ed25519"
+            },
+            "key_ref": {
+              "pattern": "^signing-key-ref:[a-z0-9/_-]{1,96}$",
+              "type": "string"
+            },
+            "key_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "public_key_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "signature": {
+              "pattern": "^[A-Za-z0-9_-]{86}$",
+              "type": "string"
+            },
+            "signed_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "algorithm",
+            "signed_digest",
+            "key_ref",
+            "key_version",
+            "public_key_digest",
+            "signature"
+          ],
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One typed parity report per import tier, emitted before any source-path closure act. Names source row count, imported record count, per-batch digests, and sampled content hashes; unknown source owners appear under an explicit source-only state.",
+      "properties": {
+        "batches": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "batch_digest": {
+                "$ref": "#/$defs/sha256"
+              },
+              "batch_index": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "imported_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "refused_prohibited_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "refused_prohibited_rows": {
+                "$ref": "#/properties/refused_prohibited_rows"
+              },
+              "source_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "batch_index",
+              "batch_digest",
+              "source_count",
+              "imported_count",
+              "refused_prohibited_count",
+              "refused_prohibited_rows"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "emitted_before_closure": {
+          "const": true
+        },
+        "imported_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "parity_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "refused_prohibited_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refused_prohibited_rows": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "disposition": {
+                "const": "refused_prohibited"
+              },
+              "problem_code": {
+                "const": "prohibited-data-class"
+              },
+              "prohibited_classes": {
+                "items": {
+                  "enum": [
+                    "credential_material",
+                    "live_incident_indicator",
+                    "phi_hipaa_covered",
+                    "pii_beyond_staff_identity",
+                    "production_customer_data"
+                  ]
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "source_ref": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_ref",
+              "content_sha256",
+              "disposition",
+              "problem_code",
+              "prohibited_classes"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "sampled_content_hashes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "source_ref": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_ref",
+              "content_sha256"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.estate-import-parity/v1"
+        },
+        "signature": {
+          "$ref": "#/$defs/ed25519-signature"
+        },
+        "source_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_only_owners": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "row_count": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "source_only_disposition": {
+                "const": "source_only"
+              },
+              "source_seat": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_seat",
+              "row_count",
+              "source_only_disposition"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "tier": {
+          "enum": [
+            "inbox_history",
+            "agreed_decisions",
+            "knowledge_documents",
+            "company_records"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "tier",
+        "manifest_digest",
+        "source_count",
+        "imported_count",
+        "refused_prohibited_count",
+        "refused_prohibited_rows",
+        "batches",
+        "sampled_content_hashes",
+        "source_only_owners",
+        "emitted_before_closure",
+        "parity_digest",
+        "signature"
+      ],
+      "title": "Estate import parity report",
+      "type": "object"
+    },
+    "contracts/domain/migration/estate-seat-mapping.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "The accepted seat-mapping plan for one estate import. Every source seat resolves to exactly one disposition: mapped onto an existing ctower project seat, or explicit source-only.",
+      "properties": {
+        "mapping_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "mappings": {
+          "items": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "disposition": {
+                      "const": "mapped"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "target_seat_key"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "disposition": {
+                      "const": "source_only"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "target_seat_key": false
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "disposition": {
+                "enum": [
+                  "mapped",
+                  "source_only"
+                ]
+              },
+              "source_seat": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "target_seat_key": {
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_seat",
+              "disposition"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.estate-seat-mapping/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "mapping_digest",
+        "mappings"
+      ],
+      "title": "Estate seat mapping plan",
       "type": "object"
     },
     "contracts/domain/migration/migration-boundary.schema.json": {
@@ -16916,6 +17611,91 @@
       "title": "FixedOperationJob",
       "type": "object"
     },
+    "contracts/runtime/routine-gate-evaluation.schema.json": {
+      "$id": "https://ctower.dev/contracts/runtime/routine-gate-evaluation.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "evaluation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "gate_kind": {
+          "enum": [
+            "always",
+            "new_movement_since_watermark",
+            "open_tickets_above"
+          ]
+        },
+        "observed_count": {
+          "maximum": 1000000000,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "result": {
+          "enum": [
+            "fired",
+            "skipped",
+            "degraded"
+          ]
+        },
+        "revision_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "routine_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "scheduled_for": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "watermark_kind": {
+          "enum": [
+            "none",
+            "events.server_time",
+            "tickets.server_time",
+            "tickets.nonterminal"
+          ]
+        },
+        "watermark_position": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "format": "date-time",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "routine_ref",
+        "revision_digest",
+        "scheduled_for",
+        "gate_kind",
+        "result",
+        "watermark_kind",
+        "watermark_position",
+        "observed_count",
+        "detail",
+        "evaluated_at"
+      ],
+      "title": "RoutineGateEvaluation",
+      "type": "object"
+    },
     "contracts/runtime/routine-occurrence.schema.json": {
       "$id": "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -17362,6 +18142,252 @@
       "title": "FleetBeatRoutineRevision",
       "type": "object"
     },
+    "contracts/runtime/routine-v4.schema.json": {
+      "$defs": {
+        "activityGate": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "always"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "project_key": false,
+                  "source": false,
+                  "threshold": false
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "new_movement_since_watermark"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "project_key": false,
+                  "threshold": false
+                },
+                "required": [
+                  "source"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "open_tickets_above"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "source": false
+                },
+                "required": [
+                  "threshold"
+                ]
+              }
+            }
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "always",
+                "new_movement_since_watermark",
+                "open_tickets_above"
+              ]
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "events",
+                "tickets"
+              ]
+            },
+            "threshold": {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "beatDispatch": {
+          "additionalProperties": false,
+          "properties": {
+            "beat_key": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "prompt": {
+              "maxLength": 16384,
+              "minLength": 1,
+              "type": "string"
+            },
+            "prompt_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "prompt_source": {
+              "pattern": "^(state/beats|crontab)/[a-z][a-z0-9._-]*\\.txt$",
+              "type": "string"
+            },
+            "target_session": {
+              "enum": [
+                "commander",
+                "mc-commander-manibo"
+              ]
+            }
+          },
+          "required": [
+            "beat_key",
+            "prompt_source",
+            "prompt_sha256",
+            "prompt",
+            "target_session"
+          ],
+          "type": "object"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "schedule": {
+          "additionalProperties": false,
+          "properties": {
+            "hours": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "items": {
+                    "maximum": 23,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                }
+              ]
+            },
+            "kind": {
+              "const": "minute_hour_set"
+            },
+            "minutes": {
+              "items": {
+                "maximum": 59,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "timezone": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "timezone",
+            "minutes",
+            "hours"
+          ],
+          "type": "object"
+        },
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/runtime/routine-v4.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "activity_gate": {
+          "$ref": "#/$defs/activityGate"
+        },
+        "beat_dispatch": {
+          "$ref": "#/$defs/beatDispatch"
+        },
+        "catch_up": {
+          "const": "skip_missed"
+        },
+        "catch_up_cap": {
+          "const": 1
+        },
+        "component_digests": {
+          "items": {
+            "$ref": "#/$defs/digest"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "concurrency": {
+          "const": "always_enqueue_bounded"
+        },
+        "dst_policy": {
+          "const": "wall_clock_once"
+        },
+        "handler_kind": {
+          "const": "beat_dispatch"
+        },
+        "revision_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "routine_ref": {
+          "pattern": "^mc-cron\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "schema_id": {
+          "const": "ctower.routine/v4"
+        },
+        "timeout_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_id",
+        "routine_ref",
+        "revision_digest",
+        "schedule",
+        "dst_policy",
+        "concurrency",
+        "catch_up",
+        "catch_up_cap",
+        "timeout_seconds",
+        "handler_kind",
+        "component_digests",
+        "activity_gate",
+        "beat_dispatch"
+      ],
+      "title": "ActivityGatedRoutineRevision",
+      "type": "object"
+    },
     "contracts/runtime/routine.schema.json": {
       "$defs": {
         "digest": {
@@ -17789,6 +18815,26 @@
           "$ref": "https://ctower.local/contracts/components/versioned-component.schema.json#/properties/key",
           "description": "A key that becomes a Catalog component key. The authored component contract decides it by reference; this source never restates that pattern."
         },
+        "roleRef": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_plane": {
+              "enum": [
+                "project-seat",
+                "human-binding"
+              ]
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "authority_plane",
+            "key"
+          ],
+          "type": "object"
+        },
         "skip": {
           "additionalProperties": false,
           "description": "The alternative slot set that replaces the ordinary set on a skipped disposition; the two are never a union.",
@@ -17878,6 +18924,16 @@
             "owner": {
               "$ref": "#/$defs/sourceKey",
               "description": "Eligible responsibility/capability key. It grants no authority and is never an assigned or signing seat."
+            },
+            "role_keys": {
+              "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+              "items": {
+                "$ref": "#/$defs/roleRef"
+              },
+              "maxItems": 128,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
             },
             "signs": {
               "$ref": "#/$defs/sourceKey",
@@ -18003,6 +19059,26 @@
           ],
           "type": "object"
         },
+        "roleRef": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_plane": {
+              "enum": [
+                "project-seat",
+                "human-binding"
+              ]
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "authority_plane",
+            "key"
+          ],
+          "type": "object"
+        },
         "stableKey": {
           "pattern": "^[a-z][a-z0-9._-]*$",
           "type": "string"
@@ -18022,6 +19098,16 @@
             },
             "key": {
               "$ref": "#/$defs/stableKey"
+            },
+            "role_keys": {
+              "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+              "items": {
+                "$ref": "#/$defs/roleRef"
+              },
+              "maxItems": 128,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
             }
           },
           "required": [
@@ -18175,6 +19261,26 @@
           ],
           "type": "object"
         },
+        "roleRef": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_plane": {
+              "enum": [
+                "project-seat",
+                "human-binding"
+              ]
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "authority_plane",
+            "key"
+          ],
+          "type": "object"
+        },
         "stableKey": {
           "pattern": "^[a-z][a-z0-9._-]*$",
           "type": "string"
@@ -18187,6 +19293,16 @@
             },
             "key": {
               "$ref": "#/$defs/stableKey"
+            },
+            "role_keys": {
+              "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+              "items": {
+                "$ref": "#/$defs/roleRef"
+              },
+              "maxItems": 128,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
             }
           },
           "required": [
@@ -18322,7 +19438,7 @@
     {
       "id": "https://ctower.local/contracts/company/company-bundle.schema.json",
       "path": "contracts/company/company-bundle.schema.json",
-      "sha256": "sha256:d6cdaeabc1e60c19cb4e136c3b705a3fb5f1449c478a2ddb1938b6f95dc7b112"
+      "sha256": "sha256:54b75ef79beddc62cba7d9f35c0841cf1ecf000601c637603ac512aef7bd0d0d"
     },
     {
       "id": "https://ctower.dev/contracts/compatibility/matrix-input/v1",
@@ -18467,7 +19583,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:69541e07d99b5339dd19530b098c6655669f401cb0f1724695dc859a393b9eda"
+      "sha256": "sha256:f7472acb1ee995be14f40b018087059d485188c0b1f2418a63c4febd9de4ec4f"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
@@ -18493,6 +19609,11 @@
       "id": "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json",
       "path": "contracts/domain/knowledge/knowledge.schema.json",
       "sha256": "sha256:576841e16512bcb0621fc7e63a4542d3d45779cebc4509e029000a871818b7bd"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/company-record-import.schema.json",
+      "path": "contracts/domain/migration/company-record-import.schema.json",
+      "sha256": "sha256:f6a5b24c8f27771b8ecb7262cecdd7cedf18cd841bb7458f244b101c840e1603"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
@@ -18588,6 +19709,21 @@
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json",
       "path": "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "sha256": "sha256:5c9a06a3e2808cd7bf80975dc1646e303bb9f3325995f30a9a8abd86d5cefcc8"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/estate-import-manifest.schema.json",
+      "path": "contracts/domain/migration/estate-import-manifest.schema.json",
+      "sha256": "sha256:8d163fd1580688d4e2696b5f85cc4457cb9f452eeb65d74977c4a6b1daded118"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/estate-import-parity.schema.json",
+      "path": "contracts/domain/migration/estate-import-parity.schema.json",
+      "sha256": "sha256:85ccd0d6c18a001e7c7fe1432d762b91d5e780cc02089ed0ed66fa6497ac6b3a"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/estate-seat-mapping.schema.json",
+      "path": "contracts/domain/migration/estate-seat-mapping.schema.json",
+      "sha256": "sha256:bd3013b6ab5665a5baeaa69fc78a7df481cb503c419c878ff494709a4d4e93d7"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json",
@@ -18765,6 +19901,11 @@
       "sha256": "sha256:df8b67525d1d82f3e7d19d68e971b4643c56c6b699ec8b043a43f946d43e82bc"
     },
     {
+      "id": "https://ctower.dev/contracts/runtime/routine-gate-evaluation.schema.json",
+      "path": "contracts/runtime/routine-gate-evaluation.schema.json",
+      "sha256": "sha256:4f3c21d62d9b196b2cf9d29190b0e79d4a66432ef5e6a1c66f003add629a07e2"
+    },
+    {
       "id": "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json",
       "path": "contracts/runtime/routine-occurrence.schema.json",
       "sha256": "sha256:682c4e1c3cd0248d8a10c97d2a56cfa2458ab6977db390bc33a00926bc94985f"
@@ -18778,6 +19919,11 @@
       "id": "https://ctower.dev/contracts/runtime/routine-v3.schema.json",
       "path": "contracts/runtime/routine-v3.schema.json",
       "sha256": "sha256:35728256dceb4f5425a436a6f69bc44fa3aee3447cf32fd84c12859130d6b8a9"
+    },
+    {
+      "id": "https://ctower.dev/contracts/runtime/routine-v4.schema.json",
+      "path": "contracts/runtime/routine-v4.schema.json",
+      "sha256": "sha256:625d6491c57773ef071d5482ed0b91d2aa30ca7a2e2f7f176ad06eb60e4135ce"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/routine.schema.json",
@@ -18797,17 +19943,17 @@
     {
       "id": "https://ctower.local/contracts/workflow/workflow-definition.schema.json",
       "path": "contracts/workflow/workflow-definition.schema.json",
-      "sha256": "sha256:c0a118fa1471f134b5bd36ff7bbbbf884fc8e9f4d30dbe69d11e081562e4180b"
+      "sha256": "sha256:c25850d76bd40511d7d8e1b58eae8f11cc96155d088bf1c36d860628d3824b15"
     },
     {
       "id": "https://ctower.invalid/contracts/workflow/workflow-v2.schema.json",
       "path": "contracts/workflow/workflow-v2.schema.json",
-      "sha256": "sha256:852a1c12ad8f3c52899d20f7db8fd3b80fae67a9b28971a29f97121d23f5efa3"
+      "sha256": "sha256:302b98939f342a638b90a73fdad9548613f19814e30b345c90a0b5b2d281a955"
     },
     {
       "id": "https://ctower.invalid/contracts/workflow/workflow.schema.json",
       "path": "contracts/workflow/workflow.schema.json",
-      "sha256": "sha256:bc2fb7e3a99ffd3dacd98f5ba4e05aa9781b192be6a7c36a1dbfc17060b8f3aa"
+      "sha256": "sha256:016338eaad5d6db8b26a663a43b04e815884f71ebb7d92f0ae763fb0d235ae11"
     }
   ]
 }
