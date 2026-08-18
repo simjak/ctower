@@ -57,7 +57,7 @@ CREATE TABLE spawn_records (
     spawn_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$'),
-    seat_key text NOT NULL CHECK (seat_key ~ '^[a-z][a-z0-9._-]{0,95}$'),
+    seat_key text NOT NULL CHECK (seat_key ~ '^[a-z][a-z0-9._-]{1,95}$'),
     crew_name text NOT NULL CHECK (length(crew_name) BETWEEN 1 AND 255),
     task_file_ref text NOT NULL CHECK (length(task_file_ref) BETWEEN 1 AND 1024),
     worktree_path text NOT NULL CHECK (length(worktree_path) BETWEEN 1 AND 1024),

@@ -81,18 +81,6 @@ _MAX_LIST_LIMIT = 200
 
 VALID_STATUSES = frozenset({state.value for state in SpawnState})
 
-VALID_TRANSITIONS: dict[str, frozenset[str]] = {
-    from_state.value: frozenset(to.value for to in targets)
-    for from_state, targets in {
-        SpawnState.REQUESTED: frozenset({SpawnState.ACCEPTED, SpawnState.FAILED}),
-        SpawnState.ACCEPTED: frozenset({SpawnState.RUNNING, SpawnState.FAILED}),
-        SpawnState.RUNNING: frozenset({SpawnState.COMPLETED, SpawnState.FAILED, SpawnState.REAPED}),
-        SpawnState.COMPLETED: frozenset(),
-        SpawnState.FAILED: frozenset(),
-        SpawnState.REAPED: frozenset(),
-    }.items()
-}
-
 
 class SpawnRecords:
     """Interface for spawn record operations."""

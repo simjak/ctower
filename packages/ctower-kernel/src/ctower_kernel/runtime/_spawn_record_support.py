@@ -26,6 +26,8 @@ from ctower_kernel.runtime._spawn_record_sql import (
     APPEND_TRANSITION,
     CURRENT_DERIVED_STATE,
     INSERT_SPAWN_RECORD,
+    SPAWN_PROJECT_KEY,
+    TENANT_EXISTS,
 )
 from ctower_kernel.runtime._spawn_record_types import (
     SpawnRecordCreate,
@@ -50,8 +52,7 @@ def create_scope_refusal(
     command: SpawnRecordCreate,
 ) -> RecordProblem | None:
     tenant_exists = (
-        connection.execute("SELECT 1 FROM tenants WHERE tenant_id = %s", (tenant_id,)).fetchone()
-        is not None
+        connection.execute(TENANT_EXISTS, {"tenant_id": tenant_id}).fetchone() is not None
     )
     if tenant_exists:
         return project_scope_refusal(
@@ -62,6 +63,35 @@ def create_scope_refusal(
             command_id=command.client_command_id,
         )
     return record_problem(command.client_command_id, "tenant-not-found", 404, "Tenant unavailable")
+
+
+def transition_scope_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    principal_id: UUID,
+    command: SpawnRecordTransitionCommand,
+) -> RecordProblem | None:
+    """Refuse a principal appending a transition outside its persisted project scope.
+
+    Custody is one boundary across every seam: the spawn's own project is
+    resolved here — the way the ticket mutation seam resolves ticket ownership —
+    so a read and a write can never disagree about who may touch one project's
+    spawns. An unknown spawn resolves to no project and is answered downstream by
+    the derived-state read's `spawn-not-found`.
+    """
+
+    row = connection.execute(
+        SPAWN_PROJECT_KEY,
+        {"spawn_id": command.spawn_id, "tenant_id": tenant_id},
+    ).fetchone()
+    project_keys: tuple[str, ...] = () if row is None else (str(row["project_key"]),)
+    return project_scope_refusal(
+        connection,
+        tenant_id=tenant_id,
+        principal_id=principal_id,
+        project_keys=project_keys,
+        command_id=command.client_command_id,
+    )
 
 
 def insert_spawn(
@@ -181,6 +211,19 @@ def transition_input_refusal(command: SpawnRecordTransitionCommand) -> RecordPro
     )
 
 
+def transition_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    principal_id: UUID,
+    command: SpawnRecordTransitionCommand,
+) -> RecordProblem | None:
+    """Every refusal the transition seam owes before it reads or appends a fact."""
+
+    return transition_input_refusal(command) or transition_scope_refusal(
+        connection, tenant_id, principal_id, command
+    )
+
+
 def transition_states(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
@@ -246,7 +289,7 @@ def prepare_transition(
     reserved = transaction.reserve(principal_id, command.client_command_id, request_digest)
     if reserved is not None:
         return reserved_outcome(reserved)
-    refusal = transition_input_refusal(command)
+    refusal = transition_refusal(connection, tenant_id, principal_id, command)
     if refusal is not None:
         return refuse_transition(
             transaction, tenant_id, principal_id, command, request_digest, refusal, now

@@ -424,19 +424,22 @@ def _recorded_spawn(command: SpawnRecordCreate) -> SpawnRecordGet:
     )
 
 
-def test_spawn_event_accepts_the_authored_one_character_seat_key() -> None:
-    SpawnRecordedPayload(
-        spawn_id=uuid4(),
-        project_key="ctower",
-        seat_key="a",
-        crew_name="crew",
-        task_file_ref="coordination/task.md",
-        worktree_path="/srv/worktrees/crew",
-        harness="codex-crew",
-        model="gpt-5-codex",
-        effort=None,
-        workspace_id=None,
-    )
+def test_spawn_event_refuses_a_one_character_seat_key() -> None:
+    """Seat keys are one closed house vocabulary: two characters at minimum."""
+
+    with pytest.raises(ValueError, match="seat_key"):
+        SpawnRecordedPayload(
+            spawn_id=uuid4(),
+            project_key="ctower",
+            seat_key="a",
+            crew_name="crew",
+            task_file_ref="coordination/task.md",
+            worktree_path="/srv/worktrees/crew",
+            harness="codex-crew",
+            model="gpt-5-codex",
+            effort=None,
+            workspace_id=None,
+        )
 
 
 def test_spawn_record_mapping_rebuilds_the_authored_payload() -> None:

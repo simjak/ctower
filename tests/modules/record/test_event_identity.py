@@ -31,6 +31,11 @@ from ctower_kernel.record.events import (
 )
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.session_events import SessionStartedPayload
+from ctower_kernel.record.spawn_events import (
+    SpawnRecordedPayload,
+    SpawnState,
+    SpawnTransitionedPayload,
+)
 from ctower_kernel.record.ticket_events import TicketCommentAddedPayload
 
 __all__: tuple[str, ...] = ()
@@ -152,6 +157,31 @@ def _session() -> SessionStartedPayload:
     )
 
 
+def _spawn_recorded() -> SpawnRecordedPayload:
+    return SpawnRecordedPayload(
+        spawn_id=_SUBJECT,
+        project_key="ctower",
+        seat_key="engineer",
+        crew_name="mc-engineer-r3000-spawn",
+        task_file_ref="coordination/2026-08-18_1350--engineer-506-repair.task.md",
+        worktree_path="/srv/projects/ctower/.worktrees/r3000-spawn",
+        harness="claude-code",
+        model="claude-opus-5",
+        effort="high",
+        workspace_id=None,
+    )
+
+
+def _spawn_transitioned() -> SpawnTransitionedPayload:
+    return SpawnTransitionedPayload(
+        spawn_id=_SUBJECT,
+        from_state=SpawnState.REQUESTED,
+        to_state=SpawnState.ACCEPTED,
+        transition_number=1,
+        reason="operator GO",
+    )
+
+
 def test_identity_refuses_a_stream_that_does_not_match_its_aggregate() -> None:
     with pytest.raises(ValueError, match="stream"):
         _envelope(
@@ -171,8 +201,19 @@ def test_identity_refuses_a_stream_that_does_not_match_its_aggregate() -> None:
         (EventKind.SESSION_STARTED, _session, "session", "session"),
         (EventKind.CATALOG_COMPONENT_PUBLISHED, _catalog, "catalog", "Catalog"),
         (EventKind.BOOTSTRAP_CREATED, _bootstrap, "tenant", "bootstrap"),
+        (EventKind.SPAWN_RECORDED, _spawn_recorded, "spawn-record", "spawn"),
+        (EventKind.SPAWN_TRANSITIONED, _spawn_transitioned, "spawn-record", "spawn"),
     ),
-    ids=("comment", "occurrence", "credential", "session", "catalog", "bootstrap"),
+    ids=(
+        "comment",
+        "occurrence",
+        "credential",
+        "session",
+        "catalog",
+        "bootstrap",
+        "spawn-recorded",
+        "spawn-transitioned",
+    ),
 )
 def test_identity_refuses_an_aggregate_that_disagrees_with_its_payload(
     kind: EventKind,

@@ -29,6 +29,7 @@ from ctower_kernel.record.session_events import (
     SessionStartedPayload,
     SessionTransitionedPayload,
 )
+from ctower_kernel.record.spawn_events import SpawnRecordedPayload, SpawnTransitionedPayload
 from ctower_kernel.record.ticket_events import TicketCommentAddedPayload
 
 if TYPE_CHECKING:
@@ -59,6 +60,7 @@ def validate_event_identity(
     _validate_ruling_identity(event.payload, event.aggregate_id)
     _validate_seat_credential_identity(event)
     _validate_session_identity(event)
+    _validate_spawn_identity(event)
 
 
 def _validate_bootstrap_identity(event: EventEnvelope) -> None:
@@ -113,3 +115,10 @@ def _validate_session_identity(event: EventEnvelope) -> None:
         and event.aggregate_id != event.payload.session_id
     ):
         raise ValueError("session aggregate and payload identity must match")
+
+
+def _validate_spawn_identity(event: EventEnvelope) -> None:
+    if isinstance(event.payload, SpawnRecordedPayload | SpawnTransitionedPayload) and (
+        event.aggregate_id != event.payload.spawn_id
+    ):
+        raise ValueError("spawn aggregate and payload identity must match")

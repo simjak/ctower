@@ -29,6 +29,12 @@ TENANT_EXISTS = """
 SELECT 1 FROM tenants WHERE tenant_id = %(tenant_id)s
 """
 
+# The custody project of one spawn: the scope predicate every seam asks.
+SPAWN_PROJECT_KEY = """
+SELECT project_key FROM spawn_records
+WHERE spawn_id = %(spawn_id)s AND tenant_id = %(tenant_id)s
+"""
+
 # One transition: computed next number, derived-state check in one statement.
 # The state check is inside the INSERT..SELECT so a concurrent transition
 # either takes this number or fails the state predicate — no lost facts.
