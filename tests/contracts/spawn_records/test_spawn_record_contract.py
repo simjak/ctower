@@ -43,7 +43,7 @@ def test_spawn_http_surface_is_strict_and_append_only() -> None:
 
 
 def test_spawn_storage_is_append_only_with_derived_state() -> None:
-    migration = (ROOT / "packages/ctower-kernel/migrations/0069_spawn_records.sql").read_text(
+    migration = (ROOT / "packages/ctower-kernel/migrations/0076_spawn_records.sql").read_text(
         encoding="utf-8"
     )
 

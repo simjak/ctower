@@ -92,10 +92,10 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0076_spawn_records.sql",
-    "schema_sha256": ("sha256:7cf6cf01904116a2331c11130c778be2232abcabfe38c106b2eae69d3f89bd48"),
+    "schema_sha256": ("sha256:ee58dc443fd55669d81812aaa43173244d51d322e0ca2bb39a2c30ebc35c8f36"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:ad504996e93fc010ef0a8fb5059eb69fa88462faaa19e9dd9d860930bd417e81"
+        "sum256:3169fcd7a067bdf3844a1c29ccfd8dbfc7d3f0a7de7e174d4e08a17ef90e6e16"
     ),
 }
 _EXPECTED_LEDGER_ADVANCE_TRANSITIONS = [

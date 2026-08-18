@@ -1928,7 +1928,7 @@
       ]
     },
     {
-      "path": "packages/ctower-kernel/migrations/0068_spawn_records.sql",
+      "path": "packages/ctower-kernel/migrations/0076_spawn_records.sql",
       "references": [
         "SPEC#persistence-authority",
         "SPEC#spawn-custody-records",

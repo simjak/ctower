@@ -13,6 +13,7 @@ from ctower_api._health_routes import install_health_routes
 from ctower_api._inbox_routes import install_inbox_routes
 from ctower_api._knowledge_routes import install_knowledge_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
+from ctower_api._spawn_record_routes import install_spawn_record_routes
 from ctower_api.estate_import_port import EstateImportPort
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_kernel.access import Access
@@ -23,7 +24,10 @@ from ctower_kernel.knowledge import Knowledge
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import Record
+from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
 from ctower_kernel.workflow import Workflow
+
+__all__: tuple[str, ...] = ()
 
 
 def install_optional_routes(
@@ -40,6 +44,7 @@ def install_optional_routes(
     knowledge: Knowledge | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
+    spawn_records: PostgresSpawnRecords | None,
     recorder: TelemetryRecorder,
 ) -> None:
     _install_primary_routes(
@@ -64,6 +69,8 @@ def install_optional_routes(
         estate_imports=estate_imports,
         recorder=recorder,
     )
+    if spawn_records is not None:
+        install_spawn_record_routes(app, access, record, spawn_records, recorder)
 
 
 def _install_primary_routes(
