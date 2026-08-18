@@ -3790,8 +3790,9 @@ product browser control and does not advance CT-I1-005 or CT-I2-005.
 ### Mission-control notification transport
 
 The transitional mission-control adapter is a second transport after the existing durable `tools/notify`
-append, never a replacement or a coupled dual write. Its strict rail-2 request contains only `to`, `text`,
-and the original delivery UUID as the idempotency key. The authenticated project-seat credential resolves
+append, never a replacement or a coupled dual write. Its strict rail-2 request contains `to`, `project_key`,
+`severity`, and `text`, with the original delivery UUID as the idempotency key. Every one of those fields is
+required: the request has no optional member and no defaulted member. The authenticated project-seat credential resolves
 the sender Actor; a caller label, `--from` value, process name, or message field cannot assert identity.
 The recipient must already exist as exactly one persisted project seat. An unknown or ambiguous seat is the
 ordinary recorded Inbox refusal and creates no thread, principal, event, or projection row.
@@ -3807,6 +3808,57 @@ The adapter reports `mirrored|refused|unavailable` after rail 1 succeeds. A type
 rail-2 client/transport failure is visible to its caller but cannot change the already-completed durable
 append. This slice authorizes no cutover, parity flag, environment setting, browser surface, or live
 credential provisioning.
+
+### Inbox transport severity and pull contract
+
+Every native Inbox send, including notification ingestion, carries one closed `severity` value: `P0`, `P1`,
+or `info`. `P0` is the only interrupt class: only a P0 delivery may use the push/wake path. P1 and `info`
+are durable Inbox rows and are consumed by the existing n-minute pull; the already registered beat Routines
+are that pull path, not a second scheduler or an undocumented prompt convention. A client must be able to
+address a seat by project-qualified correspondent data; `inbox correspondents [--project-key <project>]`
+filters the server-listed addresses, while send/notify require the same project key and never accept a
+caller-supplied sender.
+
+Read state is independent of interrupt selection. The declared P0 acknowledgement window is 15 minutes
+measured from that message's recorded delivery fact; the value is operator-confirmed on 2026-08-17 and
+changes only by a later operator ruling. A P0 still unacknowledged when its 15-minute window closes
+produces exactly one typed escalation observation to the immutable escalation seat; P1 and `info` have no
+acknowledgement timer and never escalate merely because a pull has not yet consumed them. An acknowledged
+P0 remains a P0 fact, and reading a P1 or `info` row does not turn it into an interrupt. Mission Control
+`tools/notify` remains additive and rail-1-first: its typed severity and stable delivery UUID are mirrored
+to native Inbox only after the durable append, with typed refusal/unavailable outcomes and no
+redirect/cutover in this slice.
+
+The window value is the declaration this contract owns; the timer that observes it is not admitted here.
+This slice adds no scheduler, no escalation event kind, and no consumer, so nothing emits that escalation
+observation yet and no candidate may present it as exercised evidence. The number exists so the obligation
+is a measurable one rather than a pointer to itself: a later ticket that admits the timer inherits exactly
+this 15-minute window and the escalation seat it targets.
+
+An Inbox fact appended before this contract carries `info`: severity is required of every new send, and the
+absence of the field on a pre-contract fact is folded as `info` rather than refused, so a rebuild of
+historical threads reproduces the same state it recorded. `info` on such a fact is a folded default, not an
+observation that the sender chose it.
+
+The table below is the exact readiness mapping from Mission Control's existing notification semantics to
+this contract. It is the contract a redirect flips onto, stated once so a caller does not have to infer it.
+This mapping activates no redirect: it adds no Mission Control tool change, schedule, wake class,
+environment setting, or credential.
+
+| Mission Control notification fact | Native Inbox field | Rule |
+|---|---|---|
+| durable rail-1 delivery identifier | `Idempotency-Key` / `--command-id` | Rail 1 completes first; exact replay of that identifier returns the original result, and a changed payload under it is `idempotency-conflict` |
+| declared severity | `severity` | Carried as the typed closed value, never folded into the message body |
+| recipient seat | `to` | Must resolve to exactly one persisted project seat |
+| recipient project | `project_key` | Qualifies recipient resolution; the recipient's project, not the sender's |
+| sender seat | none | Selects the caller's own credential authority only; the server derives the recorded sender |
+| subject and body | `text` | One 1–65536 character body; there is no subject field |
+| rail-1 wake policy | none | Only `P0` may take the native push/wake path; a wider rail-1 wake policy stays a Mission Control fact and is never mirrored as an interrupt |
+| rail-2 outcome | command result | Accepted is `mirrored`, a typed Inbox refusal is `refused`, and any transport failure is `unavailable`; none of the three can reverse rail 1 |
+
+A redirect is ready only when its caller sends both `project_key` and `severity`; a caller that omits either
+is refused by the strict request contract rather than defaulted. A caller that carried severity inside the
+message body before the redirect must stop doing so, because the body is preserved exactly as sent.
 
 Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
 `hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
@@ -4343,6 +4395,10 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-inbox-02"></a>AC-INBOX-02 | Recipient unread count remains nonzero after a pure thread read and becomes zero only after the accepted read fact. Projection catch-up and full rebuild reproduce the same per-message state, unread count, promotion link, and fact-derived read-through position without reading an authority table directly or persisting a read cursor. | Before/after unread snapshots, projection privilege inventory, deterministic rebuild equality |
 | <a id="ac-inbox-03"></a>AC-INBOX-03 | Delivery/read facts, canonical events, command results, and outbox rows are append-only. A sender acknowledgement, repeated/regressive acknowledgement, unknown message, and foreign scope each refuse by exact stable code with no mutation; the new contract, migration, module, and acceptance suites are registered and required. | Refusal/state-diff matrix, immutable-trigger test, canonical vectors, expected-suite manifest, clean codegen/check/verify logs |
 | <a id="ac-inbox-04"></a>AC-INBOX-04 | `inbox promote <thread>` creates one P2 ticket from the immutable thread head under ordinary initial-custody policy and links both directions atomically; `--ticket <id>` links an existing in-scope ticket without changing it. Both protected CLI paths return an explicit `ticket_created|ticket_linked` result, replay exactly, and the one-time promotion refuses by stable code. D41 additionally permits only `ctower-ui`'s server-mediated dogfood control for this existing command: no browser credential/authority, only `{}` or `{"ticket_id"}`, one Idempotency-Key reused across bounded retries, and terminal problem detail rendered as human copy. | Real PostgreSQL generated-client/CLI transcripts for both modes, ticket/source/custody query, event/subject/link query, Board projection and rebuild equality, replay/refusal assertions; `ctower-ui` retry/exhaustion/idempotency tests and rendered 375/768/1440 Inbox assertion |
+| <a id="ac-comms-01"></a>AC-COMMS-01 | Every native send and notification carries closed severity `P0|P1|info`; severity round-trips through the strict event, durable authority message, generated response, projection message, and read path, while exact replay preserves it. | RED/GREEN contract, generated-client/CLI boundary, and real PostgreSQL severity round-trip |
+| <a id="ac-comms-02"></a>AC-COMMS-02 | `P0` is the only push/wake interrupt; `P1` and `info` are durable rows consumed by the existing n-minute beat-Routine pull. Read/ack state is independent: a P0 still unacknowledged when its declared 15-minute window closes escalates exactly once, while P1/info have no timer. | SPEC/Routine mapping, severity interrupt property, read-state evidence, and the 15-minute window pinned identically in SPEC, D70 and this row; the escalation observation itself is unexercised — no timer, escalation event kind, or consumer exists — and its evidence-manifest row records that rather than claiming a proof; no live wake mutation |
+| <a id="ac-comms-03"></a>AC-COMMS-03 | Project-qualified recipient addressing is discoverable and enforced: the unnarrowed correspondents listing keeps its unscoped read, naming a project is a separate project-qualified read that names exactly one project and evaluates the caller's persisted grant under [INV-69](#inv-69) before any address row — a project the caller holds no grant on refuses `project-scope-denied` rather than answering empty — send/notify require the project key, same-project resolution succeeds, and foreign/unknown/ambiguous/self addresses refuse without mutation; sender remains server-derived. | CLI/API project-filter RED/GREEN, foreign-project `project-scope-denied` trace, projection read-inventory guard, refusal matrix, real PostgreSQL address/projection query |
+| <a id="ac-comms-04"></a>AC-COMMS-04 | The additive `tools/notify` mapping preserves rail-1-first durable append, stable delivery UUID, typed severity, server-derived sender, exact replay, and explicit refusal/unavailable outcomes; no redirect/cutover or new scheduler is activated. | Bridge contract/parity evidence, existing notification acceptance, rail/readiness mapping for director |
 | <a id="ac-inbox-05"></a>AC-INBOX-05 | An additive `tools/notify` fixture completes its existing durable append before mirroring one authenticated message into the native Inbox. Literal double ingest under the same delivery UUID returns the same result and leaves exactly one `message.appended` fact; messages in either direction for one principal pair share one thread, while a distinct pair does not. A caller-supplied sender label cannot affect the recorded sender. An unknown recipient persists `inbox-recipient-not-found` with zero events while rail 1 remains delivered, and an unavailable mirror never turns rail-1 success into failure. | Real PostgreSQL adapter/API trace, command-result/event/message cardinality query, reverse-direction grouping, distinct-pair query, unknown-seat refusal row, generated API/CLI and reference-doc parity |
 
 ### Operator Requests
@@ -5244,6 +5300,7 @@ Each validation command below is designated as part of the item’s deliverable.
 
 | CT-I1-036 | Deliver the authenticated role record as a derived read over the existing CompanyBundle assignment, seat catalog, project-seat grant, and human-binding authorities: require the exact authored assignment `seat_key`/`role_key` pair, resolve one revision-pinned project-seat or human-binding RoleFact for the acting principal, and preserve its source pins and disjoint authority plane. This ticket owns the RoleFact/source-binding contract and human/operator/commander/viewer outcome matrix only; it does not evaluate stage membership, consume `participant_resolution`, or emit the stage-role refusal. The current crew subjects and seat keys remain deployment data, not a fixed roster. It adds no crew/role store, principal class, grant, credential/bearer format, product route, live-instance mutation, or compatibility path. | CT-I1-003; CT-I1-009; D28; D30; D31; D68 | Engineer + Engineering Manager + CSO + independent QA/Review | Authored CompanyBundle/role/workflow contracts; existing Catalog, Access, and Workflow Interfaces; generated contract mirrors; no new persistence or identity plane | AC-ROLE-01..02; RED-first authored-binding and project-seat/human-binding resolution matrices; revision/revocation/foreign-scope negatives; exact human-plane outcomes; no-new-store/principal/grant/bearer scan | `uv run pytest tests/contracts/company tests/contracts/components tests/contracts/workflow -q` |
 | CT-I1-039 | Deliver per-project server-assigned Ticket display keys `PREFIX-N`: require unique authored CompanyBundle project prefixes, allocate an immutable monotonic number atomically at capture, backfill configured pre-existing Tickets by `(created_at, ticket_id)`, expose UUID/display-key parity through Ticket and Board/API/CLI reads, and resolve `PREFIX-N` only within authorized Project scope. `CT` and `R` remain reserved; gaps are valid; no live rollout is included. | CT-I1-002, CT-I1-004, CT-I1-009, CT-I1-010, CT-I1-035; D69; operator order R3020 | Engineer + independent Review + QA | Project component schema/packs; Catalog prefix materialization; migrations `0075`; kernel `record/` and `projections/`; generated HTTP clients; `ctowerctl`; evidence manifest | AC-TM-09..13; per-AC RED/GREEN output; fresh-apply/backfill/immutability/concurrency/addressability disposable PostgreSQL traces; generated drift and full gates; live rollout remains commander/operator ceremony | `uv run pytest tests/contracts/company/test_project_prefix_contract.py tests/contracts/domain/test_ticket_display_keys_contract.py tests/contracts/http/test_ticket_display_keys_contract.py tests/modules/catalog/test_policy.py tests/acceptance/increment-1/test_ticket_display_keys.py -q` |
+| CT-I1-038 | Deliver the declared Inbox transport contract under D70: every native send carries closed `P0|P1|info` severity through event, authority, generated API/CLI, projection, and read paths; only P0 may interrupt/wake, P1/info are durable rows consumed by the existing n-minute beat-Routine pull, the declared 15-minute P0 acknowledgement window escalates once with its observing timer deliberately not admitted in this slice, and P1 has no timer; make project-qualified seat addressing discoverable with filtered correspondents and server-derived sender enforcement; and document the additive rail-1-first `tools/notify` mapping without activating a redirect. | CT-I1-035; D67; D70 | Engineer + independent QA/Review + Commander transport/readiness review | Inbox domain/event/OpenAPI contracts; kernel inbox/projections; generated clients; `ctower-api`; `ctowerctl`; migration `0077`; existing beat Routine and Mission Control bridge references | AC-COMMS-01..04; RED-first closed-enum, CLI/API/project-filter, real PostgreSQL authority/projection, replay/refusal, and bridge-parity evidence; migration manifest/baseline attestation; exact `just check`/`just verify` logs; no live wake/cutover mutation | `uv run pytest tests/contracts/domain/test_inbox_delivery.py tests/contracts/domain/test_inbox_escalation_window.py tests/contracts/domain/test_events.py tests/contracts/http/test_openapi.py tests/modules/ctowerctl/test_cli_boundaries.py tests/acceptance/increment-1/test_notify_bridge.py::test_native_inbox_message_round_trip_preserves_severity -q` |
 
 ### I2 implementation backlog
 

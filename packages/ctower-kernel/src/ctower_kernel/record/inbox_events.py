@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from enum import StrEnum
 from uuid import UUID
 
 __all__ = [
@@ -13,12 +14,25 @@ __all__ = [
     "InboxMessageDeliveredPayload",
     "InboxMessageReadPayload",
     "InboxParticipant",
+    "InboxSeverity",
     "InboxThreadOpenedPayload",
     "InboxThreadPromotedToTicketPayload",
 ]
 
 _SEAT_KEY = re.compile(r"^[a-z][a-z0-9._-]{1,95}$")
 _MAX_MESSAGE_LENGTH = 65536
+
+
+class InboxSeverity(StrEnum):
+    P0 = "P0"
+    P1 = "P1"
+    INFO = "info"
+
+    @property
+    def interrupts(self) -> bool:
+        """Only P0 is eligible for an interrupt/wake delivery path."""
+
+        return self is InboxSeverity.P0
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +76,7 @@ class InboxMessageAppendedPayload:
     sender: InboxParticipant
     text: str
     thread_id: UUID
+    severity: InboxSeverity = InboxSeverity.INFO
 
     def __post_init__(self) -> None:
         if not isinstance(self.message_id, UUID):
@@ -76,6 +91,11 @@ class InboxMessageAppendedPayload:
         if not isinstance(self.text, str) or not 1 <= len(self.text) <= _MAX_MESSAGE_LENGTH:
             raise ValueError("inbox message text is outside the authored contract")
         _thread_id(self.thread_id)
+        try:
+            severity = InboxSeverity(self.severity)
+        except ValueError as error:
+            raise ValueError("inbox message severity is outside the authored contract") from error
+        object.__setattr__(self, "severity", severity)
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -83,6 +103,7 @@ class InboxMessageAppendedPayload:
             "position": self.position,
             "recipient": self.recipient.to_mapping(),
             "sender": self.sender.to_mapping(),
+            "severity": self.severity.value,
             "text": self.text,
             "thread_id": str(self.thread_id),
         }

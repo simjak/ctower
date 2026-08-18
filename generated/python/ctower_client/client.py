@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:815ad1d7312dfc1b5e061000c3106a840574cc62c16bf2b0f03227dda3d98292
+Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
 """
 
 from __future__ import annotations
@@ -1304,9 +1304,12 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_inbox_correspondents(
         self,
+        *,
+        project_key: str | None = None,
     ) -> InboxCorrespondentList:
         response = self._http.get(
             "/v1/inbox/correspondents",
+            params={**({"project_key": project_key} if project_key is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {
@@ -1314,7 +1317,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: InboxCorrespondentList}, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: InboxCorrespondentList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_inbox_threads(

@@ -16,7 +16,9 @@ _ROOT = Path(__file__).resolve().parents[2]
 _SURFACE = _ROOT / "apps/ctower-ui/src"
 _FIXTURE = Path(__file__).with_name("inbox_compose_fixtures.ts")
 _THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000600"
-_EXPECTED_BODY = '{"text":"open the conversation","to":"director"}'
+_EXPECTED_BODY = (
+    '{"project_key":"ctower","severity":"info","text":"open the conversation","to":"director"}'
+)
 _UNCONFIRMED_SENTENCE = (
     "The server has not confirmed this message, so the thread is not started yet. "
     "Press send again to send the same message."
@@ -49,7 +51,7 @@ class InboxComposeTransportTests(unittest.TestCase):
         self.assertEqual([attempt["method"] for attempt in attempts], ["GET", "POST"])
         self.assertTrue(attempts[0]["url"].endswith("/v1/inbox/correspondents"))
         self.assertTrue(attempts[1]["url"].endswith("/v1/inbox/notifications"))
-        self.assertEqual(attempts[1]["bodyKeys"], ["text", "to"])
+        self.assertEqual(attempts[1]["bodyKeys"], ["project_key", "severity", "text", "to"])
         self.assertEqual(attempts[1]["body"], _EXPECTED_BODY)
         self.assertRegex(cast("str", attempts[1]["idempotencyKey"]), r"^[0-9a-f-]{36}$")
         self.assertTrue(attempts[1]["authorized"])
@@ -67,6 +69,7 @@ class InboxComposeTransportTests(unittest.TestCase):
                     "to": "director",
                     "text": "open the conversation",
                     "sentAt": "2026-08-09T03:05:00Z",
+                    "severity": "info",
                 },
             },
         )

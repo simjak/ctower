@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from psycopg.rows import dict_row
+from support.acceptance import accept_pending_commands
 from support.server import running_api
 from support.tenant_fixture import TenantFixture, provision_credential
 
@@ -26,6 +27,8 @@ from ctower_client import (
 )
 from ctower_kernel.inbox import Inbox, InboxSendCommand, PostgresInbox
 from ctower_kernel.inbox import InboxSendResult as KernelInboxSendResult
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -116,7 +119,9 @@ def test_notification_command_key_cannot_replay_a_standard_inbox_send(
 ) -> None:
     _qa_id, _qa_credential = _provision_seat(tenant, "digest-qa")
     command_id = uuid4()
-    request = InboxSendRequest(to="digest-qa", text="Domain-separated body.")
+    request = InboxSendRequest(
+        project_key="ctower", severity="info", to="digest-qa", text="Domain-separated body."
+    )
 
     with (
         running_api(
@@ -128,11 +133,56 @@ def test_notification_command_key_cannot_replay_a_standard_inbox_send(
         client.send_inbox_message(request, command_id=command_id)
         with pytest.raises(CtowerProblemError) as raised:
             client.ingest_inbox_notification(
-                InboxNotificationRequest(to=request.to, text=request.text),
+                InboxNotificationRequest(
+                    project_key=request.project_key,
+                    severity=request.severity,
+                    to=request.to,
+                    text=request.text,
+                ),
                 command_id=command_id,
             )
 
     assert raised.value.problem.code == "idempotency-conflict"
+
+
+def test_native_inbox_message_round_trip_preserves_severity(
+    tenant: TenantFixture,
+) -> None:
+    _qa_id, _qa_credential = _provision_seat(tenant, "severity-qa")
+    request = InboxSendRequest(
+        project_key="ctower",
+        severity="P0",
+        to="severity-qa",
+        text="Severity round-trip.",
+    )
+    command_id = uuid4()
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=tenant.commander_credential) as client,
+    ):
+        result = client.send_inbox_message(request, command_id=command_id)
+    assert result.severity == "P0"
+    message_id = result.message_id
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        authority = connection.execute(
+            "SELECT severity FROM inbox_messages WHERE tenant_id = %s AND message_id = %s",
+            (tenant.tenant_id, message_id),
+        ).fetchone()
+    assert authority == {"severity": "P0"}
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=tenant.commander_credential) as client,
+    ):
+        read = client.read_inbox_thread(result.thread_id)
+    assert read.messages[0].severity == "P0"
 
 
 def test_concurrent_first_notifications_share_one_pair_thread(tenant: TenantFixture) -> None:
@@ -165,7 +215,9 @@ def _notification(to: str, *, subject: str) -> _Notification:
 
 def _ingest(client: CtowerClient, notification: _Notification) -> InboxSendResult:
     return client.ingest_inbox_notification(
-        InboxNotificationRequest(to=notification.to, text=notification.text),
+        InboxNotificationRequest(
+            project_key="ctower", severity="info", to=notification.to, text=notification.text
+        ),
         command_id=notification.delivery_id,
     )
 

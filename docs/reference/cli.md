@@ -301,12 +301,12 @@ changing anything.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `inbox send` | `<text>` | required: `--to <seat_key>`; optional: `--command-id`, `--thread <thread_id>` |
-| `inbox notify` | `<text>` | required: `--to <seat_key>`; optional: `--command-id` |
+| `inbox send` | `<text>` | required: `--project-key`, `--severity {P0,P1,info}`, `--to <seat_key>`; optional: `--command-id`, `--thread <thread_id>` |
+| `inbox notify` | `<text>` | required: `--project-key`, `--severity {P0,P1,info}`, `--to <seat_key>`; optional: `--command-id` |
 | `inbox ack` | `<message_id>` | required: `--state {delivered,read}`; optional: `--command-id` |
 | `inbox promote` | `<thread_id>` | optional: `--command-id`, `--ticket <ticket_id>` |
 | `inbox list` | — | `--unread` |
-| `inbox correspondents` | — | — |
+| `inbox correspondents` | — | optional: `--project-key` |
 | `inbox read` | `<thread_id>` | — |
 | `inbox read-state` | `<thread_id>` | — |
 
@@ -317,10 +317,17 @@ seat — exactly what `send` and `notify` accept as `--to`, so anything it omits
 returns its original result, while reusing the command ID with different input is refused as
 `idempotency-conflict`.
 
+Every `send` and `notify` carries one closed `severity` of `P0`, `P1`, or `info`. Only a `P0` delivery
+may use the push/wake path; `P1` and `info` are durable rows consumed by the existing n-minute
+beat-Routine pull, and read state is independent of the interrupt class. `--project-key` qualifies
+recipient resolution: the seat must be registered in that project, and a foreign-project or unknown
+address is refused as `inbox-recipient-not-found`. `correspondents --project-key` narrows the
+listed addresses to one project. The caller never supplies sender identity.
+
 `notify` is the narrow additive notification transport. The existing durable delivery completes first; its stable
-delivery UUID must be reused as `--command-id` for this additive attempt. The request carries only `--to`
-and text: sender identity comes from the authenticated Actor and the recipient must already exist in the
-persisted seat registry. Both directions of one seat pair share a derived thread, while a different pair
+delivery UUID must be reused as `--command-id` for this additive attempt. The request carries `--to`,
+`--project-key`, and one closed `severity` beside the text: sender identity comes from the authenticated
+Actor and the recipient must already exist in the persisted seat registry. Both directions of one seat pair share a derived thread, while a different pair
 uses a different thread. Exact retry appends no message; an unknown seat is
 `inbox-recipient-not-found`. That refusal or an unavailable ctower service never reverses the existing
 delivery, and there is no configuration switch or identity auto-creation.

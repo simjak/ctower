@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { boundedMutation, MutationRefused, ReadRefused } from "@/read/bounded";
+import { defaultProjectKey } from "@/read/projects";
 import { instanceIdentity, loadInboxCorrespondent } from "@/read/httpRecordAdapter";
 import { asInteger, asMember, asString, PayloadRefusal } from "@/read/json";
 import { commandHeaders, exactRecord, isUuid, problemSentence, uuidField } from "./command";
@@ -51,6 +52,7 @@ function answerFrom(value: unknown, attempt: Attempt): InboxSendState {
     "message_id",
     "position",
     "sent_at",
+    "severity",
     "thread_id",
     "thread_version",
     "to",
@@ -59,6 +61,7 @@ function answerFrom(value: unknown, attempt: Attempt): InboxSendState {
   uuidField(row.command_id, "inbox.send.command_id");
   const durability = asMember(row.durability_state, "inbox.send.durability_state", DURABILITY);
   asInteger(row.thread_version, "inbox.send.thread_version");
+  const severity = asMember(row.severity, "inbox.send.severity", ["P0", "P1", "info"] as const);
   if (uuidField(row.thread_id, "inbox.send.thread_id") !== attempt.threadId) {
     throw new PayloadRefusal("inbox.send.thread_id", "the thread this message was sent on");
   }
@@ -79,6 +82,7 @@ function answerFrom(value: unknown, attempt: Attempt): InboxSendState {
       to: asString(row.to, "inbox.send.to"),
       text: attempt.message,
       sentAt: asString(row.sent_at, "inbox.send.sent_at"),
+      severity,
     },
   };
 }
@@ -145,7 +149,13 @@ export async function sendInboxMessage(
     const result = await boundedMutation(
       `${instanceIdentity().baseUrl}/v1/inbox/messages`,
       commandHeaders(credential, commandId, SURFACE),
-      JSON.stringify({ text: message, thread_id: threadId, to: recipient })
+      JSON.stringify({
+        project_key: defaultProjectKey(),
+        severity: "info",
+        text: message,
+        thread_id: threadId,
+        to: recipient,
+      })
     );
     return answerFrom(result, { threadId, message, text, commandId });
   } catch (error: unknown) {

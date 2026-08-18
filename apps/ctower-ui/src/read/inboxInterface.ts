@@ -46,6 +46,7 @@ export interface InboxMessageDelivery {
   readonly messageId: string;
   readonly position: number;
   readonly recipient: string;
+  readonly severity: "P0" | "P1" | "info";
   readonly state: "sent" | "delivered" | "read";
   readonly deliveredAt: string | null;
   readonly readAt: string | null;

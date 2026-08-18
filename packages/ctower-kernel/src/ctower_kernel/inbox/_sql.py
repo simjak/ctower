@@ -12,6 +12,7 @@ from ctower_kernel.inbox._events import _message_event, _opened_event
 from ctower_kernel.inbox.models import (
     InboxSendCommand,
     InboxSendResult,
+    InboxSeverity,
 )
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.events import event_digest
@@ -101,6 +102,12 @@ def _validate_send(
     actor: Actor,
     command: InboxSendCommand,
 ) -> tuple[InboxParticipant, InboxParticipant, dict[str, object] | None] | RecordProblem:
+    try:
+        InboxSeverity(command.severity)
+    except ValueError:
+        return _problem(
+            command.client_command_id, "invalid-request", 422, "Message severity is invalid"
+        )
     if not isinstance(command.text, str) or not 1 <= len(command.text) <= _MAX_MESSAGE_LENGTH:
         return _problem(
             command.client_command_id, "invalid-request", 422, "Message text is invalid"
@@ -137,6 +144,21 @@ def _existing_participants(
             409,
             "The requested recipient is not the other participant in this thread.",
         )
+    if command.project_key is not None:
+        project = connection.execute(
+            """
+            SELECT 1 FROM project_seats
+            WHERE tenant_id = %s AND principal_id = %s AND seat_key = %s AND project_key = %s
+            """,
+            (actor.tenant_id, recipient.principal_id, recipient.seat_key, command.project_key),
+        ).fetchone()
+        if project is None:
+            return _problem(
+                command.client_command_id,
+                "inbox-recipient-not-found",
+                404,
+                "The requested inbox address is not registered in the project.",
+            )
     position = connection.execute(
         """
         SELECT COALESCE(max(position) + 1, 1) AS next_position
@@ -160,9 +182,10 @@ def _new_participants(
     rows = connection.execute(
         """
         SELECT principal_id, seat_key FROM project_seats
-        WHERE tenant_id = %s AND seat_key = %s ORDER BY principal_id
+        WHERE tenant_id = %s AND (%s::text IS NULL OR project_key = %s) AND seat_key = %s
+        ORDER BY principal_id
         """,
-        (actor.tenant_id, command.to),
+        (actor.tenant_id, command.project_key, command.project_key, command.to),
     ).fetchall()
     if not rows:
         return _problem(
@@ -196,6 +219,7 @@ def _actor_seat(
         """
         SELECT principal_id, seat_key FROM project_seats
         WHERE tenant_id = %s AND principal_id = %s
+        ORDER BY project_key, seat_key
         """,
         (actor.tenant_id, actor.principal_id),
     ).fetchone()
@@ -323,6 +347,7 @@ def _message_commits(
         thread_id,
         sequence,
         recipient.seat_key,
+        severity=command.severity,
     )
     return result, tuple(commits), event_digest(message)
 
@@ -376,8 +401,8 @@ def _persist_message(
         INSERT INTO inbox_messages (
             message_id, tenant_id, thread_id, position, sender_id, sender_seat,
             recipient_id, recipient_seat, content, event_id, sent_at,
-            source_ref, source_sender, source_recipient
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            source_ref, source_sender, source_recipient, severity
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             result.message_id,
@@ -394,6 +419,7 @@ def _persist_message(
             source_ref,
             source_sender,
             source_recipient,
+            result.severity.value,
         ),
     )
 
@@ -410,6 +436,7 @@ def _send_result(payload: dict[str, object]) -> InboxSendResult:
         UUID(str(payload["thread_id"])),
         int(cast(int, payload["thread_version"])),
         str(payload["to"]),
+        severity=InboxSeverity(str(payload.get("severity", "info"))),
     )
 
 

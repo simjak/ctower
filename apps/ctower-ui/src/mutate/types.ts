@@ -89,6 +89,7 @@ export interface InboxAcceptedMessage {
   readonly to: string;
   readonly text: string;
   readonly sentAt: string;
+  readonly severity: "P0" | "P1" | "info";
 }
 
 /** A ticket the server-side Board read made available for explicit linking. */

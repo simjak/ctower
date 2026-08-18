@@ -3097,3 +3097,34 @@ The operator ordered a human-addressable Ticket handle without changing canonica
 3. **Assignment is one atomic fact.** Capture reserves the next number from a `(tenant, project)` monotonic sequence and inserts the immutable `display_key = PREFIX-N` in the same transaction as the Ticket, lifecycle, custody, priority, event, outbox, and command result. Exact command replay returns the original handle; concurrent accepted captures cannot share a project number. Gaps are valid and never trigger renumbering.
 4. **History is additive and rebuildable.** Migration 0075 adds the sequence, nullable historical display column, materialized Project prefix, Board read column, deterministic `(created_at, ticket_id)` backfill, unique Project index, and SQLSTATE `55000` mutation trigger. Fresh apply and pre-existing-row disposable PostgreSQL fixtures are required; no live rollout is authorized by this decision.
 5. **Addressability is scope-preserving.** Generated Ticket/API/Board/CLI reads expose both UUID and display handle, and the handle is a required member that states `null` rather than disappearing when a Ticket has none. A `PREFIX-N` reference resolves through the authorized Project/number index, never by searching titles or leaking foreign-project existence: one resolution seam serves every ticket-scoped operation, an unknown key and a key belonging to an unreachable Project are refused identically, and an ambiguous key left by a re-authored prefix is refused rather than guessed. Every CLI position accepting a Ticket reference accepts both forms. CT-I1-039 adds no principal, environment variable, feature flag, second ledger, or live deployment ceremony.
+
+## D70 — Inbox transport severity and pull delivery contract (product, 2026-08-17, operator order)
+
+The native Inbox has one delivery contract rather than caller folklore about whether a message should wake a
+seat or wait for a routine. This decision takes the second number after D67, leaving the two intervening
+numbers reserved for concurrent branches whose merge order will renumber the append-only history.
+
+1. **Every send carries one closed severity.** Native send and notification requests, canonical
+   `message.appended` payloads, durable inbox facts, projections, generated responses, and CLI builders carry
+   exactly `P0`, `P1`, or `info`. Invalid or absent values refuse at the boundary; exact replay includes the
+   value in the request digest and returns the original result.
+2. **P0 is the only interrupt.** A P0 row may use the push/wake path. P1 and `info` are durable rows consumed
+   by the existing n-minute pull, and the already registered beat Routines are that pull. This decision adds
+   no scheduler, wake class, session injection path, or second Inbox store.
+3. **Acknowledgement does not choose transport, and its window is a number.** Read and delivery facts remain
+   recipient-only, monotonic, and independent of severity. The P0 acknowledgement window is 15 minutes from
+   the recorded delivery fact — operator-confirmed 2026-08-17 — and one P0 still unacknowledged when that
+   window closes creates exactly one typed escalation. P1 and `info` have no timer
+   and never escalate solely because a pull is late. This decision declares the value and nothing more: it
+   admits no scheduler, escalation event kind, or consumer, so AC-COMMS-02's escalation half stays declared
+   and unexercised, recorded as such on its evidence-manifest row, until a later decision admits that
+   machinery against this same 15-minute window.
+4. **Addressing is project-qualified and server-derived.** Correspondent reads may filter by project; send and
+   notify require that project key for recipient resolution. Shared, foreign, unknown, and self addresses
+   refuse by existing typed codes, and the caller cannot supply the sender identity.
+5. **Mission Control remains an additive bridge.** `tools/notify` appends rail 1 first, preserves its stable
+   delivery UUID and typed severity, and then best-effort mirrors to native Inbox. Refusal or unavailability
+   on rail 2 is visible but cannot undo rail-1 success. No redirect, live cutover, new environment setting,
+   or live credential/migration rollout is authorized by this decision.
+6. **CT-I1-038 is admitted** to implement and evidence this bounded contract, including the disposable schema
+   migration required to retain severity in authority and projection message rows.
