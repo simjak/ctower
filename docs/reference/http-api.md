@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **99 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **103 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -42,7 +42,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 229 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 234 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
@@ -296,6 +296,20 @@ fact-derived `read_through_position`; reading does not advance it or reduce unre
 | `POST` | `/v1/knowledge/documents` | `addKnowledgeDocument` | `knowledge add` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422`, `503` |
 | `GET` | `/v1/knowledge/documents` | `listKnowledgeDocuments` | `knowledge list` | query | forbidden | `200`, `401`, `403`, `422` |
 | `GET` | `/v1/knowledge/documents/{document_id}` | `getKnowledgeDocument` | `knowledge get` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+
+### Spawn custody
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/spawn-records` | `createSpawnRecord` | `spawn record` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `GET` | `/v1/spawn-records` | `listSpawnRecords` | `spawn list` | query | forbidden | `200`, `401`, `403`, `422` |
+| `GET` | `/v1/spawn-records/{spawn_id}` | `getSpawnRecord` | `spawn show` | query | forbidden | `200`, `401`, `403`, `404` |
+| `POST` | `/v1/spawn-records/{spawn_id}/transitions` | `appendSpawnTransition` | `spawn transition` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+
+`createSpawnRecord` is the pre-dispatch commitment. Its response must be durable before a host session is
+created. `appendSpawnTransition` appends a lifecycle fact; it never updates the spawn row. `listSpawnRecords`
+requires a project filter and both reads enforce the authenticated principal's persisted project scope. The
+optional `workspace_id` remains null until first-class workspace custody exists.
 
 ### Attention findings
 

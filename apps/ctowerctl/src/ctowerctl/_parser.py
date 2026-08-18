@@ -51,6 +51,7 @@ from ctowerctl._parser_support import (
 )
 from ctowerctl._request_parser import request_parser
 from ctowerctl._ruling_parser import ruling_parser
+from ctowerctl._spawn_parser import spawn_parser
 
 __all__: tuple[str, ...] = ()
 
@@ -63,16 +64,13 @@ _PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse only explicit authored commands; unknown operations are usage errors."""
 
-    parsed = _parser().parse_args(argv)
-    _validate_ceremony_principal(parsed)
+    _validate_ceremony_principal(parsed := _parser().parse_args(argv))
     if getattr(parsed, "command_id", None) is None and hasattr(parsed, "command_id"):
         parsed.command_id = uuid4()
     return parsed
 
 
 def authored_command_names() -> frozenset[str]:
-    """Expose the closed command inventory for generated-contract parity tests."""
-
     return AUTHORED_COMMAND_NAMES
 
 
@@ -92,6 +90,7 @@ def _parser() -> argparse.ArgumentParser:
     digest_parser(areas.add_parser("digest"))
     request_parser(areas.add_parser("request"))
     ruling_parser(areas.add_parser("ruling"))
+    spawn_parser(areas.add_parser("spawn"))
     _inbox_parser(areas.add_parser("inbox"))
     knowledge_parser(areas.add_parser("knowledge"))
     _ticket_parser(areas.add_parser("ticket"))

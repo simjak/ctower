@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:4208ed95a16a9bcec349edcf1c8d002f135665367ad1de4131be5b93c46de71e
+// Authored contract digest: sha256:815ad1d7312dfc1b5e061000c3106a840574cc62c16bf2b0f03227dda3d98292
 
 export type ActivityClass = "work" | "verification";
 
@@ -1612,7 +1612,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-csrf-invalid" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "beat-routine-already-retired" | "beat-routine-not-found" | "beat-routine-retire-forbidden" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "console-actor-suspended" | "console-adapter-malformed" | "console-adapter-unregistered" | "console-allowlist-refused" | "console-assignment-stale" | "console-backend-fenced" | "console-backend-unavailable" | "console-browser-session-required" | "console-continuous-view-limit" | "console-csrf-invalid" | "console-cursor-invalid" | "console-globally-disabled" | "console-grant-expired" | "console-grant-unavailable" | "console-incarnation-fenced" | "console-kill-switch-refused" | "console-loop-kind-refused" | "console-origin-refused" | "console-output-unavailable" | "console-project-fence-mismatch" | "console-project-refused" | "console-renewal-binding-mismatch" | "console-renewal-unavailable" | "console-revocation-refused" | "console-role-refused" | "console-runner-epoch-fenced" | "console-runner-fenced" | "console-runtime-attempt-fenced" | "console-sensitivity-refused" | "console-session-already-allowed" | "console-session-already-revoked" | "console-session-join-stale" | "console-session-not-allowed" | "console-session-revoked" | "console-session-unavailable" | "console-stream-already-open" | "console-stream-query-refused" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "dream-lane-already-bound" | "dream-lane-binding-operator-required" | "estate-import-batch-digest-mismatch" | "estate-import-batch-invalid" | "estate-import-content-mismatch" | "estate-import-count-mismatch" | "estate-import-duplicate-source" | "estate-import-invalid" | "estate-import-operator-required" | "estate-import-parity-signer-unavailable" | "estate-import-project-required" | "estate-import-row-invalid" | "estate-import-source-conflict" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "invalid-ruling" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "proposal-already-decided" | "proposal-append-forbidden" | "proposal-credential-invalid" | "proposal-decision-forbidden" | "proposal-evidence-invalid" | "proposal-evidence-unavailable" | "proposal-invalid" | "proposal-kind-invalid" | "proposal-not-found" | "proposal-project-invalid" | "proposal-project-unavailable" | "proposal-quote-invalid" | "proposal-quote-mismatch" | "proposal-reason-invalid" | "proposal-related-not-found" | "proposal-state-invalid" | "proposal-target-not-found" | "proposal-version-conflict" | "proposal-watermark-invalid" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-capture-forbidden" | "invalid-request" | "request-import-forbidden" | "request-owner-forbidden" | "request-project-unavailable" | "request-source-forbidden" | "request-transition-forbidden" | "request-triage-forbidden" | "ruling-already-superseded" | "ruling-not-found" | "ruling-project-unavailable" | "ruling-request-already-answered" | "ruling-request-not-decision" | "ruling-request-not-found" | "ruling-seat-not-found" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-csrf-invalid" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "beat-routine-already-retired" | "beat-routine-not-found" | "beat-routine-retire-forbidden" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "console-actor-suspended" | "console-adapter-malformed" | "console-adapter-unregistered" | "console-allowlist-refused" | "console-assignment-stale" | "console-backend-fenced" | "console-backend-unavailable" | "console-browser-session-required" | "console-continuous-view-limit" | "console-csrf-invalid" | "console-cursor-invalid" | "console-globally-disabled" | "console-grant-expired" | "console-grant-unavailable" | "console-incarnation-fenced" | "console-kill-switch-refused" | "console-loop-kind-refused" | "console-origin-refused" | "console-output-unavailable" | "console-project-fence-mismatch" | "console-project-refused" | "console-renewal-binding-mismatch" | "console-renewal-unavailable" | "console-revocation-refused" | "console-role-refused" | "console-runner-epoch-fenced" | "console-runner-fenced" | "console-runtime-attempt-fenced" | "console-sensitivity-refused" | "console-session-already-allowed" | "console-session-already-revoked" | "console-session-join-stale" | "console-session-not-allowed" | "console-session-revoked" | "console-session-unavailable" | "console-stream-already-open" | "console-stream-query-refused" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "dream-lane-already-bound" | "dream-lane-binding-operator-required" | "estate-import-batch-digest-mismatch" | "estate-import-batch-invalid" | "estate-import-content-mismatch" | "estate-import-count-mismatch" | "estate-import-duplicate-source" | "estate-import-invalid" | "estate-import-operator-required" | "estate-import-parity-signer-unavailable" | "estate-import-project-required" | "estate-import-row-invalid" | "estate-import-source-conflict" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "invalid-status" | "invalid-transition" | "invalid-ruling" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "proposal-already-decided" | "proposal-append-forbidden" | "proposal-credential-invalid" | "proposal-decision-forbidden" | "proposal-evidence-invalid" | "proposal-evidence-unavailable" | "proposal-invalid" | "proposal-kind-invalid" | "proposal-not-found" | "proposal-project-invalid" | "proposal-project-unavailable" | "proposal-quote-invalid" | "proposal-quote-mismatch" | "proposal-reason-invalid" | "proposal-related-not-found" | "proposal-state-invalid" | "proposal-target-not-found" | "proposal-version-conflict" | "proposal-watermark-invalid" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-capture-forbidden" | "invalid-request" | "request-import-forbidden" | "request-owner-forbidden" | "request-project-unavailable" | "request-source-forbidden" | "request-transition-forbidden" | "request-triage-forbidden" | "ruling-already-superseded" | "ruling-not-found" | "ruling-project-unavailable" | "ruling-request-already-answered" | "ruling-request-not-decision" | "ruling-request-not-found" | "ruling-seat-not-found" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "spawn-not-found" | "tenant-not-found" | "tenant-scope-denied" | "transition-conflict" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -2301,6 +2301,75 @@ export type SessionTransitionedPayload = Readonly<{
 export type SourceReference = Readonly<{
   readonly "kind": string;
   readonly "ref": string;
+}>;
+
+export type SpawnRecord = Readonly<{
+  readonly "created_at": string;
+  readonly "crew_name": string;
+  readonly "effort"?: string;
+  readonly "harness": string;
+  readonly "model": string;
+  readonly "principal_id": string;
+  readonly "project_key": string;
+  readonly "seat_key": string;
+  readonly "spawn_id": string;
+  readonly "status": "requested" | "accepted" | "running" | "completed" | "failed" | "reaped";
+  readonly "task_file_ref": string;
+  readonly "transitions": ReadonlyArray<SpawnRecordTransitionFact>;
+  readonly "updated_at": string;
+  readonly "workspace_id"?: string;
+  readonly "worktree_path": string;
+}>;
+
+export type SpawnRecordCreateRequest = Readonly<{
+  readonly "crew_name": string;
+  readonly "effort"?: string;
+  readonly "harness": string;
+  readonly "model": string;
+  readonly "project_key": string;
+  readonly "seat_key": string;
+  readonly "task_file_ref": string;
+  readonly "workspace_id"?: string;
+  readonly "worktree_path": string;
+}>;
+
+export type SpawnRecordListResult = Readonly<{
+  readonly "records": ReadonlyArray<SpawnRecord>;
+}>;
+
+export type SpawnRecordResult = Readonly<{
+  readonly "accepted_position": number | null;
+  readonly "created_at": string;
+  readonly "crew_name": string;
+  readonly "durability_state": DurabilityState;
+  readonly "effort"?: string;
+  readonly "harness": string;
+  readonly "model": string;
+  readonly "principal_id": string;
+  readonly "project_key": string;
+  readonly "seat_key": string;
+  readonly "spawn_id": string;
+  readonly "status": "requested" | "accepted" | "running" | "completed" | "failed" | "reaped";
+  readonly "task_file_ref": string;
+  readonly "transitions": ReadonlyArray<SpawnRecordTransitionFact>;
+  readonly "updated_at": string;
+  readonly "workspace_id"?: string;
+  readonly "worktree_path": string;
+}>;
+
+export type SpawnRecordTransitionFact = Readonly<{
+  readonly "from_status": "requested" | "accepted" | "running";
+  readonly "principal_id": string;
+  readonly "reason"?: string;
+  readonly "spawn_id": string;
+  readonly "to_status": "accepted" | "running" | "completed" | "failed" | "reaped";
+  readonly "transition_id": string;
+  readonly "transitioned_at": string;
+}>;
+
+export type SpawnTransitionRequest = Readonly<{
+  readonly "reason"?: string;
+  readonly "to_status": "accepted" | "running" | "completed" | "failed" | "reaped";
 }>;
 
 export type SurfaceDeclarationState = "declared_present" | "declared_absent" | "undeclared";

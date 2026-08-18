@@ -809,6 +809,12 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
+    "AC-SPWN-01": [
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
+    ],
+    "AC-SPWN-02": [
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
+    ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
       "contracts/http/openapi.yaml",
@@ -937,7 +943,8 @@
       "packages/ctower-kernel/migrations/0003_privileges.sql",
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
-      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -956,7 +963,8 @@
       "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql",
       "packages/ctower-kernel/migrations/0055_connector_framework.sql",
       "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql",
-      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql",
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -1675,7 +1683,8 @@
       "packages/ctower-kernel/migrations/0072_estate_import_authority.sql",
       "packages/ctower-kernel/migrations/0073_restore_request_proposal_constraints.sql",
       "packages/ctower-kernel/migrations/0074_restore_routine_retirement_kind.sql",
-      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql"
+      "packages/ctower-kernel/migrations/0075_ticket_display_keys.sql",
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
@@ -1770,6 +1779,9 @@
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
+    ],
+    "SPEC#spawn-custody-records": [
+      "packages/ctower-kernel/migrations/0076_spawn_records.sql"
     ],
     "SPEC#stage-contracts": [
       "contracts/domain/intake/thread-intake.schema.json"

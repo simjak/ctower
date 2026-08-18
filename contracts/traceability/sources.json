@@ -1928,6 +1928,17 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0076_spawn_records.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#spawn-custody-records",
+        "INV-02",
+        "INV-03",
+        "AC-SPWN-01",
+        "AC-SPWN-02"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "references": [
         "SPEC#aggregate-boundaries-and-relationships",

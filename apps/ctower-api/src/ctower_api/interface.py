@@ -99,6 +99,7 @@ from ctower_kernel.record import (
 )
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.runtime import RoutineRevision
+from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
 from ctower_kernel.work.request_cutover import RequestCutover
@@ -198,21 +199,19 @@ def create_app(
     oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
     telemetry: TelemetryRecorder | None = None,
     console: ConsoleRuntime | None = None,
+    spawn_records: PostgresSpawnRecords | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
     app, recorder = _app_runtime(telemetry)
     access = _build_access(
-        record,
-        recorder,
-        oidc,
+        *(record, recorder, oidc),
         migration_importer_resolver=migration_importer_resolver,
         migration_importer_credential_resolver=migration_importer_credential_resolver,
         fence_observer_resolver=fence_observer_resolver,
     )
-    route_dependencies = (app, access, record, recorder, oidc)
     _install_application_routes(
-        *route_dependencies,
+        *(app, access, record, recorder, oidc),
         proof=proof,
         workflow=workflow,
         work=work,
@@ -227,6 +226,7 @@ def create_app(
         knowledge=knowledge,
         estate_imports=estate_imports,
         catalog=catalog,
+        spawn_records=spawn_records,
     )
     _install_cutover_boundary(app, access, record, projections, migration, recorder)
     _install_synthetic_boundary(
@@ -259,6 +259,7 @@ def _install_application_routes(
     knowledge: Knowledge | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
+    spawn_records: PostgresSpawnRecords | None,
 ) -> None:
     work_module = work or Work(record, telemetry=recorder)
     _install_telemetry_health(app, recorder)
@@ -277,9 +278,7 @@ def _install_application_routes(
         catalog=catalog,
     )
     _install_optional_routes(
-        app,
-        access,
-        record,
+        *(app, access, record),
         proof=proof,
         workflow=workflow,
         projections=projections,
@@ -289,6 +288,7 @@ def _install_application_routes(
         knowledge=knowledge,
         estate_imports=estate_imports,
         catalog=catalog,
+        spawn_records=spawn_records,
         recorder=recorder,
     )
 
@@ -347,12 +347,11 @@ def _install_optional_routes(
     knowledge: Knowledge | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
+    spawn_records: PostgresSpawnRecords | None,
     recorder: TelemetryRecorder,
 ) -> None:
     install_optional_routes(
-        app,
-        access,
-        record,
+        *(app, access, record),
         proof=proof,
         workflow=workflow,
         projections=projections,
@@ -362,6 +361,7 @@ def _install_optional_routes(
         knowledge=knowledge,
         estate_imports=estate_imports,
         catalog=catalog,
+        spawn_records=spawn_records,
         recorder=recorder,
     )
 

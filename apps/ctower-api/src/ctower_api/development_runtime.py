@@ -49,6 +49,7 @@ from ctower_kernel.record import DurabilityFinalizationBatch
 from ctower_kernel.record.postgres import PostgresDurabilityFinalizer, PostgresRecord
 from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime
+from ctower_kernel.runtime.spawn_records import PostgresSpawnRecords
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.work.request_cutover import PostgresRequestCutover, RequestCutover
@@ -172,6 +173,7 @@ def api_main() -> None:
             synthetic_revision=_synthetic_revision(revisions),
             dream_dispatch_runtime=runtime_store,
             beat_dispatch_runtime=runtime_store,
+            spawn_records=PostgresSpawnRecords(runtime_dsn),
             oidc=OidcRuntimeConfig(
                 providers=_enabled_oidc_providers(config),
                 login_attempt_signing_key=_login_attempt_signing_key(config),

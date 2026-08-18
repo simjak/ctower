@@ -49,6 +49,7 @@ nav:
       - Chat: concepts/chat.md
       - Console view grants: concepts/console-viewer.md
       - Routines: concepts/routines.md
+      - Spawn custody: concepts/spawn-custody.md
       - Workflow details: concepts/workflows.md
       - Proof, evidence, and verdicts: concepts/proof.md
       - Boards and portfolio: concepts/board.md

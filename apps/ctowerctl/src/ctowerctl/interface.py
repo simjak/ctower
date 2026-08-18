@@ -40,6 +40,7 @@ from ctowerctl import (
     _request_commands,
     _ruling_commands,
     _session_commands,
+    _spawn_commands,
     _spool_commands,
     _synthetic_commands,
     _ticket_commands,
@@ -237,6 +238,7 @@ _MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "attention": _attention_commands.build_mutation,
     "request": _request_commands.build_mutation,
     "ruling": _ruling_commands.build_mutation,
+    "spawn": _spawn_commands.build_mutation,
     "dream-dispatch": _dream_dispatch_commands.build_mutation,
 }
 
@@ -298,6 +300,7 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         "beat-dispatch",
         "request",
         "ruling",
+        "spawn",
     }:
         return _execute_agent_query(namespace, client)
     handlers: dict[str, Callable[[argparse.Namespace, CtowerClient], BaseModel]] = {
@@ -312,22 +315,18 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
 
 
 def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
-    if arguments.area == "ticket":
-        return _ticket_commands.execute_query(arguments, client)
-    if arguments.area == "knowledge":
-        return _knowledge_commands.execute_query(arguments, client)
-    if arguments.area in {"dream-dispatch", "beat-dispatch"}:
-        handler = (
-            _dream_dispatch_commands.execute_query
-            if arguments.area == "dream-dispatch"
-            else _beat_dispatch_commands.execute_query
-        )
-        return handler(arguments, client)
-    if arguments.area == "request":
-        return _request_commands.execute_query(arguments, client)
-    if arguments.area == "ruling":
-        return _ruling_commands.execute_query(arguments, client)
-    return _inbox_commands.execute_query(arguments, client)
+    handlers: dict[str, Callable[[argparse.Namespace, CtowerClient], BaseModel]] = {
+        "ticket": _ticket_commands.execute_query,
+        "knowledge": _knowledge_commands.execute_query,
+        "dream-dispatch": _dream_dispatch_commands.execute_query,
+        "beat-dispatch": _beat_dispatch_commands.execute_query,
+        "request": _request_commands.execute_query,
+        "ruling": _ruling_commands.execute_query,
+        "spawn": _spawn_commands.execute_query,
+        "inbox": _inbox_commands.execute_query,
+    }
+    handler = handlers.get(arguments.area, _inbox_commands.execute_query)
+    return handler(arguments, client)
 
 
 def _execute_project_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:

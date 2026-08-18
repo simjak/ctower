@@ -4070,6 +4070,30 @@
       "reason": "expected-suite registry defers this suite to phase CT-I1-033; not required and not counted as passing"
     },
     {
+      "suite_id": "spawn-record-acceptance",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-034; not required and not counted as passing"
+    },
+    {
+      "suite_id": "spawn-record-contracts",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-034; not required and not counted as passing"
+    },
+    {
+      "suite_id": "spawn-record-modules",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-034; not required and not counted as passing"
+    },
+    {
+      "suite_id": "spawn-product-surfaces",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-034; not required and not counted as passing"
+    },
+    {
       "suite_id": "browser-e2e",
       "status": "not_exercised",
       "source_count": 0,

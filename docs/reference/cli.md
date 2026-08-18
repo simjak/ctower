@@ -150,6 +150,20 @@ inherits the predecessor's link. A later marker is a new answerable occurrence. 
 accepted-only online reads. See
 [Rulings and the Agreements ledger](../concepts/rulings.md).
 
+## Spawn custody
+
+| Command | Positional | Flags |
+|---|---|---|
+| `spawn record` | — | required: `--project-key`, `--seat-key`, `--crew-name`, `--task-file-ref`, `--worktree-path`, `--harness`, `--model`; optional: `--effort`, `--workspace-id`, `--command-id` |
+| `spawn transition` | `<spawn_id>` | required: `--to-status {accepted,running,completed,failed,reaped}`; optional: `--reason`, `--command-id` |
+| `spawn list` | — | required: `--project-key`; optional: `--status`, `--limit`, `--offset` |
+| `spawn show` | `<spawn_id>` | — |
+
+`spawn record` and `spawn transition` are protected encrypted-spool mutations. The driver must record the
+pre-dispatch fact before creating a host session; lifecycle changes are appended POST transition facts, never
+updates. `spawn list` and `spawn show` are online-only project-scoped reads. A missing workspace is represented
+by an omitted `--workspace-id` until first-class workspace custody exists.
+
 ## Morning digest
 
 | Command | Positional | Flags |

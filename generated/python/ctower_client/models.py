@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:4208ed95a16a9bcec349edcf1c8d002f135665367ad1de4131be5b93c46de71e
+Authored contract digest: sha256:815ad1d7312dfc1b5e061000c3106a840574cc62c16bf2b0f03227dda3d98292
 """
 
 from __future__ import annotations
@@ -290,6 +290,12 @@ __all__ = [
     "SessionTransitionedAuditEvent",
     "SessionTransitionedPayload",
     "SourceReference",
+    "SpawnRecord",
+    "SpawnRecordCreateRequest",
+    "SpawnRecordListResult",
+    "SpawnRecordResult",
+    "SpawnRecordTransitionFact",
+    "SpawnTransitionRequest",
     "SurfaceDeclarationState",
     "SurfaceEnvironmentsField",
     "SurfaceIdentityField",
@@ -1752,6 +1758,33 @@ class SourceReference(_BoundaryModel):
     ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
+class SpawnRecordCreateRequest(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    crew_name: Annotated[str, Field(min_length=1, max_length=255)]
+    task_file_ref: Annotated[str, Field(min_length=1, max_length=1024)]
+    worktree_path: Annotated[str, Field(min_length=1, max_length=1024)]
+    harness: Annotated[str, Field(min_length=1, max_length=64)]
+    model: Annotated[str, Field(min_length=1, max_length=128)]
+    effort: Annotated[str, Field(min_length=1, max_length=64)] | None = None
+    workspace_id: UUID | None = None
+
+
+class SpawnRecordTransitionFact(_BoundaryModel):
+    transition_id: UUID
+    spawn_id: UUID
+    from_status: Literal["requested", "accepted", "running"]
+    to_status: Literal["accepted", "running", "completed", "failed", "reaped"]
+    reason: Annotated[str, Field(min_length=1, max_length=4096)] | None = None
+    principal_id: UUID
+    transitioned_at: _Rfc3339DateTime
+
+
+class SpawnTransitionRequest(_BoundaryModel):
+    to_status: Literal["accepted", "running", "completed", "failed", "reaped"]
+    reason: Annotated[str, Field(min_length=1, max_length=4096)] | None = None
+
+
 class SurfaceDeclarationState(StrEnum):
     DECLARED_PRESENT = "declared_present"
     DECLARED_ABSENT = "declared_absent"
@@ -2579,6 +2612,8 @@ class Problem(_BoundaryModel):
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
+        "invalid-status",
+        "invalid-transition",
         "invalid-ruling",
         "inbox-already-promoted",
         "inbox-acknowledgement-not-advancing",
@@ -2683,7 +2718,10 @@ class Problem(_BoundaryModel):
         "session-ineligible",
         "session-not-found",
         "session-transition-invalid",
+        "spawn-not-found",
+        "tenant-not-found",
         "tenant-scope-denied",
+        "transition-conflict",
         "ticket-comment-ineligible",
         "ticket-comment-invalid",
         "unauthorized",
@@ -2986,6 +3024,44 @@ class SessionTransitionedPayload(_BoundaryModel):
     ticket_id: UUID
     to_state: SessionState
     transition_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
+class SpawnRecord(_BoundaryModel):
+    spawn_id: UUID
+    project_key: str
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    crew_name: str
+    task_file_ref: str
+    worktree_path: str
+    harness: str
+    model: str
+    effort: str | None = None
+    workspace_id: UUID | None = None
+    status: Literal["requested", "accepted", "running", "completed", "failed", "reaped"]
+    principal_id: UUID
+    created_at: _Rfc3339DateTime
+    updated_at: _Rfc3339DateTime
+    transitions: tuple[SpawnRecordTransitionFact, ...]
+
+
+class SpawnRecordResult(_BoundaryModel):
+    spawn_id: UUID
+    project_key: str
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    crew_name: str
+    task_file_ref: str
+    worktree_path: str
+    harness: str
+    model: str
+    effort: str | None = None
+    workspace_id: UUID | None = None
+    status: Literal["requested", "accepted", "running", "completed", "failed", "reaped"]
+    principal_id: UUID
+    created_at: _Rfc3339DateTime
+    updated_at: _Rfc3339DateTime
+    transitions: tuple[SpawnRecordTransitionFact, ...]
+    durability_state: DurabilityState
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
 
 
 class SurfaceEnvironmentsField(_BoundaryModel):
@@ -3444,6 +3520,10 @@ class SessionTransitionedAuditEvent(_BoundaryModel):
     record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
     sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^session:[0-9a-f-]{36}$")]
+
+
+class SpawnRecordListResult(_BoundaryModel):
+    records: tuple[SpawnRecord, ...]
 
 
 class TicketCommandResult(_BoundaryModel):

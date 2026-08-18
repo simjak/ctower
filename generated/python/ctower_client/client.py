@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:4208ed95a16a9bcec349edcf1c8d002f135665367ad1de4131be5b93c46de71e
+Authored contract digest: sha256:815ad1d7312dfc1b5e061000c3106a840574cc62c16bf2b0f03227dda3d98292
 """
 
 from __future__ import annotations
@@ -126,6 +126,11 @@ from ctower_client.models import (
     SessionFactRequest,
     SessionReceipt,
     SessionStartRequest,
+    SpawnRecord,
+    SpawnRecordCreateRequest,
+    SpawnRecordListResult,
+    SpawnRecordResult,
+    SpawnTransitionRequest,
     SyntheticRunReceipt,
     SyntheticRunRequest,
     SyntheticRunResource,
@@ -386,6 +391,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: RulingAppendResult, 202: RulingAppendResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem, 503: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def append_spawn_transition(
+        self,
+        spawn_id: UUID,
+        request: SpawnTransitionRequest,
+        *,
+        command_id: UUID,
+    ) -> SpawnRecordResult:
+        response = self._http.post(
+            f"/v1/spawn-records/{quote(str(spawn_id), safe='')}/transitions",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: SpawnRecordResult, 202: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_company_bundle(
@@ -756,6 +783,27 @@ class CtowerClient:
         return _response(response, {201: CtowerProjectImportRun, 202: CtowerProjectImportRun}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def create_spawn_record(
+        self,
+        request: SpawnRecordCreateRequest,
+        *,
+        command_id: UUID,
+    ) -> SpawnRecordResult:
+        response = self._http.post(
+            "/v1/spawn-records",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: SpawnRecordResult, 202: SpawnRecordResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ticket(
         self,
         request: TicketCreateRequest,
@@ -1011,6 +1059,22 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: RulingRow}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_spawn_record(
+        self,
+        spawn_id: UUID,
+    ) -> SpawnRecord:
+        response = self._http.get(
+            f"/v1/spawn-records/{quote(str(spawn_id), safe='')}",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: SpawnRecord}, {401: Problem, 403: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(
@@ -1401,6 +1465,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: RulingList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_spawn_records(
+        self,
+        *,
+        project_key: str,
+        status: str | None = None,
+        limit: Annotated[int, Field(ge=1, le=1000)] | None = None,
+        offset: Annotated[int, Field(ge=0)] | None = None,
+    ) -> SpawnRecordListResult:
+        response = self._http.get(
+            "/v1/spawn-records",
+            params={"project_key": project_key, **({"status": status} if status is not None else {}), **({"limit": limit} if limit is not None else {}), **({"offset": offset} if offset is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: SpawnRecordListResult}, {401: Problem, 403: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
