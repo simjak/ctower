@@ -461,8 +461,15 @@ Routine revisions. Each revision pins its operator-authorized timezone and minut
 canonical prompt and its digest at registration. Digest and sprint use literal Europe/Vilnius hours so DST
 offset changes preserve the operator's civil-time intent. A corrected immutable digest replaces only the
 tenant's active trigger; prior revisions, occurrences, and effects remain historical facts.
-queued occurrences transactionally emit that same prompt for the fixed DIRECTOR target. Operator-only
+Queued occurrences transactionally emit that same prompt for the fixed DIRECTOR target. Operator-only
 reads list the five registered revisions, their next fires, and emitted effects.
+
+The protected operator/Commander retire verb appends one tenant-scoped immutable fact and event, removes
+only the active trigger at the serialized scheduling boundary, and makes subsequent registration a no-op
+for that reference. Unknown and foreign targets share one typed refusal. API and worker boot continue to
+verify the exact authored pack set, permitting one pack to be absent only when every current tenant has an
+authoritative retirement for it. The sibling consumer's hard-coded retired-beat stopgap migrates to the
+Tower-owned active-routine set in its separately owned R2916 lane after live Tower proof.
 
 A sibling Mission Control consumer polls at one-minute cadence, claims each occurrence in an append-only
 ledger before injection, records one delivered result, and marks a later replay with zero reinjections. It
@@ -471,8 +478,10 @@ claim until a separate authenticated beat-lane ceremony is approved. The directo
 crontab entries only after the live health round trip is confirmed.
 
 **Exit:** AC-OPS-13 and the CT-I1-019 contract, schedule, PostgreSQL, API/CLI, and consumer suites pass; the
-shadow serve lists exactly five active beat revisions after corrected-revision registration; one health occurrence carries the exact full
-prompt through the consumer into DIRECTOR; a replay records zero injection; the retired-cron proof, timezone
+shadow serve lists exactly five active beat revisions after corrected-revision registration; live retirement
+produces no later occurrence; the same serve reboots with the retired pack absent; unknown and foreign
+retirement targets return the same typed refusal; one health occurrence carries the exact full prompt
+through the consumer into DIRECTOR; a replay records zero injection; the retired-cron proof, timezone
 schedule proof, fallback recommendation, same-candidate docs, full release gate, and Director receipt
 confirmation are recorded.
 
