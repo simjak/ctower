@@ -11,6 +11,7 @@ ideas explain how ctower keeps work and proof together.
 
 | You want to understand | Read |
 |---|---|
+| Every component, with examples from software and accounting | [Components](components.md) |
 | The permanent record for one promised result | [Tickets](tickets.md) |
 | Captured operator intent and outcome accountability | [Requests](requests.md) |
 | Safe review of suggested Request maintenance | [Request-maintenance proposals](request-maintenance-proposals.md) |
