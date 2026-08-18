@@ -348,6 +348,8 @@ class _RoutineStore(Protocol):
 
     def tenant_ids(self) -> tuple[UUID, ...]: ...
 
+    def fully_retired_routine_refs(self) -> tuple[str, ...]: ...
+
 
 class _FixedOperationStore(Protocol):
     def start_synthetic(
@@ -420,6 +422,9 @@ class Routine:
 
     def tenant_ids(self) -> tuple[UUID, ...]:
         return self._store.tenant_ids()
+
+    def fully_retired_routine_refs(self) -> tuple[str, ...]:
+        return self._store.fully_retired_routine_refs()
 
 
 @dataclass(frozen=True, slots=True)
