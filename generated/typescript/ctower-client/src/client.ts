@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
+// Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -360,6 +360,12 @@ export type ListTicketAuditEventsInput = Readonly<{
   readonly "limit"?: number;
 }>;
 
+export type ListTicketMovementInput = Readonly<{
+  readonly "projectKey": string;
+  readonly "cursor"?: number;
+  readonly "limit"?: number;
+}>;
+
 export type ListTicketSessionsInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
@@ -603,6 +609,7 @@ export type OperationInputs = Readonly<{
   readonly "listSpawnRecords": ListSpawnRecordsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
+  readonly "listTicketMovement": ListTicketMovementInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
@@ -705,6 +712,7 @@ export type OperationResults = Readonly<{
   readonly "listSpawnRecords": Models.SpawnRecordListResult;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
+  readonly "listTicketMovement": Models.MovementEventPage;
   readonly "listTicketSessions": Models.TicketSessionList;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
@@ -1158,6 +1166,12 @@ export class CtowerClient {
     input: ListTicketAuditEventsInput,
   ): Promise<Models.AuditPage> {
     return this.execute("listTicketAuditEvents", input);
+  }
+
+  public async listTicketMovement(
+    input: ListTicketMovementInput,
+  ): Promise<Models.MovementEventPage> {
+    return this.execute("listTicketMovement", input);
   }
 
   public async listTicketSessions(

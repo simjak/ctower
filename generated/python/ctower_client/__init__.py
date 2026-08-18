@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
+Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -191,6 +191,10 @@ from ctower_client.models import (
     MorningDigestRuling,
     MorningDigestRulingSection,
     MorningDigestTicketLink,
+    MovementDigestCount,
+    MovementDigestSummary,
+    MovementEvent,
+    MovementEventPage,
     MutableAssignmentKind,
     PoisonDispositionAction,
     PoisonDispositionReceipt,
@@ -537,6 +541,10 @@ __all__ = [
     "MorningDigestRuling",
     "MorningDigestRulingSection",
     "MorningDigestTicketLink",
+    "MovementDigestCount",
+    "MovementDigestSummary",
+    "MovementEvent",
+    "MovementEventPage",
     "MutableAssignmentKind",
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",

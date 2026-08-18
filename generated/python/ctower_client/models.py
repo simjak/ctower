@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
+Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
 """
 
 from __future__ import annotations
@@ -201,6 +201,10 @@ __all__ = [
     "MorningDigestRuling",
     "MorningDigestRulingSection",
     "MorningDigestTicketLink",
+    "MovementDigestCount",
+    "MovementDigestSummary",
+    "MovementEvent",
+    "MovementEventPage",
     "MutableAssignmentKind",
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",
@@ -1487,9 +1491,28 @@ class MorningDigestExecution(_BoundaryModel):
 
 
 class MorningDigestTicketLink(_BoundaryModel):
-    href: Annotated[str, Field(pattern="^/v1/tickets/[0-9a-f-]{36}/timeline$")]
+    href: Annotated[str, Field(pattern="^/v1/tickets/[0-9a-f-]{36}/timeline\\?project_key=[a-z][a-z0-9-]{2,63}$")]
     purpose: Literal["required", "optional"]
     ticket_id: UUID
+
+
+class MovementDigestCount(_BoundaryModel):
+    count: Annotated[int, Field(ge=1, le=9007199254740991)]
+    from_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    to_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+
+
+class MovementEvent(_BoundaryModel):
+    evaluation_ref: Annotated[str, Field(pattern="^$|^[0-9a-f-]{36}$")]
+    event_id: UUID
+    from_stage: Annotated[str, Field(pattern="^$|^[a-z][a-z0-9._-]*$")]
+    occurred_at: _Rfc3339DateTime | None = None
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    ticket_id: UUID
+    to_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    workflow_version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class MutableAssignmentKind(StrEnum):
@@ -1928,8 +1951,10 @@ class VerdictDecision(StrEnum):
 
 
 class WorkflowChangedAuditPayload(_BoundaryModel):
+    evaluation_ref: Annotated[str, Field(pattern="^$|^[0-9a-f-]{36}$")]
     lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
     operation: Literal["start", "transition", "resolve_close"]
+    source_stage: Annotated[str, Field(pattern="^$|^[a-z][a-z0-9._-]*$")]
     stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     ticket_id: UUID
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
@@ -2549,6 +2574,20 @@ class MorningDigestRuling(_BoundaryModel):
     state: DigestReadingState
     unknown_reason: Annotated[str, Field(max_length=128)] | None
     verbatim: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
+class MovementDigestSummary(_BoundaryModel):
+    counts: tuple[MovementDigestCount, ...]
+    pointer: Literal["/v1/projects/{project_key}/movement"]
+    source_state: Literal["complete", "partial", "unavailable"]
+    unreached_scopes: tuple[str, ...]
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+
+
+class MovementEventPage(_BoundaryModel):
+    events: tuple[MovementEvent, ...]
+    next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
 class PoisonDispositionReceipt(_BoundaryModel):
@@ -3847,6 +3886,8 @@ class MorningDigest(_BoundaryModel):
     artifact_sha256: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     digest_date: str
     observed_at: _Rfc3339DateTime
+    movement: MovementDigestSummary
+    movement_watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
     open_decisions: MorningDigestDecisionSection
     proof: MorningDigestProofSection
     request_maintenance: RequestMaintenanceProposalSummary

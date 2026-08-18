@@ -118,6 +118,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "getControlHealth": ("control health", False, "forbidden", None, False),
     "getKnowledgeDocument": ("knowledge get", False, "forbidden", None, False),
     "getMorningDigest": ("digest morning", False, "forbidden", None, False),
+    "getMovementAtom": (None, False, "forbidden", "authenticated", False),
     "getCtowerProjectCutoverHealth": (
         "migration ctower-project verify",
         False,
@@ -161,6 +162,13 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "listTicketAuditEvents": ("ticket audit", False, "forbidden", None, False),
     "listProjectEvents": (
         "project events",
+        False,
+        "forbidden",
+        "authenticated",
+        False,
+    ),
+    "listTicketMovement": (
+        "project movement",
         False,
         "forbidden",
         "authenticated",

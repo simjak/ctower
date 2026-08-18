@@ -7,9 +7,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from pydantic import TypeAdapter
-
-from ctower_client.client import ProjectKey
 from ctower_client.models import (
     BoardLane,
     IntakeIntent,
@@ -42,6 +39,8 @@ from ctowerctl._parser_support import (
     AUTHORED_COMMAND_NAMES,
     _command_id,
     _Parser,
+    _project_cursor_parser,
+    _project_key,
     _review_dispatch,
     _session_id,
     _ticket_id,
@@ -59,7 +58,6 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
-_PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
 
 
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -623,7 +621,7 @@ def _session_parser(parser: argparse.ArgumentParser) -> None:
 
     project = actions.add_parser("project")
     project.set_defaults(cli_name="session project")
-    project.add_argument("project_key", type=_PROJECT_KEY.validate_python)
+    project.add_argument("project_key", type=_project_key)
     project.add_argument("--cursor", type=_nonnegative_int)
     project.add_argument("--limit", type=_positive_int)
 
@@ -635,14 +633,11 @@ def _project_parser(parser: argparse.ArgumentParser) -> None:
     )
     query = actions.add_parser("query")
     query.set_defaults(cli_name="project delivery query")
-    query.add_argument("project_key", type=_PROJECT_KEY.validate_python)
+    query.add_argument("project_key", type=_project_key)
     query.add_argument("--output", choices=("text", "json"), default="text")
 
-    events = subjects.add_parser("events")
-    events.set_defaults(cli_name="project events")
-    events.add_argument("project_key", type=_PROJECT_KEY.validate_python)
-    events.add_argument("--cursor", type=_nonnegative_int)
-    events.add_argument("--limit", type=_positive_int)
+    _project_cursor_parser(subjects.add_parser("events"), "project events")
+    _project_cursor_parser(subjects.add_parser("movement"), "project movement")
 
 
 def _spool_parser(parser: argparse.ArgumentParser) -> None:

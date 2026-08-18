@@ -88,6 +88,7 @@ from ctower_kernel.record.ticket_events import (
     ticket_payload_from_mapping as _ticket_payload_from_mapping,
 )
 from ctower_kernel.record.work_events import WorkChangedPayload
+from ctower_kernel.record.workflow_validation import validate_workflow_provenance
 
 __all__ = [
     "BootstrapCreatedPayload",
@@ -169,6 +170,8 @@ class WorkflowChangedPayload:
     workflow_version: int
     stage: str
     lifecycle_facts: tuple[str, ...]
+    source_stage: str = ""
+    evaluation_ref: str = ""
 
     def __post_init__(self) -> None:
         _require_uuid_fields(self, ("ticket_id",))
@@ -180,13 +183,16 @@ class WorkflowChangedPayload:
             raise ValueError("workflow reference must be versioned")
         if _STABLE_KEY.fullmatch(self.stage) is None:
             raise ValueError("workflow stage must be stable")
+        validate_workflow_provenance(self.operation, self.source_stage, self.evaluation_ref)
         if self.lifecycle_facts not in {(), ("resolved", "closed")}:
             raise ValueError("workflow lifecycle facts must preserve terminal order")
 
     def to_mapping(self) -> dict[str, object]:
         return {
+            "evaluation_ref": self.evaluation_ref,
             "lifecycle_facts": list(self.lifecycle_facts),
             "operation": self.operation,
+            "source_stage": self.source_stage,
             "stage": self.stage,
             "ticket_id": str(self.ticket_id),
             "workflow_ref": self.workflow_ref,

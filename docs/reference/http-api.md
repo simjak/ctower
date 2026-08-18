@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **105 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **107 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -179,11 +179,14 @@ Projects plus the Record watermark; pending facts are absent.
 | `GET` | `/v1/digests/morning` | `getMorningDigest` | `digest morning` | query | forbidden | `200`, `401`, `403`, `422` |
 
 The optional `date` query is an ISO calendar date. Omission selects the current Europe/Vilnius date. The
-operator-only result has one artifact key and content digest, Request and Ruling watermarks, and the ordered
-open-decision, prior-day-Ruling, Ticket-proof, and Request-maintenance summary sections. The proposal
+The operator-only result has one artifact key and content digest, Request and Ruling
+watermarks, and the ordered open-decision, prior-day-Ruling, Ticket-proof, and Request-maintenance summary sections. The proposal
 summary exposes counts, pointer, source state, and watermark only. Each section distinguishes a measured zero from
 an unknown total and names every unreached scope. The read stores nothing and does not deliver or schedule a
-notification. See the [morning digest concept](../concepts/morning-digest.md).
+notification. The movement summary adds prior-Europe/Vilnius-civil-day
+counts by Project and exact from/to stage plus its movement-view pointer and
+source watermark; it contains no movement row or Ticket text. See the
+[morning digest concept](../concepts/morning-digest.md).
 
 ### Console viewer
 
@@ -339,6 +342,8 @@ optional `workspace_id` remains null until first-class workspace custody exists.
 | `POST` | `/v1/tickets/{ticket_id}/sessions/{session_id}/facts` | `recordTicketSessionFact` | `session transition`<br>`session close` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/projects/{project_key}/sessions` | `listProjectSessions` | `session project` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `GET` | `/v1/projects/{project_key}/events` | `listProjectEvents` | `project events` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `GET` | `/v1/projects/{project_key}/movement` | `listTicketMovement` | `project movement` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
+| `GET` | `/v1/projects/{project_key}/movement.atom` | `getMovementAtom` | — | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 
 ### Projections and health
 

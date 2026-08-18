@@ -187,6 +187,11 @@ def _discover_record_inventory() -> tuple[_InventoryRow, ...]:
             interface,
             scope_names={"project_key", "project_keys", "ticket_id"},
             scoped_returns=set(),
+            bases=analyzer.imported_protocols(
+                interface,
+                module_prefix="ctower_kernel.record.",
+                module_root=_RECORD_ROOT,
+            ),
         )
     )
     postgres = ast.parse(_POSTGRES.read_text(encoding="utf-8"), filename=str(_POSTGRES))
@@ -195,10 +200,14 @@ def _discover_record_inventory() -> tuple[_InventoryRow, ...]:
         module_prefix="ctower_kernel.record._",
         module_root=_RECORD_ROOT,
     )
+    stores = _store_adapters(interface, postgres, aliases)
     adapter_methods = tuple(
         (method, implementation, target)
         for owner, method in public_reads
-        for implementation, target in analyzer.adapter_targets(postgres, method, aliases)
+        for implementation, target in (
+            *analyzer.adapter_targets(postgres, method, aliases),
+            *_store_adapter_targets(stores.get(owner), method),
+        )
     )
     rows: list[_InventoryRow] = []
     for owner, method in public_reads:
@@ -209,23 +218,134 @@ def _discover_record_inventory() -> tuple[_InventoryRow, ...]:
         ]
         if not matches:
             raise AssertionError(f"no Postgres Record adapter found for {owner}.{method}")
-        for implementation, target in matches:
-            source_path, function_name = target
-            source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
-            function = analyzer.single_function(source, function_name)
-            rows.append(
-                _InventoryRow(
-                    public_owner=owner,
-                    public_method=method,
-                    implementation=implementation,
-                    source_path=source_path,
-                    function_name=function_name,
-                    predicate_line=analyzer.first_call_line(function, "project_scope_refusal"),
-                    materialization_line=analyzer.first_materialization_execute_line(function),
-                    scope_gate=analyzer.empty_scope_refusals_are_operator_only(function),
-                )
-            )
+        rows.extend(
+            _record_read_row(owner, method, implementation, target)
+            for implementation, target in matches
+        )
     return tuple(rows)
+
+
+def _record_read_row(
+    owner: str,
+    method: str,
+    implementation: str,
+    target: tuple[Path, str],
+) -> _InventoryRow:
+    source_path, function_name = target
+    source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    function = analyzer.single_function(source, function_name)
+    return _InventoryRow(
+        public_owner=owner,
+        public_method=method,
+        implementation=implementation,
+        source_path=source_path,
+        function_name=function_name,
+        predicate_line=analyzer.first_call_line(function, "project_scope_refusal"),
+        materialization_line=analyzer.first_materialization_execute_line(function),
+        scope_gate=analyzer.empty_scope_refusals_are_operator_only(function),
+    )
+
+
+def _store_adapters(
+    interface: ast.Module,
+    postgres: ast.Module,
+    aliases: analyzer.AdapterAliases,
+) -> dict[str, tuple[Path, str]]:
+    """Map each Record store Protocol to the module holding its Postgres adapter.
+
+    A store adapter that stays inside ``postgres.py`` is already reachable by walking
+    that module, so only the ones split into their own module are mapped here.
+    """
+
+    constructed = _constructed_stores(postgres)
+    return {
+        protocol: aliases[constructed[attribute]]
+        for protocol, attribute in _store_properties(interface).items()
+        if attribute in constructed and constructed[attribute] in aliases
+    }
+
+
+def _store_properties(interface: ast.Module) -> dict[str, str]:
+    """Map each store Protocol named by a Record property to that property."""
+
+    record = next(
+        (
+            node
+            for node in interface.body
+            if isinstance(node, ast.ClassDef) and node.name == "Record"
+        ),
+        None,
+    )
+    if record is None:
+        return {}
+    return {
+        method.returns.id: method.name
+        for method in record.body
+        if isinstance(method, ast.FunctionDef)
+        and isinstance(method.returns, ast.Name)
+        and _is_property(method)
+    }
+
+
+def _is_property(method: ast.FunctionDef) -> bool:
+    return any(
+        isinstance(decorator, ast.Name) and decorator.id == "property"
+        for decorator in method.decorator_list
+    )
+
+
+def _constructed_stores(postgres: ast.Module) -> dict[str, str]:
+    """Map each PostgresRecord attribute to the adapter class its initializer builds."""
+
+    record = next(
+        (
+            node
+            for node in postgres.body
+            if isinstance(node, ast.ClassDef) and node.name == "PostgresRecord"
+        ),
+        None,
+    )
+    if record is None:
+        return {}
+    stores: dict[str, str] = {}
+    for assignment in ast.walk(record):
+        constructed = _constructed_store(assignment)
+        if constructed is not None:
+            stores[constructed[0]] = constructed[1]
+    return stores
+
+
+def _constructed_store(assignment: ast.AST) -> tuple[str, str] | None:
+    if not isinstance(assignment, ast.Assign) or not isinstance(assignment.value, ast.Call):
+        return None
+    if not isinstance(assignment.value.func, ast.Name) or len(assignment.targets) != 1:
+        return None
+    target = assignment.targets[0]
+    if not isinstance(target, ast.Attribute) or not isinstance(target.value, ast.Name):
+        return None
+    if target.value.id != "self":
+        return None
+    return target.attr, assignment.value.func.id
+
+
+def _store_adapter_targets(
+    store: tuple[Path, str] | None, method_name: str
+) -> list[tuple[str, tuple[Path, str]]]:
+    """Follow a split-out store adapter to the SQL module that materializes its read."""
+
+    if store is None:
+        return []
+    source_path, _implementation = store
+    source = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    return analyzer.adapter_targets(
+        source,
+        method_name,
+        analyzer.postgres_sql_aliases(
+            source,
+            module_prefix="ctower_kernel.record._",
+            module_root=_RECORD_ROOT,
+        ),
+    )
 
 
 def _discover_projection_inventory(

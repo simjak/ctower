@@ -21,9 +21,9 @@ from ._generated_client_runtime import (
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
-AUTHORED_INTEGER_OCCURRENCES = 229
-AUTHORED_OPERATION_COUNT = 99
-RESPONSE_INTEGER_NODES = 170
+AUTHORED_INTEGER_OCCURRENCES = 232
+AUTHORED_OPERATION_COUNT = 100
+RESPONSE_INTEGER_NODES = 173
 PROFILE_KEYS = (
     "x-ctower-rfc3339-profile",
     "x-ctower-json-integer-profile",

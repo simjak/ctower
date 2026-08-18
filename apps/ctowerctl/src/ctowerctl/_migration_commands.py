@@ -177,6 +177,12 @@ def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseMo
             cursor=cast(int | None, arguments.cursor),
             limit=cast(int | None, arguments.limit),
         )
+    if cli_name == "project movement":
+        return client.list_ticket_movement(
+            cast(str, arguments.project_key),
+            cursor=cast(int | None, arguments.cursor),
+            limit=cast(int | None, arguments.limit),
+        )
     raise ValueError("usage: unsupported ctower-project query")
 
 
@@ -273,5 +279,6 @@ def query_command_names() -> frozenset[str]:
             "migration ctower-project run get",
             "project delivery query",
             "project events",
+            "project movement",
         }
     )
