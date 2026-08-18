@@ -24,6 +24,7 @@ from ctower_kernel.projections.project_delivery import (
     SeatIdentity,
 )
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record.transaction import project_scope_refusal
 
 __all__: tuple[str, ...] = ()
 
@@ -163,7 +164,7 @@ def project_delivery(
     dsn: str,
     actor: Actor,
     project_key: str,
-) -> ProjectDeliveryView | None:
+) -> ProjectDeliveryView | RecordProblem | None:
     """Return stored rows for exactly one tenant/project without catch-up."""
 
     if actor.kind is not PrincipalKind.OPERATOR and project_key not in actor.project_grants:
@@ -178,6 +179,15 @@ def project_delivery(
         )
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(project_key,),
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
         rows = connection.execute(
             """
             SELECT row.row_payload, definition.company_key,

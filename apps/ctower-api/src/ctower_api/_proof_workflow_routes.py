@@ -23,6 +23,9 @@ from ctower_api._http_support import (
     telemetry_context as _telemetry,
 )
 from ctower_api._http_support import (
+    ticket_uuid as _ticket_uuid,
+)
+from ctower_api._http_support import (
     uuid_value as _uuid,
 )
 from ctower_api._http_support import (
@@ -85,12 +88,13 @@ def install_proof_workflow_routes(
     _install_verdict_route(app, access, record, proof, recorder)
     _install_transition_route(app, access, record, workflow, recorder)
     _install_close_route(app, access, record, workflow, recorder)
-    _install_review_dispatch_list(app, access, workflow, recorder)
+    _install_review_dispatch_list(app, access, record, workflow, recorder)
 
 
 def _install_review_dispatch_list(
     app: FastAPI,
     access: Access,
+    record: Record,
     workflow: Workflow,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -105,9 +109,12 @@ def _install_review_dispatch_list(
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
-            ticket = _uuid(ticket_id)
+            context = _telemetry(request)
         except ValueError:
             return _problem_response(_validation_problem())
+        ticket = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+        if isinstance(ticket, RecordProblem):
+            return _problem_response(ticket)
         outcome = workflow.review_dispatches(
             WorkflowActor(actor.principal_id, actor.tenant_id), ticket
         )
@@ -131,6 +138,7 @@ def _install_freeze_route(
     async def freeze_criteria(ticket_id: str, request: Request) -> JSONResponse:
         parsed = await _parse(
             access,
+            record,
             recorder,
             request,
             ticket_id,
@@ -169,6 +177,7 @@ def _install_evidence_route(
     async def record_evidence(ticket_id: str, request: Request) -> JSONResponse:
         parsed = await _parse(
             access,
+            record,
             recorder,
             request,
             ticket_id,
@@ -205,6 +214,7 @@ def _install_verdict_route(
     async def record_verdict(ticket_id: str, request: Request) -> JSONResponse:
         parsed = await _parse(
             access,
+            record,
             recorder,
             request,
             ticket_id,
@@ -244,6 +254,7 @@ def _install_transition_route(
     async def transition(ticket_id: str, request: Request) -> JSONResponse:
         parsed = await _parse(
             access,
+            record,
             recorder,
             request,
             ticket_id,
@@ -284,6 +295,7 @@ def _install_close_route(
     async def resolve_close(ticket_id: str, request: Request) -> JSONResponse:
         parsed = await _parse(
             access,
+            record,
             recorder,
             request,
             ticket_id,
@@ -308,6 +320,7 @@ def _install_close_route(
 
 async def _parse[Payload: BaseModel](
     access: Access,
+    record: Record,
     recorder: TelemetryRecorder,
     request: Request,
     ticket_id: str,
@@ -324,17 +337,20 @@ async def _parse[Payload: BaseModel](
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
-        ticket = _uuid(ticket_id)
         command_id = _uuid(request.headers.get("Idempotency-Key"))
         payload = model.model_validate_json(await request.body())
-        telemetry = _telemetry(request).bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            command_id=str(command_id),
-            ticket_id=str(ticket),
-        )
+        context = _telemetry(request)
     except (ValidationError, ValueError):
         return _problem_response(_validation_problem())
+    ticket = _ticket_uuid(record, actor, ticket_id, telemetry=context)
+    if isinstance(ticket, RecordProblem):
+        return _problem_response(ticket)
+    telemetry = context.bind(
+        tenant_id=str(actor.tenant_id),
+        actor_id=str(actor.principal_id),
+        command_id=str(command_id),
+        ticket_id=str(ticket),
+    )
     recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
     return actor, ticket, command_id, payload, telemetry
 

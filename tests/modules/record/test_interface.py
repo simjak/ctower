@@ -28,6 +28,7 @@ from ctower_kernel.record.events import (
     TicketCommentAddedPayload,
     TicketCreatedPayload,
     WorkChangedPayload,
+    WorkflowChangedPayload,
     canonical_event_bytes,
     event_digest,
     ticket_payload_from_mapping,
@@ -249,6 +250,24 @@ def test_timeline_event_keeps_typed_kind_matched_payload() -> None:
     )
     assert isinstance(derived, TicketCreatedPayload)
     assert derived.project_key == "manibo"
+    workflow = WorkflowChangedPayload(
+        operation="transition",
+        ticket_id=uuid4(),
+        workflow_ref="ctower.trust-spine-four-stage@1",
+        workflow_version=2,
+        stage="frame",
+        lifecycle_facts=(),
+    )
+    workflow_event = TimelineEvent(
+        actor_principal_id=uuid4(),
+        command_id=uuid4(),
+        event_id=uuid4(),
+        kind=EventKind.WORKFLOW_CHANGED,
+        occurred_at=datetime.now(UTC),
+        payload=workflow,
+        sequence=2,
+    )
+    assert workflow_event.response_payload()["payload"] == workflow.to_mapping()
     with pytest.raises(ValueError, match="fields"):
         ticket_payload_from_mapping(
             EventKind.TICKET_CREATED, {**payload.to_mapping(), "extra": "rejected"}

@@ -327,9 +327,27 @@
         "assignments": {
           "items": {
             "additionalProperties": false,
+            "dependentRequired": {
+              "role_key": [
+                "seat_key"
+              ],
+              "seat_key": [
+                "role_key"
+              ]
+            },
             "properties": {
               "component": {
                 "$ref": "#/$defs/componentRef"
+              },
+              "role_key": {
+                "description": "Exact configured role key bound to this authored assignment; never inferred from subject or display text.",
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
+              },
+              "seat_key": {
+                "description": "Exact project-seat key bound to this authored assignment; never inferred from subject or display text.",
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
               },
               "slot": {
                 "pattern": "^[a-z][a-z0-9._-]{1,63}$",
@@ -2606,6 +2624,10 @@
           "pattern": "^[a-z][a-z0-9.-]{2,127}$",
           "type": "string"
         },
+        "prefix": {
+          "pattern": "^[A-Z]{2,5}$",
+          "type": "string"
+        },
         "repository_ref": {
           "pattern": "^repository:[a-z][a-z0-9._/-]{2,255}$",
           "type": "string"
@@ -2619,7 +2641,8 @@
         "key",
         "display_name",
         "repository_ref",
-        "goal_refs"
+        "goal_refs",
+        "prefix"
       ],
       "title": "ProjectComponent",
       "type": "object"
@@ -18797,6 +18820,26 @@
           "$ref": "https://ctower.local/contracts/components/versioned-component.schema.json#/properties/key",
           "description": "A key that becomes a Catalog component key. The authored component contract decides it by reference; this source never restates that pattern."
         },
+        "roleRef": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_plane": {
+              "enum": [
+                "project-seat",
+                "human-binding"
+              ]
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "authority_plane",
+            "key"
+          ],
+          "type": "object"
+        },
         "skip": {
           "additionalProperties": false,
           "description": "The alternative slot set that replaces the ordinary set on a skipped disposition; the two are never a union.",
@@ -18886,6 +18929,16 @@
             "owner": {
               "$ref": "#/$defs/sourceKey",
               "description": "Eligible responsibility/capability key. It grants no authority and is never an assigned or signing seat."
+            },
+            "role_keys": {
+              "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+              "items": {
+                "$ref": "#/$defs/roleRef"
+              },
+              "maxItems": 128,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
             },
             "signs": {
               "$ref": "#/$defs/sourceKey",
@@ -19011,6 +19064,26 @@
           ],
           "type": "object"
         },
+        "roleRef": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_plane": {
+              "enum": [
+                "project-seat",
+                "human-binding"
+              ]
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "authority_plane",
+            "key"
+          ],
+          "type": "object"
+        },
         "stableKey": {
           "pattern": "^[a-z][a-z0-9._-]*$",
           "type": "string"
@@ -19030,6 +19103,16 @@
             },
             "key": {
               "$ref": "#/$defs/stableKey"
+            },
+            "role_keys": {
+              "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+              "items": {
+                "$ref": "#/$defs/roleRef"
+              },
+              "maxItems": 128,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
             }
           },
           "required": [
@@ -19183,6 +19266,26 @@
           ],
           "type": "object"
         },
+        "roleRef": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_plane": {
+              "enum": [
+                "project-seat",
+                "human-binding"
+              ]
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "authority_plane",
+            "key"
+          ],
+          "type": "object"
+        },
         "stableKey": {
           "pattern": "^[a-z][a-z0-9._-]*$",
           "type": "string"
@@ -19195,6 +19298,16 @@
             },
             "key": {
               "$ref": "#/$defs/stableKey"
+            },
+            "role_keys": {
+              "description": "Optional closed base role set. Omission is role-neutral; presence requires a nonempty unique set.",
+              "items": {
+                "$ref": "#/$defs/roleRef"
+              },
+              "maxItems": 128,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
             }
           },
           "required": [
@@ -19330,7 +19443,7 @@
     {
       "id": "https://ctower.local/contracts/company/company-bundle.schema.json",
       "path": "contracts/company/company-bundle.schema.json",
-      "sha256": "sha256:d6cdaeabc1e60c19cb4e136c3b705a3fb5f1449c478a2ddb1938b6f95dc7b112"
+      "sha256": "sha256:54b75ef79beddc62cba7d9f35c0841cf1ecf000601c637603ac512aef7bd0d0d"
     },
     {
       "id": "https://ctower.dev/contracts/compatibility/matrix-input/v1",
@@ -19415,7 +19528,7 @@
     {
       "id": "https://ctower.local/contracts/components/project.schema.json",
       "path": "contracts/components/project.schema.json",
-      "sha256": "sha256:c3e0a89626f9ac0ab40266f54abfad07a9bf9b572ed5efc4a861a8fc570e303d"
+      "sha256": "sha256:e82f7219521e637275fb2b9ae1bfae303d1aab9ee3aab811dca70f4127f0029b"
     },
     {
       "id": "https://ctower.local/contracts/components/seat-catalog.schema.json",
@@ -19835,17 +19948,17 @@
     {
       "id": "https://ctower.local/contracts/workflow/workflow-definition.schema.json",
       "path": "contracts/workflow/workflow-definition.schema.json",
-      "sha256": "sha256:c0a118fa1471f134b5bd36ff7bbbbf884fc8e9f4d30dbe69d11e081562e4180b"
+      "sha256": "sha256:c25850d76bd40511d7d8e1b58eae8f11cc96155d088bf1c36d860628d3824b15"
     },
     {
       "id": "https://ctower.invalid/contracts/workflow/workflow-v2.schema.json",
       "path": "contracts/workflow/workflow-v2.schema.json",
-      "sha256": "sha256:852a1c12ad8f3c52899d20f7db8fd3b80fae67a9b28971a29f97121d23f5efa3"
+      "sha256": "sha256:302b98939f342a638b90a73fdad9548613f19814e30b345c90a0b5b2d281a955"
     },
     {
       "id": "https://ctower.invalid/contracts/workflow/workflow.schema.json",
       "path": "contracts/workflow/workflow.schema.json",
-      "sha256": "sha256:bc2fb7e3a99ffd3dacd98f5ba4e05aa9781b192be6a7c36a1dbfc17060b8f3aa"
+      "sha256": "sha256:016338eaad5d6db8b26a663a43b04e815884f71ebb7d92f0ae763fb0d235ae11"
     }
   ]
 }

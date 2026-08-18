@@ -506,6 +506,8 @@ def _install_read_routes(
         if _PROJECT_KEY.fullmatch(project_key) is None:
             return _problem_response(_validation_problem())
         view = projections.project_delivery(actor, project_key)
+        if isinstance(view, RecordProblem):
+            return _problem_response(view)
         if view is None:
             return _problem_response(
                 RecordProblem(

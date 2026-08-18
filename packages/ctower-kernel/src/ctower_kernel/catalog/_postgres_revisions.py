@@ -104,6 +104,7 @@ def _inspect_revision(
         """
         SELECT revision.component_revision_id, revision.content_digest,
             revision.schema_ref, revision.scope_project, revision.compatibility_ctower,
+            revision.project_prefix,
             revision.payload_ref, lifecycle.event_id AS publication_event_id
         FROM catalog_component_revisions AS revision
         LEFT JOIN catalog_component_lifecycle_facts AS lifecycle
@@ -218,13 +219,23 @@ def _revision_matches(
     existing: dict[str, object],
 ) -> bool:
     component = resource.component
-    if (
-        digest_text(existing["content_digest"]) != component.content_digest
-        or str(existing["schema_ref"]) != component.schema_ref
-        or cast(str | None, existing["scope_project"]) != component.scope.project
-        or str(existing["compatibility_ctower"]) != component.compatibility.ctower
-        or str(existing["payload_ref"]) != component.payload_ref
-    ):
+    stored_identity = (
+        digest_text(existing["content_digest"]),
+        str(existing["schema_ref"]),
+        cast(str | None, existing["scope_project"]),
+        str(existing["compatibility_ctower"]),
+        cast(str | None, existing["project_prefix"]),
+        str(existing["payload_ref"]),
+    )
+    expected_identity = (
+        component.content_digest,
+        component.schema_ref,
+        component.scope.project,
+        component.compatibility.ctower,
+        str(resource.payload["prefix"]) if component.kind is ComponentKind.PROJECT else None,
+        component.payload_ref,
+    )
+    if stored_identity != expected_identity:
         return False
     revision_id = cast(UUID, existing["component_revision_id"])
     dependencies = connection.execute(
@@ -315,8 +326,8 @@ def insert_revisions(
             INSERT INTO catalog_component_revisions (
                 component_revision_id, component_id, tenant_id, revision_number,
                 content_digest, schema_ref, scope_project, compatibility_ctower,
-                payload_ref, created_by, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                payload_ref, project_prefix, created_by, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 state.revision_id,
@@ -328,6 +339,11 @@ def insert_revisions(
                 component.scope.project,
                 component.compatibility.ctower,
                 component.payload_ref,
+                (
+                    str(state.resource.payload["prefix"])
+                    if component.kind is ComponentKind.PROJECT
+                    else None
+                ),
                 actor.principal_id,
                 now,
             ),

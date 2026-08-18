@@ -11,7 +11,7 @@ from ctower_client.models import (
     RequestMaintenanceProposalKind,
     RequestMaintenanceProposalState,
 )
-from ctowerctl._parser_support import _command_id, _Parser, _version
+from ctowerctl._parser_support import _command_id, _Parser, _ticket_reference, _version
 
 __all__: tuple[str, ...] = ()
 
@@ -106,7 +106,7 @@ def _ticket_parser(actions: argparse._SubParsersAction[_Parser]) -> None:
     _command_id(relation)
     _version(relation)
     relation.add_argument("--expected-ticket-version", required=True, type=int)
-    relation.add_argument("--ticket-id", required=True, type=UUID)
+    relation.add_argument("--ticket-id", required=True, type=_ticket_reference)
     relation.add_argument("--purpose", required=True, choices=("required", "optional"))
     relation.add_argument("--inactive", action="store_true")
     relation.add_argument("--reason", required=True)

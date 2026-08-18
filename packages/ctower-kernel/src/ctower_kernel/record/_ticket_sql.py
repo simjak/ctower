@@ -20,7 +20,11 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
-from ctower_kernel.record.events import EventKind, ticket_payload_from_mapping
+from ctower_kernel.record.events import (
+    EventKind,
+    WorkflowChangedPayload,
+    ticket_payload_from_mapping,
+)
 from ctower_kernel.record.ticket_creation import (
     TicketCreationIds,
     initial_custody_project,
@@ -35,7 +39,7 @@ from ctower_kernel.record.transaction import (
 )
 from ctower_kernel.telemetry import TelemetryContext
 
-__all__ = ["create_ticket", "get_ticket", "ticket_timeline"]
+__all__ = ["create_ticket", "get_ticket", "resolve_display_key", "ticket_timeline"]
 
 
 def create_ticket(
@@ -66,6 +70,14 @@ def create_ticket(
         )
         if not isinstance(project, str):
             return project
+        display_key = insert_ticket_state(
+            connection,
+            actor,
+            command,
+            project_key=project,
+            identifiers=identifiers,
+            now=now,
+        )
         ticket = Ticket(
             ticket_id=identifiers.ticket,
             title=command.title,
@@ -74,16 +86,9 @@ def create_ticket(
             custodian_id=command.initial_custodian_id,
             version=1,
             created_at=now,
+            display_key=display_key,
         )
         result = TicketCommandResult(command.client_command_id, (identifiers.event,), ticket)
-        insert_ticket_state(
-            connection,
-            actor,
-            command,
-            project_key=project,
-            identifiers=identifiers,
-            now=now,
-        )
         _append_ticket_created(
             connection,
             actor,
@@ -176,7 +181,7 @@ def _reserve_ticket_outcome(
 def get_ticket(
     dsn: str,
     actor: Actor,
-    ticket_id: UUID,
+    ticket_id: UUID | str,
     project_key: str,
     *,
     telemetry: TelemetryContext,
@@ -195,12 +200,17 @@ def get_ticket(
         )
         if refusal is not None:
             return refusal
+        parsed_ticket_id = _resolve_ticket_reference(
+            connection, actor.tenant_id, project_key, ticket_id
+        )
+        if parsed_ticket_id is None:
+            return _scope_problem()
         row = connection.execute(
             """
             SELECT ticket.ticket_id, ticket.title, ticket.project_key,
                 ticket.source_kind, ticket.source_ref,
                 ticket.priority, ticket.custodian_principal_id, ticket.version,
-                ticket.created_at,
+                ticket.created_at, ticket.display_key,
                 CASE WHEN confirmation.client_command_id IS NULL
                     THEN 'durability_pending' ELSE 'accepted'
                 END AS durability_state
@@ -216,7 +226,7 @@ def get_ticket(
             WHERE ticket.tenant_id = %s AND ticket.project_key = %s
               AND ticket.ticket_id = %s
             """,
-            (actor.tenant_id, project_key, ticket_id),
+            (actor.tenant_id, project_key, parsed_ticket_id),
         ).fetchone()
     return _ticket_from_row(row) if row is not None else _scope_problem()
 
@@ -224,12 +234,12 @@ def get_ticket(
 def ticket_timeline(
     dsn: str,
     actor: Actor,
-    ticket_id: UUID,
+    ticket_id: UUID | str,
     project_key: str,
     *,
     telemetry: TelemetryContext,
 ) -> TicketTimeline | RecordProblem:
-    """Read an ordered event stream using the same no-disclosure project predicate."""
+    """Read an ordered ticket-linked event stream using the same project predicate."""
 
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
@@ -243,30 +253,97 @@ def ticket_timeline(
         )
         if refusal is not None:
             return refusal
+        parsed_ticket_id = _resolve_ticket_reference(
+            connection, actor.tenant_id, project_key, ticket_id
+        )
+        if parsed_ticket_id is None:
+            return _scope_problem()
         rows = connection.execute(
             """
             SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,
                 event.client_command_id, event.server_time, event.payload,
                 ticket.project_key AS authoritative_project_key
-            FROM events AS event
+            FROM event_links AS link
+            JOIN events AS event
+              ON event.event_id = link.event_id AND event.tenant_id = link.tenant_id
             JOIN tickets AS ticket
-              ON ticket.tenant_id = event.tenant_id
-             AND ticket.ticket_id = event.aggregate_id
-            WHERE event.tenant_id = %s AND ticket.project_key = %s
-              AND event.aggregate_id = %s
-              AND kind IN (
+              ON ticket.tenant_id = link.tenant_id AND ticket.ticket_id = link.subject_id
+            WHERE link.tenant_id = %s AND link.subject_kind = 'ticket'
+              AND ticket.project_key = %s AND link.subject_id = %s
+              AND event.kind IN (
                 'ticket.created',
                 'ticket.custody_transferred',
-                'ticket.comment_added'
+                'ticket.comment_added',
+                'workflow.changed'
               )
-            ORDER BY sequence
+            ORDER BY event.record_position
             """,
-            (actor.tenant_id, project_key, ticket_id),
+            (actor.tenant_id, project_key, parsed_ticket_id),
         ).fetchall()
     if not rows:
         return _scope_problem()
     events = tuple(_timeline_event(row) for row in rows)
-    return TicketTimeline(ticket_id, events)
+    return TicketTimeline(parsed_ticket_id, events)
+
+
+def resolve_display_key(
+    dsn: str,
+    actor: Actor,
+    display_key: str,
+    *,
+    telemetry: TelemetryContext,
+) -> UUID | RecordProblem:
+    """Resolve one display key to its canonical UUID without disclosing foreign scope.
+
+    A key that names no ticket and a key naming a ticket the caller may not read are
+    refused identically, so enumerating `PREFIX-N` reveals no more than guessing a UUID.
+    """
+
+    del telemetry
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        rows = connection.execute(
+            """
+            SELECT ticket_id, project_key
+            FROM tickets
+            WHERE tenant_id = %s AND display_key = %s
+            LIMIT 2
+            """,
+            (actor.tenant_id, display_key),
+        ).fetchall()
+        # One active bundle cannot author one prefix twice, but re-authoring a prefix
+        # across Projects can leave two historical rows wearing one key. Refuse the
+        # ambiguity instead of guessing; the canonical UUID still addresses each one.
+        if len(rows) != 1:
+            return _scope_problem()
+        row = rows[0]
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(str(row["project_key"]),),
+            allow_operator_read=True,
+        )
+    return _scope_problem() if refusal is not None else cast(UUID, row["ticket_id"])
+
+
+def _resolve_ticket_reference(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str,
+    reference: UUID | str,
+) -> UUID | None:
+    if isinstance(reference, UUID):
+        return reference
+    row = connection.execute(
+        """
+        SELECT ticket_id
+        FROM tickets
+        WHERE tenant_id = %s AND project_key = %s AND display_key = %s
+        """,
+        (tenant_id, project_key, reference),
+    ).fetchone()
+    return cast(UUID, row["ticket_id"]) if row is not None else None
 
 
 def _refuse(
@@ -334,11 +411,14 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
+        display_key=cast(str | None, row["display_key"]),
         durability_state=DurabilityState(str(row["durability_state"])),
     )
 
 
 def _result_from_payload(payload: dict[str, object]) -> TicketCommandResult:
+    # Command results committed before migration 0075 carry no display key; exact replay
+    # returns the handle that was recorded, which for those results is no handle at all.
     ticket_payload = cast(dict[str, object], payload["ticket"])
     source_payload = cast(dict[str, object], ticket_payload["source"])
     ticket = Ticket(
@@ -349,6 +429,7 @@ def _result_from_payload(payload: dict[str, object]) -> TicketCommandResult:
         custodian_id=UUID(str(ticket_payload["custodian_id"])),
         version=int(cast(int, ticket_payload["version"])),
         created_at=datetime.fromisoformat(str(ticket_payload["created_at"])),
+        display_key=cast(str | None, ticket_payload.get("display_key")),
     )
     event_ids = cast(list[str], payload["event_ids"])
     return TicketCommandResult(
@@ -368,11 +449,46 @@ def _timeline_event(row: dict[str, object]) -> TimelineEvent:
         kind=kind,
         occurred_at=cast(datetime, row["server_time"]),
         payload=ticket_payload_from_mapping(
-            kind,
-            payload,
-            legacy_project_key=str(row["authoritative_project_key"]),
-        ),
+            kind, payload, legacy_project_key=str(row["authoritative_project_key"])
+        )
+        if kind is not EventKind.WORKFLOW_CHANGED
+        else _workflow_payload_from_mapping(payload),
         sequence=int(cast(int, row["sequence"])),
+    )
+
+
+def _workflow_payload_from_mapping(payload: dict[str, object]) -> WorkflowChangedPayload:
+    expected = {
+        "lifecycle_facts",
+        "operation",
+        "stage",
+        "ticket_id",
+        "workflow_ref",
+        "workflow_version",
+    }
+    if set(payload) != expected:
+        raise ValueError("event payload fields do not match the authored variant")
+    lifecycle_facts = payload["lifecycle_facts"]
+    if not isinstance(lifecycle_facts, list) or any(
+        not isinstance(item, str) for item in lifecycle_facts
+    ):
+        raise TypeError("lifecycle_facts must be a list of strings")
+    workflow_version = payload["workflow_version"]
+    if type(workflow_version) is not int:
+        raise TypeError("workflow_version must be an integer")
+    operation = cast(str, payload["operation"])
+    stage = cast(str, payload["stage"])
+    ticket_id = cast(str, payload["ticket_id"])
+    workflow_ref = cast(str, payload["workflow_ref"])
+    if not all(isinstance(value, str) for value in (operation, stage, workflow_ref, ticket_id)):
+        raise TypeError("workflow payload string fields must be strings")
+    return WorkflowChangedPayload(
+        operation=operation,
+        ticket_id=UUID(ticket_id),
+        workflow_ref=workflow_ref,
+        workflow_version=workflow_version,
+        stage=stage,
+        lifecycle_facts=tuple(lifecycle_facts),
     )
 
 

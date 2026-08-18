@@ -234,13 +234,13 @@ def test_workflow_rechecks_work_readiness_before_transition(tenant: TenantFixtur
         Admit(uuid4(), ticket_id, 1, "Ready for Workflow"),
         telemetry=_telemetry(),
     )
-    before_refusal = record.get_ticket(work_actor, ticket_id, "ctower", telemetry=_telemetry())
+    before_refusal = record.tickets.get(work_actor, ticket_id, "ctower", telemetry=_telemetry())
     repeated_admit = work.execute(
         work_actor,
         Admit(uuid4(), ticket_id, 2, "Already active"),
         telemetry=_telemetry(),
     )
-    after_refusal = record.get_ticket(work_actor, ticket_id, "ctower", telemetry=_telemetry())
+    after_refusal = record.tickets.get(work_actor, ticket_id, "ctower", telemetry=_telemetry())
     moved = workflow.advance(
         actor,
         WorkflowMutation(uuid4(), ticket_id, graph.reference, 1, "capture", "frame"),
@@ -279,7 +279,7 @@ def test_work_priority_assignment_replay_and_orthogonal_custody(
     replay = work.execute(actor, priority, telemetry=_telemetry())
     conflict = work.execute(actor, replace(priority, priority="P2"), telemetry=_telemetry())
     history = work.assignments(actor, ticket_id, "ctower")
-    ticket = record.get_ticket(actor, ticket_id, "ctower", telemetry=_telemetry())
+    ticket = record.tickets.get(actor, ticket_id, "ctower", telemetry=_telemetry())
     audit_events = _audit_events(record, actor, ticket_id)
 
     assert all(isinstance(outcome, WorkReceipt) for outcome in (prioritized, assigned, reassigned))
@@ -317,7 +317,7 @@ def test_work_multi_blocker_requires_every_effective_blocker_to_clear(
         telemetry=_telemetry(),
     )
     outcomes, still_blocked, ready = _exercise_two_blockers(work, actor, ticket_id, tenant)
-    ticket = record.get_ticket(actor, ticket_id, "ctower", telemetry=_telemetry())
+    ticket = record.tickets.get(actor, ticket_id, "ctower", telemetry=_telemetry())
     audit_events = _audit_events(record, actor, ticket_id)
 
     assert isinstance(admitted, WorkReceipt)

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:3d9976c285636519bd696cc19043042e7542f71bbe9062dec8fe1da64ba1ad8b
+// Authored contract digest: sha256:4208ed95a16a9bcec349edcf1c8d002f135665367ad1de4131be5b93c46de71e
 
 export type ActivityClass = "work" | "verification";
 
@@ -194,6 +194,7 @@ export type BoardCard = Readonly<{
   readonly "custodian_id": string;
   readonly "delivery_facts": ReadonlyArray<string>;
   readonly "delivery_surface_availability": DeliverySurfaceAvailability;
+  readonly "display_key": string | null;
   readonly "human_waiting": HumanWaiting;
   readonly "inbox_thread_ids": ReadonlyArray<string>;
   readonly "lane": BoardLane;
@@ -2451,6 +2452,7 @@ export type TicketIntentRequest = Readonly<{
 export type TicketResource = Readonly<{
   readonly "created_at": string;
   readonly "custodian_id": string;
+  readonly "display_key": string | null;
   readonly "durability_state": DurabilityState;
   readonly "priority": Priority;
   readonly "source": SourceReference;
@@ -2488,9 +2490,9 @@ export type TimelineEvent = Readonly<{
   readonly "actor_principal_id": string;
   readonly "command_id": string;
   readonly "event_id": string;
-  readonly "kind": "ticket.created" | "ticket.custody_transferred" | "ticket.comment_added";
+  readonly "kind": "ticket.created" | "ticket.custody_transferred" | "ticket.comment_added" | "workflow.changed";
   readonly "occurred_at": string;
-  readonly "payload": TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload;
+  readonly "payload": TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload | WorkflowChangedAuditPayload;
   readonly "sequence": number;
 }>;
 

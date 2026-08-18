@@ -85,6 +85,7 @@ CP2_HEAD_UPDATE_COLUMNS = {
         "title": False,
         "source_kind": False,
         "source_ref": False,
+        "display_key": False,
         "priority": True,
         "custodian_principal_id": True,
         "version": True,
@@ -312,6 +313,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0048_native_inbox.sql",
             "0049_review_dispatch_effect.sql",
             "0051_inbox_delivery_read_facts.sql",
+            "0075_ticket_display_keys.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)

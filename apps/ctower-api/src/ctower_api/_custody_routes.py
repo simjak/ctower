@@ -12,6 +12,7 @@ from ctower_api._http_support import (
     authenticate,
     problem_response,
     telemetry_context,
+    ticket_uuid,
     uuid_value,
     validation_problem,
 )
@@ -43,11 +44,13 @@ def install_custody_route(
             return problem_response(actor)
         try:
             telemetry = telemetry_context(request)
-            parsed_ticket_id = uuid_value(ticket_id)
             command_id = uuid_value(request.headers.get("Idempotency-Key"))
             payload = CustodyTransferRequest.model_validate_json(await request.body())
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
+        parsed_ticket_id = ticket_uuid(record, actor, ticket_id, telemetry=telemetry)
+        if isinstance(parsed_ticket_id, RecordProblem):
+            return problem_response(parsed_ticket_id)
         telemetry = telemetry.bind(
             tenant_id=str(actor.tenant_id),
             actor_id=str(actor.principal_id),

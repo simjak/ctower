@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 from typing import cast
 
@@ -272,6 +273,51 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
     }
 
 
+def test_project_scope_refusals_are_declared_for_board_and_delivery() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
+
+    for path in ("/v1/board", "/v1/projects/{project_key}/delivery"):
+        responses = cast(dict[str, object], paths[path]["get"]["responses"])
+        assert cast(dict[str, str], responses["403"])["$ref"] == (
+            "#/components/responses/ProblemResponse"
+        )
+
+
+def test_http_reference_response_sets_match_the_authored_contract() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    authored: dict[str, list[str]] = {}
+    for path_item in cast(dict[str, dict[str, object]], document["paths"]).values():
+        for method, operation in cast(dict[str, dict[str, object]], path_item).items():
+            if method in {"get", "post"}:
+                operation_id = cast(str, operation["operationId"])
+                responses = cast(dict[str, object], operation["responses"])
+                assert operation_id not in authored, f"duplicate operationId {operation_id}"
+                authored[operation_id] = sorted(responses)
+
+    reference = (ROOT / "docs/reference/http-api.md").read_text(encoding="utf-8")
+    rows = re.findall(
+        r"^\| `(GET|POST)` \| `[^`]+` \| `(\w+)` \|.*\| ((?:`\d{3}`(?:, )?)+) \|$",
+        reference,
+        re.MULTILINE,
+    )
+    assert rows, "the HTTP reference operation table was not found"
+    documented: dict[str, list[str]] = {}
+    for _method, operation_id, codes in rows:
+        assert operation_id not in documented, f"duplicate reference row {operation_id}"
+        documented[operation_id] = [code.strip("`") for code in codes.split(", ")]
+
+    assert set(documented) <= set(authored), "reference rows name unknown operations"
+    mismatches = sorted(
+        f"{operation_id}: documented={documented[operation_id]} authored={authored[operation_id]}"
+        for operation_id in documented
+        if documented[operation_id] != authored[operation_id]
+    )
+    assert not mismatches, (
+        "documented response sets drifted from the authored contract: " + "; ".join(mismatches)
+    )
+
+
 def test_project_and_credential_refusals_have_one_definition_each() -> None:
     kernel = ROOT / "packages/ctower-kernel/src/ctower_kernel"
 
@@ -324,6 +370,30 @@ def test_problem_vocabulary_is_exact() -> None:
     problem_codes = set(cast(list[str], code_schema["enum"]))
 
     assert problem_codes == _EXPECTED_PROBLEM_CODES
+
+
+def test_ticket_timeline_contract_includes_workflow_change_payloads() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    schemas = cast(dict[str, dict[str, object]], document["components"]["schemas"])
+    timeline = schemas["TimelineEvent"]
+    properties = cast(dict[str, object], timeline["properties"])
+    kind = cast(dict[str, object], properties["kind"])
+    payload = cast(dict[str, object], properties["payload"])
+
+    assert kind["enum"] == [
+        "ticket.created",
+        "ticket.custody_transferred",
+        "ticket.comment_added",
+        "workflow.changed",
+    ]
+    assert [
+        item["$ref"].rsplit("/", 1)[-1] for item in cast(list[dict[str, str]], payload["oneOf"])
+    ] == [
+        "TicketCreatedPayload",
+        "CustodyTransferredPayload",
+        "TicketCommentAddedPayload",
+        "WorkflowChangedAuditPayload",
+    ]
 
 
 def test_i1_7b_reuses_paths_adds_only_planned_paths_and_refuses_i1_7c() -> None:

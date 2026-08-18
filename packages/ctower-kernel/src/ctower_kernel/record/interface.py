@@ -6,22 +6,16 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 from uuid import UUID
 
+import ctower_kernel.record.events as record_events
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.credentials import (
     CredentialScope,
     SeatCredentialIssue,
     SeatCredentialReceipt,
     SeatCredentialRevocation,
-)
-from ctower_kernel.record.events import (
-    CustodyTransferredPayload,
-    EventKind,
-    TicketCommentAddedPayload,
-    TicketCreatedPayload,
-    TicketEventPayload,
 )
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
@@ -37,6 +31,9 @@ from ctower_kernel.record.sessions import (
     TicketSessionList,
 )
 from ctower_kernel.telemetry import TelemetryContext
+
+if TYPE_CHECKING:
+    from ctower_kernel.record.tickets import TicketStore
 
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 _MAX_RETRY_SECONDS = 60
@@ -456,6 +453,7 @@ class Ticket:
     custodian_id: UUID
     version: int
     created_at: datetime
+    display_key: str | None
     durability_state: DurabilityState = DurabilityState.PENDING
 
     def response_payload(self) -> dict[str, object]:
@@ -464,6 +462,7 @@ class Ticket:
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
+            "display_key": self.display_key,
             "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
@@ -499,19 +498,20 @@ class TimelineEvent:
     actor_principal_id: UUID
     command_id: UUID
     event_id: UUID
-    kind: EventKind
+    kind: record_events.EventKind
     occurred_at: datetime
-    payload: TicketEventPayload
+    payload: record_events.TicketEventPayload | record_events.WorkflowChangedPayload
     sequence: int
 
     def __post_init__(self) -> None:
         expected_payload = {
-            EventKind.TICKET_CREATED: TicketCreatedPayload,
-            EventKind.CUSTODY_TRANSFERRED: CustodyTransferredPayload,
-            EventKind.TICKET_COMMENT_ADDED: TicketCommentAddedPayload,
+            record_events.EventKind.TICKET_CREATED: record_events.TicketCreatedPayload,
+            record_events.EventKind.CUSTODY_TRANSFERRED: record_events.CustodyTransferredPayload,
+            record_events.EventKind.TICKET_COMMENT_ADDED: record_events.TicketCommentAddedPayload,
+            record_events.EventKind.WORKFLOW_CHANGED: record_events.WorkflowChangedPayload,
         }.get(self.kind)
         if expected_payload is None:
-            raise ValueError("timeline kind must be a ticket event")
+            raise ValueError("timeline kind must be a ticket or workflow event")
         if not isinstance(self.payload, expected_payload):
             raise TypeError(f"{self.kind} requires {expected_payload.__name__}")
 
@@ -554,7 +554,7 @@ class AuditEvent:
     command_id: UUID
     event_hash: str
     event_id: UUID
-    kind: EventKind
+    kind: record_events.EventKind
     occurred_at: datetime
     payload: dict[str, object]
     record_position: int
@@ -681,19 +681,8 @@ class Record(Protocol):
 
         ...
 
-    def get_ticket(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
-    ) -> Ticket | RecordProblem:
-        """Read one tenant-scoped ticket without cross-tenant disclosure."""
-
-        ...
-
-    def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
-    ) -> TicketTimeline | RecordProblem:
-        """Read the ordered tenant-scoped event timeline."""
-
-        ...
+    tickets: TicketStore
+    """Cohesive tenant-scoped ticket read boundary; see `record.tickets`."""
 
     def transfer_custody(
         self,
