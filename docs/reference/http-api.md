@@ -257,18 +257,20 @@ anything.
 | `POST` | `/v1/inbox/messages/{message_id}/ack` | `acknowledgeInboxMessage` | `inbox ack` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/inbox/threads/{thread_id}/promotion` | `promoteInboxThread` | `inbox promote` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/inbox/threads` | `listInboxThreads` | `inbox list` | query | forbidden | `200`, `401`, `404`, `422` |
-| `GET` | `/v1/inbox/correspondents` | `listInboxCorrespondents` | `inbox correspondents` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/inbox/correspondents` | `listInboxCorrespondents` | `inbox correspondents` | query | forbidden | `200`, `401`, `403`, `404`, `422` |
 | `GET` | `/v1/inbox/threads/{thread_id}` | `readInboxThread` | `inbox read` | query | forbidden | `200`, `401`, `404`, `422` |
 | `GET` | `/v1/inbox/threads/{thread_id}/read-state` | `readInboxMessageState` | `inbox read-state` | query | forbidden | `200`, `401`, `404`, `422` |
 
-`InboxSendRequest` addresses a project seat with `to`, carries 1–65536 characters of `text`, and optionally
-names an existing `thread_id`. Omission starts a two-party thread; an existing thread accepts only the other
+`InboxSendRequest` addresses a project seat with `to` and `project_key`, carries 1–65536 characters of
+`text`, one closed `severity` of `P0`, `P1`, or `info`, and optionally names an existing `thread_id`.
+Omission starts a two-party thread; an existing thread accepts only the other
 participant as recipient. `InboxAcknowledgeRequest.state` is `delivered` or `read`, and only the recorded
 message recipient may write it. State advances monotonically: a direct `read` acknowledgement appends the
 missing `delivered` fact before the `read` fact. A request that repeats the current state, or requests
 `delivered` after `read`, changes nothing and is refused as `inbox-acknowledgement-not-advancing`.
 
-`InboxNotificationRequest` contains only `to` and `text`. The authenticated Actor supplies sender identity;
+`InboxNotificationRequest` contains `to`, `project_key`, `text`, and one closed `severity` of `P0`, `P1`,
+or `info`. The authenticated Actor supplies sender identity;
 the persisted seat registry resolves the recipient, and an unknown seat is
 `inbox-recipient-not-found` without creating one. The server derives one direction-independent thread for
 the principal pair. The caller sends the original notification delivery UUID as `Idempotency-Key`, so an
@@ -283,6 +285,16 @@ missing or participant-inaccessible messages and threads are `tenant-scope-denie
 Inbox state unchanged.
 
 All three reads consume accepted projection state and append no acknowledgement or cursor fact.
+`listInboxCorrespondents` accepts an optional `project_key` query parameter that narrows the listed
+correspondents to one project; `sendInboxMessage` and `ingestInboxNotification` require the same project
+key for recipient resolution. Only a `P0` delivery may use the push/wake path; `P1` and `info` are
+durable rows consumed by the existing n-minute beat-Routine pull, and `readInboxMessageState` reports
+the transported `severity` beside each message's state. Read state is independent of the interrupt
+class: one `P0` still unacknowledged when its declared 15-minute acknowledgement window closes
+produces one typed escalation, while `P1` and `info` have no timer. No operation in this API emits
+that escalation: the window is the declared value, and the timer that observes it is not built.
+A message appended before this contract reads as `info` because the field did not exist when it was
+recorded, not because a sender chose that value.
 `listInboxThreads` is participant-scoped; its optional `unread` query defaults to `false`, and `true` keeps
 only threads with unread incoming messages. `readInboxThread` returns messages in position order plus the
 fact-derived `read_through_position`; reading does not advance it or reduce unread counts.

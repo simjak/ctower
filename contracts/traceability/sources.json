@@ -2712,6 +2712,16 @@
         "AC-IMP-01",
         "AC-IMP-04"
       ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0077_inbox_message_severity.sql",
+      "references": [
+        "SPEC#inbox-transport-severity-and-pull-contract",
+        "AC-COMMS-01",
+        "AC-COMMS-02",
+        "AC-COMMS-03",
+        "AC-COMMS-04"
+      ]
     }
   ]
 }

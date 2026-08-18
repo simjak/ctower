@@ -139,7 +139,9 @@ def test_interface_retries_only_notification_mutations_and_surfaces_exhaustion(
         interface,
         "_build_mutation",
         lambda _arguments: MutationPayload(
-            request=InboxNotificationRequest(to="qa-agent", text="Bounded mirror."),
+            request=InboxNotificationRequest(
+                project_key="ctower", severity="info", to="qa-agent", text="Bounded mirror."
+            ),
             path_parameters={},
         ),
     )

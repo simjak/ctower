@@ -127,6 +127,7 @@ def _read_state(thread_id: str, other: str) -> dict[str, Any]:
                 "message_id": "018f0d5e-7b9a-7c01-8000-000000000601",
                 "position": 1,
                 "recipient": SELF_SEAT,
+                "severity": "info",
                 "state": "read",
                 "delivered_at": DELIVERED_AT,
                 "delivered_event_id": "018f0d5e-7b9a-7c01-8000-0000000006d1",
@@ -150,10 +151,21 @@ def _summary(thread_id: str, other: str) -> dict[str, Any]:
 
 def _answer(payload: dict[str, Any], position: int, durability: str) -> dict[str, Any]:
     """One send result, in the authored shape both durability states share."""
-    return _result(str(payload["thread_id"]), str(payload["to"]), position, durability)
+    return _result(
+        str(payload["thread_id"]),
+        str(payload["to"]),
+        position,
+        durability,
+        severity=str(payload["severity"]),
+    )
 
 
-def _result(thread_id: str, to: str, position: int, durability: str) -> dict[str, Any]:
+def _result(
+    thread_id: str, to: str, position: int, durability: str, *, severity: str
+) -> dict[str, Any]:
+    # Severity comes back from the request rather than a fixture constant: the record
+    # echoes the transported value, so a surface that sends one severity and renders
+    # another has to fail here rather than agree with itself.
     return {
         "command_id": f"018f0d5e-7b9a-7c01-8000-0000000008{position:02d}",
         "durability_state": durability,
@@ -162,6 +174,7 @@ def _result(thread_id: str, to: str, position: int, durability: str) -> dict[str
         "message_id": f"018f0d5e-7b9a-7c01-8000-0000000007{position:02d}",
         "position": position,
         "sent_at": "2026-08-09T03:05:00Z",
+        "severity": severity,
         "thread_id": thread_id,
         "thread_version": position + 1,
         "to": to,
@@ -322,7 +335,11 @@ class Record:
                 joined = self._threads[UNCONFIRMED_THREAD_ID]
                 settled = len(cast("list[object]", joined["messages"]))
                 return _PENDING_DURABILITY, _result(
-                    UNCONFIRMED_THREAD_ID, to, settled + 1, "durability_pending"
+                    UNCONFIRMED_THREAD_ID,
+                    to,
+                    settled + 1,
+                    "durability_pending",
+                    severity=str(payload["severity"]),
                 )
             thread = self._threads.setdefault(
                 COMPOSED_THREAD_ID,
@@ -348,7 +365,9 @@ class Record:
                     },
                 )
             )
-            return _CREATED, _result(COMPOSED_THREAD_ID, to, position, "accepted")
+            return _CREATED, _result(
+                COMPOSED_THREAD_ID, to, position, "accepted", severity=str(payload["severity"])
+            )
 
 
 class _RecordStub(BaseHTTPRequestHandler):

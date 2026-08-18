@@ -434,6 +434,10 @@ class _ProjectionStore(Protocol):
 
     def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList: ...
 
+    def list_project_inbox_correspondents(
+        self, actor: Actor, project_key: str
+    ) -> InboxCorrespondentList | RecordProblem: ...
+
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None: ...
 
     def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None: ...
@@ -481,6 +485,13 @@ class Projections:
         """Read the registered seats this principal may address, never invent one."""
 
         return self._store.list_inbox_correspondents(actor)
+
+    def list_project_inbox_correspondents(
+        self, actor: Actor, project_key: str
+    ) -> InboxCorrespondentList | RecordProblem:
+        """Read those same seats inside one named Project, refusing a foreign scope."""
+
+        return self._store.list_project_inbox_correspondents(actor, project_key)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return self._store.read_inbox(actor, thread_id)

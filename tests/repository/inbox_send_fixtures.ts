@@ -31,6 +31,7 @@ const sent = {
   message_id: "018f0d5e-7b9a-7c01-8000-000000000702",
   position: 2,
   sent_at: "2026-08-09T03:05:00Z",
+  severity: "info",
   thread_id: threadId,
   thread_version: 3,
   to: "engineer",

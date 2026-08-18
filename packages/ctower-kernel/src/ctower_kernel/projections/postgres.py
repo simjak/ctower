@@ -13,6 +13,9 @@ from ctower_kernel.projections import (
 )
 from ctower_kernel.projections._health_sql import health as _health
 from ctower_kernel.projections._inbox_sql import list_correspondents as _list_correspondents
+from ctower_kernel.projections._inbox_sql import (
+    list_project_correspondents as _list_project_correspondents,
+)
 from ctower_kernel.projections._inbox_sql import list_threads as _list_threads
 from ctower_kernel.projections._inbox_sql import read_state as _read_state
 from ctower_kernel.projections._inbox_sql import read_thread as _read_thread
@@ -66,6 +69,11 @@ class PostgresProjections:
 
     def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
         return _list_correspondents(self._dsn, actor)
+
+    def list_project_inbox_correspondents(
+        self, actor: Actor, project_key: str
+    ) -> InboxCorrespondentList | RecordProblem:
+        return _list_project_correspondents(self._dsn, actor, project_key)
 
     def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
         return _read_thread(self._dsn, actor, thread_id)

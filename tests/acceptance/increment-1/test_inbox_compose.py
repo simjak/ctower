@@ -14,12 +14,13 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import httpx
+import pytest
 from support.acceptance import accept_pending_commands
 from support.server import running_api
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture, provision_seat
 
-from ctower_client import CtowerClient
+from ctower_client import CtowerClient, CtowerProblemError, Problem
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 
@@ -29,16 +30,22 @@ _ACCEPTED_STATUS = 201
 _DURABILITY_PENDING_STATUS = 202
 _UNPROCESSABLE_STATUS = 422
 _NOT_FOUND_STATUS = 404
-_CONFLICT_STATUS = 409
 _ACCEPTED_SEND_STATUS = (_ACCEPTED_STATUS, _DURABILITY_PENDING_STATUS)
 
 
-def _compose(base_url: str, credential: str, to: str, text: str) -> httpx.Response:
+def _compose(
+    base_url: str,
+    credential: str,
+    to: str,
+    text: str,
+    *,
+    project_key: str = "ctower",
+) -> httpx.Response:
     """Ask the record to open — or continue — this credential's thread with one seat.
 
-    This is the compose control's whole request: the words and which seat they
-    are for. There is no sender field and no thread field, so what comes back is
-    the record's own answer about both.
+    This is the compose control's whole request: the project-qualified address,
+    informational severity, and words. There is no sender field and no thread
+    field, so what comes back is the record's own answer about both.
     """
 
     command_id = uuid4()
@@ -51,7 +58,7 @@ def _compose(base_url: str, credential: str, to: str, text: str) -> httpx.Respon
             "Idempotency-Key": str(command_id),
             **telemetry_headers(command_id),
         },
-        json={"to": to, "text": text},
+        json={"project_key": project_key, "severity": "info", "to": to, "text": text},
         timeout=30,
     )
 
@@ -151,16 +158,6 @@ def test_composing_twice_to_one_seat_stays_one_pair_grouped_thread(
 def test_the_offered_addresses_are_exactly_the_ones_the_command_accepts(
     tenant: TenantFixture,
 ) -> None:
-    """One closed world, driven from both ends in one registry state.
-
-    A seat key is unique only within a project, so a tenant may legally register
-    the same key in two of them — and then no ``(tenant, seat_key)`` resolves it
-    and the command refuses it as ambiguous. The reader's own seat is refused
-    too, and a principal holding no seat at all cannot address anybody. An
-    address the command will not accept is not an address, so the list carries
-    none of them: what it offers is exactly what opens a thread, proved here by
-    sending to every listed address and to each refused one in the same tenant.
-    """
     provision_seat(tenant, "director")
     provision_seat(tenant, "shared-seat")
     provision_seat(tenant, "shared-seat", project_key="apex")
@@ -176,33 +173,87 @@ def test_the_offered_addresses_are_exactly_the_ones_the_command_accepts(
     ):
         listed = client.list_inbox_correspondents()
         opened = {
-            item.seat_key: _compose(base_url, commander, item.seat_key, "Opened from the list.")
+            (item.project_key, item.seat_key): _compose(
+                base_url,
+                commander,
+                item.seat_key,
+                "Opened from the list.",
+                project_key=item.project_key,
+            )
             for item in listed.correspondents
         }
-        ambiguous = _compose(base_url, commander, "shared-seat", "Which of the two?")
+        foreign = _compose(
+            base_url,
+            commander,
+            "shared-seat",
+            "Which project?",
+            project_key="apex",
+        )
+        unknown = _compose(
+            base_url,
+            commander,
+            "unregistered-seat",
+            "Nobody holds this address.",
+            project_key="apex",
+        )
         mine = _compose(base_url, commander, listed.sender, "Writing to myself.")
         seatless = seatless_client.list_inbox_correspondents()
         seatless_send = _compose(base_url, unseated, "director", "No seat of my own.")
 
-    # printed before the assertions, so a failing run says what the two ends
-    # actually answered rather than only which assertion noticed the difference
-    print(
-        "REAL_COMPOSE_EQUALITY offered="
-        + json.dumps({seat: answer.status_code for seat, answer in opened.items()})
-        + f" ambiguous={ambiguous.status_code}/{_refusal_code(ambiguous)}"
-        f" self={mine.status_code}/{_refusal_code(mine)}"
-        + " seatless_offered="
-        + json.dumps([item.seat_key for item in seatless.correspondents])
-        + f" seatless_send={seatless_send.status_code}/{_refusal_code(seatless_send)}"
-    )
-    assert sorted(opened) == ["director"]
-    assert [response.status_code in _ACCEPTED_SEND_STATUS for response in opened.values()] == [True]
-    # every address the record refuses is an address the list did not offer
-    assert ambiguous.status_code == _CONFLICT_STATUS
-    assert _refusal_code(ambiguous) == "inbox-recipient-ambiguous"
+    assert sorted(opened) == [
+        ("apex", "shared-seat"),
+        ("ctower", "director"),
+        ("ctower", "shared-seat"),
+    ]
+    assert all(response.status_code in _ACCEPTED_SEND_STATUS for response in opened.values())
+    assert foreign.status_code in _ACCEPTED_SEND_STATUS
+    assert unknown.status_code == _NOT_FOUND_STATUS
+    assert _refusal_code(unknown) == "inbox-recipient-not-found"
     assert mine.status_code == _UNPROCESSABLE_STATUS
     assert _refusal_code(mine) == "inbox-recipient-self"
     # a principal with no seat of its own can address nobody, and is offered nobody
     assert seatless.correspondents == ()
     assert seatless_send.status_code == _UNPROCESSABLE_STATUS
     assert _refusal_code(seatless_send) == "inbox-sender-unaddressable"
+
+
+def test_naming_a_project_on_the_address_list_answers_only_within_this_seats_grant(
+    tenant: TenantFixture,
+) -> None:
+    """Narrowing the picker to one Project is a scoped read, so it answers under INV-69.
+
+    The unnarrowed list is unchanged and stays every address this seat may open a
+    thread to. Naming a Project asks a different question, and the record answers
+    it only for a Project this principal actually holds a grant on: a foreign
+    Project is refused by its own name rather than quietly answered empty, so
+    "no addresses there" and "not yours to ask about" never look alike.
+    """
+
+    _director_id, director = provision_seat(tenant, "director")
+    provision_seat(tenant, "shared-seat")
+    provision_seat(tenant, "shared-seat", project_key="apex")
+
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=director) as client,
+    ):
+        listed = client.list_inbox_correspondents()
+        narrowed = client.list_inbox_correspondents(project_key="ctower")
+        with pytest.raises(CtowerProblemError) as refusal:
+            client.list_inbox_correspondents(project_key="apex")
+
+    offered = [(item.project_key, item.seat_key) for item in listed.correspondents]
+    problem = cast(Problem, refusal.value.problem)
+    assert ("apex", "shared-seat") in offered
+    assert [(item.project_key, item.seat_key) for item in narrowed.correspondents] == [
+        address for address in offered if address[0] == "ctower"
+    ]
+    assert {item.project_key for item in narrowed.correspondents} == {"ctower"}
+    assert (problem.status, problem.code) == (403, "project-scope-denied")
+    print(
+        "REAL_PROJECT_SCOPED_ADDRESSES "
+        f"offered={len(offered)} narrowed={len(narrowed.correspondents)} refused=apex"
+    )

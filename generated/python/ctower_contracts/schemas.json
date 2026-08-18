@@ -4138,6 +4138,14 @@
             "sender": {
               "$ref": "#/$defs/inboxParticipant"
             },
+            "severity": {
+              "enum": [
+                "P0",
+                "P1",
+                "info"
+              ],
+              "type": "string"
+            },
             "text": {
               "maxLength": 65536,
               "minLength": 1,
@@ -4154,7 +4162,8 @@
             "recipient",
             "sender",
             "text",
-            "thread_id"
+            "thread_id",
+            "severity"
           ],
           "type": "object"
         },
@@ -6392,6 +6401,14 @@
             "sender": {
               "$ref": "#/$defs/participant"
             },
+            "severity": {
+              "enum": [
+                "P0",
+                "P1",
+                "info"
+              ],
+              "type": "string"
+            },
             "text": {
               "maxLength": 65536,
               "minLength": 1,
@@ -6408,7 +6425,8 @@
             "position",
             "sender",
             "recipient",
-            "text"
+            "text",
+            "severity"
           ],
           "type": "object"
         },
@@ -19741,12 +19759,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:68ad56ad17db7ba74dd14282b819c498baf042abafb902582747cffa32dae5ab"
+      "sha256": "sha256:dd04cf1a31d8abeda7843d1419ee88b81c6b123bd1a31c24d916388fda8a5cd6"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
       "path": "contracts/domain/inbox/inbox-v2.schema.json",
-      "sha256": "sha256:ceb37207444a43c6d5d353d463ba6c8f73de29eed7a841caf056649ffecb990c"
+      "sha256": "sha256:3b9dad244b5571ff2951e8f57522b08acaf257d121f7bf833772eee170d668f7"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox.schema.json",

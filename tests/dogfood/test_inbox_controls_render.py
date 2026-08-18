@@ -69,8 +69,8 @@ _UNCONFIRMED_COMPOSE_SENTENCE = (
     "Press send again to send the same message."
 )
 _UNCONFIRMED_COMPOSE_NOTICE = f"not confirmed {_UNCONFIRMED_COMPOSE_SENTENCE}"
-_SEND_FIELDS = ("text", "thread_id", "to")
-_COMPOSE_FIELDS = ("text", "to")
+_SEND_FIELDS = ("project_key", "severity", "text", "thread_id", "to")
+_COMPOSE_FIELDS = ("project_key", "severity", "text", "to")
 
 
 class _Drive:

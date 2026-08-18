@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:815ad1d7312dfc1b5e061000c3106a840574cc62c16bf2b0f03227dda3d98292
+// Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
 
 export type ActivityClass = "work" | "verification";
 
@@ -1115,6 +1115,7 @@ export type InboxMessage = Readonly<{
   readonly "message_id": string;
   readonly "position": number;
   readonly "sent_at": string;
+  readonly "severity": "P0" | "P1" | "info";
   readonly "text": string;
   readonly "to": string;
 }>;
@@ -1127,10 +1128,13 @@ export type InboxMessageReadState = Readonly<{
   readonly "read_at": string | null;
   readonly "read_event_id": string | null;
   readonly "recipient": string;
+  readonly "severity": "P0" | "P1" | "info";
   readonly "state": "sent" | "delivered" | "read";
 }>;
 
 export type InboxNotificationRequest = Readonly<{
+  readonly "project_key": string;
+  readonly "severity": "P0" | "P1" | "info";
   readonly "text": string;
   readonly "to": string;
 }>;
@@ -1157,6 +1161,8 @@ export type InboxReadState = Readonly<{
 }>;
 
 export type InboxSendRequest = Readonly<{
+  readonly "project_key": string;
+  readonly "severity": "P0" | "P1" | "info";
   readonly "text": string;
   readonly "thread_id"?: string | null;
   readonly "to": string;
@@ -1170,6 +1176,7 @@ export type InboxSendResult = Readonly<{
   readonly "message_id": string;
   readonly "position": number;
   readonly "sent_at": string;
+  readonly "severity": "P0" | "P1" | "info";
   readonly "thread_id": string;
   readonly "thread_version": number;
   readonly "to": string;

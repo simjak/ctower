@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0076_spawn_records.sql",
-    "schema_sha256": "sha256:0b1917366e07dc45c5a6249e623454c81b5673a183f47528fe65409e30dea8fe",
+    "through": "0077_inbox_message_severity.sql",
+    "schema_sha256": "sha256:6c6d47e90c4d25e8adc0a1e9eda449c4b613b44268e59b6265f1f6dd7510ec9c",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:3169fcd7a067bdf3844a1c29ccfd8dbfc7d3f0a7de7e174d4e08a17ef90e6e16"
   },
@@ -720,6 +720,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_spawn_records.py::test_migration_forward_apply_creates_requested_spawn",
       "rollback_or_forward_compensation": "Preserve every immutable spawn record, appended transition fact, canonical event, command result, and outbox row; append reviewed forward compensation and never edit, delete, or reuse an accepted spawn fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture spawn-record, transition, event, event-link, command-result, and outbox counts grouped by tenant plus a verified database backup; both spawn tables start empty."
+    },
+    {
+      "path": "0077_inbox_message_severity.sql",
+      "sha256": "sha256:6ea6f5592ab0e0876c5dd50283c8670774eb8a0fa4dda6d6a4b44d19b86281b5",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_notify_bridge.py::test_native_inbox_message_round_trip_preserves_severity",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves immutable inbox facts; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify inbox message, projection message, event, command-result, and outbox counts plus a verified database backup; existing messages are explicitly backfilled as info."
     }
   ]
 }

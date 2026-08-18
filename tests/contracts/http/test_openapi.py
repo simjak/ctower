@@ -272,11 +272,15 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
     }
 
 
-def test_project_scope_refusals_are_declared_for_board_and_delivery() -> None:
+def test_project_scope_refusals_are_declared_for_every_project_qualified_read() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
 
-    for path in ("/v1/board", "/v1/projects/{project_key}/delivery"):
+    for path in (
+        "/v1/board",
+        "/v1/projects/{project_key}/delivery",
+        "/v1/inbox/correspondents",
+    ):
         responses = cast(dict[str, object], paths[path]["get"]["responses"])
         assert cast(dict[str, str], responses["403"])["$ref"] == (
             "#/components/responses/ProblemResponse"
@@ -315,6 +319,16 @@ def test_http_reference_response_sets_match_the_authored_contract() -> None:
     assert not mismatches, (
         "documented response sets drifted from the authored contract: " + "; ".join(mismatches)
     )
+
+
+def test_inbox_read_state_carries_the_closed_severity_contract() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    schemas = cast(dict[str, dict[str, object]], document["components"]["schemas"])
+    read_state = schemas["InboxMessageReadState"]
+    properties = cast(dict[str, dict[str, object]], read_state["properties"])
+
+    assert "severity" in cast(list[str], read_state["required"])
+    assert properties["severity"] == {"type": "string", "enum": ["P0", "P1", "info"]}
 
 
 def test_project_and_credential_refusals_have_one_definition_each() -> None:

@@ -20,14 +20,32 @@ from ctower_kernel.projections.inbox import (
     InboxThreadList,
     InboxThreadSummary,
 )
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.events import EventKind
+from ctower_kernel.record.inbox_events import InboxSeverity
+from ctower_kernel.record.transaction import project_scope_refusal
 
 __all__: tuple[str, ...] = ()
 
 #: What the projection names a principal that holds no seat row: it can neither
 #: receive a message nor address one, so it is an identity without an address.
 _UNADDRESSABLE = "unaddressable"
+
+#: The one address query, held here so the unnarrowed and the Project-narrowed
+#: read cannot drift into two different answers about who is addressable.
+_ADDRESSABLE_SEATS = """
+    SELECT project_key, seat_key FROM project_seats AS seat
+    WHERE tenant_id = %s AND principal_id <> %s
+      AND NOT EXISTS (
+          SELECT 1 FROM project_seats AS sharing
+          WHERE sharing.tenant_id = seat.tenant_id
+            AND sharing.project_key = seat.project_key
+            AND sharing.seat_key = seat.seat_key
+            AND sharing.principal_id <> seat.principal_id
+      )
+"""
+_IN_ONE_PROJECT = "      AND seat.project_key = %s\n"
+_BY_SEAT_KEY = "    ORDER BY seat_key\n"
 
 
 def apply_message(
@@ -120,19 +138,46 @@ def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
         rows: list[dict[str, object]] = []
         if seat_key != _UNADDRESSABLE:
             rows = connection.execute(
-                """
-                SELECT project_key, seat_key FROM project_seats AS seat
-                WHERE tenant_id = %s AND principal_id <> %s
-                  AND NOT EXISTS (
-                      SELECT 1 FROM project_seats AS sharing
-                      WHERE sharing.tenant_id = seat.tenant_id
-                        AND sharing.seat_key = seat.seat_key
-                        AND sharing.principal_id <> seat.principal_id
-                  )
-                ORDER BY seat_key
-                """,
+                _ADDRESSABLE_SEATS + _BY_SEAT_KEY,
                 (actor.tenant_id, actor.principal_id),
             ).fetchall()
+    return _correspondent_list(rows, seat_key)
+
+
+def list_project_correspondents(
+    dsn: str, actor: Actor, project_key: str
+) -> InboxCorrespondentList | RecordProblem:
+    """Read the same addresses narrowed to one named Project, grant evaluated first.
+
+    The Project is named here and never optional: an absent scope reaches
+    ``project_scope_refusal`` as an empty requested set, which that chokepoint reads
+    as nothing requested and allows, so the unnarrowed listing above stays its own
+    read rather than this one's default. A principal reaching for a Project it holds
+    no active grant on is refused by name under INV-69, before a seat row is read.
+    """
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(project_key,),
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
+        seat_key = _seat_key(connection, actor)
+        rows: list[dict[str, object]] = []
+        if seat_key != _UNADDRESSABLE:
+            rows = connection.execute(
+                _ADDRESSABLE_SEATS + _IN_ONE_PROJECT + _BY_SEAT_KEY,
+                (actor.tenant_id, actor.principal_id, project_key),
+            ).fetchall()
+    return _correspondent_list(rows, seat_key)
+
+
+def _correspondent_list(rows: list[dict[str, object]], seat_key: str) -> InboxCorrespondentList:
     return InboxCorrespondentList(
         correspondents=tuple(
             InboxCorrespondent(project_key=str(row["project_key"]), seat_key=str(row["seat_key"]))
@@ -248,8 +293,8 @@ def _append_message(
         """
         INSERT INTO inbox_projection_messages (
             tenant_id, thread_id, message_id, position, sender_id, sender_seat,
-            recipient_id, recipient_seat, content, sent_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            recipient_id, recipient_seat, content, sent_at, severity
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT DO NOTHING
         """,
         (
@@ -263,6 +308,7 @@ def _append_message(
             recipient["seat_key"],
             payload["text"],
             sent_at,
+            payload.get("severity", "info"),
         ),
     )
     connection.execute(
@@ -353,6 +399,7 @@ def _message(row: dict[str, object]) -> InboxMessage:
         sent_at=cast(datetime, row["sent_at"]),
         text=str(row["content"]),
         to=str(row["recipient_seat"]),
+        severity=InboxSeverity(str(row.get("severity", "info"))),
     )
 
 
@@ -373,4 +420,5 @@ def _read_state(row: dict[str, object]) -> InboxMessageReadState:
         read_event_id=cast(UUID | None, row["read_event_id"]),
         recipient=str(row["recipient_seat"]),
         state=state,
+        severity=InboxSeverity(str(row.get("severity", "info"))),
     )

@@ -109,7 +109,13 @@ def _message_event(
         kind=EventKind.INBOX_MESSAGE_APPENDED,
         origin=command.origin,
         payload=InboxMessageAppendedPayload(
-            message_id, position, recipient, sender, command.text, thread_id
+            message_id,
+            position,
+            recipient,
+            sender,
+            command.text,
+            thread_id,
+            severity=command.severity,
         ),
         prev_hash=previous_hash,
         request_sha256=request_digest,

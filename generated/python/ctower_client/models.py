@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:815ad1d7312dfc1b5e061000c3106a840574cc62c16bf2b0f03227dda3d98292
+Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
 """
 
 from __future__ import annotations
@@ -1164,6 +1164,7 @@ class InboxMessage(_BoundaryModel):
     message_id: UUID
     position: Annotated[int, Field(ge=1, le=9007199254740991)]
     sent_at: _Rfc3339DateTime
+    severity: Literal["P0", "P1", "info"]
     text: Annotated[str, Field(min_length=1, max_length=65536)]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
 
@@ -1176,10 +1177,13 @@ class InboxMessageReadState(_BoundaryModel):
     read_at: _Rfc3339DateTime | None
     read_event_id: UUID | None
     recipient: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    severity: Literal["P0", "P1", "info"]
     state: Literal["sent", "delivered", "read"]
 
 
 class InboxNotificationRequest(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    severity: Literal["P0", "P1", "info"]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     text: Annotated[str, Field(min_length=1, max_length=65536)]
 
@@ -1194,6 +1198,8 @@ class InboxPromotionRequest(_BoundaryModel):
 
 
 class InboxSendRequest(_BoundaryModel):
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    severity: Literal["P0", "P1", "info"]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     thread_id: UUID | None = None
     text: Annotated[str, Field(min_length=1, max_length=65536)]
@@ -2367,6 +2373,7 @@ class InboxSendResult(_BoundaryModel):
     message_id: UUID
     position: Annotated[int, Field(ge=1, le=9007199254740991)]
     sent_at: _Rfc3339DateTime
+    severity: Literal["P0", "P1", "info"]
     thread_id: UUID
     thread_version: Annotated[int, Field(ge=2, le=9007199254740991)]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]

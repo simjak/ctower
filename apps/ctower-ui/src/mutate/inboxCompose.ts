@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { boundedMutation, MutationRefused, ReadRefused } from "@/read/bounded";
+import { defaultProjectKey } from "@/read/projects";
 import { instanceIdentity, loadInboxCorrespondents } from "@/read/httpRecordAdapter";
 import { asInteger, asMember, asString, PayloadRefusal } from "@/read/json";
 import { commandHeaders, exactRecord, isUuid, problemSentence, uuidField } from "./command";
@@ -54,6 +55,7 @@ function answerFrom(value: unknown, attempt: Attempt): InboxComposeState {
     "message_id",
     "position",
     "sent_at",
+    "severity",
     "thread_id",
     "thread_version",
     "to",
@@ -62,6 +64,7 @@ function answerFrom(value: unknown, attempt: Attempt): InboxComposeState {
   uuidField(row.command_id, "inbox.compose.command_id");
   const durability = asMember(row.durability_state, "inbox.compose.durability_state", DURABILITY);
   asInteger(row.thread_version, "inbox.compose.thread_version");
+  const severity = asMember(row.severity, "inbox.compose.severity", ["P0", "P1", "info"] as const);
   const threadId = uuidField(row.thread_id, "inbox.compose.thread_id");
   if (asString(row.to, "inbox.compose.to") !== attempt.to) {
     throw new PayloadRefusal("inbox.compose.to", "the seat this message was addressed to");
@@ -85,6 +88,7 @@ function answerFrom(value: unknown, attempt: Attempt): InboxComposeState {
       to: attempt.to,
       text: attempt.message,
       sentAt: asString(row.sent_at, "inbox.compose.sent_at"),
+      severity,
     },
   };
 }
@@ -162,7 +166,7 @@ export async function composeInboxThread(
     const result = await boundedMutation(
       `${instanceIdentity().baseUrl}/v1/inbox/notifications`,
       commandHeaders(credential, commandId, SURFACE),
-      JSON.stringify({ text: message, to })
+      JSON.stringify({ project_key: defaultProjectKey(), severity: "info", text: message, to })
     );
     return answerFrom(result, { to, message, text, commandId });
   } catch (error: unknown) {

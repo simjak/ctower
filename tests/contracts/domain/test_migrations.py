@@ -89,10 +89,11 @@ _EXPECTED_MIGRATION_PATHS = [
     "0074_restore_routine_retirement_kind.sql",
     "0075_ticket_display_keys.sql",
     "0076_spawn_records.sql",
+    "0077_inbox_message_severity.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0076_spawn_records.sql",
-    "schema_sha256": ("sha256:0b1917366e07dc45c5a6249e623454c81b5673a183f47528fe65409e30dea8fe"),
+    "through": "0077_inbox_message_severity.sql",
+    "schema_sha256": ("sha256:6c6d47e90c4d25e8adc0a1e9eda449c4b613b44268e59b6265f1f6dd7510ec9c"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:3169fcd7a067bdf3844a1c29ccfd8dbfc7d3f0a7de7e174d4e08a17ef90e6e16"
