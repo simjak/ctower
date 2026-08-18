@@ -234,6 +234,7 @@ _MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "request": _request_commands.build_mutation,
     "ruling": _ruling_commands.build_mutation,
     "dream-dispatch": _dream_dispatch_commands.build_mutation,
+    "beat-dispatch": _beat_dispatch_commands.build_mutation,
 }
 
 
