@@ -5612,7 +5612,31 @@
         },
         "workflowChanged": {
           "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "operation": {
+                    "const": "transition"
+                  }
+                },
+                "required": [
+                  "operation"
+                ]
+              },
+              "then": {
+                "required": [
+                  "evaluation_ref",
+                  "source_stage"
+                ]
+              }
+            }
+          ],
           "properties": {
+            "evaluation_ref": {
+              "pattern": "^$|^[0-9a-f-]{36}$",
+              "type": "string"
+            },
             "lifecycle_facts": {
               "oneOf": [
                 {
@@ -5634,6 +5658,10 @@
                 "resolve_close"
               ]
             },
+            "source_stage": {
+              "pattern": "^$|^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
             "stage": {
               "pattern": "^[a-z][a-z0-9._-]*$",
               "type": "string"
@@ -5652,8 +5680,10 @@
             }
           },
           "required": [
+            "evaluation_ref",
             "lifecycle_facts",
             "operation",
+            "source_stage",
             "stage",
             "ticket_id",
             "workflow_ref",
@@ -19914,7 +19944,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:e4f98f6a62a9ae1e247a2668ec1ac27cb389b2ed13c7da9bcc5c8ead8cb3f4d3"
+      "sha256": "sha256:65afead1459bc11eb0a252b0a6c8c1d48fd17eadee536a11c3ab0b4c27e3d748"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",

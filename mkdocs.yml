@@ -43,6 +43,7 @@ nav:
       - Request-maintenance proposals: concepts/request-maintenance-proposals.md
       - Rulings and agreements: concepts/rulings.md
       - Morning digest: concepts/morning-digest.md
+      - Ticket movement: concepts/ticket-movement.md
       - Tickets: concepts/tickets.md
       - Stages: concepts/stages.md
       - Gates: concepts/gates.md

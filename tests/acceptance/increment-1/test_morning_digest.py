@@ -150,7 +150,10 @@ def _assert_cli_transcript(
     assert "Executions: UNKNOWN" not in transcript
     assert "Proof — 2; COMPLETE" in transcript
     for ticket_id in ticket_ids:
-        assert f"required: {ticket_id} /v1/tickets/{ticket_id}/timeline" in transcript
+        assert (
+            f"required: {ticket_id} /v1/tickets/{ticket_id}/timeline?project_key=ctower"
+            in transcript
+        )
 
 
 def _assert_digest_payload(
@@ -186,7 +189,7 @@ def _assert_digest_payload(
     links = [link for row in proof_rows for link in cast(list[dict[str, object]], row["tickets"])]
     assert links == [
         {
-            "href": f"/v1/tickets/{ticket_id}/timeline",
+            "href": f"/v1/tickets/{ticket_id}/timeline?project_key=ctower",
             "purpose": "required",
             "ticket_id": str(ticket_id),
         }

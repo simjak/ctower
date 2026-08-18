@@ -172,7 +172,9 @@ by an omitted `--workspace-id` until first-class workspace custody exists.
 
 This operator-only online read defaults to today's Europe/Vilnius artifact and deterministic STE text.
 JSON returns the exact generated boundary. The command is never spooled and sends no notification. Unknown
-totals, unreached scopes, and unresolved execution relations remain explicit. See the
+totals, unreached scopes, and unresolved execution relations remain explicit. The artifact's movement section
+contains prior-civil-day Project/from/to counts, its movement-view pointer, watermark, and explicit completeness
+state without movement rows or Ticket text. See the
 [morning digest concept](../concepts/morning-digest.md).
 
 ## Ticket: capture and reads
@@ -523,6 +525,14 @@ Text output prints checkpoint summary and source/reason lines, followed by one l
 
 `project events` returns a cursor page of typed events visible to the authenticated project principal. It
 is also read-only and online-only.
+
+`project movement <project-key>` returns the generated cursor page of accepted
+Ticket stage transitions for that Project. It accepts the same optional
+`--cursor` and `--limit` flags as the other Project cursor reads and uses the
+same direct Bearer and Project-scope checks. It never accepts a query credential
+or enters the mutation spool. The page contains transition facts only; use the
+movement Atom endpoint through an HTTP client when a feed representation is
+needed.
 
 ## Attention findings
 

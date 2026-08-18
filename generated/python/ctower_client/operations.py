@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
+Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
 """
 
 from __future__ import annotations
@@ -552,6 +552,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "getMovementAtom": OperationSpec(
+            operation_id="getMovementAtom",
+            client_method="get_movement_atom",
+            method="GET",
+            path="/v1/projects/{project_key}/movement.atom",
+            request_model=None,
+            response_model=None,
+            cli_names=(),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='authenticated',
+            refusal_only=False,
+        ),
         "getProjectDelivery": OperationSpec(
             operation_id="getProjectDelivery",
             client_method="get_project_delivery",
@@ -914,6 +927,19 @@ OPERATIONS = MappingProxyType(
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
+            refusal_only=False,
+        ),
+        "listTicketMovement": OperationSpec(
+            operation_id="listTicketMovement",
+            client_method="list_ticket_movement",
+            method="GET",
+            path="/v1/projects/{project_key}/movement",
+            request_model=None,
+            response_model=_models.MovementEventPage,
+            cli_names=('project movement',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='authenticated',
             refusal_only=False,
         ),
         "listTicketSessions": OperationSpec(
@@ -1487,6 +1513,7 @@ CLI_OPERATIONS = MappingProxyType(
         "spawn list": OPERATIONS["listSpawnRecords"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
+        "project movement": OPERATIONS["listTicketMovement"],
         "session ticket": OPERATIONS["listTicketSessions"],
         "company bundle plan": OPERATIONS["planCompanyBundle"],
         "migration ctower-project prepare": OPERATIONS["prepareCtowerProjectCutover"],

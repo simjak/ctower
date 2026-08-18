@@ -31,7 +31,9 @@ from ctower_kernel.projections.morning_digest import (
     project_morning_digest,
 )
 from ctower_kernel.projections.request_proposals import ProposalSummaryInput
-from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.projections.ticket_movement import MovementCountInput
+from ctower_kernel.record import Actor, PrincipalKind, Record, RecordProblem
+from ctower_kernel.record.movement_events import MovementCountList
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work.request_proposals import (
     RequestMaintenanceProposalList,
@@ -49,12 +51,14 @@ class _MorningDigestRoutes:
     def __init__(
         self,
         access: Access,
+        record: Record,
         requests: Requests,
         rulings: Rulings,
         proposals: RequestProposals | None,
         recorder: TelemetryRecorder,
     ) -> None:
         self._access = access
+        self._record = record
         self._requests = requests
         self._rulings = rulings
         self._proposals = proposals
@@ -90,6 +94,7 @@ class _MorningDigestRoutes:
             _request_source_reading(self._requests, actor, telemetry, observed_at),
             _ruling_source_reading(self._rulings, actor, telemetry, observed_at),
             _proposal_source_reading(self._proposals, actor, telemetry, observed_at),
+            _movement_source_reading(self._record, actor, telemetry, observed_at),
             digest_date=digest_date,
             observed_at=observed_at,
         )
@@ -148,6 +153,50 @@ def _proposal_source_reading(
             observed_at=observed_at,
         )
     return _proposal_reading(outcome, observed_at)
+
+
+def _movement_source_reading(
+    record: Record,
+    actor: Actor,
+    telemetry: TelemetryContext,
+    observed_at: dt.datetime,
+) -> SourceReading[MovementCountInput]:
+    try:
+        outcome = record.event_audit.movement_counts(actor, telemetry=telemetry)
+    except PsycopgError:
+        return SourceReading.unknown(
+            UnreachedScope("movement", "movement-source-unavailable"),
+            observed_at=observed_at,
+        )
+    if isinstance(outcome, RecordProblem):
+        return SourceReading.unknown(
+            UnreachedScope("movement", outcome.code), observed_at=observed_at
+        )
+    return _movement_reading(outcome)
+
+
+def _movement_reading(outcome: MovementCountList) -> SourceReading[MovementCountInput]:
+    has_unknown_provenance = any(not row.source_stage or not row.stage for row in outcome.rows)
+    rows = tuple(
+        MovementCountInput(
+            project_key=row.project_key,
+            source_stage=row.source_stage,
+            stage=row.stage,
+            occurred_at=row.occurred_at,
+        )
+        for row in outcome.rows
+        if row.source_stage and row.stage
+    )
+    if has_unknown_provenance:
+        return SourceReading.partial(
+            rows,
+            watermark=outcome.watermark,
+            observed_at=outcome.observed_at,
+            unreached=(UnreachedScope("movement", "pre-enrichment-provenance"),),
+        )
+    return SourceReading.complete(
+        rows, watermark=outcome.watermark, observed_at=outcome.observed_at
+    )
 
 
 def _request_reading(
@@ -264,6 +313,7 @@ def _decision_brief(row: RequestRow) -> DecisionBriefFact | None:
 def install_morning_digest_routes(
     app: FastAPI,
     access: Access,
+    record: Record,
     requests: Requests,
     rulings: Rulings,
     proposals: RequestProposals | None,
@@ -271,6 +321,7 @@ def install_morning_digest_routes(
 ) -> None:
     routes = _MorningDigestRoutes(
         access,
+        record,
         requests,
         rulings,
         proposals,

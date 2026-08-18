@@ -69,6 +69,8 @@ from ctower_api._optional_routes import (
     install_optional_routes,
 )
 from ctower_api._project_event_routes import install_project_event_routes
+from ctower_api._project_feed_atom_routes import install_project_feed_atom_routes
+from ctower_api._project_movement_routes import install_project_movement_routes
 from ctower_api._request_cutover_routes import install_request_cutover_routes
 from ctower_api._request_proposal_routes import install_request_proposal_routes
 from ctower_api._request_routes import install_request_routes
@@ -331,12 +333,16 @@ def _install_core_routes(
     if rulings is not None:
         install_ruling_routes(app, access, record, rulings, recorder)
     if requests is not None and rulings is not None:
-        install_morning_digest_routes(app, access, requests, rulings, request_proposals, recorder)
+        install_morning_digest_routes(
+            app, access, record, requests, rulings, request_proposals, recorder
+        )
     if request_cutover is not None:
         install_request_cutover_routes(app, access, record, request_cutover, recorder)
     install_comment_routes(app, access, record, recorder)
     install_session_routes(app, access, record, recorder)
     install_project_event_routes(app, access, record, recorder)
+    install_project_movement_routes(app, access, record, recorder)
+    install_project_feed_atom_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work, workflow, recorder)
 
 

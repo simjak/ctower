@@ -12,7 +12,6 @@ from psycopg.rows import dict_row
 
 from ctower_kernel.record import (
     Actor,
-    AuditPage,
     BootstrapCommand,
     BootstrapReceipt,
     CustodyCommand,
@@ -23,7 +22,6 @@ from ctower_kernel.record import (
     TicketCommand,
     TicketCommandResult,
 )
-from ctower_kernel.record._audit_sql import ticket_audit as _ticket_audit
 from ctower_kernel.record._bootstrap_sql import (
     bootstrap_problem,
     bootstrap_transaction,
@@ -44,6 +42,7 @@ from ctower_kernel.record._durability_finalizer_sql import (
 )
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
+from ctower_kernel.record._event_audit_store import _PostgresEventAudit
 from ctower_kernel.record._human_identity_adapter import PostgresHumanIdentity
 from ctower_kernel.record._intake_sql import promote_intake as _promote_intake
 from ctower_kernel.record._intake_sql import submit_intake as _submit_intake
@@ -56,7 +55,6 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationStateError,
     apply_database_migrations,
 )
-from ctower_kernel.record._project_event_sql import project_events as _project_events
 from ctower_kernel.record._session_read_sql import project_sessions as _project_sessions
 from ctower_kernel.record._session_read_sql import ticket_sessions as _ticket_sessions
 from ctower_kernel.record._session_sql import record_session_fact as _record_session_fact
@@ -82,7 +80,6 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
-from ctower_kernel.record.project_events import ProjectEventPage
 from ctower_kernel.record.sessions import (
     ProjectSessionPage,
     SessionFactCommand,
@@ -282,51 +279,6 @@ class _PostgresWorkSessions:
     ) -> ProjectSessionPage | RecordProblem:
         outcome = _project_sessions(self._dsn, actor, project_key, cursor=cursor, limit=limit)
         self._emit("record.project_sessions", telemetry, outcome)
-        return outcome
-
-    def _emit(self, name: str, telemetry: TelemetryContext, outcome: object) -> None:
-        self._telemetry.emit(
-            name,
-            telemetry,
-            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
-            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
-        )
-
-
-class _PostgresEventAudit:
-    """Postgres adapter for the cohesive canonical-event cursor-read boundary."""
-
-    def __init__(self, dsn: str, *, telemetry: Telemetry) -> None:
-        self._dsn = dsn
-        self._telemetry = telemetry
-
-    def ticket_audit(
-        self,
-        actor: Actor,
-        ticket_id: UUID,
-        project_key: str,
-        *,
-        cursor: int,
-        limit: int,
-        telemetry: TelemetryContext,
-    ) -> AuditPage | RecordProblem:
-        outcome = _ticket_audit(
-            self._dsn, actor, ticket_id, project_key, cursor=cursor, limit=limit
-        )
-        self._emit("record.ticket_audit", telemetry, outcome)
-        return outcome
-
-    def project_events(
-        self,
-        actor: Actor,
-        project_key: str,
-        *,
-        cursor: int,
-        limit: int,
-        telemetry: TelemetryContext,
-    ) -> ProjectEventPage | RecordProblem:
-        outcome = _project_events(self._dsn, actor, project_key, cursor=cursor, limit=limit)
-        self._emit("record.project_events", telemetry, outcome)
         return outcome
 
     def _emit(self, name: str, telemetry: TelemetryContext, outcome: object) -> None:

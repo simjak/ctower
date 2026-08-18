@@ -22,6 +22,7 @@ from ctower_kernel.projections.morning_digest import (
     project_morning_digest,
 )
 from ctower_kernel.projections.request_proposals import ProposalSummaryInput
+from ctower_kernel.projections.ticket_movement import MovementCountInput
 
 __all__: tuple[str, ...] = ()
 
@@ -36,6 +37,7 @@ _UNRELATED_TICKET_ID = UUID("00000000-0000-7000-8000-000000000303")
 _OBSERVED_AT = datetime(2026, 8, 10, 5, 0, tzinfo=UTC)
 _DIGEST_DATE = date(2026, 8, 10)
 _PROOF_ROW_COUNT = 2
+_MOVEMENT_WATERMARK = 48
 
 
 def test_digest_composes_three_sections_and_prior_day_ruling_execution() -> None:
@@ -69,6 +71,7 @@ def test_digest_composes_three_sections_and_prior_day_ruling_execution() -> None
         requests,
         rulings,
         _proposal_source(ProposalSummaryInput("duplicate", "OPEN")),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -115,6 +118,7 @@ def test_unreached_request_source_is_unknown_never_a_zero() -> None:
         requests,
         rulings,
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -144,6 +148,7 @@ def test_unreached_ruling_source_makes_the_proof_total_unknown_never_zero() -> N
         requests,
         rulings,
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -170,6 +175,7 @@ def test_partial_source_preserves_visible_rows_and_withholds_the_total() -> None
         requests,
         rulings,
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -200,6 +206,7 @@ def test_open_decisions_follow_the_authoritative_brief_status() -> None:
         ),
         SourceReading.complete((), watermark=44, observed_at=_OBSERVED_AT),
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -215,6 +222,7 @@ def test_unknown_proof_count_marks_the_related_scope_partial() -> None:
         SourceReading.complete((request,), watermark=41, observed_at=_OBSERVED_AT),
         SourceReading.complete((), watermark=44, observed_at=_OBSERVED_AT),
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -239,6 +247,7 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
         requests,
         rulings,
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -246,6 +255,7 @@ def test_complete_empty_sources_are_measured_zeroes_and_artifact_digest_is_stabl
         requests,
         rulings,
         _proposal_source(),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=datetime(2026, 8, 10, 6, 0, tzinfo=UTC),
     )
@@ -267,6 +277,7 @@ def test_unreached_proposal_source_is_named_unavailable_without_rows_or_identity
             UnreachedScope("request-proposals", "proposal-source-unavailable"),
             observed_at=_OBSERVED_AT,
         ),
+        _movement_source(),
         digest_date=_DIGEST_DATE,
         observed_at=_OBSERVED_AT,
     )
@@ -320,6 +331,7 @@ def test_prior_civil_day_uses_the_vilnius_fall_back_boundary() -> None:
         SourceReading.complete((), watermark=41, observed_at=_OBSERVED_AT),
         rulings,
         _proposal_source(),
+        _movement_source(),
         digest_date=date(2026, 10, 26),
         observed_at=_OBSERVED_AT,
     )
@@ -344,9 +356,14 @@ def _assert_complete_digest(digest: MorningDigest) -> None:
     assert digest.proof.total_count == _PROOF_ROW_COUNT
     assert dict(digest.request_maintenance.by_kind)["duplicate"] == 1
     assert digest.request_maintenance.pointer == "/v1/request-maintenance/review"
+    assert digest.movement.pointer == "/v1/projects/{project_key}/movement"
+    assert digest.movement.source_state == "complete"
+    assert digest.movement.watermark == _MOVEMENT_WATERMARK
+    assert digest.movement_watermark == _MOVEMENT_WATERMARK
+    assert digest.movement.counts() == {}
     proof = next(item for item in digest.proof.items if item.request_reference == "R102")
     assert proof.current_proof_count == 1
-    assert proof.tickets[0].href == f"/v1/tickets/{_TICKET_ID}/timeline"
+    assert proof.tickets[0].href == f"/v1/tickets/{_TICKET_ID}/timeline?project_key=ctower"
     assert proof.tickets[0].purpose == "required"
     assert all(item.request_id != _UNRELATED_REQUEST_ID for item in digest.proof.items)
 
@@ -355,6 +372,12 @@ def _proposal_source(
     *rows: ProposalSummaryInput,
 ) -> SourceReading[ProposalSummaryInput]:
     return SourceReading.complete(rows, watermark=46, observed_at=_OBSERVED_AT)
+
+
+def _movement_source(
+    *rows: MovementCountInput,
+) -> SourceReading[MovementCountInput]:
+    return SourceReading.complete(rows, watermark=_MOVEMENT_WATERMARK, observed_at=_OBSERVED_AT)
 
 
 def _open_decision() -> DigestRequestFact:

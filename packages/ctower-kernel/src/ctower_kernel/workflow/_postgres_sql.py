@@ -307,7 +307,7 @@ def _commit_transition(
     run_id = cast(UUID, run["workflow_run_id"])
     version = _run_version(run) + 1
     activity = cast(ActivityClass, decision.activity_class)
-    _persist_transition(
+    transition_id = _persist_transition(
         connection,
         actor,
         mutation,
@@ -336,6 +336,8 @@ def _commit_transition(
         request_digest=request_digest,
         now=now,
         telemetry=telemetry,
+        source_stage=mutation.source_stage,
+        evaluation_ref=str(transition_id),
     )
 
 
@@ -520,7 +522,7 @@ def _persist_transition(
     activity: ActivityClass,
     predicate_ref: str,
     now: datetime,
-) -> None:
+) -> UUID:
     _persist_run_head(
         connection,
         actor,
@@ -529,6 +531,7 @@ def _persist_transition(
         version=version,
         activity=activity,
     )
+    transition_id = _uuid7(now)
     connection.execute(
         """
         INSERT INTO workflow_transition_facts (
@@ -538,7 +541,7 @@ def _persist_transition(
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
-            _uuid7(now),
+            transition_id,
             run_id,
             actor.tenant_id,
             version,
@@ -551,6 +554,7 @@ def _persist_transition(
             now,
         ),
     )
+    return transition_id
 
 
 def _persist_run_head(

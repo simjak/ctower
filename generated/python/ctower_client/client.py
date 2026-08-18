@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
+Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
 """
 
 from __future__ import annotations
@@ -87,6 +87,7 @@ from ctower_client.models import (
     KnowledgeDocument,
     KnowledgeDocumentList,
     MorningDigest,
+    MovementEventPage,
     PoisonDispositionReceipt,
     PoisonDispositionRequest,
     PoolLimitsView,
@@ -1532,6 +1533,26 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: AuditPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_ticket_movement(
+        self,
+        project_key: ProjectKey,
+        *,
+        cursor: Annotated[int, Field(ge=0)] | None = None,
+        limit: Annotated[int, Field(ge=1, le=100)] | None = None,
+    ) -> MovementEventPage:
+        response = self._http.get(
+            f"/v1/projects/{quote(str(project_key), safe='')}/movement",
+            params={**({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: MovementEventPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_sessions(

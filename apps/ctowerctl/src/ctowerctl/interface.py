@@ -19,6 +19,7 @@ from ctower_client.models import (
     ControlHealth,
     HealthStatus,
     MorningDigest,
+    MovementEventPage,
     Problem,
     ProjectDeliveryView,
 )
@@ -388,11 +389,29 @@ def write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
     ):
         write_text(stream, _migration_commands.delivery_text(result))
         return
+    if getattr(namespace, "cli_name", None) == "project movement":
+        _write_movement_result(result, stream)
+        return
     write_json(stream, result)
 
 
 def _model_payload(model: BaseModel) -> JsonObject:
     return cast(JsonObject, json.loads(model.model_dump_json(by_alias=True)))
+
+
+def _write_movement_result(result: BaseModel, stream: TextIO) -> None:
+    if not isinstance(result, MovementEventPage):
+        write_json(stream, result)
+        return
+    stream.write(
+        json.dumps(
+            result.model_dump(mode="json", by_alias=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    )
 
 
 def _current_entry(spool: Spool, command_id: UUID) -> SpoolEntry:

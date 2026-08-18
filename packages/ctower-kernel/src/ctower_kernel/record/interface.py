@@ -22,6 +22,7 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.movement_events import MovementEventStore
 from ctower_kernel.record.project_events import ProjectEventPage
 from ctower_kernel.record.sessions import (
     ProjectSessionPage,
@@ -259,9 +260,7 @@ class WorkSessionStore(Protocol):
     ) -> ProjectSessionPage | RecordProblem: ...
 
 
-class EventAuditStore(Protocol):
-    """Cohesive persistence boundary for cursor reads over canonical events."""
-
+class EventAuditStore(MovementEventStore, Protocol):
     def ticket_audit(
         self,
         actor: Actor,

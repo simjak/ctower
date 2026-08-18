@@ -18,26 +18,79 @@ AdapterAliases = dict[str, tuple[Path, str]]
 
 
 def public_reads(
-    tree: ast.Module, *, scope_names: set[str], scoped_returns: set[str]
+    tree: ast.Module,
+    *,
+    scope_names: set[str],
+    scoped_returns: set[str],
+    bases: dict[str, ast.ClassDef] | None = None,
 ) -> list[tuple[str, str]]:
     """Every public Protocol method that reads Projects through an Actor.
 
     A read qualifies either by naming a Project scope in its signature or by handing
     back Project-bearing rows, so a portfolio read that names no scope at all is
-    still inventoried rather than silently exempt.
+    still inventoried rather than silently exempt. A Protocol that composes another
+    publishes the inherited reads too, so ``bases`` carries the Protocols declared
+    outside this module; the module's own Protocols resolve without it.
     """
 
+    resolved = {**(bases or {}), **_protocol_declarations(tree)}
     reads: list[tuple[str, str]] = []
     for node in tree.body:
         if not isinstance(node, ast.ClassDef) or not _is_protocol(node):
             continue
         reads.extend(
             (node.name, method.name)
-            for method in node.body
-            if isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
-            and _is_project_read(method, scope_names=scope_names, scoped_returns=scoped_returns)
+            for method in _protocol_methods(node, resolved)
+            if _is_project_read(method, scope_names=scope_names, scoped_returns=scoped_returns)
         )
     return reads
+
+
+def imported_protocols(
+    tree: ast.Module, *, module_prefix: str, module_root: Path
+) -> dict[str, ast.ClassDef]:
+    """Every Protocol this module imports from its own package, keyed by local name."""
+
+    protocols: dict[str, ast.ClassDef] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ImportFrom) or node.module is None:
+            continue
+        if not node.module.startswith(module_prefix):
+            continue
+        module_path = module_root / (node.module.rsplit(".", maxsplit=1)[-1] + ".py")
+        source = ast.parse(module_path.read_text(encoding="utf-8"), filename=str(module_path))
+        declared = _protocol_declarations(source)
+        protocols.update(
+            (imported.asname or imported.name, declared[imported.name])
+            for imported in node.names
+            if imported.name in declared
+        )
+    return protocols
+
+
+def _protocol_declarations(tree: ast.Module) -> dict[str, ast.ClassDef]:
+    return {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.ClassDef) and _is_protocol(node)
+    }
+
+
+def _protocol_methods(
+    node: ast.ClassDef,
+    protocols: dict[str, ast.ClassDef],
+    visited: frozenset[str] = frozenset(),
+) -> tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]:
+    if node.name in visited:
+        return ()
+    methods = [
+        child for child in node.body if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
+    ]
+    seen = visited | {node.name}
+    for base in node.bases:
+        if isinstance(base, ast.Name) and base.id in protocols:
+            methods.extend(_protocol_methods(protocols[base.id], protocols, seen))
+    return tuple(methods)
 
 
 def _is_project_read(

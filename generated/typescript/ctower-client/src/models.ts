@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
+// Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
 
 export type ActivityClass = "work" | "verification";
 
@@ -1505,6 +1505,8 @@ export type MorningDigest = Readonly<{
   readonly "artifact_key": string;
   readonly "artifact_sha256": string;
   readonly "digest_date": string;
+  readonly "movement": MovementDigestSummary;
+  readonly "movement_watermark": number | null;
   readonly "observed_at": string;
   readonly "open_decisions": MorningDigestDecisionSection;
   readonly "proof": MorningDigestProofSection;
@@ -1578,6 +1580,39 @@ export type MorningDigestTicketLink = Readonly<{
   readonly "href": string;
   readonly "purpose": "required" | "optional";
   readonly "ticket_id": string;
+}>;
+
+export type MovementDigestCount = Readonly<{
+  readonly "count": number;
+  readonly "from_stage": string;
+  readonly "project_key": string;
+  readonly "to_stage": string;
+}>;
+
+export type MovementDigestSummary = Readonly<{
+  readonly "counts": ReadonlyArray<MovementDigestCount>;
+  readonly "pointer": "/v1/projects/{project_key}/movement";
+  readonly "source_state": "complete" | "partial" | "unavailable";
+  readonly "unreached_scopes": ReadonlyArray<string>;
+  readonly "watermark": number | null;
+}>;
+
+export type MovementEvent = Readonly<{
+  readonly "evaluation_ref": string;
+  readonly "event_id": string;
+  readonly "from_stage": string;
+  readonly "occurred_at"?: string;
+  readonly "record_position": number;
+  readonly "ticket_id": string;
+  readonly "to_stage": string;
+  readonly "workflow_ref": string;
+  readonly "workflow_version": number;
+}>;
+
+export type MovementEventPage = Readonly<{
+  readonly "events": ReadonlyArray<MovementEvent>;
+  readonly "next_cursor": number | null;
+  readonly "project_key": string;
 }>;
 
 export type MutableAssignmentKind = "current_assignee" | "stage_owner" | "reviewer_assignment";
@@ -2797,8 +2832,10 @@ export type WorkflowChangedAuditEvent = Readonly<{
 }>;
 
 export type WorkflowChangedAuditPayload = Readonly<{
+  readonly "evaluation_ref": string;
   readonly "lifecycle_facts": ReadonlyArray<"resolved" | "closed">;
   readonly "operation": "start" | "transition" | "resolve_close";
+  readonly "source_stage": string;
   readonly "stage": string;
   readonly "ticket_id": string;
   readonly "workflow_ref": string;

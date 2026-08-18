@@ -16,6 +16,7 @@ from ctower_kernel.record.events import (
     WorkflowChangedPayload,
 )
 from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.workflow_validation import validate_workflow_provenance
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.workflow import WorkflowActor, WorkflowReceipt
 
@@ -33,6 +34,8 @@ def append_change(
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
+    source_stage: str = "",
+    evaluation_ref: str = "",
 ) -> WorkflowReceipt:
     """Commit one typed Workflow event, exact result, and outbox row."""
 
@@ -47,6 +50,8 @@ def append_change(
         request_digest=request_digest,
         now=now,
         telemetry=telemetry,
+        source_stage=source_stage,
+        evaluation_ref=evaluation_ref,
     )
     committed = _with_event(receipt, event_id)
     RecordTransaction(connection).commit(
@@ -77,7 +82,15 @@ def _workflow_event(
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
+    source_stage: str = "",
+    evaluation_ref: str = "",
 ) -> EventEnvelope:
+    validate_workflow_provenance(
+        operation,
+        source_stage,
+        evaluation_ref,
+        require_transition=True,
+    )
     sequence, previous = _next_event(connection, receipt.workflow_run_id)
     return EventEnvelope(
         actor_principal_id=actor.principal_id,
@@ -95,6 +108,8 @@ def _workflow_event(
             workflow_version=receipt.version,
             stage=receipt.stage,
             lifecycle_facts=receipt.lifecycle_facts,
+            source_stage=source_stage,
+            evaluation_ref=evaluation_ref,
         ),
         prev_hash=previous,
         request_sha256=request_digest,

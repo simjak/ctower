@@ -25,6 +25,12 @@ session with an unlocked collection. Missing, locked, null, or unapproved keyrin
 enqueue/send and leaves ciphertext unchanged; there is no plaintext, file, environment, or `keyrings.alt`
 fallback. CompanyBundle carries secret-binding names and reference classes only.
 
+The Ticket movement JSON and Atom reads use that same direct Bearer path and
+existing Project authorization. They do not accept a bearer, feed token, or
+other credential in a query string, and the Atom representation contains only
+transition facts and authorized Ticket-timeline links. Ticket titles,
+descriptions, comments, and other Ticket text are not transport payloads.
+
 ## Repository boundary
 
 - Keep local values in ignored environment or vault tooling; never commit them.
