@@ -120,40 +120,23 @@ def test_minute_hour_set_fires_at_each_authored_utc_mark() -> None:
     )
 
 
-def test_loaded_hour_specific_beats_preserve_vilnius_wall_clock_across_dst() -> None:
-    beats = {
+def test_loaded_migrated_routines_preserve_vilnius_wall_clock() -> None:
+    routines = {
         revision.routine_ref: revision
         for revision in load_routine_revisions(ROOT / "packs")
-        if revision.routine_ref in {"ctower.beat.digest@1", "ctower.beat.sprint@1"}
+        if revision.routine_ref in {"mc-cron.manibo-report@1", "mc-cron.structural-report@1"}
     }
-    digest = beats["ctower.beat.digest@1"]
-    sprint = beats["ctower.beat.sprint@1"]
+    report = routines["mc-cron.manibo-report@1"]
+    structural = routines["mc-cron.structural-report@1"]
 
-    def next_four(after: datetime) -> tuple[datetime, ...]:
-        fires: list[datetime] = []
-        for _ in range(4):
-            after = sprint.next_fire_after(after)
-            fires.append(after)
-        return tuple(fires)
-
-    assert digest.timezone == sprint.timezone == "Europe/Vilnius"
-    assert digest.next_fire_after(datetime(2026, 8, 10, tzinfo=UTC)) == datetime(
-        2026, 8, 10, 4, 12, tzinfo=UTC
+    assert report.timezone == structural.timezone == "Europe/Vilnius"
+    assert report.minute_marks == (0, 30)
+    assert structural.minute_marks == (0,)
+    assert report.next_fire_after(datetime(2026, 8, 10, tzinfo=UTC)) == datetime(
+        2026, 8, 10, 0, 30, tzinfo=UTC
     )
-    assert digest.next_fire_after(datetime(2026, 12, 10, tzinfo=UTC)) == datetime(
-        2026, 12, 10, 5, 12, tzinfo=UTC
-    )
-    assert next_four(datetime(2026, 8, 10, 20, tzinfo=UTC)) == (
-        datetime(2026, 8, 10, 23, 23, tzinfo=UTC),
-        datetime(2026, 8, 11, 5, 23, tzinfo=UTC),
-        datetime(2026, 8, 11, 11, 23, tzinfo=UTC),
-        datetime(2026, 8, 11, 17, 23, tzinfo=UTC),
-    )
-    assert next_four(datetime(2026, 12, 10, 20, tzinfo=UTC)) == (
-        datetime(2026, 12, 11, 0, 23, tzinfo=UTC),
-        datetime(2026, 12, 11, 6, 23, tzinfo=UTC),
-        datetime(2026, 12, 11, 12, 23, tzinfo=UTC),
-        datetime(2026, 12, 11, 18, 23, tzinfo=UTC),
+    assert report.next_fire_after(datetime(2026, 12, 10, tzinfo=UTC)) == datetime(
+        2026, 12, 10, 0, 30, tzinfo=UTC
     )
 
 

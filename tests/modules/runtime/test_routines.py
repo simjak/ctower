@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-import hashlib
 from datetime import UTC, datetime
 from typing import cast
 
 import pytest
 
-from ctower_kernel.runtime import CatchUpPolicy, ConcurrencyPolicy, RoutineRevision, ScheduleKind
-from ctower_kernel.runtime.beats import BeatDispatchSpec
+from ctower_kernel.runtime import (
+    CatchUpPolicy,
+    ConcurrencyPolicy,
+    RoutineRevision,
+    ScheduleKind,
+)
 from ctower_kernel.runtime.gates import (
     ActivityGate,
     GateDecision,
     GateOutcome,
     evaluate_gate,
 )
+from ctower_kernel.runtime.items import RoutineItemSpec
 
 __all__: tuple[str, ...] = ()
 
-_PROMPT = "sentinel prompt"
 _EXPECTED_BUSY_TICKETS = 2
 
 
@@ -34,16 +37,15 @@ def _revision(gate: ActivityGate | None) -> RoutineRevision:
         catch_up=CatchUpPolicy.SKIP_MISSED,
         catch_up_cap=1,
         timeout_seconds=600,
-        handler_kind="beat_dispatch",
+        handler_kind="routine_item",
         component_digests=("sha256:" + "cd" * 32,),
         minute_marks=(0, 10, 20, 30, 40, 50),
         hour_marks=None,
-        beat_dispatch=BeatDispatchSpec(
-            beat_key="capacity-sentinel",
-            prompt_source="state/beats/capacity-sentinel.txt",
-            prompt_sha256="sha256:" + hashlib.sha256(_PROMPT.encode()).hexdigest(),
-            prompt=_PROMPT,
-            target_session="commander",
+        routine_item=RoutineItemSpec(
+            item_key="capacity-sentinel",
+            knowledge_ref="mc-cron.capacity-sentinel",
+            owner_seat="ctower-commander",
+            escalation_seat="ctower-commander",
         ),
         activity_gate=gate,
     )

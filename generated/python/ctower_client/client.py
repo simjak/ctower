@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
+Authored contract digest: sha256:901475c5c349e4d175b8e21823f432fffa3510d8b357d0382998196bd8a8a600
 """
 
 from __future__ import annotations
@@ -23,9 +23,6 @@ from ctower_client.models import (
     AssignmentList,
     AttentionFindingResult,
     AuditPage,
-    BeatDispatchEffectList,
-    BeatRoutineList,
-    BeatRoutineRetirementReceipt,
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
@@ -1261,36 +1258,6 @@ class CtowerClient:
         return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def list_beat_dispatch_effects(
-        self,
-    ) -> BeatDispatchEffectList:
-        response = self._http.get(
-            "/v1/runtime/beat-dispatches",
-            headers=self._telemetry_headers(
-                self._context(uuid4()),
-                {
-                    **self._auth_headers(),
-                },
-            ),
-        )
-        return _response(response, {200: BeatDispatchEffectList}, {401: Problem, 403: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def list_beat_routines(
-        self,
-    ) -> BeatRoutineList:
-        response = self._http.get(
-            "/v1/runtime/beat-routines",
-            headers=self._telemetry_headers(
-                self._context(uuid4()),
-                {
-                    **self._auth_headers(),
-                },
-            ),
-        )
-        return _response(response, {200: BeatRoutineList}, {401: Problem, 403: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_dream_dispatch_effects(
         self,
     ) -> DreamDispatchEffectList:
@@ -1968,25 +1935,6 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
-
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
-    def retire_beat_routine(
-        self,
-        routine_ref: str,
-        *,
-        command_id: UUID,
-    ) -> BeatRoutineRetirementReceipt:
-        response = self._http.post(
-            f"/v1/runtime/beat-routines/{quote(str(routine_ref), safe='')}/retire",
-            headers=self._telemetry_headers(
-                self._context(command_id),
-                {
-                    **self._auth_headers(),
-                    "Idempotency-Key": str(command_id),
-                },
-            ),
-        )
-        return _response(response, {200: BeatRoutineRetirementReceipt, 202: BeatRoutineRetirementReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def revoke_seat_credential(

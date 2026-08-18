@@ -23,6 +23,7 @@ from ctower_kernel.record.request_proposal_events import (
     _validate_identity as _validate_request_proposal_identity,
 )
 from ctower_kernel.record.routine_events import validate_routine_retirement_identity
+from ctower_kernel.record.routine_work_item_events import validate_routine_work_item_identity
 from ctower_kernel.record.ruling_events import _validate_identity as _validate_ruling_identity
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
@@ -50,6 +51,7 @@ def validate_event_identity(
     _validate_catalog_identity(event)
     _validate_occurrence_identity(event, occurrence_type)
     validate_routine_retirement_identity(event.aggregate_id, event.payload)
+    validate_routine_work_item_identity(event.aggregate_id, event.payload)
     validate_dream_runtime_identity(event.aggregate_id, event.payload)
     _validate_poison_identity(event)
     _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)

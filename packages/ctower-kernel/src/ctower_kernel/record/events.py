@@ -48,6 +48,7 @@ from ctower_kernel.record.estate_import_events import (
     CompanyRecordAppendedPayload,
     EstateImportChangedPayload,
 )
+from ctower_kernel.record.event_identity import validate_basic_event_identity
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
     InboxEventPayload,
@@ -67,6 +68,13 @@ from ctower_kernel.record.pool_events import PoolObservationRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
 from ctower_kernel.record.request_proposal_events import RequestProposalChangedPayload
 from ctower_kernel.record.routine_events import RoutineRetiredPayload
+from ctower_kernel.record.routine_work_item_events import (
+    _ROUTINE_WORK_ITEM_EVENT_CATALOG,
+    RoutineWorkItemAlarmRaisedPayload,
+    RoutineWorkItemAppendedPayload,
+    RoutineWorkItemCompletedPayload,
+    RoutineWorkItemSuppressedPayload,
+)
 from ctower_kernel.record.ruling_events import RulingRecordedPayload
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
@@ -257,7 +265,7 @@ def _validate_routine_occurrence_decision(payload: RoutineOccurrenceRecordedPayl
         offset is not None or payload.outcome != "skipped"
     ):
         raise ValueError("nonexistent Routine civil time must be visibly skipped")
-    if (payload.outcome == "queued") != (payload.job_id is not None):
+    if payload.outcome != "queued" and payload.job_id is not None:
         raise ValueError("only a queued Routine occurrence carries a fixed job")
 
 
@@ -273,11 +281,17 @@ type EventPayload = (
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | RoutineRetiredPayload
+    | RoutineWorkItemAppendedPayload
+    | RoutineWorkItemSuppressedPayload
+    | RoutineWorkItemCompletedPayload
+    | RoutineWorkItemAlarmRaisedPayload
     | DreamDispatchConsumedPayload
     | DreamLaneBoundPayload
     | PoisonDispositionRecordedPayload
     | MigrationChangedPayload
     | IntakeEventPayload
+    | InboundEventRecordedPayload
+    | InboundEventPromotedPayload
     | InboxEventPayload
     | KnowledgeEventPayload
     | SeatCredentialIssuedPayload
@@ -441,6 +455,10 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             RoutineOccurrenceRecordedPayload,
             "routine-occurrence",
             _WORKER,
+        ),
+        *(
+            EventCatalogEntry(kind, payload_type, "routine-work-item", origins)
+            for kind, payload_type, origins in _ROUTINE_WORK_ITEM_EVENT_CATALOG
         ),
         EventCatalogEntry(EventKind.ROUTINE_RETIRED, RoutineRetiredPayload, "routine-retirement"),
         EventCatalogEntry(

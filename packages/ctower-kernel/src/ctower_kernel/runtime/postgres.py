@@ -19,10 +19,6 @@ from ctower_kernel.runtime import (
     SyntheticRunCommand,
     SyntheticRunReceipt,
 )
-from ctower_kernel.runtime._beat_dispatch_sql import (
-    list_beat_dispatches as _list_beat_dispatches,
-)
-from ctower_kernel.runtime._beat_dispatch_sql import list_beat_routines as _list_beat_routines
 from ctower_kernel.runtime._dream_dispatch_sql import (
     bind_dream_lane as _bind_dream_lane,
 )
@@ -32,7 +28,7 @@ from ctower_kernel.runtime._dream_dispatch_sql import (
 from ctower_kernel.runtime._dream_dispatch_sql import (
     list_dream_dispatches as _list_dream_dispatches,
 )
-from ctower_kernel.runtime._retirement_sql import retire_beat_routine as _retire_beat_routine
+from ctower_kernel.runtime._routine_items_sql import complete as _complete_routine_work_item
 from ctower_kernel.runtime._routine_sql import register as _register
 from ctower_kernel.runtime._routine_sql import scan as _scan
 from ctower_kernel.runtime._routine_sql import tenant_ids as _tenant_ids
@@ -40,12 +36,8 @@ from ctower_kernel.runtime._synthetic_sql import claim_synthetic as _claim_synth
 from ctower_kernel.runtime._synthetic_sql import complete_synthetic as _complete_synthetic
 from ctower_kernel.runtime._synthetic_sql import start_synthetic as _start_synthetic
 from ctower_kernel.runtime._synthetic_sql import synthetic_run as _synthetic_run
-from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatRoutine
 from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
-from ctower_kernel.runtime.retirement import (
-    BeatRoutineRetireCommand,
-    BeatRoutineRetirementReceipt,
-)
+from ctower_kernel.runtime.items import CompleteRoutineWorkItemCommand, RoutineWorkItemReceipt
 
 __all__ = ["PostgresRuntime"]
 
@@ -71,21 +63,15 @@ class PostgresRuntime:
     def tenant_ids(self) -> tuple[UUID, ...]:
         return _tenant_ids(self._dsn)
 
-    def retire_beat_routine(
+    def complete_routine_work_item(
         self,
         actor: Actor,
-        command: BeatRoutineRetireCommand,
-    ) -> BeatRoutineRetirementReceipt | RecordProblem:
-        return _retire_beat_routine(self._dsn, actor, command)
+        command: CompleteRoutineWorkItemCommand,
+    ) -> RoutineWorkItemReceipt | RecordProblem:
+        return _complete_routine_work_item(self._dsn, actor, command)
 
     def list_dream_dispatches(self, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
         return _list_dream_dispatches(self._dsn, actor)
-
-    def list_beat_dispatches(self, actor: Actor) -> tuple[BeatDispatchEffect, ...]:
-        return _list_beat_dispatches(self._dsn, actor)
-
-    def list_beat_routines(self, actor: Actor) -> tuple[BeatRoutine, ...]:
-        return _list_beat_routines(self._dsn, actor)
 
     def consume_dream_dispatch(
         self, actor: Actor, command: DreamDispatchConsumeCommand

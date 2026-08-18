@@ -16,7 +16,10 @@ class GatedPackExpected(TypedDict):
     minutes: tuple[int, ...]
     hours: tuple[int, ...] | None
     gate: dict[str, object]
-    target_session: str
+    item_key: str
+    knowledge_ref: str
+    owner_seat: str
+    escalation_seat: str
 
 
 GATED_PACKS: dict[str, GatedPackExpected] = {
@@ -24,31 +27,46 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
         "minutes": (0, 30),
         "hours": None,
         "gate": {"kind": "always"},
-        "target_session": "mc-commander-manibo",
+        "item_key": "manibo-report",
+        "knowledge_ref": "mc-cron.manibo-report",
+        "owner_seat": "manibo-commander",
+        "escalation_seat": "ctower-commander",
     },
     "mc-cron.structural-report@1": {
         "minutes": (0,),
         "hours": None,
         "gate": {"kind": "always"},
-        "target_session": "commander",
+        "item_key": "structural-report",
+        "knowledge_ref": "mc-cron.structural-report",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
     },
     "mc-cron.manibo-merge-watch@1": {
         "minutes": tuple(range(0, 60, 4)),
         "hours": None,
         "gate": {"kind": "new_movement_since_watermark", "source": "events"},
-        "target_session": "mc-commander-manibo",
+        "item_key": "manibo-merge-watch",
+        "knowledge_ref": "mc-cron.manibo-merge-watch",
+        "owner_seat": "manibo-commander",
+        "escalation_seat": "ctower-commander",
     },
     "mc-cron.worktree-janitor-apply@1": {
         "minutes": tuple(range(0, 60, 5)),
         "hours": None,
         "gate": {"kind": "always"},
-        "target_session": "commander",
+        "item_key": "worktree-janitor-apply",
+        "knowledge_ref": "mc-cron.worktree-janitor-apply",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
     },
     "mc-cron.capacity-sentinel@1": {
         "minutes": tuple(range(0, 60, 10)),
         "hours": None,
         "gate": {"kind": "open_tickets_above", "threshold": 0},
-        "target_session": "commander",
+        "item_key": "capacity-sentinel",
+        "knowledge_ref": "mc-cron.capacity-sentinel",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
     },
 }
 
@@ -58,7 +76,6 @@ EXPECTED_UNMIGRATED_SCHEDULES = 17
 def test_five_gated_packs_pin_exact_gate_schedule_and_digest() -> None:
     schema = _json(ROOT / "contracts/runtime/routine-v4.schema.json")
     validator = Draft202012Validator(schema)
-
     for routine_ref, expected in GATED_PACKS.items():
         pack = _json(ROOT / f"packs/routines/{routine_ref.split('@')[0]}/v1.yaml")
         validator.validate(pack)
@@ -73,11 +90,24 @@ def test_five_gated_packs_pin_exact_gate_schedule_and_digest() -> None:
         assert schedule["hours"] == expected["hours"]
         gate = cast(dict[str, object], pack["activity_gate"])
         assert gate == expected["gate"]
-        dispatch = cast(dict[str, object], pack["beat_dispatch"])
-        assert dispatch["target_session"] == expected["target_session"]
-        prompt = cast(str, dispatch["prompt"])
-        assert prompt and prompt == prompt.strip("\n")
-        assert dispatch["prompt_sha256"] == f"sha256:{hashlib.sha256(prompt.encode()).hexdigest()}"
+        assert pack["handler_kind"] == "routine_item"
+        assert "beat_dispatch" not in pack
+        item = cast(dict[str, object], pack["routine_item"])
+        assert item == {
+            "item_key": expected["item_key"],
+            "knowledge_ref": expected["knowledge_ref"],
+            "owner_seat": expected["owner_seat"],
+            "escalation_seat": expected["escalation_seat"],
+        }
+        document_path = (
+            ROOT
+            / "packages/ctower-kernel/src/ctower_kernel/knowledge/static/org"
+            / f"{expected['knowledge_ref']}.md"
+        )
+        assert document_path.is_file()
+        document = document_path.read_text(encoding="utf-8")
+        assert "target_session" not in json.dumps(pack)
+        assert document
 
 
 def test_gate_set_is_closed_and_typed_with_no_expression_language() -> None:

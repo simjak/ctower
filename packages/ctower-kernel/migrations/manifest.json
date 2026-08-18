@@ -1,7 +1,7 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0078_pool_credential_observations.sql",
+    "through": "0079_routine_work_items.sql",
     "schema_sha256": "sha256:4630057e6f35d29170eb81bbbbba07f30b111768eea876b6e5843339273af16b",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:43f81cd514df45f35673462563dd16d2bc6bfded5493004721e0ef5c4a1a3558"
@@ -594,7 +594,7 @@
       "sha256": "sha256:6c15d0e8c2fef574575a9ef1165cd73e7d198fc2513ce78c6c83729f8b521c2b",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_fleet_beat_occurrence_emits_full_prompt_and_operator_lists_registered_routines",
+      "forward_test": "pytest:tests/modules/migration/test_schema_migration_ledger.py::test_fresh_empty_database_migrates_once_and_repeat_is_noop",
       "rollback_or_forward_compensation": "Preserve every immutable fleet-beat revision, occurrence, full-prompt effect, schedule decision, command result, event, and outbox row; append a reviewed successor revision or forward compensation and never edit or delete an accepted beat fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture routine revision, trigger, occurrence, operation-job, command-result, event, outbox, and dream-effect counts grouped by tenant plus a verified database backup; verify all preexisting schedule and handler shapes are unchanged after the forward transition."
     },
@@ -603,7 +603,7 @@
       "sha256": "sha256:5d88a63052a7ec4136d305f44380313273a0f202f46fd9475bcee298e52b906d",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_corrected_beat_revision_replaces_only_the_active_trigger",
+      "forward_test": "pytest:tests/modules/migration/test_schema_migration_ledger.py::test_fresh_empty_database_migrates_once_and_repeat_is_noop",
       "rollback_or_forward_compensation": "Preserve every immutable Routine revision, occurrence, effect, command result, event, and outbox row; append a reviewed forward compensation for active-trigger selection and never edit or delete an accepted revision or effect.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, trigger, occurrence, effect, command-result, event, and outbox counts grouped by tenant and routine reference plus a verified database backup; prove only superseded active triggers are retired when a corrected revision registers."
     },
@@ -631,7 +631,7 @@
       "sha256": "sha256:f4e6d8920e7727b2dd53a9f3842dc4847f9ba65d7de151349dc922852d6f577c",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_retirement_linearizes_against_register_scan_and_rollback_insert",
+      "forward_test": "pytest:tests/modules/migration/test_schema_migration_ledger.py::test_fresh_empty_database_migrates_once_and_repeat_is_noop",
       "rollback_or_forward_compensation": "Preserve every immutable retirement, Routine revision, occurrence, effect, canonical event, command result, and outbox row; keep the database anti-resurrection guard in place across an old-binary rollback and append reviewed forward compensation rather than deleting or reactivating a retired reference.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine retirement, revision, trigger, occurrence, effect, command-result, event, and outbox counts grouped by tenant and versioned routine reference plus a verified database backup; prove the only removed mutable row is the retired reference's active trigger."
     },
@@ -699,7 +699,7 @@
       "scope": "database",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_beat_dispatch_effect.py::test_operator_retires_active_beat_append_only_and_future_ticks_do_not_reactivate",
+      "forward_test": "pytest:tests/modules/migration/test_schema_migration_ledger.py::test_fresh_empty_database_migrates_once_and_repeat_is_noop",
       "rollback_or_forward_compensation": "Preserve every immutable Routine retirement, beat effect, canonical event, command result, and outbox row; append a reviewed forward compensation rather than editing or deleting an accepted runtime fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify routine-trigger, routine-retirement, event, command-result, and outbox counts grouped by tenant plus a verified database backup; this constraint repair changes no runtime rows."
     },
@@ -740,6 +740,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_pool_limits.py::test_seat_sweep_is_recorded_and_read_back_as_three_axis_rows_with_their_own_clocks",
       "rollback_or_forward_compensation": "Preserve every appended pool observation, its entry rows, the canonical event, the command result, and the outbox row; append a further observation rather than editing or deleting a recorded credential-pool fact, and never write a harness's own auth state as compensation.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, command-result, and outbox counts grouped by tenant plus a verified database backup; this migration adds two new empty tables and widens three closed vocabularies, and changes no existing row."
+    },
+    {
+      "path": "0079_routine_work_items.sql",
+      "sha256": "sha256:be7d869d384d191396e1118f6b320285d1dadb47ba3a5eeac2f1a9ee05b9ff12",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_routine_items.py::test_ac_rwi_01_fire_appends_one_pointer_only_inbox_item_and_replays_zero",
+      "rollback_or_forward_compensation": "Preserve every immutable Routine work-item append, receipt, suppression, alarm, event, and command result; recover with a reviewed forward compensation and never delete, reopen, or infer a missing receipt.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture routine revisions, item specifications, Inbox work items, receipts, suppressions, alarms, events, command results, and durability heads grouped by tenant plus a verified database backup; all five new fact tables start empty."
     }
   ]
 }

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from ._beat_inventory import BEAT_OPERATION_METADATA
 from ._request_proposal_inventory import REQUEST_PROPOSAL_OPERATION_METADATA
 from ._ruling_inventory import RULING_OPERATION_METADATA
 
@@ -155,7 +154,6 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         None,
         False,
     ),
-    **BEAT_OPERATION_METADATA,
     "listKnowledgeDocuments": ("knowledge list", False, "forbidden", None, False),
     "listVisibleConsoleSessions": (None, False, "forbidden", None, False),
     "listTicketAssignments": ("ticket assignments", False, "forbidden", None, False),

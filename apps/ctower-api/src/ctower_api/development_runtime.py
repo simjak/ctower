@@ -159,7 +159,6 @@ def api_main() -> None:
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),
             dream_dispatch_runtime=runtime_store,
-            beat_dispatch_runtime=runtime_store,
             spawn_records=PostgresSpawnRecords(runtime_dsn),
             oidc=OidcRuntimeConfig(
                 providers=_enabled_oidc_providers(config),

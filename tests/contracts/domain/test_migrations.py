@@ -91,9 +91,10 @@ _EXPECTED_MIGRATION_PATHS = [
     "0076_spawn_records.sql",
     "0077_inbox_message_severity.sql",
     "0078_pool_credential_observations.sql",
+    "0079_routine_work_items.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0078_pool_credential_observations.sql",
+    "through": "0079_routine_work_items.sql",
     "schema_sha256": ("sha256:4630057e6f35d29170eb81bbbbba07f30b111768eea876b6e5843339273af16b"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (

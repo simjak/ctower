@@ -44,7 +44,7 @@ microservice decomposition or a second sequencing model.
 |---|---|
 | Ticket | Work owns Request intent, separate maintenance-proposal facts, current plan revisions required before dispatch, permanent UUID Ticket identity, immutable per-Project server display keys, movement and wait facts, and workspace links. Only an operator-confirmed ordinary Request command can apply a proposal. Workflow, Runtime, and Proof contribute linked stages, attempts, and evidence without replacing that identity. A loose `task.md` file may be an artifact, but only a Request preserves the requested outcome and only a Ticket carries executable work and proof. |
 | Board | Projections derives the cross-ticket index, maintenance proposal queue, planning stack, movement, stalls, and human-attention context from accepted facts. Board controls submit typed commands; they never patch projection state. |
-| Routines | Catalog owns immutable Routine definitions and Runtime owns occurrences, consumption, and effects. Management and fleet beats re-read complete durable worklists, including movement, breached stalls, and explicit unknowns. |
+| Routines | Catalog owns immutable Routine definitions and Runtime owns occurrences, consumption, and effects. Management routines emit pointer-only Inbox work items whose Knowledge references and gate facts are re-read from durable records. |
 | Agents | Catalog owns versioned profiles and the fleet registry; Runtime owns jobs, leases, liveness evidence, and recovery custody. Harness Adapters report model-and-account capacity and credential-reference completeness through one narrow contract. Self-heal has one configured respawn owner and records every claim, result, and drill. |
 | Integrations | Provider Adapters translate strict external payloads through Integrations. Effects separately grants protected actions and records receipts and reconciliation; provider success cannot advance a Ticket. |
 | Knowledge | Knowledge owns the append-only pattern ledger; Catalog owns revision-pinned tools, skills, personas, and knowledge entries through the one CompanyBundle path. Runtime coordinates bounded session mining while runner-side readers redact before submission; raw transcripts and host paths never become control-plane content. |
@@ -272,12 +272,9 @@ thread-to-ticket links visible from Board cards, including atomic public promoti
 ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
 caller-observed token counts; twelve fixed Routine revisions (three I1 maintenance revisions, four
-nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
-revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
-full-prompt effects target the external DIRECTOR delivery ledger; corrected digests replace only the
-tenant's active trigger and preserve prior revision/effect history; an operator may terminally retire one
-exact versioned beat through an append-only retirement/event/command/outbox transaction that removes only
-its active trigger); an accepted-only,
+nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five activity-gated
+mc-cron revisions) whose queued occurrences append pointer-only Inbox work items with typed gate evidence,
+Knowledge references, owner seats, and escalation seats; an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
@@ -859,7 +856,7 @@ never unlocks CT-I2-001 or freezes a co-source.
 
 A trigger is why work may become due. A wake intent is the durable request. A reasoning heartbeat is the
 operator-facing name for one bounded `execution_run`. A lease heartbeat renews only a current fenced
-lease. A scheduler beat materializes due Routine occurrences. None substitutes for another.
+lease. A scheduler tick materializes due Routine occurrences. None substitutes for another.
 
 Routine occurrence, concurrency/catch-up outcome, canonical event/result/outbox lineage, ordinary fixed job,
 and `next_fire_at` commit together before acceptance-gated dispatch. Nonexistent civil times remain visible
@@ -867,15 +864,11 @@ skips and repeated times use the earlier offset. One logical scheduler owns Rout
 Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
 are independent and make health `STATE UNKNOWN` when stale.
 
-Fleet-beat retirement is deliberately narrower than Routine lifecycle management. The authenticated actor's
-persisted operator authority is verified before retirement or target state is queried. The transaction
-locks the tenant against registration and scan, appends one immutable `routine.retired` fact with canonical
-command/event/outbox lineage, and deletes only the selected active trigger. Registration treats the
-versioned reference as terminal afterward. A database trigger independently refuses every later trigger
-insert or update whose tenant/reference has a retirement fact, so rolling back to a pre-retirement binary
-cannot resurrect the beat. Unknown and foreign-only references share one non-enumerating refusal; no
-Commander authority, generic Routine retirement, or filesystem-absence authorization follows from this
-surface.
+Activity-gated Routine output is an Inbox work item, not a session injection. The item points to one Knowledge
+record and carries the routine identity, schedule window, owner/escalation seats, and typed gate evidence.
+While an earlier item remains open, a later fire appends one typed suppression naming that blocker; an expired
+window or degraded gate read appends one idempotent alarm for the escalation seat. Closure requires an owner
+receipt that references the delivered artifact, and no active Runtime or HTTP/CLI surface targets a session.
 
 Each of the four nightly dream Routines emits exactly one immutable `dream_dispatch` effect at its UTC
 boundary. The effect carries the project-or-fleet scope, `skills/dreamer/SKILL.md`, and the hard-model

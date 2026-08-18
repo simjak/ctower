@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
+Authored contract digest: sha256:901475c5c349e4d175b8e21823f432fffa3510d8b357d0382998196bd8a8a600
 """
 
 from __future__ import annotations
@@ -734,32 +734,6 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
-        "listBeatDispatchEffects": OperationSpec(
-            operation_id="listBeatDispatchEffects",
-            client_method="list_beat_dispatch_effects",
-            method="GET",
-            path="/v1/runtime/beat-dispatches",
-            request_model=None,
-            response_model=_models.BeatDispatchEffectList,
-            cli_names=('beat-dispatch list',),
-            mutation=False,
-            spool_policy=SpoolPolicy.FORBIDDEN,
-            principal=None,
-            refusal_only=False,
-        ),
-        "listBeatRoutines": OperationSpec(
-            operation_id="listBeatRoutines",
-            client_method="list_beat_routines",
-            method="GET",
-            path="/v1/runtime/beat-routines",
-            request_model=None,
-            response_model=_models.BeatRoutineList,
-            cli_names=('beat-dispatch routines',),
-            mutation=False,
-            spool_policy=SpoolPolicy.FORBIDDEN,
-            principal=None,
-            refusal_only=False,
-        ),
         "listDreamDispatchEffects": OperationSpec(
             operation_id="listDreamDispatchEffects",
             client_method="list_dream_dispatch_effects",
@@ -1241,19 +1215,6 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
-        "retireBeatRoutine": OperationSpec(
-            operation_id="retireBeatRoutine",
-            client_method="retire_beat_routine",
-            method="POST",
-            path="/v1/runtime/beat-routines/{routine_ref}/retire",
-            request_model=None,
-            response_model=_models.BeatRoutineRetirementReceipt,
-            cli_names=('beat-dispatch retire',),
-            mutation=True,
-            spool_policy=SpoolPolicy.FORBIDDEN,
-            principal='operator',
-            refusal_only=False,
-        ),
         "revokeConsoleSession": OperationSpec(
             operation_id="revokeConsoleSession",
             client_method="revoke_console_session",
@@ -1498,8 +1459,6 @@ CLI_OPERATIONS = MappingProxyType(
         "migration ctower-ruling import": OPERATIONS["importEstateRulings"],
         "inbox notify": OPERATIONS["ingestInboxNotification"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
-        "beat-dispatch list": OPERATIONS["listBeatDispatchEffects"],
-        "beat-dispatch routines": OPERATIONS["listBeatRoutines"],
         "dream-dispatch list": OPERATIONS["listDreamDispatchEffects"],
         "inbox correspondents": OPERATIONS["listInboxCorrespondents"],
         "inbox list": OPERATIONS["listInboxThreads"],
@@ -1535,7 +1494,6 @@ CLI_OPERATIONS = MappingProxyType(
         "request ticket relate": OPERATIONS["relateRequestTicket"],
         "migration ctower-project fence observe": OPERATIONS["reportCtowerProjectFenceObservation"],
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
-        "beat-dispatch retire": OPERATIONS["retireBeatRoutine"],
         "credential seat revoke": OPERATIONS["revokeSeatCredential"],
         "synthetic run": OPERATIONS["runSyntheticWorkflow"],
         "inbox send": OPERATIONS["sendInboxMessage"],

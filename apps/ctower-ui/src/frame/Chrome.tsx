@@ -14,7 +14,6 @@ const RAIL_OF = {
   Requests: "Requests",
   Board: "Dashboard",
   Ticket: "Latest ticket",
-  Heartbeats: "Heartbeats",
   Inbox: "Inbox",
   Feed: "Feed",
   Files: "Files",

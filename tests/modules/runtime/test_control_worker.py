@@ -43,10 +43,7 @@ from ctower_kernel.runtime import (
     RoutineRevision,
     SchedulerScan,
 )
-from ctower_kernel.runtime.retirement import (
-    BeatRoutineRetireCommand,
-    BeatRoutineRetirementReceipt,
-)
+from ctower_kernel.runtime.items import CompleteRoutineWorkItemCommand, RoutineWorkItemReceipt
 
 __all__: tuple[str, ...] = ()
 
@@ -80,9 +77,10 @@ class _RoutineStore:
         self.scans += 1
         return SchedulerScan(tenant_id, self.scans, datetime.now(UTC), (), ())
 
-    def retire_beat_routine(
-        self, actor: Actor, command: BeatRoutineRetireCommand
-    ) -> BeatRoutineRetirementReceipt | RecordProblem:
+    def complete_routine_work_item(
+        self, actor: Actor, command: CompleteRoutineWorkItemCommand
+    ) -> RoutineWorkItemReceipt | RecordProblem:
+        _ = actor, command
         raise NotImplementedError
 
 
@@ -286,11 +284,6 @@ def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
             "ctower.dream.ctower@1",
             "ctower.dream.bh-loop@1",
             "ctower.dream.fleet@1",
-            "ctower.beat.health@1",
-            "ctower.beat.director-drive@1",
-            "ctower.beat.bhloop@1",
-            "ctower.beat.sprint@1",
-            "ctower.beat.digest@1",
             "mc-cron.manibo-report@1",
             "mc-cron.structural-report@1",
             "mc-cron.manibo-merge-watch@1",

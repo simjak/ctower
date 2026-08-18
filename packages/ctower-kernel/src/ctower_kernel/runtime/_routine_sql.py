@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from datetime import datetime
 from typing import cast
 from uuid import UUID
@@ -29,11 +30,21 @@ from ctower_kernel.runtime import (
     _gate_sql,
     _routine_rows,
 )
-from ctower_kernel.runtime._beat_dispatch_sql import insert_effect as _insert_beat_dispatch
-from ctower_kernel.runtime._beat_dispatch_sql import register_spec as _register_beat_spec
 from ctower_kernel.runtime._retirement_guard import lock_routine_tenant, routine_is_retired
 from ctower_kernel.runtime._routine_ids import stable_uuid7 as _stable_uuid7
-from ctower_kernel.runtime.beats import BeatDispatchEffect
+from ctower_kernel.runtime._routine_work_items_sql import (
+    _append_expired_work_item_alarms,
+    _append_work_item,
+    _append_work_item_suppression,
+    _open_work_item,
+    _register_dream_spec,
+    _register_routine_item_spec,
+)
+from ctower_kernel.runtime.items import (
+    RoutineWorkItem,
+    RoutineWorkItemAlarm,
+    RoutineWorkItemSuppression,
+)
 
 __all__: tuple[str, ...] = ()
 _MAX_DUE_PER_SCAN = 400
@@ -84,7 +95,7 @@ def register(
             ),
         )
         _register_dream_spec(connection, revision)
-        _register_beat_spec(connection, revision)
+        _register_routine_item_spec(connection, revision)
         _gate_sql.register_gate(connection, revision)
         stored = connection.execute(
             """
@@ -92,14 +103,13 @@ def register(
                 dream.primary_model_ref, dream.primary_reasoning_effort,
                 dream.fallback_model_ref, dream.fallback_reasoning_effort,
                 dream.minimum_model_tier, dream.excluded_model_families,
-                beat.beat_key, beat.prompt_source, beat.prompt_sha256,
-                beat.prompt, beat.target_session,
+                item.item_key, item.knowledge_ref, item.owner_seat, item.escalation_seat,
                 gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_revisions AS revision
             LEFT JOIN routine_dream_dispatch_specs AS dream
               ON dream.revision_digest = revision.revision_digest
-            LEFT JOIN routine_beat_dispatch_specs AS beat
-              ON beat.revision_digest = revision.revision_digest
+            LEFT JOIN routine_item_specs AS item
+              ON item.revision_digest = revision.revision_digest
             LEFT JOIN routine_activity_gates AS gate
               ON gate.revision_digest = revision.revision_digest
             WHERE revision.revision_digest = %s
@@ -149,16 +159,15 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                 dream.skill_path, dream.primary_model_ref, dream.primary_reasoning_effort,
                 dream.fallback_model_ref, dream.fallback_reasoning_effort,
                 dream.minimum_model_tier, dream.excluded_model_families,
-                beat.beat_key, beat.prompt_source, beat.prompt_sha256,
-                beat.prompt, beat.target_session,
+                item.item_key, item.knowledge_ref, item.owner_seat, item.escalation_seat,
                 gate.gate_kind, gate.gate_source, gate.gate_threshold, gate.gate_project_key
             FROM routine_triggers AS trigger
             JOIN routine_revisions AS revision
               ON revision.revision_digest = trigger.revision_digest
             LEFT JOIN routine_dream_dispatch_specs AS dream
               ON dream.revision_digest = revision.revision_digest
-            LEFT JOIN routine_beat_dispatch_specs AS beat
-              ON beat.revision_digest = revision.revision_digest
+            LEFT JOIN routine_item_specs AS item
+              ON item.revision_digest = revision.revision_digest
             LEFT JOIN routine_activity_gates AS gate
               ON gate.revision_digest = revision.revision_digest
             WHERE trigger.tenant_id = %s AND trigger.next_fire_at <= %s
@@ -170,28 +179,29 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         occurrences: list[RoutineOccurrence] = []
         jobs: list[FixedOperationJob] = []
         dream_dispatches: list[DreamDispatchEffect] = []
-        beat_dispatches: list[BeatDispatchEffect] = []
+        work_items: list[RoutineWorkItem] = []
+        suppressions: list[RoutineWorkItemSuppression] = []
+        alarms: list[RoutineWorkItemAlarm] = []
+        work_item_blockers: dict[str, UUID] = {}
         for row in rows:
             revision = _routine_rows.revision(row)
             plans, next_fire = _plans(connection, tenant_id, revision, row, now)
             plans = _gate_sql.apply_gate_decisions(connection, tenant_id, revision, plans, now)
-            for plan in plans:
-                occurrence, job, dream_dispatch, beat_dispatch = _persist_plan(
+            for planned in plans:
+                _record_scan_plan(
                     connection,
                     tenant_id,
                     actor_principal_id,
                     revision,
-                    plan,
+                    planned,
                     now,
+                    work_item_blockers,
+                    occurrences,
+                    jobs,
+                    dream_dispatches,
+                    work_items,
+                    suppressions,
                 )
-                if occurrence is not None:
-                    occurrences.append(occurrence)
-                if job is not None:
-                    jobs.append(job)
-                if dream_dispatch is not None:
-                    dream_dispatches.append(dream_dispatch)
-                if beat_dispatch is not None:
-                    beat_dispatches.append(beat_dispatch)
             connection.execute(
                 """
                 UPDATE routine_triggers SET next_fire_at = %s, updated_at = %s
@@ -199,6 +209,9 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                 """,
                 (next_fire, now, tenant_id, _digest(revision.revision_digest)),
             )
+        alarms.extend(
+            _append_expired_work_item_alarms(connection, tenant_id, actor_principal_id, now)
+        )
         watermark = _scheduler_watermark(connection, tenant_id, now)
     return SchedulerScan(
         tenant_id=tenant_id,
@@ -207,8 +220,64 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         occurrences=tuple(occurrences),
         jobs=tuple(jobs),
         dream_dispatches=tuple(dream_dispatches),
-        beat_dispatches=tuple(beat_dispatches),
+        work_items=tuple(work_items),
+        work_item_suppressions=tuple(suppressions),
+        work_item_alarms=tuple(alarms),
     )
+
+
+def _record_scan_plan(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    actor_principal_id: UUID,
+    revision: RoutineRevision,
+    planned: OccurrencePlan,
+    now: datetime,
+    blockers: dict[str, UUID],
+    occurrences: list[RoutineOccurrence],
+    jobs: list[FixedOperationJob],
+    dream_dispatches: list[DreamDispatchEffect],
+    work_items: list[RoutineWorkItem],
+    suppressions: list[RoutineWorkItemSuppression],
+) -> None:
+    plan = _apply_work_item_blocker(connection, tenant_id, revision, planned, blockers)
+    occurrence, job, dream_dispatch, work_item, suppression = _persist_plan(
+        connection,
+        tenant_id,
+        actor_principal_id,
+        revision,
+        plan,
+        now,
+    )
+    if occurrence is not None:
+        occurrences.append(occurrence)
+    if job is not None:
+        jobs.append(job)
+    if dream_dispatch is not None:
+        dream_dispatches.append(dream_dispatch)
+    if work_item is not None:
+        work_items.append(work_item)
+        blockers[revision.routine_ref] = work_item.work_item_id
+    if suppression is not None:
+        suppressions.append(suppression)
+
+
+def _apply_work_item_blocker(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+    blockers: dict[str, UUID],
+) -> OccurrencePlan:
+    if revision.routine_item is None or plan.outcome is not OccurrenceOutcome.QUEUED:
+        return plan
+    blocker = blockers.get(revision.routine_ref)
+    if blocker is None:
+        blocker = _open_work_item(connection, tenant_id, revision.routine_ref)
+    if blocker is None:
+        return plan
+    blockers[revision.routine_ref] = blocker
+    return replace(plan, outcome=OccurrenceOutcome.SKIPPED)
 
 
 def _plans(
@@ -254,7 +323,8 @@ def _persist_plan(
     RoutineOccurrence | None,
     FixedOperationJob | None,
     DreamDispatchEffect | None,
-    BeatDispatchEffect | None,
+    RoutineWorkItem | None,
+    RoutineWorkItemSuppression | None,
 ]:
     occurrence_id, command_id, event_id, outbox_id, job_id = _occurrence_ids(
         tenant_id, revision, plan
@@ -264,7 +334,7 @@ def _persist_plan(
     transaction = RecordTransaction(connection)
     existing = transaction.reserve(actor_principal_id, command_id, request_digest)
     if existing is not None:
-        return None, None, None, None
+        return None, None, None, None, None
     event = _occurrence_event(
         tenant_id,
         actor_principal_id,
@@ -287,40 +357,12 @@ def _persist_plan(
     dream_dispatch = _insert_dream_dispatch(
         connection, tenant_id, occurrence_id, revision, plan, now
     )
-    beat_dispatch = _insert_beat_dispatch(connection, tenant_id, occurrence_id, revision, plan, now)
-    occurrence = _routine_occurrence(tenant_id, occurrence_id, revision, plan, job_id)
-    return occurrence, job, dream_dispatch, beat_dispatch
-
-
-def _register_dream_spec(
-    connection: psycopg.Connection[dict[str, object]], revision: RoutineRevision
-) -> None:
-    spec = revision.dream_dispatch
-    if spec is None:
-        return
-    connection.execute(
-        """
-        INSERT INTO routine_dream_dispatch_specs (
-            revision_digest, scope_kind, project_key, skill_path,
-            primary_model_ref, primary_reasoning_effort,
-            fallback_model_ref, fallback_reasoning_effort,
-            minimum_model_tier, excluded_model_families
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (revision_digest) DO NOTHING
-        """,
-        (
-            _digest(revision.revision_digest),
-            spec.scope_kind,
-            spec.project_key,
-            spec.skill_path,
-            spec.primary_model_ref,
-            spec.primary_reasoning_effort,
-            spec.fallback_model_ref,
-            spec.fallback_reasoning_effort,
-            spec.minimum_model_tier,
-            list(spec.excluded_model_families),
-        ),
+    work_item = _append_work_item(connection, tenant_id, actor_principal_id, revision, plan, now)
+    suppression = _append_work_item_suppression(
+        connection, tenant_id, actor_principal_id, revision, plan, now
     )
+    occurrence = _routine_occurrence(tenant_id, occurrence_id, revision, plan, job_id)
+    return occurrence, job, dream_dispatch, work_item, suppression
 
 
 def _insert_dream_dispatch(
@@ -394,7 +436,7 @@ def _occurrence_ids(
     )
     job_id = (
         _stable_uuid7(plan.scheduled_for, b"job", *identity)
-        if plan.outcome is OccurrenceOutcome.QUEUED
+        if plan.outcome is OccurrenceOutcome.QUEUED and revision.handler_kind != "routine_item"
         else None
     )
     return (

@@ -14,19 +14,18 @@
   "catch_up": "skip_missed",
   "catch_up_cap": 1,
   "timeout_seconds": 1800,
-  "handler_kind": "beat_dispatch",
+  "handler_kind": "routine_item",
   "component_digests": [
     "sha256:b1522668180b85bff42ce6edcceb656b9a31809671c012e2b6250f7012636e77"
   ],
   "activity_gate": {
     "kind": "always"
   },
-  "beat_dispatch": {
-    "beat_key": "structural-report",
-    "prompt_source": "crontab/structural-report.txt",
-    "prompt_sha256": "sha256:b1522668180b85bff42ce6edcceb656b9a31809671c012e2b6250f7012636e77",
-    "prompt": "Hourly structural report due (R2825; migrated from the ctower-structural-report-nudge hourly crontab twin): diff board/ctower-structural-scoreboard.md against verified reality, update it, notify the director with the delta (plain sentences, movement first).",
-    "target_session": "commander"
-  },
-  "revision_digest": "sha256:555695890b7713b2d45a3628a01741e1c432a7bdf838874c2d71d467757ae89b"
+  "revision_digest": "sha256:542b8052e83476c48c6ea64fb92b9be7741d87fe98da919715c4c98cfea2d0f9",
+  "routine_item": {
+    "item_key": "structural-report",
+    "knowledge_ref": "mc-cron.structural-report",
+    "owner_seat": "ctower-commander",
+    "escalation_seat": "ctower-commander"
+  }
 }

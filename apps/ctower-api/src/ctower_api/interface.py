@@ -16,7 +16,6 @@ from pydantic import ValidationError
 from starlette.responses import Response
 
 from ctower_api._auth_routes import install_auth_routes
-from ctower_api._beat_dispatch_routes import BeatDispatchRuntime, install_beat_dispatch_routes
 from ctower_api._catalog_routes import BundleCatalog
 from ctower_api._comment_routes import install_comment_routes
 from ctower_api._credential_routes import install_credential_routes
@@ -204,7 +203,6 @@ def create_app(
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
     dream_dispatch_runtime: DreamDispatchRuntime | None = None,
-    beat_dispatch_runtime: BeatDispatchRuntime | None = None,
     migration: object | None = None,
     resolvers: ResolverConfig = _NO_RESOLVERS,
     oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
@@ -239,9 +237,7 @@ def create_app(
     _install_synthetic_boundary(
         app, access, record, synthetic_runtime, synthetic_revision, recorder
     )
-    _install_runtime_boundaries(
-        app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
-    )
+    _install_runtime_boundaries(app, access, record, dream_dispatch_runtime, console, recorder)
     return app
 
 
@@ -372,14 +368,11 @@ def _install_runtime_boundaries(
     access: Access,
     record: Record,
     dream_runtime: DreamDispatchRuntime | None,
-    beat_runtime: BeatDispatchRuntime | None,
     console_runtime: ConsoleRuntime | None,
     recorder: TelemetryRecorder,
 ) -> None:
     if dream_runtime is not None:
         install_dream_dispatch_routes(app, access, record, dream_runtime, recorder)
-    if beat_runtime is not None:
-        install_beat_dispatch_routes(app, access, record, beat_runtime, recorder)
     if console_runtime is not None:
         install_console_routes(app, access, console_runtime)
 
