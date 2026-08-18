@@ -4433,6 +4433,142 @@
           ],
           "type": "object"
         },
+        "poolObservationEntry": {
+          "additionalProperties": false,
+          "properties": {
+            "auth_state": {
+              "enum": [
+                "healthy",
+                "lineage-dead",
+                "chain-burned"
+              ]
+            },
+            "entry_label": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "entry_ordinal": {
+              "maximum": 63,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "last_status_observed": {
+              "pattern": "^[a-z][a-z0-9._-]{0,63}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "provider_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "quota_reset_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "quota_state": {
+              "enum": [
+                "available",
+                "capped",
+                "unfunded",
+                "unknown"
+              ]
+            },
+            "reach_state": {
+              "enum": [
+                "ok",
+                "edge-challenged",
+                "unknown"
+              ]
+            },
+            "registration_state": {
+              "enum": [
+                "enrolled",
+                "discovered"
+              ]
+            },
+            "request_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "secret_fingerprint": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "subscription_identity": {
+              "maxLength": 254,
+              "minLength": 3,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "auth_state",
+            "entry_label",
+            "entry_ordinal",
+            "last_status_observed",
+            "provider_key",
+            "quota_reset_at",
+            "quota_state",
+            "reach_state",
+            "registration_state",
+            "request_count",
+            "secret_fingerprint",
+            "subscription_identity"
+          ],
+          "type": "object"
+        },
+        "poolObservationRecorded": {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "$ref": "#/$defs/poolObservationEntry"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "harness_key": {
+              "enum": [
+                "hermes",
+                "claude-code"
+              ]
+            },
+            "observation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "observed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "profile_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "entries",
+            "harness_key",
+            "observation_id",
+            "observed_at",
+            "profile_key"
+          ],
+          "type": "object"
+        },
         "priorityChanged": {
           "additionalProperties": false,
           "properties": {
@@ -6207,6 +6343,24 @@
                   "pattern": "^spawn-record:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "pools.observation_recorded"
+                },
+                "origin": {
+                  "enum": [
+                    "api"
+                  ]
+                },
+                "payload": {
+                  "$ref": "#/$defs/poolObservationRecorded"
+                },
+                "stream_id": {
+                  "pattern": "^pool-observation:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -6279,7 +6433,8 @@
             "estate.import_changed",
             "company.record_appended",
             "spawn.recorded",
-            "spawn.transitioned"
+            "spawn.transitioned",
+            "pools.observation_recorded"
           ],
           "type": "string"
         },
@@ -6314,7 +6469,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36}|pool-observation:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -19759,7 +19914,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:dd04cf1a31d8abeda7843d1419ee88b81c6b123bd1a31c24d916388fda8a5cd6"
+      "sha256": "sha256:e4f98f6a62a9ae1e247a2668ec1ac27cb389b2ed13c7da9bcc5c8ead8cb3f4d3"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",

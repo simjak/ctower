@@ -23,6 +23,8 @@ from ctowerctl._migration_commands import query_command_names as migration_queri
 from ctowerctl._migration_commands import refusal_command_names as migration_refusals
 from ctowerctl._ops_commands import mutation_command_names as ops_mutations
 from ctowerctl._ops_commands import query_command_names as ops_queries
+from ctowerctl._pool_commands import mutation_command_names as pool_mutations
+from ctowerctl._pool_commands import query_command_names as pool_queries
 from ctowerctl._request_commands import mutation_command_names as request_mutations
 from ctowerctl._request_commands import query_command_names as request_queries
 from ctowerctl._session_commands import mutation_command_names as session_mutations
@@ -68,6 +70,7 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         | intake_mutations()
         | inbox_mutations()
         | knowledge_mutations()
+        | pool_mutations()
         | _credential_commands.mutation_command_names()
         | session_mutations()
         | attention_mutations()
@@ -85,6 +88,7 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         | migration_queries()
         | inbox_queries()
         | knowledge_queries()
+        | pool_queries()
         | session_queries()
         | dream_dispatch_queries()
         | _beat_dispatch_commands.query_command_names()

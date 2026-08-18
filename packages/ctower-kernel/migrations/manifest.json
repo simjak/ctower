@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
-    "through": "0077_inbox_message_severity.sql",
-    "schema_sha256": "sha256:6c6d47e90c4d25e8adc0a1e9eda449c4b613b44268e59b6265f1f6dd7510ec9c",
+    "through": "0078_pool_credential_observations.sql",
+    "schema_sha256": "sha256:4630057e6f35d29170eb81bbbbba07f30b111768eea876b6e5843339273af16b",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:3169fcd7a067bdf3844a1c29ccfd8dbfc7d3f0a7de7e174d4e08a17ef90e6e16"
+    "schema_object_sum256": "sum256:43f81cd514df45f35673462563dd16d2bc6bfded5493004721e0ef5c4a1a3558"
   },
   "ledger_advance_transitions": [
     {
@@ -730,6 +730,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_notify_bridge.py::test_native_inbox_message_round_trip_preserves_severity",
       "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves immutable inbox facts; never edit this accepted migration.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify inbox message, projection message, event, command-result, and outbox counts plus a verified database backup; existing messages are explicitly backfilled as info."
+    },
+    {
+      "path": "0078_pool_credential_observations.sql",
+      "sha256": "sha256:fa123981be89fbae9844407369fb452e1949657f813f23e06bcb1ce5f65b2b39",
+      "scope": "database",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_pool_limits.py::test_seat_sweep_is_recorded_and_read_back_as_three_axis_rows_with_their_own_clocks",
+      "rollback_or_forward_compensation": "Preserve every appended pool observation, its entry rows, the canonical event, the command result, and the outbox row; append a further observation rather than editing or deleting a recorded credential-pool fact, and never write a harness's own auth state as compensation.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, event-link, durability-head, command-result, and outbox counts grouped by tenant plus a verified database backup; this migration adds two new empty tables and widens three closed vocabularies, and changes no existing row."
     }
   ]
 }

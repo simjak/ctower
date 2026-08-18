@@ -49,6 +49,7 @@ from ctowerctl._parser_support import (
     _version,
     _version_reason,
 )
+from ctowerctl._pool_parser import pools_parser
 from ctowerctl._request_parser import request_parser
 from ctowerctl._ruling_parser import ruling_parser
 from ctowerctl._spawn_parser import spawn_parser
@@ -93,6 +94,7 @@ def _parser() -> argparse.ArgumentParser:
     spawn_parser(areas.add_parser("spawn"))
     _inbox_parser(areas.add_parser("inbox"))
     knowledge_parser(areas.add_parser("knowledge"))
+    pools_parser(areas.add_parser("pools"))
     _ticket_parser(areas.add_parser("ticket"))
     _session_parser(areas.add_parser("session"))
     _board_parser(areas.add_parser("board"))

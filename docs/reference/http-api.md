@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **103 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **105 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"

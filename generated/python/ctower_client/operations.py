@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5f90677b65df20d023a4e5982d5aa9dac8b633513ee5d1c92d455ade2d57483d
+Authored contract digest: sha256:cd772840ddbf09d9bf37c6515b66626c001b49808bfacd1b45314242db739c1c
 """
 
 from __future__ import annotations
@@ -1046,6 +1046,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "readPoolLimits": OperationSpec(
+            operation_id="readPoolLimits",
+            client_method="read_pool_limits",
+            method="GET",
+            path="/v1/pools",
+            request_model=None,
+            response_model=_models.PoolLimitsView,
+            cli_names=('pools show',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal='authenticated',
+            refusal_only=False,
+        ),
         "recordAttentionFindingDisposition": OperationSpec(
             operation_id="recordAttentionFindingDisposition",
             client_method="record_attention_finding_disposition",
@@ -1067,6 +1080,19 @@ OPERATIONS = MappingProxyType(
             request_model=_models.PoisonDispositionRequest,
             response_model=_models.PoisonDispositionReceipt,
             cli_names=('ops outbox poison dispose',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
+        "recordPoolObservation": OperationSpec(
+            operation_id="recordPoolObservation",
+            client_method="record_pool_observation",
+            method="POST",
+            path="/v1/pools/observations",
+            request_model=_models.PoolObservationRequest,
+            response_model=_models.PoolObservationResult,
+            cli_names=('pools observe',),
             mutation=True,
             spool_policy=SpoolPolicy.ALLOWED,
             principal=None,
@@ -1469,8 +1495,10 @@ CLI_OPERATIONS = MappingProxyType(
         "intake promote": OPERATIONS["promoteIntakeEvent"],
         "inbox read-state": OPERATIONS["readInboxMessageState"],
         "inbox read": OPERATIONS["readInboxThread"],
+        "pools show": OPERATIONS["readPoolLimits"],
         "attention finding disposition": OPERATIONS["recordAttentionFindingDisposition"],
         "ops outbox poison dispose": OPERATIONS["recordOutboxPoisonDisposition"],
+        "pools observe": OPERATIONS["recordPoolObservation"],
         "ticket evidence add": OPERATIONS["recordProofEvidence"],
         "ticket gate verdict": OPERATIONS["recordProofVerdict"],
         "ticket change-reference add": OPERATIONS["recordTicketChangeReference"],

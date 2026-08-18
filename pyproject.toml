@@ -59,6 +59,7 @@ packages = [
   "ctower_kernel.migration",
   "ctower_kernel.migrations",
   "ctower_kernel.objects",
+  "ctower_kernel.pools",
   "ctower_kernel.projections",
   "ctower_kernel.proof",
   "ctower_kernel.record",
