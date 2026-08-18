@@ -19,8 +19,9 @@ operator-authenticated, closed-registry ceremony that appends the canonical even
 binding exactly once;
 five immutable fleet-beat revisions whose queued occurrences emit digest-verified full prompts for the
 fixed DIRECTOR session; corrected digests serially replace only the tenant's active trigger while prior
-revision/effect facts remain immutable; plus operator-only routine/effect reads that grant no delivery or
-consumption authority;
+revision/effect facts remain immutable; an operator/Commander retirement appends one immutable tenant-scoped
+fact/event, transactionally removes the trigger, and prevents later registration from reactivating it; plus
+operator-only routine/effect reads that grant no delivery or consumption authority;
 independently attributable health; and a project-scoped typed event feed whose exact kind set is
 derived from the authoritative event catalog's `project_feed` column, reusing the same `event_links`
 subject join `ticket_audit` already proves rather than a second query shape.
