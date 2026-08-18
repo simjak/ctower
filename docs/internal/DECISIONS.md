@@ -3128,3 +3128,37 @@ numbers reserved for concurrent branches whose merge order will renumber the app
    or live credential/migration rollout is authorized by this decision.
 6. **CT-I1-038 is admitted** to implement and evidence this bounded contract, including the disposable schema
    migration required to retain severity in authority and projection message rows.
+
+## D71 — Tracked review records are one verdict per exact head, and record-only landing preserves prior gate judgments (process + review authority, 2026-08-16)
+
+The review estate is otherwise ephemeral: coordination status files are gitignored and subject to
+retention, while a review finding can remain valuable after the candidate that carried it is merged
+or gone. The durable record therefore needs a narrow, searchable home without making review lanes
+writers of product state or making a documentation-only landing look like a new code candidate.
+This decision establishes that shape and the rescue boundary.
+
+1. **The durable home is `docs/internal/review-records/`.** It is internal repository material and
+   stays outside the published MkDocs surface under the existing `exclude_docs: internal/**` rule.
+   It remains inside the intended-tree secret scan. A record is normalized from coordination
+   evidence; raw transcripts, URLs, credentials, bearer material, connection strings, personal
+   contacts, and private project identities are not copied. An unavailable source head is named as
+   unavailable rather than replaced with an invented SHA.
+2. **One record file contains one final verdict for one exact head.** The file name identifies the
+   judged PR or subject, the exact head identity, and the seat. Multi-subject source artifacts are
+   split. Superseded rounds are dropped or explicitly represented as a separate historical record;
+   they are never left beside the live decision in one file. Each record has one structured verdict,
+   one head, and one signed-off accountability block.
+3. **Review lanes remain read-only.** The Commander lands the normalized record as the last commit
+   before merge. A commit whose complete changed-path set is only `docs/internal/review-records/`
+   changes no product code and does not invalidate a prior gate verdict. The commit must prove that
+   scope mechanically with `git diff --name-only <sha>^ <sha>`; a commit message or narrative is not
+   evidence of record-only scope.
+4. **The rescue denominator is explicit.** The first bounded backfill is the 31 selected CSO/security
+   source verdicts. Other coordination material remains outside this candidate because it is ordinary
+   engineering, operations, product, or support chatter, not because absence makes it successful.
+   Future backfills use the same normalized shape and a separately named scope; they do not copy the
+   full ephemeral estate or create a second source-of-truth status mirror.
+5. **CT-I1-040 is admitted** to deliver this tracked review-record contract, its redaction and
+   one-file/one-verdict/one-head regression proof, the bounded 31-source rescue, and the corresponding
+   manifest. It adds no product route, principal, runtime authority, feature flag, environment
+   variable, or gate waiver.
