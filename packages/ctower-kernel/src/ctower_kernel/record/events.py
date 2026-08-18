@@ -48,7 +48,6 @@ from ctower_kernel.record.estate_import_events import (
     CompanyRecordAppendedPayload,
     EstateImportChangedPayload,
 )
-from ctower_kernel.record.event_identity import validate_basic_event_identity
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
     InboxEventPayload,
