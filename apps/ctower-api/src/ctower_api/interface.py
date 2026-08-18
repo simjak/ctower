@@ -65,7 +65,6 @@ from ctower_api._request_proposal_routes import install_request_proposal_routes
 from ctower_api._request_routes import install_request_routes
 from ctower_api._ruling_routes import install_ruling_routes
 from ctower_api._session_routes import install_session_routes
-from ctower_api._spawn_record_routes import install_spawn_record_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
 from ctower_api.console_routes import ConsoleRuntime, install_console_routes
@@ -237,22 +236,7 @@ def create_app(
     _install_runtime_boundaries(
         app, access, record, dream_dispatch_runtime, beat_dispatch_runtime, console, recorder
     )
-    _install_spawn_boundary(app, access, record, spawn_records, recorder)
     return app
-
-
-def _install_spawn_boundary(
-    app: FastAPI,
-    access: Access,
-    record: Record,
-    spawn_records: PostgresSpawnRecords | None,
-    recorder: TelemetryRecorder,
-) -> None:
-    return (
-        install_spawn_record_routes(app, access, record, spawn_records, recorder)
-        if spawn_records is not None
-        else None
-    )
 
 
 def _install_application_routes(
@@ -294,9 +278,7 @@ def _install_application_routes(
         catalog=catalog,
     )
     _install_optional_routes(
-        app,
-        access,
-        record,
+        *(app, access, record),
         proof=proof,
         workflow=workflow,
         projections=projections,
@@ -306,6 +288,7 @@ def _install_application_routes(
         knowledge=knowledge,
         estate_imports=estate_imports,
         catalog=catalog,
+        spawn_records=spawn_records,
         recorder=recorder,
     )
 
@@ -364,12 +347,11 @@ def _install_optional_routes(
     knowledge: Knowledge | None,
     estate_imports: EstateImportPort | None,
     catalog: BundleCatalog | None,
+    spawn_records: PostgresSpawnRecords | None,
     recorder: TelemetryRecorder,
 ) -> None:
     install_optional_routes(
-        app,
-        access,
-        record,
+        *(app, access, record),
         proof=proof,
         workflow=workflow,
         projections=projections,
@@ -379,6 +361,7 @@ def _install_optional_routes(
         knowledge=knowledge,
         estate_imports=estate_imports,
         catalog=catalog,
+        spawn_records=spawn_records,
         recorder=recorder,
     )
 

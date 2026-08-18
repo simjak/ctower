@@ -1,117 +1,245 @@
-"""Coverage for cross-event aggregate identity refusals."""
+"""Coverage for cross-event aggregate identity refusals.
+
+Every case drives the public `EventEnvelope` constructor, which is the only
+authored way in: `__post_init__` derives the expected stream from the aggregate
+and then asks each cross-event identity rule. A case therefore states the wrong
+aggregate *and* the stream that aggregate implies, so the stream check passes and
+the identity rule under test is the one that refuses.
+"""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import cast
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
 
-from ctower_kernel.record._event_identity import (
-    _validate_bootstrap_identity,
-    _validate_catalog_identity,
-    _validate_occurrence_identity,
-    _validate_poison_identity,
-    _validate_seat_credential_identity,
-    _validate_session_identity,
-    _validate_ticket_identity,
-    validate_event_identity,
-)
 from ctower_kernel.record.bootstrap_events import BootstrapCreatedPayload
-from ctower_kernel.record.catalog_events import CatalogComponentPublishedPayload
-from ctower_kernel.record.credentials import SeatCredentialIssuedPayload
-from ctower_kernel.record.dream_dispatch_events import DreamDispatchConsumedPayload
-from ctower_kernel.record.events import EventEnvelope, RoutineOccurrenceRecordedPayload
+from ctower_kernel.record.catalog_events import (
+    CatalogComponentPublishedPayload,
+    CatalogComponentReference,
+)
+from ctower_kernel.record.credentials import CredentialScope, SeatCredentialIssuedPayload
+from ctower_kernel.record.events import (
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+    RoutineOccurrenceRecordedPayload,
+)
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.session_events import SessionStartedPayload
 from ctower_kernel.record.ticket_events import TicketCommentAddedPayload
 
 __all__: tuple[str, ...] = ()
 
+_NOW = datetime(2026, 8, 18, tzinfo=UTC)
+_DIGEST = "sha256:" + "3" * 64
+_SUBJECT = UUID("00000000-0000-4000-8000-000000000001")
+_FOREIGN = UUID("00000000-0000-4000-8000-0000000000ff")
+_TENANT = UUID("00000000-0000-4000-8000-000000000002")
 
-def _unsafe(cls: type[object], **fields: object) -> object:
-    value = object.__new__(cls)
-    for name, field in fields.items():
-        object.__setattr__(value, name, field)
-    return value
 
-
-def _event(
+def _envelope(
+    kind: EventKind,
     payload: object,
     *,
-    aggregate_id: UUID | None = None,
-    tenant_id: UUID | None = None,
-    client_command_id: UUID | None = None,
-    stream_id: str = "expected",
+    aggregate_id: UUID,
+    stream_id: str,
+    client_command_id: UUID = _SUBJECT,
 ) -> EventEnvelope:
-    """Stand in for an envelope carrying exactly the fields identity reads.
+    return EventEnvelope(
+        actor_principal_id=uuid4(),
+        aggregate_id=aggregate_id,
+        causation_id=None,
+        client_command_id=client_command_id,
+        correlation_id=uuid4(),
+        event_id=uuid4(),
+        kind=kind,
+        origin=EventOrigin.BOOTSTRAP if kind is EventKind.BOOTSTRAP_CREATED else EventOrigin.API,
+        payload=payload,
+        prev_hash=bytes(32),
+        request_sha256=bytes.fromhex("1" * 64),
+        sequence=1,
+        server_time=_NOW,
+        stream_id=stream_id,
+        tenant_id=_TENANT,
+    )
 
-    A real `EventEnvelope` runs these validators from `__post_init__`, so a
-    refusal case cannot be constructed as one; this carries the five attributes
-    the identity helpers touch and nothing else.
-    """
 
-    return cast(
-        EventEnvelope,
-        SimpleNamespace(
-            payload=payload,
-            aggregate_id=aggregate_id or uuid4(),
-            tenant_id=tenant_id or uuid4(),
-            client_command_id=client_command_id or uuid4(),
-            stream_id=stream_id,
+def _bootstrap() -> BootstrapCreatedPayload:
+    return BootstrapCreatedPayload(
+        uuid4(), "vault", "credential", uuid4(), "vault", _TENANT, "ctower"
+    )
+
+
+def _comment() -> TicketCommentAddedPayload:
+    return TicketCommentAddedPayload(
+        body="Independent evidence is attached.",
+        comment_id=uuid4(),
+        ticket_id=_SUBJECT,
+    )
+
+
+def _catalog() -> CatalogComponentPublishedPayload:
+    return CatalogComponentPublishedPayload(
+        component=CatalogComponentReference(
+            content_digest=_DIGEST,
+            key="example.component",
+            kind="workflow",
+            revision=1,
+        ),
+        object_version="version-1",
+        payload_ref="object:" + _DIGEST,
+    )
+
+
+def _occurrence() -> RoutineOccurrenceRecordedPayload:
+    return RoutineOccurrenceRecordedPayload(
+        occurrence_id=_SUBJECT,
+        routine_ref="ctower.beat.fleet@1",
+        revision_digest="sha256:" + "2" * 64,
+        scheduled_for=_NOW,
+        local_civil_time="2026-08-18T03:00:00",
+        timezone="Europe/Vilnius",
+        utc_offset_seconds=10800,
+        offset_decision="unambiguous",
+        outcome="skipped",
+        job_id=None,
+    )
+
+
+def _poison() -> PoisonDispositionRecordedPayload:
+    return PoisonDispositionRecordedPayload(
+        outbox_id=uuid4(),
+        consumer_key="projection",
+        topic="ticket",
+        action="tombstone",
+        reason="unparseable payload",
+    )
+
+
+def _credential() -> SeatCredentialIssuedPayload:
+    return SeatCredentialIssuedPayload(
+        credential_id=_SUBJECT,
+        credential_ref="vault://seat/engineer",
+        principal_id=uuid4(),
+        project_key="ctower",
+        scopes=(CredentialScope.CAPTURE,),
+        seat_key="engineer",
+    )
+
+
+def _session() -> SessionStartedPayload:
+    return SessionStartedPayload(
+        branch_ref="feat/r3000-spawn-custody",
+        crew_name="engineer-506-rebase",
+        harness_ref="claude-code",
+        model_ref="claude-opus-5",
+        seat_key="engineer",
+        session_id=_SUBJECT,
+        ticket_id=uuid4(),
+        worktree_ref="/srv/projects/ctower/.worktrees/r3000-spawn",
+    )
+
+
+def test_identity_refuses_a_stream_that_does_not_match_its_aggregate() -> None:
+    with pytest.raises(ValueError, match="stream"):
+        _envelope(
+            EventKind.TICKET_COMMENT_ADDED,
+            _comment(),
+            aggregate_id=_SUBJECT,
+            stream_id=f"ticket:{_FOREIGN}",
+        )
+
+
+@pytest.mark.parametrize(
+    ("kind", "build", "prefix", "message"),
+    (
+        (EventKind.TICKET_COMMENT_ADDED, _comment, "ticket", "comment"),
+        (EventKind.ROUTINE_OCCURRENCE_RECORDED, _occurrence, "routine-occurrence", "Routine"),
+        (EventKind.SEAT_CREDENTIAL_ISSUED, _credential, "seat-credential", "credential"),
+        (EventKind.SESSION_STARTED, _session, "session", "session"),
+        (EventKind.CATALOG_COMPONENT_PUBLISHED, _catalog, "catalog", "Catalog"),
+        (EventKind.BOOTSTRAP_CREATED, _bootstrap, "tenant", "bootstrap"),
+    ),
+    ids=("comment", "occurrence", "credential", "session", "catalog", "bootstrap"),
+)
+def test_identity_refuses_an_aggregate_that_disagrees_with_its_payload(
+    kind: EventKind,
+    build: Callable[[], object],
+    prefix: str,
+    message: str,
+) -> None:
+    """The aggregate is foreign and the stream follows it, so identity is what refuses."""
+
+    stream_id = (
+        f"tenant:{_FOREIGN}:bootstrap"
+        if kind is EventKind.BOOTSTRAP_CREATED
+        else f"{prefix}:{_FOREIGN}"
+    )
+    with pytest.raises(ValueError, match=message):
+        _envelope(kind, build(), aggregate_id=_FOREIGN, stream_id=stream_id)
+
+
+def test_identity_refuses_a_poison_aggregate_that_is_not_its_command() -> None:
+    with pytest.raises(ValueError, match="poison"):
+        _envelope(
+            EventKind.POISON_DISPOSITION_RECORDED,
+            _poison(),
+            aggregate_id=_FOREIGN,
+            stream_id=f"poison-disposition:{_FOREIGN}",
+            client_command_id=_SUBJECT,
+        )
+
+
+def test_identity_accepts_every_aggregate_that_matches_its_payload() -> None:
+    """The passthrough arm of each rule: a rule leaves a payload it does not claim alone."""
+
+    accepted = (
+        _envelope(
+            EventKind.TICKET_COMMENT_ADDED,
+            _comment(),
+            aggregate_id=_SUBJECT,
+            stream_id=f"ticket:{_SUBJECT}",
+        ),
+        _envelope(
+            EventKind.SESSION_STARTED,
+            _session(),
+            aggregate_id=_SUBJECT,
+            stream_id=f"session:{_SUBJECT}",
+        ),
+        _envelope(
+            EventKind.SEAT_CREDENTIAL_ISSUED,
+            _credential(),
+            aggregate_id=_SUBJECT,
+            stream_id=f"seat-credential:{_SUBJECT}",
+        ),
+        _envelope(
+            EventKind.POISON_DISPOSITION_RECORDED,
+            _poison(),
+            aggregate_id=_SUBJECT,
+            stream_id=f"poison-disposition:{_SUBJECT}",
+        ),
+        _envelope(
+            EventKind.CATALOG_COMPONENT_PUBLISHED,
+            _catalog(),
+            aggregate_id=_TENANT,
+            stream_id=f"catalog:{_TENANT}",
+        ),
+        _envelope(
+            EventKind.ROUTINE_OCCURRENCE_RECORDED,
+            _occurrence(),
+            aggregate_id=_SUBJECT,
+            stream_id=f"routine-occurrence:{_SUBJECT}",
         ),
     )
 
-
-def test_identity_dispatch_refuses_a_stream_mismatch_before_payload_checks() -> None:
-    with pytest.raises(ValueError, match="stream"):
-        validate_event_identity(_event(object(), stream_id="wrong"), "expected", object)
-
-
-def test_identity_dispatch_refuses_each_local_aggregate_mismatch() -> None:
-    tenant_id = uuid4()
-    bootstrap = _unsafe(
-        BootstrapCreatedPayload,
-        tenant_id=tenant_id,
-    )
-    with pytest.raises(ValueError, match="bootstrap"):
-        _validate_bootstrap_identity(_event(bootstrap, tenant_id=tenant_id))
-
-    ticket = _unsafe(TicketCommentAddedPayload, ticket_id=uuid4())
-    with pytest.raises(ValueError, match="comment"):
-        _validate_ticket_identity(_event(ticket))
-
-    catalog = _unsafe(CatalogComponentPublishedPayload)
-    with pytest.raises(ValueError, match="Catalog"):
-        _validate_catalog_identity(_event(catalog, tenant_id=tenant_id))
-
-    occurrence_id = uuid4()
-    occurrence = _unsafe(RoutineOccurrenceRecordedPayload, occurrence_id=occurrence_id)
-    with pytest.raises(ValueError, match="Routine"):
-        _validate_occurrence_identity(_event(occurrence), RoutineOccurrenceRecordedPayload)
-
-    poison = _unsafe(PoisonDispositionRecordedPayload)
-    with pytest.raises(ValueError, match="poison"):
-        _validate_poison_identity(_event(poison))
-
-    credential_id = uuid4()
-    credential = _unsafe(SeatCredentialIssuedPayload, credential_id=credential_id)
-    with pytest.raises(ValueError, match="credential"):
-        _validate_seat_credential_identity(_event(credential))
-
-    session_id = uuid4()
-    session = _unsafe(SessionStartedPayload, session_id=session_id)
-    with pytest.raises(ValueError, match="session"):
-        _validate_session_identity(_event(session))
-
-
-def test_identity_helpers_accept_non_matching_payload_variants() -> None:
-    event = _event(DreamDispatchConsumedPayload)
-    _validate_bootstrap_identity(event)
-    _validate_ticket_identity(event)
-    _validate_catalog_identity(event)
-    _validate_occurrence_identity(event, RoutineOccurrenceRecordedPayload)
-    _validate_poison_identity(event)
-    _validate_seat_credential_identity(event)
-    _validate_session_identity(event)
+    assert [event.aggregate_id for event in accepted] == [
+        _SUBJECT,
+        _SUBJECT,
+        _SUBJECT,
+        _SUBJECT,
+        _TENANT,
+        _SUBJECT,
+    ]
