@@ -4652,6 +4652,28 @@
           ],
           "type": "object"
         },
+        "routineRetired": {
+          "additionalProperties": false,
+          "properties": {
+            "retirement_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "revision_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "routine_ref": {
+              "pattern": "^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "retirement_id",
+            "revision_digest",
+            "routine_ref"
+          ],
+          "type": "object"
+        },
         "rulingRecorded": {
           "additionalProperties": false,
           "properties": {
@@ -5350,6 +5372,22 @@
             {
               "properties": {
                 "kind": {
+                  "const": "routine.retired"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/routineRetired"
+                },
+                "stream_id": {
+                  "pattern": "^routine-retirement:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
                   "const": "runtime.dream_dispatch_consumed"
                 },
                 "origin": {
@@ -5758,6 +5796,7 @@
             "proof.changed",
             "workflow.changed",
             "routine.occurrence_recorded",
+            "routine.retired",
             "runtime.dream_dispatch_consumed",
             "runtime.dream_lane_bound",
             "attention.poison_disposition_recorded",
@@ -5813,7 +5852,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|ruling:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -17279,7 +17318,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:50bf5fcf2316489ff09c31919b8d5ed5f5694917fa333de5cb8af3d32d1c12a2"
+      "sha256": "sha256:a2015036f5a1d756bfaef0b5871eff14b96558f4043332c42951ce29fe547d1e"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
