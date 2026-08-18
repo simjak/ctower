@@ -17,7 +17,7 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
-from support.tenant_fixture import TenantFixture
+from support.tenant_fixture import TenantFixture, provision_seat
 
 from ctower_kernel.runtime.spawn_driver import (
     SpawnSpool,
@@ -334,17 +334,6 @@ class TestSpawnRecordAppendOnly:
         problem = _spawn_problem(outcome)
         assert problem.code == "invalid-status"
 
-    def test_create_refuses_a_foreign_project_for_a_seat(self, tenant: TenantFixture) -> None:
-        records = _records(tenant)
-        principal_id, tenant_id = _actor(tenant)
-        outcome = records.create(
-            principal_id,
-            tenant_id,
-            dataclass_replace(_create_command(), project_key="manibo"),
-        )
-        problem = _spawn_problem(outcome)
-        assert problem.code == "project-scope-denied"
-
     def test_project_list_filter_does_not_leak_other_projects(self, tenant: TenantFixture) -> None:
         records = _records(tenant)
         operator_id, tenant_id = tenant.operator_id, tenant.tenant_id
@@ -364,6 +353,52 @@ class TestSpawnRecordAppendOnly:
         listed = _spawn_list(records.list(operator_id, tenant_id, "ctower"))
         assert listed.records
         assert all(record.project_key == "ctower" for record in listed.records)
+
+
+class TestSpawnCustodyScope:
+    """Custody is one boundary: every seam refuses a seat's foreign project."""
+
+    def test_create_refuses_a_foreign_project_for_a_seat(self, tenant: TenantFixture) -> None:
+        records = _records(tenant)
+        principal_id, tenant_id = _actor(tenant)
+        outcome = records.create(
+            principal_id,
+            tenant_id,
+            dataclass_replace(_create_command(), project_key="manibo"),
+        )
+        problem = _spawn_problem(outcome)
+        assert problem.code == "project-scope-denied"
+
+    def test_transition_refuses_a_foreign_project_for_a_seat(self, tenant: TenantFixture) -> None:
+        """A seat outside the spawn's project may not append a transition fact."""
+        records = _records(tenant)
+        tenant_id = tenant.tenant_id
+        created = _spawn_get(records.create(tenant.operator_id, tenant_id, _create_command()))
+        spawn_id = created.record.spawn_id
+        foreign_seat_id, _ = provision_seat(tenant, "probe", project_key="manibo")
+
+        outcome = records.transition(
+            foreign_seat_id,
+            tenant_id,
+            SpawnRecordTransitionCommand(
+                client_command_id=uuid4(),
+                spawn_id=spawn_id,
+                to_status="accepted",
+                reason="foreign seat attempt",
+            ),
+        )
+
+        problem = _spawn_problem(outcome)
+        assert problem.code == "project-scope-denied"
+        with psycopg.connect(tenant.database.admin_dsn) as connection:
+            appended = connection.execute(
+                """
+                SELECT count(*) FROM spawn_record_transitions
+                WHERE tenant_id = %s AND spawn_id = %s
+                """,
+                (tenant_id, spawn_id),
+            ).fetchone()
+        assert appended == (0,), "a refused transition must append no custody fact"
 
 
 def _create_create_command_variant() -> SpawnRecordCreate:
