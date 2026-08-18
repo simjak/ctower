@@ -5,9 +5,7 @@
  * exist: Mission Control's append-only state files, this repository's git tree
  * and worktrees, and the tmux capture bridge. They are **interim**: each screen
  * swaps to its native source when one lands, and nothing outside
- * `src/read/sources/` knows any of these paths exist. Heartbeats already made
- * that swap — its cadence comes from the instance now, so the crontab and the
- * systemd timers it used to read are gone rather than kept beside the record.
+ * `src/read/sources/` knows any of these paths exist.
  *
  * Every one is read-only. This app opens these files for reading and runs
  * inspection commands; it never writes, locks, truncates, renames or appends to

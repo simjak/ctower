@@ -19,8 +19,8 @@ from ctower_kernel.runtime import (
     ScheduleKind,
     SchedulerScan,
 )
-from ctower_kernel.runtime.beats import BeatDispatchSpec
 from ctower_kernel.runtime.gates import ActivityGate
+from ctower_kernel.runtime.items import RoutineItemSpec
 
 __all__: tuple[str, ...] = ()
 
@@ -32,11 +32,6 @@ _PACK_PATHS = (
     "routines/ctower.dream.ctower/v1.yaml",
     "routines/ctower.dream.bh-loop/v1.yaml",
     "routines/ctower.dream.fleet/v1.yaml",
-    "routines/ctower.beat.health/v1.yaml",
-    "routines/ctower.beat.director-drive/v1.yaml",
-    "routines/ctower.beat.bhloop/v1.yaml",
-    "routines/ctower.beat.sprint/v1.yaml",
-    "routines/ctower.beat.digest/v1.yaml",
     "routines/mc-cron.manibo-report/v1.yaml",
     "routines/mc-cron.structural-report/v1.yaml",
     "routines/mc-cron.manibo-merge-watch/v1.yaml",
@@ -52,11 +47,6 @@ _EXPECTED_ROUTINE_REFS = frozenset(
         "ctower.dream.ctower@1",
         "ctower.dream.bh-loop@1",
         "ctower.dream.fleet@1",
-        "ctower.beat.health@1",
-        "ctower.beat.director-drive@1",
-        "ctower.beat.bhloop@1",
-        "ctower.beat.sprint@1",
-        "ctower.beat.digest@1",
         "mc-cron.manibo-report@1",
         "mc-cron.structural-report@1",
         "mc-cron.manibo-merge-watch@1",
@@ -80,13 +70,11 @@ _TOP_LEVEL_KEYS_V1 = frozenset(
     }
 )
 _TOP_LEVEL_KEYS_V2 = _TOP_LEVEL_KEYS_V1 | {"dream_dispatch"}
-_TOP_LEVEL_KEYS_V3 = _TOP_LEVEL_KEYS_V1 | {"beat_dispatch"}
-_TOP_LEVEL_KEYS_V4 = _TOP_LEVEL_KEYS_V3 | {"activity_gate"}
+_TOP_LEVEL_KEYS_V4 = _TOP_LEVEL_KEYS_V1 | {"activity_gate", "routine_item"}
 _SUPPORTED_SCHEMA_IDS = frozenset(
     {
         "ctower.routine/v1",
         "ctower.routine/v2",
-        "ctower.routine/v3",
         "ctower.routine/v4",
     }
 )
@@ -95,7 +83,7 @@ _BEAT_SCHEDULE_KEYS = frozenset({"kind", "timezone", "minutes", "hours"})
 _DREAM_KEYS = frozenset({"scope_kind", "project_key", "skill_path", "model_requirement"})
 _MODEL_KEYS = frozenset({"primary", "fallback", "minimum_tier", "excluded_families"})
 _MODEL_SELECTION_KEYS = frozenset({"model_ref", "reasoning_effort"})
-_BEAT_KEYS = frozenset({"beat_key", "prompt_source", "prompt_sha256", "prompt", "target_session"})
+_ROUTINE_ITEM_KEYS = frozenset({"item_key", "knowledge_ref", "owner_seat", "escalation_seat"})
 _GATE_KEYS = frozenset({"kind", "source", "threshold", "project_key"})
 
 
@@ -137,17 +125,12 @@ def _load_revision(path: Path) -> RoutineRevision:
     expected_keys = {
         "ctower.routine/v1": _TOP_LEVEL_KEYS_V1,
         "ctower.routine/v2": _TOP_LEVEL_KEYS_V2,
-        "ctower.routine/v3": _TOP_LEVEL_KEYS_V3,
         "ctower.routine/v4": _TOP_LEVEL_KEYS_V4,
     }.get(schema_id, _TOP_LEVEL_KEYS_V1)
     if frozenset(pack) != expected_keys:
         raise ValueError(f"Routine pack has unknown or missing fields: {path}")
     schedule = _mapping(pack["schedule"], "Routine schedule")
-    schedule_keys = (
-        _BEAT_SCHEDULE_KEYS
-        if schema_id in {"ctower.routine/v3", "ctower.routine/v4"}
-        else _SCHEDULE_KEYS
-    )
+    schedule_keys = _BEAT_SCHEDULE_KEYS if schema_id == "ctower.routine/v4" else _SCHEDULE_KEYS
     if frozenset(schedule) != schedule_keys:
         raise ValueError(f"Routine schedule has unknown or missing fields: {path}")
     if schema_id not in _SUPPORTED_SCHEMA_IDS or pack["dst_policy"] != "wall_clock_once":
@@ -159,12 +142,12 @@ def _load_revision(path: Path) -> RoutineRevision:
         raise ValueError(f"Routine revision digest does not match authored content: {path}")
     local_time = _local_time(schedule.get("local_time"))
     dream_dispatch = _dream_dispatch(pack.get("dream_dispatch"))
-    beat_dispatch = _beat_dispatch(pack.get("beat_dispatch"))
+    routine_item = _routine_item(pack.get("routine_item"))
     activity_gate = _activity_gate(pack.get("activity_gate"))
     if (schema_id == "ctower.routine/v2") != (dream_dispatch is not None):
         raise ValueError(f"Routine contract version and effect facts do not match: {path}")
-    if (schema_id in {"ctower.routine/v3", "ctower.routine/v4"}) != (beat_dispatch is not None):
-        raise ValueError(f"Routine contract version and beat facts do not match: {path}")
+    if (schema_id == "ctower.routine/v4") != (routine_item is not None):
+        raise ValueError(f"Routine contract version and work-item facts do not match: {path}")
     if (schema_id == "ctower.routine/v4") != (activity_gate is not None):
         raise ValueError(f"Routine contract version and gate facts do not match: {path}")
     return RoutineRevision(
@@ -182,8 +165,8 @@ def _load_revision(path: Path) -> RoutineRevision:
         dream_dispatch=dream_dispatch,
         minute_marks=_integers(schedule.get("minutes"), "schedule.minutes"),
         hour_marks=_optional_integers(schedule.get("hours"), "schedule.hours"),
-        beat_dispatch=beat_dispatch,
         activity_gate=activity_gate,
+        routine_item=routine_item,
     )
 
 
@@ -213,18 +196,17 @@ def _activity_gate(value: object) -> ActivityGate | None:
     )
 
 
-def _beat_dispatch(value: object) -> BeatDispatchSpec | None:
+def _routine_item(value: object) -> RoutineItemSpec | None:
     if value is None:
         return None
-    effect = _mapping(value, "beat_dispatch")
-    if frozenset(effect) != _BEAT_KEYS:
-        raise ValueError("beat_dispatch has unknown or missing fields")
-    return BeatDispatchSpec(
-        beat_key=_string(effect["beat_key"], "beat_key"),
-        prompt_source=_string(effect["prompt_source"], "prompt_source"),
-        prompt_sha256=_string(effect["prompt_sha256"], "prompt_sha256"),
-        prompt=_string(effect["prompt"], "prompt"),
-        target_session=_string(effect["target_session"], "target_session"),
+    item = _mapping(value, "routine_item")
+    if frozenset(item) != _ROUTINE_ITEM_KEYS:
+        raise ValueError("routine_item has unknown or missing fields")
+    return RoutineItemSpec(
+        item_key=_string(item["item_key"], "routine_item.item_key"),
+        knowledge_ref=_string(item["knowledge_ref"], "routine_item.knowledge_ref"),
+        owner_seat=_string(item["owner_seat"], "routine_item.owner_seat"),
+        escalation_seat=_string(item["escalation_seat"], "routine_item.escalation_seat"),
     )
 
 

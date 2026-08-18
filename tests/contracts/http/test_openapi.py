@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import cast
 
 from ._ast_support import function_definitions
-from ._beat_inventory import BEAT_PROBLEM_CODES
 from ._operation_inventory import _EXPECTED_OPERATION_METADATA
 from ._request_proposal_inventory import (
     REQUEST_PROPOSAL_PROBLEM_CODES,
@@ -27,7 +26,6 @@ _EXPECTED_PROBLEM_CODES = {
     "auth-provider-unverifiable",
     "auth-role-denied",
     "auth-session-invalid",
-    *BEAT_PROBLEM_CODES,
     "bootstrap-consumed",
     "bootstrap-expired",
     "bootstrap-nonempty",
@@ -264,7 +262,6 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         "mintConsoleViewGrant",
         "renewConsoleViewGrant",
         "reportCtowerProjectFenceObservation",
-        "retireBeatRoutine",
         "revokeSeatCredential",
         "revokeConsoleSession",
         "setConsoleKillSwitch",

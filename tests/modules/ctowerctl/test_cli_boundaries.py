@@ -7,22 +7,17 @@ import io
 import json
 import re
 import shutil
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
 from uuid import uuid4
 
 import pytest
 
-from ctower_client import CtowerClient
 from ctower_client.models import (
     AppendFindingRequest,
     ApplyLabelRequest,
     AssignmentChangeRequest,
-    BeatRoutineRetirementReceipt,
     ChangeReferenceRequest,
     CustodyTransferRequest,
-    DurabilityState,
     EvidenceRequest,
     FindingDispositionRequest,
     FreezeCriteriaRequest,
@@ -34,12 +29,7 @@ from ctower_client.models import (
     WorkflowStartRequest,
 )
 from ctower_client.operations import CLI_OPERATIONS
-from ctowerctl import (
-    _beat_dispatch_commands,
-    _credential_commands,
-    _workflow_commands,
-    main,
-)
+from ctowerctl import _credential_commands, _workflow_commands, main
 from ctowerctl._attention_commands import build_mutation as build_attention_mutation
 from ctowerctl._company_commands import (
     load_bundle,
@@ -71,48 +61,6 @@ def test_parser_exposes_every_authored_name_without_operation_dispatch() -> None
 
 def test_explicit_handlers_cover_every_generated_operation_class() -> None:
     assert_explicit_handlers_cover_generated_operations()
-
-
-def test_beat_dispatch_retire_uses_generated_online_operator_call() -> None:
-    command_id = uuid4()
-    routine_ref = "ctower.beat.migration@1"
-    arguments = parse_arguments(
-        [
-            "--base-url",
-            "https://ctower.example",
-            "beat-dispatch",
-            "retire",
-            routine_ref,
-            "--command-id",
-            str(command_id),
-        ]
-    )
-    client = _BeatRetireClient()
-
-    result = _beat_dispatch_commands.execute_online(arguments, cast(CtowerClient, client))
-
-    assert result is client.result
-    assert client.calls == [(routine_ref, command_id)]
-
-
-class _BeatRetireClient:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, object]] = []
-        self.result = BeatRoutineRetirementReceipt(
-            command_id=uuid4(),
-            retirement_id=uuid4(),
-            event_id=uuid4(),
-            routine_ref="ctower.beat.migration@1",
-            revision_digest="sha256:" + "0" * 64,
-            retired_at=datetime.now(UTC),
-            durability_state=DurabilityState.DURABILITY_PENDING,
-        )
-
-    def retire_beat_routine(
-        self, routine_ref: str, *, command_id: object
-    ) -> BeatRoutineRetirementReceipt:
-        self.calls.append((routine_ref, command_id))
-        return self.result
 
 
 def test_inbox_notify_builds_the_strict_generated_request() -> None:

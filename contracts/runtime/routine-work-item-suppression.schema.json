@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-work-item-suppression.schema.json",
+  "title": "RoutineWorkItemSuppression",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "suppression_id", "routine_ref", "window", "blocking_item_id", "recorded_at"],
+  "properties": {
+    "schema_id": {"const": "ctower.routine-work-item-suppression/v1"},
+    "suppression_id": {"type": "string", "format": "uuid"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "window": {"type": "string", "format": "date-time"},
+    "blocking_item_id": {"type": "string", "format": "uuid"},
+    "recorded_at": {"type": "string", "format": "date-time"}
+  }
+}

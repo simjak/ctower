@@ -26,7 +26,6 @@ from ctower_client.models import (
 from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_cli
 from ctowerctl import (
     _attention_commands,
-    _beat_dispatch_commands,
     _bootstrap_commands,
     _company_commands,
     _credential_commands,
@@ -162,7 +161,7 @@ def _execute(
 
 
 def _uses_credential_executor(arguments: argparse.Namespace, operation: OperationSpec) -> bool:
-    return operation.mutation and arguments.area in {"beat-dispatch", "credential", "dream-lane"}
+    return operation.mutation and arguments.area in {"credential", "dream-lane"}
 
 
 def _query_exit_code(result: BaseModel) -> ExitCode:
@@ -282,9 +281,7 @@ def _execute_online_credential(
         raise ValueError("usage: operator commands require forbidden spool metadata")
     with CtowerClient(base_url, credential=credential) as client:
         result = (
-            _beat_dispatch_commands.execute_online(arguments, client)
-            if arguments.area == "beat-dispatch"
-            else _dream_lane_commands.execute_online(arguments, client)
+            _dream_lane_commands.execute_online(arguments, client)
             if arguments.area == "dream-lane"
             else _credential_commands.execute_online(arguments, client)
         )
@@ -301,7 +298,6 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         "knowledge",
         "pools",
         "dream-dispatch",
-        "beat-dispatch",
         "request",
         "ruling",
         "spawn",
@@ -324,7 +320,6 @@ def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) ->
         "knowledge": _knowledge_commands.execute_query,
         "pools": _pool_commands.execute_query,
         "dream-dispatch": _dream_dispatch_commands.execute_query,
-        "beat-dispatch": _beat_dispatch_commands.execute_query,
         "request": _request_commands.execute_query,
         "ruling": _ruling_commands.execute_query,
         "spawn": _spawn_commands.execute_query,

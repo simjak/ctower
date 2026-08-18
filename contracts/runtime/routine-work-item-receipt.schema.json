@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-work-item-receipt.schema.json",
+  "title": "RoutineWorkItemReceipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "receipt_id", "work_item_id", "owner_seat", "artifact_ref", "delivered_at"],
+  "properties": {
+    "schema_id": {"const": "ctower.routine-work-item-receipt/v1"},
+    "receipt_id": {"type": "string", "format": "uuid"},
+    "work_item_id": {"type": "string", "format": "uuid"},
+    "owner_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+    "artifact_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+    "delivered_at": {"type": "string", "format": "date-time"}
+  }
+}

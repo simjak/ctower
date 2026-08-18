@@ -28,7 +28,7 @@
   "catch_up": "skip_missed",
   "catch_up_cap": 1,
   "timeout_seconds": 600,
-  "handler_kind": "beat_dispatch",
+  "handler_kind": "routine_item",
   "component_digests": [
     "sha256:1d4c615cc892c642adff1dc00ab38ee4a0d817c7f2aab3e13acd7a899ac718ac"
   ],
@@ -36,12 +36,11 @@
     "kind": "new_movement_since_watermark",
     "source": "events"
   },
-  "beat_dispatch": {
-    "beat_key": "manibo-merge-watch",
-    "prompt_source": "crontab/manibo-merge-watch.txt",
-    "prompt_sha256": "sha256:1d4c615cc892c642adff1dc00ab38ee4a0d817c7f2aab3e13acd7a899ac718ac",
-    "prompt": "manibo merge watch (installed 2026-08-14 after three unauthorized merges; migrated from the */4 crontab twin): check gh -R jakit-labs/manibo merged PRs since the last watch; on ANY new merge page with actor evidence (merged_by login, App slug or NONE, merge timestamp, SHA, head branch). This is DETECTION, not a gate.",
-    "target_session": "mc-commander-manibo"
-  },
-  "revision_digest": "sha256:f78872136db53d5f138549a04032449a612a4b5d032c01d02f02a2bc448bc769"
+  "revision_digest": "sha256:1815f096d90edee13ad80dd4350dce5c89cc808a327a3da2fcf9919b2a54e3d5",
+  "routine_item": {
+    "item_key": "manibo-merge-watch",
+    "knowledge_ref": "mc-cron.manibo-merge-watch",
+    "owner_seat": "manibo-commander",
+    "escalation_seat": "ctower-commander"
+  }
 }

@@ -37,7 +37,7 @@ _TABLE_COUNT_QUERIES: dict[str, LiteralString] = {
     "routine_gate_evaluations": "SELECT count(*) FROM routine_gate_evaluations",
     "routine_occurrences": "SELECT count(*) FROM routine_occurrences",
     "routine_revisions": "SELECT count(*) FROM routine_revisions",
-    "runtime_beat_dispatch_effects": "SELECT count(*) FROM runtime_beat_dispatch_effects",
+    "inbox_work_items": "SELECT count(*) FROM inbox_work_items",
 }
 
 
@@ -113,7 +113,7 @@ def test_ac_rtn_02_gate_true_fires_one_dispatch_fact_with_evidence(tenant: Tenan
         if o.routine_ref == sentinel.routine_ref and o.outcome.value == "queued"
     ]
     assert len(fires) == 1, "open ticket + due schedule must fire exactly once"
-    assert not [e for e in scan.beat_dispatches if e.routine_ref != sentinel.routine_ref]
+    assert not [e for e in scan.work_items if e.routine_ref != sentinel.routine_ref]
 
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         row = connection.execute(
@@ -148,7 +148,7 @@ def test_ac_rtn_02_gate_false_appends_typed_skip_fact_never_silence(tenant: Tena
         if o.routine_ref == sentinel.routine_ref and o.outcome.value == "skipped"
     ]
     assert len(skips) == 1, "false gate must append a visible skipped occurrence"
-    assert scan.beat_dispatches == (), "false gate must emit no dispatch effect"
+    assert scan.work_items == (), "false gate must emit no dispatch effect"
 
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         row = connection.execute(
@@ -192,7 +192,7 @@ def test_ac_rtn_02_project_scoped_gate_ignores_foreign_ticket(tenant: TenantFixt
         if occurrence.routine_ref == project_sentinel.routine_ref
     ]
     assert [occurrence.outcome.value for occurrence in occurrences] == ["skipped"]
-    assert scan.beat_dispatches == ()
+    assert scan.work_items == ()
 
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         row = connection.execute(
@@ -226,7 +226,7 @@ def test_ac_rtn_02_movement_gate_skips_when_quiet_and_fires_on_movement(
     assert [o.outcome.value for o in first.occurrences if o.routine_ref == watcher.routine_ref] == [
         "queued"
     ]
-    assert [e.routine_ref for e in first.beat_dispatches] == [watcher.routine_ref]
+    assert [e.routine_ref for e in first.work_items] == [watcher.routine_ref]
 
     # quiet interval at a later due instant: no new events -> typed skip fact, no effect
     quiet_due = datetime.now(UTC).replace(microsecond=0) - timedelta(seconds=2)
@@ -234,7 +234,7 @@ def test_ac_rtn_02_movement_gate_skips_when_quiet_and_fires_on_movement(
     second = runtime.scan(tenant.tenant_id)
     quiet = [o for o in second.occurrences if o.routine_ref == watcher.routine_ref]
     assert [o.outcome.value for o in quiet] == ["skipped"]
-    assert second.beat_dispatches == ()
+    assert second.work_items == ()
 
     # movement: a new event lands -> next evaluation fires
     _append_event(tenant)
@@ -244,7 +244,7 @@ def test_ac_rtn_02_movement_gate_skips_when_quiet_and_fires_on_movement(
     third = runtime.scan(tenant.tenant_id)
     moved = [o for o in third.occurrences if o.routine_ref == watcher.routine_ref]
     assert [o.outcome.value for o in moved] == ["queued"]
-    effects = [e for e in third.beat_dispatches if e.routine_ref == watcher.routine_ref]
+    effects = [e for e in third.work_items if e.routine_ref == watcher.routine_ref]
     assert len(effects) == 1
 
 
@@ -260,7 +260,7 @@ def test_ac_rtn_02_exact_replay_of_an_evaluation_appends_nothing(tenant: TenantF
     runtime.scan(tenant.tenant_id)
 
     baseline = _table_counts(
-        tenant, "routine_gate_evaluations", "routine_occurrences", "runtime_beat_dispatch_effects"
+        tenant, "routine_gate_evaluations", "routine_occurrences", "inbox_work_items"
     )
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         watermark_before = connection.execute(
@@ -277,13 +277,13 @@ def test_ac_rtn_02_exact_replay_of_an_evaluation_appends_nothing(tenant: TenantF
     _advance_trigger(tenant, sentinel, due)
     replay = runtime.scan(tenant.tenant_id)
     assert replay.occurrences == ()
-    assert replay.beat_dispatches == ()
+    assert replay.work_items == ()
     assert (
         _table_counts(
             tenant,
             "routine_gate_evaluations",
             "routine_occurrences",
-            "runtime_beat_dispatch_effects",
+            "inbox_work_items",
         )
         == baseline
     )
@@ -325,7 +325,7 @@ def test_ac_rtn_02_degraded_read_yields_typed_degraded_fact_not_clean_fire(
         degraded = runtime.scan(tenant.tenant_id)
         occurrences = [o for o in degraded.occurrences if o.routine_ref == watcher.routine_ref]
         assert [o.outcome.value for o in occurrences] == ["skipped"]
-        assert degraded.beat_dispatches == ()
+        assert degraded.work_items == ()
     finally:
         with psycopg.connect(tenant.database.admin_dsn) as connection:
             connection.execute("GRANT SELECT ON events TO ctower_svc")
@@ -358,10 +358,11 @@ def test_ac_rtn_03_five_representative_schedules_register_and_fire(tenant: Tenan
 
     fired_refs = {o.routine_ref for o in scan.occurrences if o.outcome.value == "queued"}
     assert fired_refs == {revision.routine_ref for revision in gated.values()}
-    assert len(scan.beat_dispatches) == _EXPECTED_MIGRATED_COUNT
-    for effect in scan.beat_dispatches:
-        assert effect.routine_ref.startswith("mc-cron.")
-        assert effect.spec.target_session in ("commander", "mc-commander-manibo")
+    assert len(scan.work_items) == _EXPECTED_MIGRATED_COUNT
+    for item in scan.work_items:
+        assert item.routine_ref.startswith("mc-cron.")
+        assert item.owner_seat in ("ctower-commander", "manibo-commander")
+        assert item.knowledge_ref.startswith("mc-cron.")
 
     # Ctower owns only the queued occurrence evidence. Host-twin activity and
     # crontab deletion remain external-custodian facts.

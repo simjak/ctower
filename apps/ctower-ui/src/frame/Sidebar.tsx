@@ -89,15 +89,6 @@ const ICONS: Readonly<Record<string, ReactNode>> = {
       <path d="M8.5 5.5v7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="1.6 1.6" />
     </>
   ),
-  "/heartbeats": icon(
-    <path
-      d="M1.5 8.5h3l1.5-4 2.5 8 2-4h4"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinejoin="round"
-      strokeLinecap="round"
-    />
-  ),
   "/metrics": icon(
     <path
       d="M2.5 13.5v-4M6.5 13.5v-8M10.5 13.5v-5M14.5 13.5v-10"
