@@ -190,7 +190,13 @@ def build_worker(
 
     return ControlWorker(
         runtime,
-        RoutineLoop(runtime, load_routine_revisions(pack_root)),
+        RoutineLoop(
+            runtime,
+            load_routine_revisions(
+                pack_root,
+                retired_routine_refs=runtime.fully_retired_routine_refs(),
+            ),
+        ),
         OutboxLoop(projections),
         ProjectDeliveryLoop(projections),
         durability_finalizer,
