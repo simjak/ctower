@@ -16,7 +16,8 @@ from ctower_kernel.runtime import RoutineRevision
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
-EXPECTED_ROUTINE_PACKS = 12
+EXPECTED_ROUTINE_PACKS = 17
+EXPECTED_ITEM_PATH_REFERENCES = 10
 
 
 def test_manibo_report_pack_loads_as_a_pointer_only_work_item() -> None:
@@ -27,7 +28,7 @@ def test_manibo_report_pack_loads_as_a_pointer_only_work_item() -> None:
     )
 
     assert len(revisions) == EXPECTED_ROUTINE_PACKS
-    assert "ctower.beat.director-drive@1" not in references
+    assert "ctower.beat.director-drive@1" in references
     assert manibo_report.timezone == "Europe/Vilnius"
     assert manibo_report.minute_marks == (0, 30)
     assert manibo_report.hour_marks is None
@@ -36,6 +37,49 @@ def test_manibo_report_pack_loads_as_a_pointer_only_work_item() -> None:
     assert manibo_report.routine_item.knowledge_ref == "mc-cron.manibo-report"
     assert manibo_report.routine_item.document_id == UUID("a98100ac-1ac2-56f4-8754-e9550ebf67e7")
     assert manibo_report.routine_item.owner_seat == "manibo-commander"
+
+
+def test_registry_derived_inventory_dispositions_every_one_of_seventeen_references() -> None:
+    """AC-RWI-01/06: the whole registry is the denominator and none of it is omitted."""
+
+    revisions = control_worker_module.load_routine_revisions(ROOT / "packs")
+    knowledge_root = ROOT / "packages/ctower-kernel/src/ctower_kernel/knowledge/static/org"
+    inventory = {
+        revision.routine_ref: _disposition(revision, knowledge_root)
+        for revision in sorted(revisions, key=lambda revision: revision.routine_ref)
+    }
+    for routine_ref, disposition in inventory.items():
+        print(f"registry-inventory routine={routine_ref} disposition={disposition}")
+
+    assert len(inventory) == EXPECTED_ROUTINE_PACKS
+    item_path = {ref for ref, value in inventory.items() if value.startswith("item-path")}
+    assert len(item_path) == EXPECTED_ITEM_PATH_REFERENCES
+    assert {ref for ref in item_path if ref.startswith("ctower.beat.")} == {
+        "ctower.beat.health@1",
+        "ctower.beat.director-drive@1",
+        "ctower.beat.bhloop@1",
+        "ctower.beat.sprint@1",
+        "ctower.beat.digest@1",
+    }
+    assert not [value for value in inventory.values() if value == "omitted"]
+    assert all(
+        not hasattr(revision, "beat_dispatch") and "target_session" not in repr(revision)
+        for revision in revisions
+    )
+
+
+def _disposition(revision: RoutineRevision, knowledge_root: Path) -> str:
+    """Name why each registered reference is or is not on the work-item path."""
+
+    item = revision.routine_item
+    if item is not None:
+        document = knowledge_root / f"{item.knowledge_ref}.md"
+        if not document.is_file():
+            return "omitted"
+        return f"item-path knowledge={item.knowledge_ref} owner={item.owner_seat}"
+    if revision.dream_dispatch is not None:
+        return "not-item-path dream-dispatch effect, no session target"
+    return f"not-item-path fixed-operation {revision.handler_kind}, no session target"
 
 
 def test_routine_pack_closed_world_names_either_one_sided_edit(

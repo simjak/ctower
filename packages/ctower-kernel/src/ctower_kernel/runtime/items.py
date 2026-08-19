@@ -10,6 +10,9 @@ from uuid import UUID
 
 __all__ = [
     "CompleteRoutineWorkItemCommand",
+    "EscalationUnresolvedReason",
+    "RoutineAlarmEpisode",
+    "RoutineAlarmEpisodeState",
     "RoutineAlarmKind",
     "RoutineGateEvidence",
     "RoutineItemSpec",
@@ -309,19 +312,50 @@ def _validate_work_item_shape(item: RoutineWorkItem) -> None:
 
 
 class RoutineAlarmKind(StrEnum):
+    """The closed set of typed observations one alarm episode may append."""
+
     MISSED_WINDOW = "missed_window"
     DEGRADED_READ = "degraded_read"
+    ESCALATION_UNRESOLVED = "escalation_unresolved"
+    RECOVERED_RECEIPTED = "recovered_receipted"
+
+
+class EscalationUnresolvedReason(StrEnum):
+    """Why an escalation binding could not be resolved to a live scoped seat."""
+
+    MISSING = "missing"
+    STALE = "stale"
+    REVOKED = "revoked"
+    FOREIGN_SCOPE = "foreign_scope"
+
+
+class RoutineAlarmEpisodeState(StrEnum):
+    """The derived state of one stable-window alarm episode."""
+
+    DEGRADED = "degraded"
+    ESCALATION_UNRESOLVED = "escalation-unresolved"
+    CONFIRMED_UNCONSUMED = "confirmed-unconsumed"
+    RECOVERED_RECEIPTED = "recovered-receipted"
 
 
 @dataclass(frozen=True, slots=True)
 class RoutineWorkItemAlarm:
     alarm_id: UUID
     routine_ref: str
+    revision_digest: str
     scheduled_for: datetime
     work_item_id: UUID | None
     escalation_seat: str
     kind: RoutineAlarmKind
     recorded_at: datetime
+    unresolved_reason: EscalationUnresolvedReason | None = None
+
+    def __post_init__(self) -> None:
+        if _DIGEST.fullmatch(self.revision_digest) is None:
+            raise ValueError("Routine alarm revision must be content addressed")
+        unresolved = self.kind is RoutineAlarmKind.ESCALATION_UNRESOLVED
+        if unresolved != (self.unresolved_reason is not None):
+            raise ValueError("only an unresolved escalation observation carries a reason")
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -329,8 +363,63 @@ class RoutineWorkItemAlarm:
             "escalation_seat": self.escalation_seat,
             "kind": self.kind.value,
             "recorded_at": self.recorded_at.isoformat(),
+            "revision_digest": self.revision_digest,
             "routine_ref": self.routine_ref,
             "schema_id": "ctower.routine-work-item-alarm/v1",
+            "unresolved_reason": (
+                self.unresolved_reason.value if self.unresolved_reason is not None else None
+            ),
             "window": self.scheduled_for.isoformat(),
             "work_item_id": str(self.work_item_id) if self.work_item_id is not None else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RoutineAlarmEpisode:
+    """One append-only episode keyed by the AC-RWI-05 stable window identity."""
+
+    tenant_id: UUID
+    routine_ref: str
+    revision_digest: str
+    scheduled_for: datetime
+    observations: tuple[RoutineWorkItemAlarm, ...]
+
+    def __post_init__(self) -> None:
+        if not self.observations:
+            raise ValueError("an alarm episode requires at least one observation")
+        kinds = [observation.kind for observation in self.observations]
+        if len(set(kinds)) != len(kinds):
+            raise ValueError("an alarm episode records each observation kind at most once")
+
+    @property
+    def state(self) -> RoutineAlarmEpisodeState:
+        kinds = {observation.kind for observation in self.observations}
+        if RoutineAlarmKind.RECOVERED_RECEIPTED in kinds:
+            return RoutineAlarmEpisodeState.RECOVERED_RECEIPTED
+        if RoutineAlarmKind.MISSED_WINDOW in kinds:
+            return RoutineAlarmEpisodeState.CONFIRMED_UNCONSUMED
+        if RoutineAlarmKind.ESCALATION_UNRESOLVED in kinds:
+            return RoutineAlarmEpisodeState.ESCALATION_UNRESOLVED
+        return RoutineAlarmEpisodeState.DEGRADED
+
+    @property
+    def ordinary_alarms(self) -> int:
+        """Count only ordinary missed-window facts, never degraded or recovery ones."""
+
+        return sum(
+            1
+            for observation in self.observations
+            if observation.kind is RoutineAlarmKind.MISSED_WINDOW
+        )
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "observations": [observation.response_payload() for observation in self.observations],
+            "ordinary_alarms": self.ordinary_alarms,
+            "revision_digest": self.revision_digest,
+            "routine_ref": self.routine_ref,
+            "schema_id": "ctower.routine-alarm-episode/v1",
+            "state": self.state.value,
+            "tenant_id": str(self.tenant_id),
+            "window": self.scheduled_for.isoformat(),
         }

@@ -25,6 +25,10 @@ _SEAT = re.compile(r"^[a-z][a-z0-9._-]{1,95}$")
 _KNOWLEDGE = re.compile(r"^[a-z][a-z0-9._-]{0,127}$")
 _MAX_ARTIFACT_REF = 512
 _MAX_GATE_DETAIL = 500
+_ALARM_KINDS = frozenset(
+    {"missed_window", "degraded_read", "escalation_unresolved", "recovered_receipted"}
+)
+_UNRESOLVED_REASONS = frozenset({"missing", "stale", "revoked", "foreign_scope"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,11 +133,13 @@ class RoutineWorkItemCompletedPayload:
 class RoutineWorkItemAlarmRaisedPayload:
     alarm_id: UUID
     routine_ref: str
+    revision_digest: str
     scheduled_for: datetime
     work_item_id: UUID | None
     escalation_seat: str
     kind: str
     recorded_at: datetime
+    unresolved_reason: str | None = None
 
     def __post_init__(self) -> None:
         _validate_uuid(self.alarm_id, "alarm_id")
@@ -141,11 +147,14 @@ class RoutineWorkItemAlarmRaisedPayload:
             _validate_uuid(self.work_item_id, "work_item_id")
         if _REFERENCE.fullmatch(self.routine_ref) is None:
             raise ValueError("Routine alarm reference is invalid")
+        if _DIGEST.fullmatch(self.revision_digest) is None:
+            raise ValueError("Routine alarm revision is invalid")
         _validate_time(self.scheduled_for, "scheduled_for")
         if _SEAT.fullmatch(self.escalation_seat) is None:
             raise ValueError("Routine alarm escalation seat is invalid")
-        if self.kind not in {"missed_window", "degraded_read"}:
+        if self.kind not in _ALARM_KINDS:
             raise ValueError("Routine alarm kind is outside the authored contract")
+        _validate_unresolved_reason(self.kind, self.unresolved_reason)
         _validate_time(self.recorded_at, "recorded_at")
 
     def to_mapping(self) -> dict[str, object]:
@@ -154,8 +163,10 @@ class RoutineWorkItemAlarmRaisedPayload:
             "escalation_seat": self.escalation_seat,
             "kind": self.kind,
             "recorded_at": self.recorded_at.isoformat(),
+            "revision_digest": self.revision_digest,
             "routine_ref": self.routine_ref,
             "scheduled_for": self.scheduled_for.isoformat(),
+            "unresolved_reason": self.unresolved_reason,
             "work_item_id": str(self.work_item_id) if self.work_item_id is not None else None,
         }
 
@@ -218,6 +229,13 @@ def _validate_common(
         raise ValueError("Routine work-item revision is invalid")
     if _SEAT.fullmatch(owner_seat) is None or _SEAT.fullmatch(escalation_seat) is None:
         raise ValueError("Routine work-item seat is invalid")
+
+
+def _validate_unresolved_reason(kind: str, reason: str | None) -> None:
+    if (kind == "escalation_unresolved") != (reason is not None):
+        raise ValueError("only an unresolved escalation alarm carries a reason")
+    if reason is not None and reason not in _UNRESOLVED_REASONS:
+        raise ValueError("Routine alarm unresolved reason is outside the authored contract")
 
 
 def _validate_uuid(value: object, label: str) -> None:

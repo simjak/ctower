@@ -23,7 +23,7 @@ class GatedPackExpected(TypedDict):
     escalation_seat: str
 
 
-GATED_PACKS: dict[str, GatedPackExpected] = {
+MIGRATED_PACKS: dict[str, GatedPackExpected] = {
     "mc-cron.manibo-report@1": {
         "minutes": (0, 30),
         "hours": None,
@@ -76,13 +76,73 @@ GATED_PACKS: dict[str, GatedPackExpected] = {
     },
 }
 
+# AC-RWI-06: the five `ctower.beat.*` references are re-pointed onto the item path in this
+# same candidate rather than dropped from the registry. They are not CT-I1-033 host-twin
+# migrations, so they carry no catch-parity row in the migration backlog.
+BEAT_ITEM_PACKS: dict[str, GatedPackExpected] = {
+    "ctower.beat.health@1": {
+        "minutes": (14, 34, 54),
+        "hours": None,
+        "gate": {"kind": "always"},
+        "item_key": "health",
+        "knowledge_ref": "ctower.beat.health",
+        "document_id": "b5d134cf-b227-57c4-906c-e7df295efca9",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
+    },
+    "ctower.beat.director-drive@1": {
+        "minutes": (4, 34),
+        "hours": None,
+        "gate": {"kind": "always"},
+        "item_key": "director-drive",
+        "knowledge_ref": "ctower.beat.director-drive",
+        "document_id": "8c9ab2d9-e870-5667-937f-158ef194f694",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
+    },
+    "ctower.beat.bhloop@1": {
+        "minutes": (9, 24, 39, 54),
+        "hours": None,
+        "gate": {"kind": "always"},
+        "item_key": "bhloop",
+        "knowledge_ref": "ctower.beat.bhloop",
+        "document_id": "a04a2d97-3e38-52bf-9a38-7ef226f8ea41",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
+    },
+    "ctower.beat.sprint@1": {
+        "minutes": (23,),
+        "hours": (2, 8, 14, 20),
+        "gate": {"kind": "always"},
+        "item_key": "sprint",
+        "knowledge_ref": "ctower.beat.sprint",
+        "document_id": "a042c7a0-4b92-5054-9f6c-1e82624cc241",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
+    },
+    "ctower.beat.digest@1": {
+        "minutes": (12,),
+        "hours": (7,),
+        "gate": {"kind": "always"},
+        "item_key": "digest",
+        "knowledge_ref": "ctower.beat.digest",
+        "document_id": "a4a29e76-19e6-5563-be0c-5ee81e3fe6ba",
+        "owner_seat": "ctower-commander",
+        "escalation_seat": "ctower-commander",
+    },
+}
+
+ITEM_PACKS: dict[str, GatedPackExpected] = {**MIGRATED_PACKS, **BEAT_ITEM_PACKS}
+
+EXPECTED_ITEM_PACKS = 10
 EXPECTED_UNMIGRATED_SCHEDULES = 17
 
 
-def test_five_gated_packs_pin_exact_gate_schedule_and_digest() -> None:
+def test_ten_item_packs_pin_exact_gate_schedule_and_digest() -> None:
     schema = _json(ROOT / "contracts/runtime/routine-v4.schema.json")
     validator = Draft202012Validator(schema)
-    for routine_ref, expected in GATED_PACKS.items():
+    assert len(ITEM_PACKS) == EXPECTED_ITEM_PACKS
+    for routine_ref, expected in ITEM_PACKS.items():
         pack = _json(ROOT / f"packs/routines/{routine_ref.split('@')[0]}/v1.yaml")
         validator.validate(pack)
         authored = {key: value for key, value in pack.items() if key != "revision_digest"}
@@ -93,7 +153,8 @@ def test_five_gated_packs_pin_exact_gate_schedule_and_digest() -> None:
         assert pack["routine_ref"] == routine_ref
         schedule = cast(dict[str, object], pack["schedule"])
         assert schedule["minutes"] == list(expected["minutes"])
-        assert schedule["hours"] == expected["hours"]
+        expected_hours = expected["hours"]
+        assert schedule["hours"] == (None if expected_hours is None else list(expected_hours))
         gate = cast(dict[str, object], pack["activity_gate"])
         assert gate == expected["gate"]
         assert pack["handler_kind"] == "routine_item"
@@ -167,7 +228,7 @@ def test_unmigrated_schedules_are_enumerated_with_intended_gates() -> None:
     backlog = _json(ROOT / "contracts/runtime/routine-migration-backlog.json")
     assert backlog["schema"] == "ctower.routine-migration-backlog/v1"
     migrated = cast(list[str], backlog["migrated"])
-    assert set(migrated) == set(GATED_PACKS)
+    assert set(migrated) == set(MIGRATED_PACKS)
     admitted_backlog = cast(list[dict[str, object]], backlog["admitted_backlog"])
     assert admitted_backlog == [
         {

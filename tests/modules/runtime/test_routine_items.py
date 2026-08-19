@@ -254,6 +254,7 @@ def test_suppression_and_alarm_render_their_recorded_windows() -> None:
     alarm = RoutineWorkItemAlarm(
         alarm_id=uuid4(),
         routine_ref="mc-cron.operator-report@1",
+        revision_digest=_DIGEST,
         scheduled_for=_SCHEDULED,
         work_item_id=None,
         escalation_seat="ctower-commander",
@@ -264,3 +265,4 @@ def test_suppression_and_alarm_render_their_recorded_windows() -> None:
     assert suppression.response_payload()["window"] == _SCHEDULED.isoformat()
     assert alarm.response_payload()["work_item_id"] is None
     assert alarm.response_payload()["kind"] == "missed_window"
+    assert alarm.response_payload()["unresolved_reason"] is None

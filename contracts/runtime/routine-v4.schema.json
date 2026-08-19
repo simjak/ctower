@@ -11,7 +11,10 @@
   ],
   "properties": {
     "schema_id": {"const": "ctower.routine/v4"},
-    "routine_ref": {"type": "string", "pattern": "^mc-cron\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "routine_ref": {
+      "type": "string",
+      "pattern": "^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+    },
     "revision_digest": {"$ref": "#/$defs/digest"},
     "schedule": {"$ref": "#/$defs/schedule"},
     "dst_policy": {"const": "wall_clock_once"},

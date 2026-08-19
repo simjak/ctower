@@ -71,17 +71,29 @@ CREATE TABLE routine_work_item_suppressions (
     FOREIGN KEY (event_id, tenant_id) REFERENCES events(event_id, tenant_id)
 );
 
+-- One append-only alarm episode per stable window identity
+-- (tenant_id, revision_digest, scheduled_for). Every row is a typed observation
+-- in that episode; the episode's state is derived from the observations present
+-- and is never stored. "Exactly one ordinary alarm" is the `missed_window` row,
+-- which the stable-key uniqueness enforces under replay, restart, and concurrency.
 CREATE TABLE routine_work_item_alarms (
     alarm_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
+    revision_digest bytea NOT NULL REFERENCES routine_item_specs(revision_digest),
     routine_ref text NOT NULL CHECK (routine_ref ~ '^[a-z][a-z0-9._-]*@[1-9][0-9]*$'),
     scheduled_for timestamptz NOT NULL,
     work_item_id uuid,
     escalation_seat text NOT NULL CHECK (escalation_seat ~ '^[a-z][a-z0-9._-]{1,95}$'),
-    kind text NOT NULL CHECK (kind IN ('missed_window', 'degraded_read')),
+    kind text NOT NULL CHECK (kind IN (
+        'missed_window', 'degraded_read', 'escalation_unresolved', 'recovered_receipted'
+    )),
+    unresolved_reason text CHECK (
+        unresolved_reason IN ('missing', 'stale', 'revoked', 'foreign_scope')
+    ),
     recorded_at timestamptz NOT NULL,
     event_id uuid NOT NULL,
-    UNIQUE (tenant_id, routine_ref, scheduled_for, kind),
+    UNIQUE (tenant_id, revision_digest, scheduled_for, kind),
+    CHECK ((kind = 'escalation_unresolved') = (unresolved_reason IS NOT NULL)),
     FOREIGN KEY (work_item_id, tenant_id)
         REFERENCES inbox_work_items(work_item_id, tenant_id),
     FOREIGN KEY (event_id, tenant_id) REFERENCES events(event_id, tenant_id)
@@ -133,6 +145,8 @@ CREATE INDEX inbox_work_items_owner_status
     ON inbox_work_items (tenant_id, owner_seat, status, scheduled_for, work_item_id);
 CREATE INDEX routine_work_item_alarms_escalation
     ON routine_work_item_alarms (tenant_id, escalation_seat, recorded_at, alarm_id);
+CREATE INDEX routine_work_item_alarms_episode
+    ON routine_work_item_alarms (tenant_id, revision_digest, scheduled_for, kind);
 
 REVOKE ALL ON routine_item_specs, inbox_work_items,
     routine_work_item_receipts, routine_work_item_suppressions,

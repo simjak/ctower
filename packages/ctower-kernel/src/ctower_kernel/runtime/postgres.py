@@ -28,6 +28,7 @@ from ctower_kernel.runtime._dream_dispatch_sql import (
 from ctower_kernel.runtime._dream_dispatch_sql import (
     list_dream_dispatches as _list_dream_dispatches,
 )
+from ctower_kernel.runtime._routine_alarms_sql import read_alarm_episodes as _alarm_episodes
 from ctower_kernel.runtime._routine_items_sql import complete as _complete_routine_work_item
 from ctower_kernel.runtime._routine_sql import register as _register
 from ctower_kernel.runtime._routine_sql import scan as _scan
@@ -37,7 +38,11 @@ from ctower_kernel.runtime._synthetic_sql import complete_synthetic as _complete
 from ctower_kernel.runtime._synthetic_sql import start_synthetic as _start_synthetic
 from ctower_kernel.runtime._synthetic_sql import synthetic_run as _synthetic_run
 from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
-from ctower_kernel.runtime.items import CompleteRoutineWorkItemCommand, RoutineWorkItemReceipt
+from ctower_kernel.runtime.items import (
+    CompleteRoutineWorkItemCommand,
+    RoutineAlarmEpisode,
+    RoutineWorkItemReceipt,
+)
 
 __all__ = ["PostgresRuntime"]
 
@@ -69,6 +74,9 @@ class PostgresRuntime:
         command: CompleteRoutineWorkItemCommand,
     ) -> RoutineWorkItemReceipt | RecordProblem:
         return _complete_routine_work_item(self._dsn, actor, command)
+
+    def alarm_episodes(self, tenant_id: UUID) -> tuple[RoutineAlarmEpisode, ...]:
+        return _alarm_episodes(self._dsn, tenant_id)
 
     def list_dream_dispatches(self, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
         return _list_dream_dispatches(self._dsn, actor)
