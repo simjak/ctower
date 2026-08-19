@@ -4424,6 +4424,12 @@
       "status": "not_exercised",
       "source_count": 0,
       "reason": "expected-suite registry defers this suite to phase CT-I1-041; not required and not counted as passing"
+    },
+    {
+      "suite_id": "claude-code-binding-acceptance",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "expected-suite registry defers this suite to phase CT-I1-042; not required and not counted as passing"
     }
   ]
 }
