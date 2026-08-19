@@ -51,6 +51,7 @@ __all__ = [
     "BUILDERS",
     "DOCUMENTS",
     "PROFILE_KEY",
+    "SEAT_KEY",
     "SEAT_PROJECT",
     "DocumentBuilder",
     "SubjectBuilder",
@@ -68,6 +69,7 @@ _ARTIFACT_DIGEST = digest_of(b"hermes-artifact-under-test")
 _CONFIG_DIGEST = digest_of(b"hermes-profile-config-under-test")
 PROFILE_KEY = "engineer"
 SEAT_PROJECT = "ctower"
+SEAT_KEY = "engineer-t1"
 _BRIEF_DIGEST = "sha256:" + "f" * 64
 
 # The profile's own chain: codex primary, then glm, then qwen, in policy order.
@@ -156,17 +158,19 @@ def _attempt_pin(spec: HarnessSpec, *, epoch: int = 1, judgment_lane: bool = Fal
 
 
 def seat_credential(
-    scope: str = "project-seat", project_key: str = SEAT_PROJECT
+    scope: str = "project-seat",
+    project_key: str = SEAT_PROJECT,
+    seat_key: str = SEAT_KEY,
 ) -> CredentialReference:
-    return CredentialReference(scope=scope, seat_key="engineer-t1", project_key=project_key)
+    """The seat's own credential, or exactly one axis of it made wrong."""
+
+    return CredentialReference(scope=scope, seat_key=seat_key, project_key=project_key)
 
 
 def _inputs(spec: HarnessSpec) -> DispatchInputs:
     return DispatchInputs(
         attempt=_attempt_pin(spec),
-        seat=SeatRef(
-            seat_key="engineer-t1", engagement_label=PROFILE_KEY, project_key=SEAT_PROJECT
-        ),
+        seat=SeatRef(seat_key=SEAT_KEY, engagement_label=PROFILE_KEY, project_key=SEAT_PROJECT),
         brief=BriefBundle(
             text="read the row, build exactly its scope",
             digest=_BRIEF_DIGEST,

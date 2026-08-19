@@ -181,11 +181,16 @@ def collect_refusal(dirty_paths: Sequence[str]) -> Refusal | None:
 def writeback_refusal(
     credential: CredentialRef, seat: SeatRef, facts: Sequence[WritebackFact]
 ) -> Refusal | None:
-    """Refuse a writeback whose authority, project, or scope is wrong. Zero mutation.
+    """Refuse a writeback whose authority, seat, project, or scope is wrong. Zero mutation.
 
     One credential per seat is what makes `project-scope-denied` possible at all: with one
     identity behind many seats the server has nothing to check a claim against, which is how
     fifteen tickets were once filed under a wrong project key unrefusably.
+
+    The seat and the credential arrive as two independent inputs, which is what makes that
+    refusal reachable — and what makes this equality the only thing standing between them.
+    A credential belonging to another seat in the right project satisfies every other check
+    here and files one seat's work under another seat's identity: seats file as themselves.
     """
 
     if credential.scope != _SEAT_SCOPE:
@@ -195,6 +200,13 @@ def writeback_refusal(
             meaning="an adapter holding an operator or commander credential is a design failure",
             action="present the seat's own project-seat credential",
             detail=(("presented_scope", credential.scope),),
+        )
+    if credential.seat_key != seat.seat_key:
+        return Refusal(
+            name="harness-credential-seat-mismatch",
+            observed="the credential presented belongs to a seat other than this attempt's",
+            meaning="a fact under another seat's identity credits work to a seat that did none",
+            action="present this seat's own project-seat credential",
         )
     if credential.project_key != seat.project_key:
         return Refusal(

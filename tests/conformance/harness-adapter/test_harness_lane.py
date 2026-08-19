@@ -85,6 +85,29 @@ def test_a_foreign_project_key_is_denied_with_zero_disclosure(build: SubjectBuil
 
 
 @pytest.mark.parametrize("build", _BUILDS, ids=_IDS)
+def test_another_seats_credential_for_the_right_project_is_refused_by_name(
+    build: SubjectBuilder,
+) -> None:
+    """The seat and its credential are two inputs, and only this check ties them together.
+
+    A credential from another seat in the same project passes the scope check and the
+    project check, so without this the facts land attributed to a seat that did not do the
+    work — the same wrong-attribution failure `project-scope-denied` exists to refuse, one
+    level in. Seats file as themselves.
+    """
+
+    subject = build()
+
+    refusal = subject.binding.writeback(
+        subject.inputs.attempt, subject.inputs.seat, seat_credential(seat_key="reviewer-9"), _FACTS
+    )
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-credential-seat-mismatch"
+    assert not [item for item in subject.control.mutations() if item.startswith("writeback")]
+
+
+@pytest.mark.parametrize("build", _BUILDS, ids=_IDS)
 def test_a_fact_outside_the_three_scopes_refuses_by_name_with_zero_mutation(
     build: SubjectBuilder,
 ) -> None:
