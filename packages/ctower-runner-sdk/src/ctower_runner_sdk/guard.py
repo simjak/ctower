@@ -28,9 +28,6 @@ __all__ = [
 
 type GuardVerdict = Literal["allow", "block", "needs_operator"]
 
-# NUL, so no argument value can forge a boundary between two arguments in the digest.
-_ARGV_SEPARATOR = "\x00"
-
 
 @dataclass(frozen=True, slots=True)
 class ExecutionPlan:
@@ -44,17 +41,22 @@ class ExecutionPlan:
     worktree_path: str
 
     def normalized_digest(self) -> str:
-        """A stable digest over every field a change to which is a different plan."""
+        """A stable digest over every field a change to which is a different plan.
 
-        payload = "\n".join(
-            (
-                self.harness_ref,
-                self.profile_ref,
-                self.composition_digest,
-                self.program,
-                _ARGV_SEPARATOR.join(self.argv),
-                self.worktree_path,
-            )
+        Every field is written length-first, including each argument, so no value can forge
+        a boundary between two fields. A separator character alone protected only the
+        arguments: `harness_ref` and `profile_ref` arrive observed, and a newline inside one
+        of them moved the boundary of the next field, so a decision obtained for one plan
+        cleared a different one.
+        """
+
+        payload = _framed(
+            self.harness_ref,
+            self.profile_ref,
+            self.composition_digest,
+            self.program,
+            _framed(*self.argv),
+            self.worktree_path,
         )
         return f"sha256:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
 
@@ -137,6 +139,12 @@ class DispatchBoundary:
         if decision.decision_id in self._burned:
             return "this grant was already used once"
         return None
+
+
+def _framed(*parts: str) -> str:
+    """Write each part behind its own byte length, so the sequence reads back one way."""
+
+    return "".join(f"{len(part.encode('utf-8'))}:{part}" for part in parts)
 
 
 def _verdict_refusal(decision: GuardDecision, plan: ExecutionPlan) -> Refusal:
