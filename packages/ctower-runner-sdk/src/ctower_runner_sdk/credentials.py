@@ -24,6 +24,7 @@ from ctower_runner_sdk.refusals import Refusal
 
 __all__ = [
     "ENTRY_ALLOWLIST",
+    "LEASE_SCHEMA_REF",
     "CredentialPool",
     "EntryState",
     "Lease",
@@ -35,8 +36,12 @@ __all__ = [
     "selectable",
 ]
 
+LEASE_SCHEMA_REF = "ctower.credential-lease/v1"
+
 # The complete set of names an observation may read off a pool entry. Anything else stays
-# in the harness's own store; there is no field here a credential value can occupy.
+# in the harness's own store; there is no field here a credential value can occupy. These
+# are the kernel's own pool-observation names: one vocabulary across both planes, so a lease
+# and a recorded observation never need translating into each other.
 ENTRY_ALLOWLIST: tuple[str, ...] = (
     "auth_state",
     "entry_label",
@@ -148,6 +153,8 @@ class Lease:
     acquired_at: datetime
 
     def to_mapping(self) -> dict[str, object]:
+        """The lease as its authored contract describes it, discriminator included."""
+
         return {
             "acquired_at": self.acquired_at.isoformat(),
             "entry_state": self.entry.to_mapping(),
@@ -155,6 +162,7 @@ class Lease:
             "lease_id": str(self.lease_id),
             "model_ref": self.model_ref,
             "profile_key": self.profile_key,
+            "schema": LEASE_SCHEMA_REF,
         }
 
 

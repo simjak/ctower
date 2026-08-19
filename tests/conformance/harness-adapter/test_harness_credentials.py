@@ -13,6 +13,7 @@ import dataclasses
 from datetime import timedelta
 
 import pytest
+from ctower_contracts import validator_for
 from harness_doubles import BASE_TIME, StubEngine, SubstrateState, lease_ids, pool_records
 from harness_subjects import PROFILE_KEY, build_hermes, hermes_document, subjects
 
@@ -20,6 +21,7 @@ from ctower_runner.hermes.pool import HermesPool
 from ctower_runner_sdk.conformance import ConformanceSubject
 from ctower_runner_sdk.credentials import (
     ENTRY_ALLOWLIST,
+    LEASE_SCHEMA_REF,
     CredentialPool,
     EntryState,
     Lease,
@@ -64,6 +66,27 @@ def test_the_pool_interface_exposes_no_copy_verb(subject: ConformanceSubject) ->
 
     assert not [name for name in verbs | protocol if "copy" in name or "install" in name]
     assert {"acquire", "meter", "limits", "rotate", "probe", "request_mint"} <= protocol
+
+
+@pytest.mark.parametrize("subject", subjects(), ids=lambda item: item.name)
+def test_every_lease_validates_against_the_contract_that_authored_its_shape(
+    subject: ConformanceSubject,
+) -> None:
+    """A contract nothing validates against drifts from its producer silently.
+
+    The lease is the only value the seam hands a binding about a credential, so the second
+    binding builds against this shape. It reads the same on both planes because these are
+    the kernel's own pool-observation names rather than a second vocabulary for one fact.
+    """
+
+    lease = subject.pool.acquire(model_ref=subject.binding.spec.probe.model_ref, tier=PROFILE_KEY)
+
+    assert isinstance(lease, Lease), lease
+    errors = sorted(
+        validator_for(LEASE_SCHEMA_REF).iter_errors(lease.to_mapping()),
+        key=lambda error: error.json_path,
+    )
+    assert not [f"{error.json_path}: {error.message}" for error in errors]
 
 
 def test_a_mixed_pool_acquires_from_its_healthy_entry_and_reports_three_clocks() -> None:

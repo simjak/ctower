@@ -17930,22 +17930,34 @@
       "$defs": {
         "entry_state": {
           "additionalProperties": false,
-          "description": "Three orthogonal axes. AUTH is not QUOTA is not REACH: collapsing them is what prescribes a re-mint against a credential that was never broken.",
+          "description": "The leased entry, in the field names the kernel's own pool observations already use: one vocabulary across the worker plane and the record tier, so a lease and a `poolObservationEntry` never have to be translated into each other. Three orthogonal axes plus registration. AUTH is not QUOTA is not REACH: collapsing them is what prescribes a re-mint against a credential that was never broken. The names here are exactly the projection allowlist a reader may take off an engine record \u2014 the fields beside them are the credential itself.",
           "properties": {
-            "auth": {
+            "auth_state": {
               "enum": [
                 "healthy",
                 "lineage-dead",
                 "chain-burned"
               ]
             },
-            "quota": {
-              "enum": [
-                "available",
-                "capped",
-                "unfunded",
-                "unknown"
+            "entry_label": {
+              "description": "A display attribute with no authority. Two identically-named labels have hidden two different accounts.",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
               ]
+            },
+            "last_status_observed": {
+              "pattern": "^[a-z][a-z0-9._-]{0,63}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "provider_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
             },
             "quota_reset_at": {
               "format": "date-time",
@@ -17954,25 +17966,61 @@
                 "null"
               ]
             },
-            "reach": {
+            "quota_state": {
+              "enum": [
+                "available",
+                "capped",
+                "unfunded",
+                "unknown"
+              ]
+            },
+            "reach_state": {
               "enum": [
                 "ok",
                 "edge-challenged",
                 "unknown"
               ]
             },
-            "registration": {
+            "registration_state": {
               "enum": [
                 "enrolled",
                 "discovered"
               ]
+            },
+            "request_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "secret_fingerprint": {
+              "description": "A reference, never a value. This is the only credential-shaped field the lease carries.",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "subscription_identity": {
+              "description": "The entry's own decoded identity claim. Entries are keyed by identity and never by label.",
+              "maxLength": 254,
+              "minLength": 3,
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
-            "auth",
-            "quota",
-            "reach",
-            "registration"
+            "auth_state",
+            "entry_label",
+            "last_status_observed",
+            "provider_key",
+            "quota_reset_at",
+            "quota_state",
+            "reach_state",
+            "registration_state",
+            "request_count",
+            "secret_fingerprint",
+            "subscription_identity"
           ],
           "type": "object"
         }
@@ -18006,29 +18054,8 @@
           "pattern": "^[a-z][a-z0-9-]{2,63}$",
           "type": "string"
         },
-        "provider_key": {
-          "pattern": "^[a-z][a-z0-9-]{2,63}$",
-          "type": "string"
-        },
         "schema": {
           "const": "ctower.credential-lease/v1"
-        },
-        "secret_fingerprint": {
-          "description": "A reference, never a value. This is the only credential-shaped field the lease carries.",
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "subscription_identity": {
-          "description": "The entry's own decoded identity claim. Entries are keyed by identity and never by label: two identically-named labels have hidden two different accounts.",
-          "maxLength": 254,
-          "minLength": 3,
-          "type": [
-            "string",
-            "null"
-          ]
         }
       },
       "required": [
@@ -18036,10 +18063,7 @@
         "lease_id",
         "harness_key",
         "profile_key",
-        "provider_key",
-        "subscription_identity",
         "model_ref",
-        "secret_fingerprint",
         "acquired_at",
         "entry_state"
       ],
@@ -21116,7 +21140,7 @@
     {
       "id": "https://ctower.local/contracts/runner/credential-lease.schema.json",
       "path": "contracts/runner/credential-lease.schema.json",
-      "sha256": "sha256:678da041d21f29aa6ad71894ed38f56aedbd94d383b5bcac840d15f9e755a81c"
+      "sha256": "sha256:fa7009dd5596007268b6fbea0dc7776754dde08f5ca66e2ec4449d546edb1375"
     },
     {
       "id": "https://ctower.local/contracts/runner/harness-capability.schema.json",
