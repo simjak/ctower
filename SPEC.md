@@ -215,6 +215,7 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-OP-10 | Operator/CEO | Every Board card explains its own work without a second lookup: which tenant it belongs to, the changes carrying it, its labels, whether it is genuinely waiting on a person rather than merely blocked, and whether reaching a real environment applies to it at all. Each of those comes from a recorded fact, and anything the record does not hold says so on the card instead of disappearing from it. | [AC-TM-07](#ac-tm-07), [AC-TM-08](#ac-tm-08), [AC-ATT-01](#ac-att-01) |
 | US-OP-11 | Operator/CEO | When work needs a person, it reaches me as one typed finding that names the need and its owner, whatever kind of need it is, and its resolution is recorded rather than implied by a row quietly disappearing. Recognizing a new kind of human need is configuration rather than a code change, and no surface says a person is needed unless a finding says so. | [AC-ATT-01](#ac-att-01), [AC-ATT-02](#ac-att-02), [AC-TM-08](#ac-tm-08) |
 | US-OP-12 | Operator/CEO | A change cannot land, and a release cannot be preflighted, unless the record already holds documentation generated from that exact change and covering every surface it added; when it does not, the landing boundary refuses by name and tells me which fact is missing rather than merging and leaving the documentation to be remembered later. | [AC-REL-09](#ac-rel-09), [AC-EVD-08](#ac-evd-08), [AC-WF-26](#ac-wf-26) |
+| US-OP-13 | Operator/CEO | Every assigned crew shows the dispatch-time harness/model stamp that the substrate observed, and any later model fallback or degradation appears on the Board and in `ctl ticket assignments` history instead of being overwritten or trusted from seat self-report. | [AC-SES-05](#ac-ses-05), [AC-TM-05](#ac-tm-05), [AC-RUN-02](#ac-run-02) |
 | US-PD-01 | Operator/CEO | I open a project and see whether its declared increments or milestones are actually being delivered, using compact checkpoint rows derived from current exit-criterion proof rather than manually entered status or ticket-count percentages. | [AC-PD-01](#ac-pd-01), [AC-PD-02](#ac-pd-02), [AC-PD-04](#ac-pd-04) |
 | US-PD-02 | Accountable project owner | I drill into a checkpoint and see its owner, stage and Kanban facts, linked work and outcomes, passed and missing gates, blockers/dependencies, evidence, decisions, estimates versus actuals, and projection freshness; when proof changes, the row changes without erasing the underlying lifecycle history. | [AC-PD-02](#ac-pd-02), [AC-PD-03](#ac-pd-03), [AC-PD-05](#ac-pd-05) |
 | US-PD-03 | Operator and cross-domain owner | I use the same Project Delivery projection for software, accounting, compliance, hiring, and other configured Workflows; restore/rebuild reproduces the same rows, while stale or incomplete source truth is visibly unknown instead of guessed. | [AC-PD-04](#ac-pd-04), [AC-PD-05](#ac-pd-05), [AC-PD-06](#ac-pd-06) |
@@ -936,7 +937,7 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Stage instance** | One logical occurrence of a stage in a workflow run, dependency readiness, the resolved required-slot-set digest and which declared set it resolved, required gates, signing Evidence/assignment references, and terminal result | Owns ordered attempts; Proof decides current slot fulfillment, and a success-equivalent disposition requires every slot of the resolved set filled and current; parallel instances only where graph permits |
 | **Stage attempt** | One execution/verification attempt, input digest manifest, executor, failure occurrence/lineage references, timeout, output digest manifest, and disposition | Links one or more durable jobs/runs and evidence; does not transfer ticket custody |
 | **Failure lineage / occurrence / repair consumption** | Server-owned normalized defect identity plus immutable digest-specific occurrences and append-only repair-consumed events | A lineage remains stable across candidate mutations; deterministic policy or independent adjudication alone may split it. A monotonic projection supplies current consumption and exhaustion. |
-| **Assignment / custody interval** | Exclusive accountable ticket owner or exclusive stage-attempt executor over a time interval, including from/to, actor, reason, and source command | Ticket ownership, stage execution, and reviewer assignment are different assignment kinds |
+| **Assignment / custody interval** | Exclusive accountable ticket owner or exclusive stage-attempt executor over a time interval, including from/to, actor, reason, source command, dispatch-time substrate stamp, and append-only model-change observations | Ticket ownership, stage execution, and reviewer assignment are different assignment kinds; crew is one engagement of a seat, never a principal |
 | **Durable job / lease** | Dispatch state, command payload digest, capability requirements, priority, attempt, lease deadline, fencing token, heartbeat, cancellation, and terminal result | Job may create execution runs on runners; a stage attempt may use several sequential jobs |
 | **Agent-profile component revision** | Stable profile key plus immutable soul, operating instructions, skills, tool policy, harness/model policy, memory/context rules, budget, and placement constraints inside the universal component envelope | Execution run pins exactly one profile revision/digest and concrete resolved skill/tool revisions |
 | **Runner / node** | Registered workload identity, protocol version, capabilities, trust class, capacity, allowed scopes, heartbeat, and quarantine/revocation state | Hosts execution runs and workspaces; never writes record tables directly |
@@ -1468,6 +1469,8 @@ The ticket is the human join point, not the transaction boundary for the entire 
 73. <a id="inv-73"></a>**INV-73 — One authenticated request, one Actor, one authority record per plane.** Every authenticated request, on the human OIDC plane or the machine project-seat plane, resolves exactly one durable principal and one typed Actor context, and every command, idempotency key, custody interval, assignment, Evidence item, verdict, effect, and audit fact attributes to that one context. Authority is never claimed by the request: the machine plane resolves the version-pinned project grant of [INV-69](#inv-69), and the human plane resolves an operator-issued, append-only, revocable **human role binding** pinned to one principal, one `operator|commander|viewer` role, its exact project keys, and the access-policy revision that interprets it. The two records are disjoint — neither confers the other's authority — and a request resolving zero or more than one record for its plane refuses by name with zero mutation. No browser session, OIDC subject, provider claim, seat key, model, harness, or process creates a second custody or attribution model. A later authentication transport may be added only by resolving this same Actor context and one of these two records; a transport that introduces its own principal, custody, or attribution record violates this invariant.
 74. <a id="inv-74"></a>**INV-74 — The landing boundary is record-backed and documentation is one of its facts.** A change lands only while one required check reports every fact of its ticket's landing-boundary predecessor set — every stage the pinned Workflow graph places before the stage carrying the landing boundary, with each required slot filled, valid, and current on the head revision's candidate digest — as passing. The documented-surface fact is one of them and is waivable at no tier: no label, comment, administrator merge, re-run, follow-up ticket, passing repository quality gate, reviewer assertion, or protected operator waiver substitutes for it, and `STATE_UNKNOWN` is a failure rather than a caveat. The set derives from the pinned graph, never from stage-key, group-key, or evidence-kind strings. The check is a pure reader: it writes no authoritative state, mints no Evidence, fills no slot, passes no gate, and is never itself proof.
 75. <a id="inv-75"></a>**INV-75 — Work sessions are recorded facts, never observed processes.** Every stretch of accountable work on a ticket is an append-only session stream carrying its own durable ctower identity: one start fact naming the seat, crew, model, harness, worktree, branch, and bound ticket; zero or more typed state facts drawn from the authored `dispatched|briefed|working|gated` lifecycle; and at most one close fact carrying outcome and the operator's cost facts. Session cost is Record-owned: duration is the committed close time minus the committed start time and is never a caller claim, while token counts are bounded typed external payload values. A session never becomes identity under [INV-15](#non-negotiable-invariants) — no process, tmux name, pane, or vendor handle enters a session fact, and no surface may synthesize a session from transport activity, terminal capture, or silence. Sessions inherit every existing custody, project, and prohibited-class rule without exception: they are scoped by their ticket's authoritative project under [INV-69](#non-negotiable-invariants), and the five classes of [INV-70](#non-negotiable-invariants) are refused by name over every caller-authored session field before any row, event, or outbox byte commits. The session kind set and every derived wire union come from the canonical Record event catalog, never a second enum.
+76. <a id="inv-76"></a>**INV-76 — Assignment model visibility is substrate-reported and append-only.** A seat is the durable principal; a crew is one engagement of that seat and never a principal. Every dispatch-capable assignment carries one immutable assignment stamp observed from the substrate, initially mission-control `crew-log` bridged by a reporter and later promoted to the version-pinned project-seat principal record of [INV-69](#inv-69) when CT-I1-009 lands. The stamp names the assignment key, seat key/principal reference, crew name, harness, model, observed dispatch time, source, reporter principal, and probe evidence. Model changes are appended as `model_changed` observations on that assignment with `from`, `to`, `observed_at`, `source`, and probe evidence; no current-model field is overwritten. Seat or crew self-report never satisfies the stamp or change event. If the reporter cannot observe a required substrate, it refuses by exact `substrate-unobservable:<probe>` and surfaces degraded/`STATE_UNKNOWN`; silence, terminal text, or a model's claim cannot become visibility truth.
+77. <a id="inv-77"></a>**INV-77 — Harness independence.** Assignment stamps, `model_changed` events, and session facts carry harness as an open enum whose required baseline values are `claude-code`, `hermes`, `codex`, and `qwen-code`. Unknown harness values are preserved byte-for-byte, displayed as observed, included in equality/cross-checks, and never rejected, normalized, downgraded, or collapsed to `other`. No custody, event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape or internal transcript format. Reporter facts derive only from substrate-visible dispatch/process/log facts — tmux/process supervision metadata where authorized, mission-control crew-log, and gateway/provider logs — and never from Claude Code, Hermes, Codex, Qwen Code, or any other harness-specific session internals.
 
 ## Workflow and verification architecture
 
@@ -3552,6 +3555,79 @@ session from terminal activity — an unrecorded stretch of work is honestly abs
 Adding a session kind requires one change to the authoritative event catalog plus its named strict contract
 branch, with a mutation test proving catalog/contract equality.
 
+#### Assignment model visibility reporter
+
+Assignment stamps answer a different question from recorded work sessions. The stamp is dispatch-time truth:
+which durable seat engagement was assigned, and which harness/model the substrate selected for that
+dispatch. The session stream is execution-time truth: which bounded work session actually ran, when it
+moved through `dispatched|briefed|working|gated`, which outcome it closed with, and what cost the Record can
+prove. They cross-check rather than duplicate each other.
+
+The exact join is the assignment key `(ticket_id, assignment_kind, scope_ref, interval_sequence)` once the
+Work interval exists; the reporter also carries the dispatch tuple `(ticket_id, seat_key, crew_name,
+worktree_ref, branch_ref)` so the current G5 session facts can be checked by interval containment until the
+durable interval key is carried end to end. A session start whose `(seat_key, crew_name, harness_ref,
+model_ref, worktree_ref, branch_ref)` disagrees with the effective assignment stamp at `started_at` becomes
+a visible cross-check finding; it never rewrites the session fact or the assignment stamp.
+
+The bridge reporter is a substrate observer. Its v1 probes are: mission-control `state/crew-log.jsonl` for
+dispatch stamp and crew engagement binding; Hermes gateway/provider logs for actual harness/model selection
+and fallback observations; and the ctower assignment/read side for the target assignment interval. It
+authenticates as a dedicated reporter principal, records the probe command or cursor, source file/log
+identity, observed timestamp, reporter version, and content digest, and refuses by exact name when a probe is
+unavailable: `substrate-unobservable:crew-log`, `substrate-unobservable:hermes-gateway-log`, or
+`substrate-unobservable:assignment-read`. The reporter may report checked absence only with an explicit
+negative observation carrying the same probe fields; absence of a row or log line is not evidence.
+
+The mission-control substrate reporter is **transitional-by-declaration**: it is a bridge for current
+crew-log/gateway-log observability, not a durable file-adapter architecture and not a second source of truth.
+Its named end state is fully native ctower dispatch: crews report assignment stamps, model-change events,
+session facts, inbox items, and notification facts into the Record under ctower dispatch, with the inbox and
+notification surface first-class Record behavior. The native end-state tickets are
+`019fcbc6-5d90` (`native-inbox`) and `019fcbc6-7d40` (`mc-deprecation`); mission-control remains
+deprecation-bound until those native paths replace the bridge.
+
+Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
+`hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
+`model_changed` event, or session fact is carried, displayed, and compared exactly as observed. Unknown
+harness values are not refusal reasons and are never rewritten to `other`. Harness independence also bars
+reporters and projections from parsing harness-private session internals: the reporter may use authorized
+tmux/process supervision metadata, mission-control crew-log, gateway logs, and provider logs as substrate,
+but it may not derive custody, status, model changes, or cost from Claude Code, Hermes, Codex, Qwen Code, or
+future harness-specific transcript/session shapes.
+
+The evidence payload contract is strict and closed. The positive assignment-stamp payload is:
+
+```yaml
+schema: ctower.assignment-visibility/stamp/v1
+assignment_key: {ticket_id, assignment_kind, scope_ref, interval_sequence}
+seat: {seat_key, principal_ref|null, seat_catalog_revision}
+crew_name: persona-request-slug
+dispatch: {harness_ref, model_ref, observed_at, source}
+probes: [{probe, observed_at, source_ref, content_digest, reporter_principal}]
+promotion: {state: mission_control_bridge|seat_principal_bound, principal_ref|null}
+```
+
+The append-only model-change payload is:
+
+```yaml
+schema: ctower.assignment-visibility/model-changed/v1
+assignment_key: {ticket_id, assignment_kind, scope_ref, interval_sequence}
+from: {harness_ref, model_ref}
+to: {harness_ref, model_ref}
+observed_at: RFC3339 timestamp
+source: mission-control-crew-log|hermes-gateway-log
+probes: [{probe, observed_at, source_ref, content_digest, reporter_principal}]
+```
+
+Both payloads are strict (`extra=forbid` / `additionalProperties: false`), reject unknown closed-enum
+members, carry no credential value, and inherit prohibited-class refusal before any authoritative byte
+commits. Harness is the named exception: it is open by [INV-77](#inv-77), so an unrecognized harness value is
+preserved and displayed rather than rejected. The promotion path changes only the anchor: before CT-I1-009 the
+stamp is a bridge fact from mission-control crew-log and gateway logs; after project-seat principals are
+available, the same shape binds to the operator-issued seat principal/project grant while historical bridge
+facts remain readable.
+
 ### Failure recovery
 
 | Failure | Detection | Automatic recovery | Escalation boundary |
@@ -4023,6 +4099,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-ses-02"></a>AC-SES-02 | The exact session kind set is derived from the canonical Record event catalog. Adding a kind to the catalog without its authored envelope branch, authoring a branch with no catalog kind, or dropping a session branch from the generated HTTP union each fails the catalog/contract parity guard by name with no product-code change. Every session envelope, payload, and wire alternative is a named strict schema reached only through `$ref`. | Catalog/contract parity chokepoint with both-direction mutation proofs, stream-prefix and origin parity assertions, and a clean deterministic generated manifest |
 | <a id="ac-ses-03"></a>AC-SES-03 | Session reads are bound to one project. Reading another project's ticket sessions returns the same no-disclosure `tenant-scope-denied` 404 the rest of the ticket surface returns, and a project seat paging another project's sessions returns `project-scope-denied` 403; the `ctower`/`manibo`, `ctower`/`bh-loop`, and `manibo`/`bh-loop` pairs each prove both directions and expose no foreign session. A project page walks its own sessions once, in record order, without repeating or skipping one. | Three project-pair refusal matrices in both directions, own-project positive control, and a one-item cursor walk |
 | <a id="ac-ses-04"></a>AC-SES-04 | A session command carrying any of the five prohibited classes is refused by the class name before any session row, event, or outbox byte exists, on the start fact and on a live session's transition reason alike; a canary carried in the refused content appears in no durable byte. The authored session lifecycle refuses an unauthored state move, a fact on an unknown session, and any fact after close, each by its own stable code with zero mutation. | Prohibited-class probes per field with durable-byte canary scan, and named lifecycle refusal fixtures for skip, unknown, and post-close facts |
+| <a id="ac-ses-05"></a>AC-SES-05 | `ctl ticket assignments` returns each assignment interval with its immutable dispatch stamp, its append-only `model_changed` history, and the current effective model derived as the latest observed event without overwriting the dispatch stamp. The Board card renders an assignment-visibility chip with the current model and a degraded marker when the latest event differs from the dispatch stamp, and it renders `STATE_UNKNOWN` with the named `substrate-unobservable:<probe>` when the reporter cannot observe crew-log, Hermes gateway log, or assignment-read truth. The reporter accepts only substrate evidence from mission-control crew-log and Hermes gateway/provider logs, never seat or crew self-report; a self-report-only fixture refuses by name with zero mutation. The assignment stamp and session facts cross-check through the exact assignment key when present and through the dispatch/session tuple under interval containment for the current G5 shape; a mismatch creates a visible finding and rewrites neither fact. Harness is an open enum across assignment stamps, `model_changed` events, and session facts: baseline fixtures cover `claude-code`, `hermes`, `codex`, and `qwen-code`, and an unknown harness fixture proves the exact value is carried, displayed, and compared rather than refused or collapsed. No reporter, CLI, Board, custody, event, or status path may parse harness-specific session internals to infer these facts. | `ctl ticket assignments` transcript with stamp and event history; Board card snapshots for unchanged, degraded, `STATE_UNKNOWN`, and unknown-harness chips; reporter probe matrix for crew-log, Hermes gateway log, assignment-read, self-report refusal, and harness-internal-transcript non-use; cross-check mismatch fixture; strict-payload unknown-field/closed-enum negatives plus open-harness carry/display proof |
 
 ### Attention
 
