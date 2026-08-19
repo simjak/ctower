@@ -151,6 +151,7 @@ def _alarm(**overrides: object) -> RoutineWorkItemAlarmRaisedPayload:
     fields: dict[str, object] = {
         "alarm_id": uuid4(),
         "routine_ref": "mc-cron.operator-report@1",
+        "revision_digest": _DIGEST,
         "scheduled_for": _SCHEDULED,
         "work_item_id": uuid4(),
         "escalation_seat": "ctower-commander",
@@ -172,10 +173,21 @@ def test_alarm_payload_refuses_malformed_facts_and_allows_an_unbound_window() ->
         _alarm(escalation_seat="Commander")
     with pytest.raises(ValueError, match="alarm kind is outside"):
         _alarm(kind="late")
+    with pytest.raises(ValueError, match="alarm revision is invalid"):
+        _alarm(revision_digest="sha256:not-a-digest")
     with pytest.raises(ValueError, match="recorded_at must be timezone-aware"):
         _alarm(recorded_at=_NAIVE)
+    with pytest.raises(ValueError, match="unresolved escalation alarm carries a reason"):
+        _alarm(unresolved_reason="missing")
+    with pytest.raises(ValueError, match="unresolved escalation alarm carries a reason"):
+        _alarm(kind="escalation_unresolved")
+    with pytest.raises(ValueError, match="unresolved reason is outside"):
+        _alarm(kind="escalation_unresolved", unresolved_reason="tired")
 
     assert _alarm(work_item_id=None).to_mapping()["work_item_id"] is None
+    unresolved = _alarm(kind="escalation_unresolved", unresolved_reason="foreign_scope")
+    assert unresolved.to_mapping()["unresolved_reason"] == "foreign_scope"
+    assert _alarm(kind="recovered_receipted").to_mapping()["unresolved_reason"] is None
 
 
 def test_work_item_identity_binds_each_payload_to_its_own_aggregate() -> None:
