@@ -25,6 +25,7 @@ from ctower_client.models import (
 from ctowerctl._argument_types import (
     _assertions,
     _aware_datetime,
+    _beat_routine_ref,
     _nonnegative_int,
     _positive_int,
     _safe_base_url,
@@ -132,6 +133,10 @@ def _beat_dispatch_parser(parser: argparse.ArgumentParser) -> None:
     list_parser.set_defaults(cli_name="beat-dispatch list")
     routines = actions.add_parser("routines")
     routines.set_defaults(cli_name="beat-dispatch routines")
+    retire = actions.add_parser("retire")
+    retire.set_defaults(cli_name="beat-dispatch retire")
+    retire.add_argument("routine_ref", type=_beat_routine_ref)
+    _command_id(retire)
 
 
 def _dream_lane_parser(parser: argparse.ArgumentParser) -> None:
