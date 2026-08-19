@@ -31,6 +31,9 @@ non_waivable_rules = [
   "generated.drift",
   "generated.manifest",
   "generated.notice",
+  "mint.duplicate-decision",
+  "mint.duplicate-migration",
+  "mint.duplicate-stable-id",
   "security.secret",
   "tenant-catalog-content-in-public-repository",
 ]
