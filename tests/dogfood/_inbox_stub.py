@@ -24,7 +24,7 @@ import socket
 import subprocess
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import closing, contextmanager, suppress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -400,8 +400,13 @@ def record_stub(record: Record) -> Iterator[str]:
 
 
 @contextmanager
-def dogfood_server(record_base_url: str) -> Iterator[int]:
-    """Build the separate dogfood server and serve it on an ephemeral port."""
+def dogfood_server(
+    record_base_url: str,
+    *,
+    environment_overrides: Mapping[str, str] | None = None,
+    ready_route: str = "/inbox",
+) -> Iterator[int]:
+    """Build the separate dogfood server and serve one route on an ephemeral port."""
     next_binary = _executable(_NEXT, "pnpm install --frozen-lockfile")
     environment = {
         **os.environ,
@@ -410,6 +415,7 @@ def dogfood_server(record_base_url: str) -> Iterator[int]:
         "CTOWER_UI_INSTANCE_LABEL": INSTANCE_LABEL,
         "CTOWER_UI_INSTANCE_POSTURE": "SHADOW_ONLY_CP3_D_NOT_PROVEN",
         "NODE_ENV": "production",
+        **(environment_overrides or {}),
     }
     subprocess.run(  # noqa: S603 - a declared binary from the checkout, no shell, no caller argv
         (next_binary, "build"),
@@ -430,7 +436,7 @@ def dogfood_server(record_base_url: str) -> Iterator[int]:
         start_new_session=True,
     )
     try:
-        _await_ready(served, port)
+        _await_ready(served, port, ready_route)
         yield port
     finally:
         with suppress(ProcessLookupError):
@@ -443,17 +449,17 @@ def dogfood_server(record_base_url: str) -> Iterator[int]:
             served.wait(timeout=_STOP_GRACE_SECONDS)
 
 
-def _await_ready(served: subprocess.Popen[bytes], port: int) -> None:
+def _await_ready(served: subprocess.Popen[bytes], port: int, route: str) -> None:
     """Poll the served route under a finite deadline; a dead server fails now."""
     deadline = time.monotonic() + _READY_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         if served.poll() is not None:
             raise RuntimeError(f"the dogfood server exited with {served.returncode:d} before ready")
-        if route_body(port, "/inbox") is not None:
+        if route_body(port, route) is not None:
             return
         time.sleep(_READY_POLL_SECONDS)
     raise RuntimeError(
-        f"the dogfood server did not serve /inbox within {_READY_TIMEOUT_SECONDS:d}s"
+        f"the dogfood server did not serve {route} within {_READY_TIMEOUT_SECONDS:d}s"
     )
 
 
