@@ -16,7 +16,7 @@ from harness_subjects import BUILDERS, DOCUMENTS, DocumentBuilder, SubjectBuilde
 from ctower_runner_sdk.conformance import ConformanceSubject
 from ctower_runner_sdk.facts import DispatchReceipt
 from ctower_runner_sdk.fake import Fault
-from ctower_runner_sdk.guard import GuardVerdict
+from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan, GuardVerdict
 from ctower_runner_sdk.policy import input_refusal
 from ctower_runner_sdk.refusals import Refusal
 from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
@@ -43,6 +43,45 @@ def _capabilities(document: dict[str, object]) -> list[str]:
     declared = document["capabilities"]
     assert isinstance(declared, list)
     return [str(item) for item in declared]
+
+
+def _plan(
+    *,
+    harness_ref: str = "hermes",
+    profile_ref: str = "engineer",
+    composition_digest: str = "hermes@1+sha256:a",
+    program: str = "hermes",
+    argv: tuple[str, ...] = ("engineer-t1",),
+    worktree_path: str = "/srv/attempt",
+) -> ExecutionPlan:
+    return ExecutionPlan(
+        harness_ref=harness_ref,
+        profile_ref=profile_ref,
+        composition_digest=composition_digest,
+        program=program,
+        argv=argv,
+        worktree_path=worktree_path,
+    )
+
+
+# Each pair is two DIFFERENT plans that a boundary-forging separator would write
+# identically. Every member is reachable: `harness_ref` and `profile_ref` arrive observed,
+# and an argument may carry a newline.
+_FORGED_PAIRS: tuple[tuple[ExecutionPlan, ExecutionPlan], ...] = (
+    (
+        _plan(profile_ref="engineer\nhermes@1+sha256:a", composition_digest="x"),
+        _plan(profile_ref="engineer", composition_digest="hermes@1+sha256:a\nx"),
+    ),
+    (
+        _plan(harness_ref="hermes\nengineer", profile_ref="reviewer"),
+        _plan(harness_ref="hermes", profile_ref="engineer\nreviewer"),
+    ),
+    (
+        _plan(argv=("engineer-t1\n/srv/attempt",)),
+        _plan(argv=("engineer-t1",), worktree_path="/srv/attempt\n/srv/attempt"),
+    ),
+)
+_PAIR_IDS = ("observed-profile", "observed-harness", "argument-tail")
 
 
 @pytest.mark.parametrize("subject", subjects(), ids=lambda item: item.name)
@@ -137,6 +176,39 @@ def test_a_blocked_or_operator_gated_plan_dispatches_nothing(
     assert refusal.name == expected
     assert not [item for item in subject.control.mutations() if item.startswith("launch")]
     assert not [item for item in subject.control.mutations() if item.startswith("session-start")]
+
+
+@pytest.mark.parametrize("pair", _FORGED_PAIRS, ids=_PAIR_IDS)
+def test_two_different_plans_never_share_one_normalized_digest(
+    pair: tuple[ExecutionPlan, ExecutionPlan],
+) -> None:
+    """AC-HAD-09 binds a decision to the exact plan, which needs the digest to be exact.
+
+    A separator between fields is only a boundary while no field can contain it. These two
+    plans differ in which field a value belongs to, and a digest that cannot tell them apart
+    hands one plan's clearance to the other.
+    """
+
+    first, second = pair
+
+    assert first != second
+    assert first.normalized_digest() != second.normalized_digest()
+
+
+@pytest.mark.parametrize("pair", _FORGED_PAIRS, ids=_PAIR_IDS)
+def test_a_grant_minted_for_a_twin_plan_does_not_clear_this_one(
+    pair: tuple[ExecutionPlan, ExecutionPlan],
+) -> None:
+    twin, presented = pair
+    boundary = DispatchBoundary(
+        StubGuard(plan_digest=twin.normalized_digest()), StubReceipts(), GUARD_VERSION
+    )
+
+    refusal = boundary.clear(presented, BASE_TIME)
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-guard-decision-invalid"
+    assert "different normalized plan" in refusal.observed
 
 
 @pytest.mark.parametrize("build", _BUILDS, ids=_IDS)
