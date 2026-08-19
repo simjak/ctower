@@ -836,3 +836,142 @@ a.cw-file:hover {
     margin-left: 0;
   }
 }
+
+/* ── the credential-limits surface ──────────────────────────────────────
+   One row per account, and no shape in it that could hold a pool-level
+   verdict: the axes are three chips side by side, and the clock belongs to
+   the row rather than to the panel above it. Built only from the vendored
+   sheet's variables, like everything else here. */
+
+.limits-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.limits-note .mono {
+  color: var(--ink-3);
+}
+
+.limits-pool {
+  display: flex;
+  flex-direction: column;
+}
+
+.limits-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.limits-row:last-child {
+  border-bottom: 0;
+}
+
+.limits-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.limits-provider {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.limits-identity {
+  font-size: 13px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.limits-unnamed {
+  color: var(--ink-3);
+}
+
+.limits-label {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.limits-axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.limits-axis {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.limits-axis-name {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--ink-4);
+}
+
+.limits-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.limits-clock {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.limits-drift {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--warn-line);
+  background: var(--warn-bg);
+}
+
+.limits-drift-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 9px 14px;
+  font-size: 11.5px;
+  color: var(--warn);
+}
+
+.limits-drift-detail {
+  flex: 1 1 240px;
+  min-width: 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.limits-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 14px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
