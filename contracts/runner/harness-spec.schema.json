@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/runner/harness-spec.schema.json",
+  "title": "HarnessSpec",
+  "description": "One revision-pinned harness binding, declared as data. Parsed without executing package code: an adapter that cannot declare a capability does not discover it at runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "key",
+    "revision",
+    "artifact_digest",
+    "config_digest",
+    "input_protocol",
+    "output_protocol",
+    "capabilities",
+    "ack_predicate",
+    "liveness_sources",
+    "context_window_percent",
+    "probe",
+    "pool",
+    "survey",
+    "layers",
+    "status"
+  ],
+  "properties": {
+    "schema": { "const": "ctower.harness-spec/v1" },
+    "key": {
+      "description": "The observed harness value, carried byte-for-byte and never normalized.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9.-]{2,127}$"
+    },
+    "revision": { "type": "integer", "minimum": 1, "maximum": 4096 },
+    "artifact_digest": { "$ref": "#/$defs/digest" },
+    "config_digest": { "$ref": "#/$defs/digest" },
+    "input_protocol": { "$ref": "#/$defs/input_protocol" },
+    "output_protocol": { "$ref": "#/$defs/output_protocol" },
+    "capabilities": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "https://ctower.local/contracts/runner/harness-capability.schema.json" }
+    },
+    "ack_predicate": { "$ref": "#/$defs/ack_predicate" },
+    "liveness_sources": {
+      "description": "Declared evidence sources. A fact with no declared source returns unknown by name, never a guess.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/liveness_source" }
+    },
+    "context_window_percent": {
+      "description": "Declared saturation threshold as a percentage of this binding's own window. The percentage is the portable signal; an absolute token count proves nothing across window sizes.",
+      "type": "integer",
+      "minimum": 50,
+      "maximum": 100
+    },
+    "probe": { "$ref": "#/$defs/probe" },
+    "pool": { "$ref": "#/$defs/pool" },
+    "survey": { "$ref": "#/$defs/survey" },
+    "layers": { "$ref": "#/$defs/layers" },
+    "status": {
+      "description": "Registration status. `revoked` is a refusal at dispatch, never a fallback to a generic process.",
+      "enum": ["active", "revoked"]
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "input_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "submit_separately"],
+      "properties": {
+        "kind": { "enum": ["profile_directory_exec", "wrapper_script_exec", "in_process_fake"] },
+        "submit_separately": {
+          "description": "True where the composer needs a submit keystroke distinct from the delivery itself.",
+          "type": "boolean"
+        }
+      }
+    },
+    "output_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["pane_footer", "session_transcript", "gateway_log", "in_process_fake"] }
+      }
+    },
+    "ack_predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "detail"],
+      "properties": {
+        "kind": {
+          "description": "What proves the brief was accepted. Delivery is not acknowledgement.",
+          "enum": ["composer_cleared", "durable_command_id", "in_process_fake"]
+        },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "liveness_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact", "source", "proves"],
+      "properties": {
+        "fact": { "enum": ["served_model", "context_used_pct", "cap", "working", "pool"] },
+        "source": {
+          "enum": [
+            "gateway_log",
+            "session_transcript",
+            "launch_argv",
+            "pane_footer",
+            "pane_content_hash",
+            "pool_state",
+            "in_process_fake"
+          ]
+        },
+        "proves": {
+          "description": "`serving` is truth; `request` is recorded as a conflict and never as serving truth.",
+          "enum": ["serving", "request", "observation"]
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "endpoint", "model_ref", "workload_shape", "classified_on"],
+      "properties": {
+        "product": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "endpoint": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "model_ref": {
+          "description": "The model the seats actually run. A probe aimed elsewhere reports unknown for the seats' rung.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "workload_shape": { "enum": ["representative", "single_token", "constant"] },
+        "classified_on": { "enum": ["response_body", "status_line"] }
+      }
+    },
+    "pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cache_invalidation_hook", "providers"],
+      "properties": {
+        "cache_invalidation_hook": {
+          "description": "Named hook that must complete before any entry state observed after a rotation is believed.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "providers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" }
+        }
+      }
+    },
+    "survey": {
+      "description": "The answered capability survey. An unanswered survey leaves the per-layer role undecidable, which is a refusal rather than a gap.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "native_pool",
+        "native_fallback",
+        "config_surface",
+        "identity_proof",
+        "reset_semantics",
+        "rotation_cache",
+        "subagent_inheritance",
+        "egress_topology"
+      ],
+      "properties": {
+        "native_pool": { "type": "boolean" },
+        "native_fallback": { "type": "boolean" },
+        "config_surface": { "enum": ["authored_config_only", "account_file", "env_overridable"] },
+        "identity_proof": { "enum": ["decoded_claim", "account_file", "none"] },
+        "reset_semantics": {
+          "enum": ["provider_reset_at", "rolling_block", "weekly_plan", "prepaid_balance", "unknown"]
+        },
+        "rotation_cache": { "enum": ["proxy_restart", "config_home_respawn", "none"] },
+        "subagent_inheritance": { "enum": ["per_task_lease", "parent_credential", "separate"] },
+        "egress_topology": { "enum": ["shared", "per_entry"] }
+      }
+    },
+    "layers": {
+      "description": "Declared role per layer. Never both: a native layer plus ctower's own over one credential set is a race over single-use refresh chains, not redundancy.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pool", "fallback"],
+      "properties": {
+        "pool": { "enum": ["configure", "provide"] },
+        "fallback": { "enum": ["configure", "provide"] }
+      }
+    }
+  }
+}

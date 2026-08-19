@@ -210,6 +210,7 @@ class RailContractTests(unittest.TestCase):
                 "/feed",
                 "/files",
                 "/inbox",
+                "/limits",
                 "/metrics",
                 "/portfolio",
                 "/requests",

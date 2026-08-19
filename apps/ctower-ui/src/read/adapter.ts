@@ -3,6 +3,7 @@ import { httpRecordAdapter } from "./httpRecordAdapter";
 import { readCrewProfile, readCrewRoster } from "./sources/crewRoster";
 import { readDeliveryMetrics } from "./sources/delivery";
 import { readAuthoredFiles } from "./sources/gitTree";
+import { readPoolLimits } from "./poolLimits";
 import { readPortfolio } from "./portfolio";
 import { readSessionStream, readSessionWorkspace } from "./sources/tmuxBridge";
 import { readSessionWorktree } from "./sources/worktrees";
@@ -49,7 +50,8 @@ export type ScreenKey =
   | "feed"
   | "metrics"
   | "team"
-  | "crew";
+  | "crew"
+  | "limits";
 
 /** Which source answers each screen today, for the provenance foot. */
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
@@ -67,6 +69,7 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   metrics: "git first-parent trunk history per project",
   team: "live tmux sessions + mission-control state/crew-log.jsonl + personas/",
   crew: "the team sources + mission-control coordination/*.status.md + state/escapes.jsonl + trunk history",
+  limits: "ctower read API · /v1/pools",
 };
 
 export const recordAdapter: RecordAdapter = {
@@ -74,6 +77,9 @@ export const recordAdapter: RecordAdapter = {
   board: httpRecordAdapter.board,
   boardCards: httpRecordAdapter.boardCards,
   requests: httpRecordAdapter.requests,
+  // the pools read parses in its own module: one cohesive subject, and the one
+  // read on this surface whose source sits beside credential material
+  poolLimits: readPoolLimits,
   // the portfolio composes the reads above rather than adding a source: one
   // card-only board per configured project, plus the one inbox projection
   portfolio: readPortfolio,
