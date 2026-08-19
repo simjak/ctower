@@ -2,23 +2,19 @@
 
 This harness ships neither a credential pool nor an in-session fallback and holds one account
 per config home. Both answers are `no`, so ctower PROVIDES both layers — the opposite of the
-`hermes` binding, and the reason the two of them together are what earns the public Seam. A
-survey that could not be answered would leave the role undecidable, which is a refusal rather
-than a gap: guessing is exactly how a second rotation policy gets built over a working one.
+`hermes` binding, and the reason the two of them together are what earns the public Seam. The
+roles are not written here from the harness's name: `derive_roles` reads them off the eight
+answers at registration and refuses a document declaring anything else, which is what makes
+`never both` checkable rather than remembered.
 
 The two digests are inputs rather than constants. They pin the artifact and the config home of
 one real install, so a spec written with a digest of something that does not exist would be a
 claim rather than a pin.
-
-SEAM INTEGRATION (CT-I1-041): this document is authored against D72's field list and is
-validated by the seam's own `HarnessSpec` contract once that lands; `layer_roles` collapses
-onto the SDK's `derive_roles`.
 """
 
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping
 from datetime import timedelta
 
 __all__ = [
@@ -30,7 +26,6 @@ __all__ = [
     "TRANSCRIPT_STALE_AFTER",
     "digest_of",
     "harness_spec_document",
-    "layer_roles",
 ]
 
 CLAUDE_CODE_KEY = "claude-code"
@@ -59,10 +54,12 @@ CLAUDE_CODE_CAPABILITIES: tuple[str, ...] = (
     "POOL_PROBE",
 )
 
+_PROVIDERS: tuple[str, ...] = ("anthropic-claude-code",)
+
 _SURVEY: dict[str, object] = {
     # One account per config home; there is no pool inside this harness to configure.
     "native_pool": False,
-    # No in-session rung at all, which is what makes a failover a new attempt (§4.1.1).
+    # No in-session rung at all, which is what makes a failover a new attempt.
     "native_fallback": False,
     # The config home is an account file on disk, not an authored, pinned configuration.
     "config_surface": "account_file",
@@ -75,7 +72,7 @@ _SURVEY: dict[str, object] = {
     # Subagents run on the parent's credential; delegation needs no separate acquisition.
     "subagent_inheritance": "parent_credential",
     # Every account reaches the provider over this host's one egress, so a CDN challenge
-    # hits all three at once and correlated failure is evidence about the path.
+    # hits all of them at once and correlated failure is evidence about the path.
     "egress_topology": "shared",
 }
 
@@ -84,18 +81,6 @@ def digest_of(payload: bytes) -> str:
     """Return the contract's digest spelling for one real artifact or config file."""
 
     return f"sha256:{hashlib.sha256(payload).hexdigest()}"
-
-
-def layer_roles(survey: Mapping[str, object]) -> dict[str, str]:
-    """Return the only roles this survey admits, so `never both` is checkable.
-
-    A declared role that disagrees with this derivation is refused rather than honoured.
-    """
-
-    return {
-        "pool": "configure" if survey["native_pool"] else "provide",
-        "fallback": "configure" if survey["native_fallback"] else "provide",
-    }
 
 
 def harness_spec_document(*, artifact_digest: str, config_digest: str) -> dict[str, object]:
@@ -127,10 +112,10 @@ def harness_spec_document(*, artifact_digest: str, config_digest: str) -> dict[s
         },
         "pool": {
             "cache_invalidation_hook": POOL_CACHE_INVALIDATION_HOOK,
-            "providers": ["anthropic-claude-code"],
+            "providers": list(_PROVIDERS),
         },
         "survey": dict(_SURVEY),
-        "layers": layer_roles(_SURVEY),
+        "layers": {"pool": "provide", "fallback": "provide"},
         "status": "active",
     }
 
@@ -138,13 +123,17 @@ def harness_spec_document(*, artifact_digest: str, config_digest: str) -> dict[s
 def _liveness_sources() -> list[dict[str, str]]:
     """Declare every source, and what each one actually proves.
 
-    These panes carry no parseable model footer, so the transcript is the only serving-truth
-    source and no footer reading is declared for `served_model` at all. Declaring one that
-    proves nothing would let the absence of a footer read as agreement.
+    These panes carry no model name anywhere on screen — the footer is a permission mode, a
+    running-shell count, and an interrupt hint — so the transcript's own assistant rows are
+    the only serving truth this harness has. What was *requested* is the `--model` the wrapper
+    was launched with, carried on the attempt's pin. Recording that as a second observation
+    rather than as agreement is what makes a silent downgrade visible at all, because on this
+    harness the pane looks identical either way.
     """
 
     return [
         {"fact": "served_model", "source": "session_transcript", "proves": "serving"},
+        {"fact": "served_model", "source": "launch_argv", "proves": "request"},
         {"fact": "context_used_pct", "source": "pane_footer", "proves": "observation"},
         {"fact": "cap", "source": "pane_footer", "proves": "observation"},
         {"fact": "working", "source": "pane_footer", "proves": "observation"},

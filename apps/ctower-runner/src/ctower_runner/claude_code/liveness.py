@@ -1,44 +1,43 @@
 """Claude-Code-private pane reading. Nothing in this module crosses the seam.
 
-Four rules, each paid for by a recorded incident on this fleet.
+What a reading *means* is `classify_state`'s answer, identical for every binding. What this
+module owns is the harness-private half — which bytes on this substrate say cap, dead auth,
+saturation, or work — and four rules, each paid for by a recorded incident on this fleet.
 
-**Dead auth, cap, and saturation are classified before any working marker.** The Claude limit
-menu's `Enter to confirm · Esc to cancel` line matches the generic `· esc` working pattern,
-so a rate-limit-dead lane counted as working for hours on the critical path.
+**Cap and dead auth are decided before any working marker.** The Claude limit menu's
+`Enter to confirm · Esc to cancel` line matches the generic `· esc` working pattern, which is
+how a rate-limit-dead lane counted as working for hours on the critical path.
 
 **The percentage is the portable signal, and on this harness it is inverted.** Claude Code
 prints `Context left until auto-compact: N%` — percent LEFT. Reading it as used turns a lane
 with 8% remaining into a lane reported as 8% consumed, which is the healthy answer for the
 failing case. The absolute `23.2k tokens` counter beside it is deliberately not a saturation
-source: a large-window lane at the same count is healthy, so the ratio's units prove nothing.
+source: a large-window lane at the same count is healthy, so the count's units prove nothing.
 
 **A cap phrasing belongs in this list, not in a note.** The list was extended once and lost,
 because the repair was left in a shared repository's working tree and a later commit
 overwrote it.
 
 **The boot banner is not a cap.** `N usage limit resets available` is a startup notice about
-windows that have already reset.
+windows that have already reset, and it carries the substring `usage limit`.
 """
 
 from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass
-from typing import Literal
+
+from ctower_runner_sdk.facts import LivenessState
+from ctower_runner_sdk.policy import classify_state
 
 __all__ = [
     "CAP_MARKERS",
     "DEAD_AUTH_MARKERS",
     "WORKING_MARKERS",
-    "PaneReading",
-    "PaneState",
+    "classify_pane",
     "context_used_pct",
     "pane_digest",
-    "read_pane",
 ]
-
-type PaneState = Literal["dead_auth", "capped", "saturated", "working", "idle"]
 
 # Every phrasing this fleet has actually seen mean "this lane is capped".
 CAP_MARKERS: tuple[str, ...] = (
@@ -55,7 +54,8 @@ CAP_MARKERS: tuple[str, ...] = (
 DEAD_AUTH_MARKERS: tuple[str, ...] = ("not logged in", "run /login", "invalid api key")
 
 # Narrow panes truncate the status line to `· esc…`, which is why the bare marker is matched
-# beside the full hint.
+# beside the full hint. These are Claude-shaped and not hermes-shaped: a timer-glyph pattern
+# once read five working hermes lanes as idle, and the mirror-image mistake is available here.
 WORKING_MARKERS: tuple[str, ...] = ("esc to interrupt", "· esc", "• esc")
 
 # The startup notice counts windows that have RESET. Stripped before the cap match so the
@@ -73,21 +73,12 @@ _CONTEXT_LEFT = re.compile(r"context left until auto-compact:\s*(\d{1,3})%", re.
 _FULL = 100
 
 
-@dataclass(frozen=True, slots=True)
-class PaneReading:
-    """One classified pane, naming the evidence that decided it."""
-
-    state: PaneState
-    context_used_pct: int | None
-    basis: str
-
-
 def context_used_pct(pane: str) -> int | None:
     """Return the percentage of the window CONSUMED, or `None` when no bar is on screen.
 
     The inversion is the whole point: this harness reports what is left. Anchoring on the
-    phrase rather than on a bare percentage is what keeps a `95%` coverage line in scrolled
-    output from tripping saturation.
+    phrase rather than on a bare percentage is also what keeps a `95%` coverage line in
+    scrolled output from tripping saturation.
     """
 
     matches = _CONTEXT_LEFT.findall(pane)
@@ -100,7 +91,9 @@ def pane_digest(pane: str) -> str:
     return hashlib.sha256(pane.encode("utf-8")).hexdigest()
 
 
-def read_pane(pane: str, *, saturation_percent: int, pane_changed: bool = False) -> PaneReading:
+def classify_pane(
+    pane: str, *, saturation_percent: int, pane_changed: bool = False
+) -> LivenessState:
     """Classify one captured pane against this binding's own declared window.
 
     `pane_changed` is a digest delta against the previous sweep, and it is the marker-free
@@ -110,19 +103,19 @@ def read_pane(pane: str, *, saturation_percent: int, pane_changed: bool = False)
 
     lowered = pane.lower()
     used = context_used_pct(pane)
-    if any(marker in lowered for marker in DEAD_AUTH_MARKERS):
-        return PaneReading("dead_auth", used, "the composer reports no live grant")
-    if _is_capped(lowered):
-        return PaneReading("capped", used, "a limit, upgrade, or out-of-credits pane")
-    if used is not None and used >= saturation_percent:
-        return PaneReading("saturated", used, f"{used}% of the declared window is consumed")
-    if any(marker in lowered for marker in WORKING_MARKERS) or _RUNNING_SHELL.search(pane):
-        return PaneReading("working", used, "an interrupt hint or a running shell")
-    if pane_changed:
-        return PaneReading("working", used, "the pane digest moved since the last sweep")
-    return PaneReading("idle", used, "no marker, and the pane digest did not move")
+    return classify_state(
+        dead_auth=any(marker in lowered for marker in DEAD_AUTH_MARKERS),
+        capped=_is_capped(lowered),
+        saturated=used is not None and used >= saturation_percent,
+        working_marker=_is_working(pane, lowered),
+        pane_changed=pane_changed,
+    )
 
 
 def _is_capped(lowered: str) -> bool:
     body = _BOOT_BANNER.sub(" ", lowered)
     return any(marker in body for marker in CAP_MARKERS) or bool(_REACHED_LIMIT.search(body))
+
+
+def _is_working(pane: str, lowered: str) -> bool:
+    return any(marker in lowered for marker in WORKING_MARKERS) or bool(_RUNNING_SHELL.search(pane))
