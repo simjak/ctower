@@ -1869,6 +1869,51 @@
         }
       }
     },
+    "/v1/runtime/beat-routines/{routine_ref}/retire": {
+      "post": {
+        "operationId": "retireBeatRoutine",
+        "x-ctower-cli": "beat-dispatch retire",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "routine_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+            }
+          },
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/BeatRoutineRetireRequest"}
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Immutable Routine retirement committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BeatRoutineRetirementReceipt"}}}
+          },
+          "200": {
+            "description": "Immutable Routine retirement accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BeatRoutineRetirementReceipt"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/runtime/dream-dispatches/{effect_id}/consume": {
       "post": {
         "operationId": "consumeDreamDispatchEffect",
@@ -3818,6 +3863,9 @@
               "auth-provider-unverifiable",
               "auth-role-denied",
               "auth-session-invalid",
+              "beat-routine-already-retired",
+              "beat-routine-not-found",
+              "beat-routine-retire-forbidden",
               "bootstrap-consumed",
               "bootstrap-expired",
               "bootstrap-nonempty",
@@ -5335,6 +5383,31 @@
         "type": "object", "additionalProperties": false,
         "required": ["routines"],
         "properties": {"routines": {"type": "array", "items": {"$ref": "#/components/schemas/BeatRoutine"}}}
+      },
+      "BeatRoutineRetireRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "BeatRoutineRetirementReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command_id", "durability_state", "event_id", "retired_at",
+          "retirement_id", "revision_digest", "routine_ref"
+        ],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "retired_at": {"type": "string", "format": "date-time"},
+          "retirement_id": {"type": "string", "format": "uuid"},
+          "revision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "routine_ref": {
+            "type": "string",
+            "pattern": "^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+          }
+        }
       },
       "DreamModelSelection": {
         "type": "object", "additionalProperties": false,
