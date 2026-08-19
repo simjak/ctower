@@ -308,3 +308,35 @@ def test_the_unnarrowed_address_list_answers_only_within_this_seats_grant(
     print("REAL_UNNARROWED_ADDRESSES offered=" + json.dumps(offered))
     assert ("apex", "apex-engineer") not in offered
     assert {project_key for project_key, _seat_key in offered} <= {"ctower"}
+
+
+def test_unrestricted_operator_authority_still_reaches_every_registered_project(
+    tenant: TenantFixture,
+) -> None:
+    """The grant bounds the listing; unrestricted authority is bounded by nothing.
+
+    Binding the unnarrowed listing to the caller's grant must not quietly turn the
+    operator's own view into one project's. An operator seated in `ctower` is still
+    answered for `apex`, because its authority reaches every project the tenant has
+    registered a seat in — the same answer the chokepoint gives when that operator
+    names `apex` outright.
+    """
+
+    provision_seat(tenant, "director")
+    provision_seat(tenant, "apex-engineer", project_key="apex")
+    _operator_id, operator = provision_seat(tenant, "fleet-operator", kind="operator")
+
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=operator) as client,
+    ):
+        listed = client.list_inbox_correspondents()
+
+    offered = [(item.project_key, item.seat_key) for item in listed.correspondents]
+    print("REAL_OPERATOR_ADDRESSES offered=" + json.dumps(offered))
+    assert listed.sender == "fleet-operator"
+    assert ("apex", "apex-engineer") in offered
+    assert ("ctower", "director") in offered
