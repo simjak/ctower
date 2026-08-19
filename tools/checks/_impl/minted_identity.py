@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from re import Pattern
 
@@ -23,9 +23,13 @@ _MIGRATIONS = "packages/ctower-kernel/migrations"
 
 # A backlog row mints its stable ID in the first cell only. Every later cell cites an
 # identifier some other row minted — the dependency column above all, which is why
-# `CT-I1-009` through `CT-I1-013` are each written twice in the shipped table.
-_MINTED_STABLE_ID = re.compile(r"^\|\s*(CT-[A-Z0-9]+-[0-9]+)\s*\|")
-_MINTED_DECISION = re.compile(r"^#{1,6}\s+(D[0-9]+)(?![0-9A-Za-z])")
+# `CT-I1-009` through `CT-I1-013` are each written twice in the shipped table. GFM renders a
+# row indented by up to three spaces as a row, so the mint follows the render rather than
+# column zero; a fourth space makes an indented code block, which quotes and never mints.
+_MINTED_STABLE_ID = re.compile(r"^ {0,3}\|\s*(CT-[A-Z0-9]+-[0-9]+)\s*\|")
+# Read against a heading's opening line: `## D68`, the same line indented by up to three
+# spaces, or a setext `D68 — title` underlined by `---` or `===` and carrying no `#` at all.
+_MINTED_DECISION = re.compile(r"^ {0,3}(?:#{1,6}[ \t]+)?(D[0-9]+)(?![0-9A-Za-z])")
 _MINTED_MIGRATION = re.compile(r"^([0-9]{4})_.+\.sql$")
 
 _QUOTED_BLOCKS = frozenset({"code_block", "fence", "html_block"})
@@ -36,14 +40,23 @@ def minted_identity_findings(root: Path) -> tuple[Finding, ...]:
     """Refuse the second mint of any stable ID, decision number, or migration number."""
 
     return (
-        *_document_findings(root, _SPEC, _MINTED_STABLE_ID, STABLE_ID_REFUSAL, "stable ID"),
-        *_document_findings(root, _DECISIONS, _MINTED_DECISION, DECISION_REFUSAL, "decision"),
+        *_document_findings(
+            root, _SPEC, _quotation_free_lines, _MINTED_STABLE_ID, STABLE_ID_REFUSAL, "stable ID"
+        ),
+        *_document_findings(
+            root, _DECISIONS, _heading_lines, _MINTED_DECISION, DECISION_REFUSAL, "decision"
+        ),
         *_migration_findings(root),
     )
 
 
 def _document_findings(
-    root: Path, relative: str, minted: Pattern[str], rule_id: str, subject: str
+    root: Path,
+    relative: str,
+    mintable: Callable[[str], Iterator[tuple[int, str]]],
+    minted: Pattern[str],
+    rule_id: str,
+    subject: str,
 ) -> tuple[Finding, ...]:
     """Refuse every line of one registry that re-mints an identifier an earlier line took."""
 
@@ -52,7 +65,7 @@ def _document_findings(
         return ()
     first_mint: dict[str, int] = {}
     findings: list[Finding] = []
-    for number, line in _quotation_free_lines(path.read_text(encoding="utf-8")):
+    for number, line in mintable(path.read_text(encoding="utf-8")):
         match = minted.match(line)
         if match is None:
             continue
@@ -82,6 +95,23 @@ def _quotation_free_lines(text: str) -> Iterator[tuple[int, str]]:
     for index, line in enumerate(text.splitlines()):
         if index not in quoted:
             yield index + 1, line
+
+
+def _heading_lines(text: str) -> Iterator[tuple[int, str]]:
+    """Number the opening line of every heading CommonMark renders, and its bytes.
+
+    A decision is minted by the heading a reader sees, not by a `#` in column zero: three
+    leading spaces still render a heading, and a `D68 — title` line underlined by `---` or
+    `===` renders one with no `#` anywhere. Asking the parser for its headings takes every such
+    shape at once. A quoted heading stays quoted — a fence or comment never opens a heading at
+    all, and a heading inside a `>` block opens on a line that still carries its marker, which
+    no mint pattern accepts.
+    """
+
+    lines = text.splitlines()
+    for token in _MARKDOWN.parse(text):
+        if token.type == "heading_open" and token.map is not None:
+            yield token.map[0] + 1, lines[token.map[0]]
 
 
 def _quoted_lines(text: str) -> frozenset[int]:

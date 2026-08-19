@@ -28,8 +28,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from tools.checks import Finding, PolicyReport, verify
+from tools.checks import verify
+
+if TYPE_CHECKING:
+    from tools.checks import Finding, PolicyReport
 
 _STABLE_ID_REFUSAL = "mint.duplicate-stable-id"
 _DECISION_REFUSAL = "mint.duplicate-decision"
@@ -108,17 +112,21 @@ def _dependency_chain() -> tuple[str, ...]:
     )
 
 
+_DECISIONS_TITLE = "# ctower — locked decisions & working assumptions\n\n"
 _D68_ROLE_FACTS = "## D68 — Workflow stage participants resolve from authenticated role facts\n"
 _D68_REVIEW_RECORDS = "## D68 — Tracked review records are one verdict per exact head\n"
+_SETEXT_REVIEW_RECORDS = _D68_REVIEW_RECORDS.removeprefix("## ")
+_SETEXT_LEVEL_TWO = "-" * 62 + "\n"
+_SETEXT_LEVEL_ONE = "=" * 62 + "\n"
 
 _DECISION_COLLISION = (
-    "# ctower — locked decisions & working assumptions\n\n"
+    f"{_DECISIONS_TITLE}"
     f"{_D68_ROLE_FACTS}\nStage participants resolve from role facts.\n\n"
     f"{_D68_REVIEW_RECORDS}\nA review record is one verdict per exact head.\n"
 )
 
 _QUOTED_IDENTIFIERS = (
-    "# ctower — locked decisions & working assumptions\n\n"
+    f"{_DECISIONS_TITLE}"
     f"{_D68_ROLE_FACTS}\nThis entry supersedes D68's earlier draft and reuses CT-I1-036.\n\n"
     "```markdown\n"
     "## D68 — an example heading, not a mint\n"
@@ -139,67 +147,67 @@ class MintedIdentityTests(unittest.TestCase):
         for label, identifier, duplicate, rows in _stable_id_collisions():
             with self.subTest(label=label):
                 document = _backlog(*rows)
-                with self._repository() as root:
+                with _repository() as root:
                     _write(root, _SPEC, document)
 
                     report = verify(root, "full")
 
                 self.assertFalse(report.ok, report.findings)
                 self.assertEqual(
-                    [(item.rule_id, item.path, item.line) for item in self._refusals(report)],
+                    [(item.rule_id, item.path, item.line) for item in _refusals(report)],
                     [(_STABLE_ID_REFUSAL, _SPEC, _line_of(document, duplicate))],
                     report.findings,
                 )
-                self.assertIn(identifier, self._refusals(report)[0].message)
+                self.assertIn(identifier, _refusals(report)[0].message)
 
     def test_the_shipped_dependency_double_listing_is_admitted(self) -> None:
-        with self._repository() as root:
+        with _repository() as root:
             _write(root, _SPEC, _backlog(*_dependency_chain()))
 
             report = verify(root, "full")
 
-        self.assertEqual(self._refusals(report), ())
+        self.assertEqual(_refusals(report), ())
         self.assertTrue(report.ok, report.findings)
 
     def test_one_collision_beside_the_dependency_chain_refuses_only_itself(self) -> None:
         _, _, duplicate, rows = _stable_id_collisions()[0]
         document = _backlog(*_dependency_chain(), *rows)
-        with self._repository() as root:
+        with _repository() as root:
             _write(root, _SPEC, document)
 
             report = verify(root, "full")
 
         self.assertEqual(
-            [(item.rule_id, item.path, item.line) for item in self._refusals(report)],
+            [(item.rule_id, item.path, item.line) for item in _refusals(report)],
             [(_STABLE_ID_REFUSAL, _SPEC, _line_of(document, duplicate))],
             report.findings,
         )
 
     def test_the_real_decision_collision_refuses_the_second_mint(self) -> None:
-        with self._repository() as root:
+        with _repository() as root:
             _write(root, _DECISIONS, _DECISION_COLLISION)
 
             report = verify(root, "full")
 
         self.assertFalse(report.ok, report.findings)
         self.assertEqual(
-            [(item.rule_id, item.path, item.line) for item in self._refusals(report)],
+            [(item.rule_id, item.path, item.line) for item in _refusals(report)],
             [(_DECISION_REFUSAL, _DECISIONS, _line_of(_DECISION_COLLISION, _D68_REVIEW_RECORDS))],
             report.findings,
         )
 
     def test_citations_code_fences_and_comments_mint_nothing(self) -> None:
-        with self._repository() as root:
+        with _repository() as root:
             _write(root, _DECISIONS, _QUOTED_IDENTIFIERS)
             _write(root, _SPEC, _backlog(_row("CT-I1-036", _ROLE_GOAL, "CT-I1-013")))
 
             report = verify(root, "full")
 
-        self.assertEqual(self._refusals(report), ())
+        self.assertEqual(_refusals(report), ())
         self.assertTrue(report.ok, report.findings)
 
     def test_the_real_migration_collision_refuses_the_second_mint(self) -> None:
-        with self._repository() as root:
+        with _repository() as root:
             _write(root, f"{_MIGRATIONS}/{_SPAWN_MIGRATION}", "-- spawn records\n")
             _write(root, f"{_MIGRATIONS}/{_INBOX_MIGRATION_COLLIDING}", "-- inbox severity\n")
 
@@ -207,25 +215,25 @@ class MintedIdentityTests(unittest.TestCase):
 
         self.assertFalse(report.ok, report.findings)
         self.assertEqual(
-            [(item.rule_id, item.path) for item in self._refusals(report)],
+            [(item.rule_id, item.path) for item in _refusals(report)],
             [(_MIGRATION_REFUSAL, f"{_MIGRATIONS}/{_SPAWN_MIGRATION}")],
             report.findings,
         )
-        self.assertIn(_INBOX_MIGRATION_COLLIDING, self._refusals(report)[0].message)
+        self.assertIn(_INBOX_MIGRATION_COLLIDING, _refusals(report)[0].message)
 
     def test_the_renumbering_that_repaired_the_migration_collision_is_admitted(self) -> None:
-        with self._repository() as root:
+        with _repository() as root:
             _write(root, f"{_MIGRATIONS}/{_SPAWN_MIGRATION}", "-- spawn records\n")
             _write(root, f"{_MIGRATIONS}/{_INBOX_MIGRATION_RENUMBERED}", "-- inbox severity\n")
             _write(root, f"{_MIGRATIONS}/manifest.json", "{}\n")
 
             report = verify(root, "full")
 
-        self.assertEqual(self._refusals(report), ())
+        self.assertEqual(_refusals(report), ())
         self.assertTrue(report.ok, report.findings)
 
     def test_the_authored_registries_mint_every_identifier_once(self) -> None:
-        with self._repository() as root:
+        with _repository() as root:
             for relative in (_SPEC, _DECISIONS):
                 _write(root, relative, (_ROOT / relative).read_text(encoding="utf-8"))
             for migration in sorted((_ROOT / _MIGRATIONS).glob("*.sql")):
@@ -233,17 +241,17 @@ class MintedIdentityTests(unittest.TestCase):
 
             report = verify(root, "full")
 
-        self.assertEqual(self._refusals(report), ())
+        self.assertEqual(_refusals(report), ())
 
     def test_a_second_mint_is_not_waivable(self) -> None:
-        with self._repository(policy_source=_CANONICAL_POLICY) as root:
+        with _repository(policy_source=_CANONICAL_POLICY) as root:
             self._write_collision(root)
             self._write_valid_exception(root)
 
             self._assert_non_waivable_report(root)
 
     def test_non_waivable_regression_detects_canonical_policy_removal(self) -> None:
-        with self._repository(policy_source=_CANONICAL_POLICY) as root:
+        with _repository(policy_source=_CANONICAL_POLICY) as root:
             self._write_collision(root)
             self._write_valid_exception(root)
 
@@ -255,10 +263,6 @@ class MintedIdentityTests(unittest.TestCase):
 
             with self.assertRaises(AssertionError):
                 self._assert_non_waivable_report(root)
-
-    @staticmethod
-    def _refusals(report: PolicyReport) -> tuple[Finding, ...]:
-        return tuple(item for item in report.findings if item.rule_id in _REFUSALS)
 
     @staticmethod
     def _write_collision(root: Path) -> None:
@@ -304,14 +308,104 @@ class MintedIdentityTests(unittest.TestCase):
             report.findings,
         )
 
-    @contextmanager
-    def _repository(self, policy_source: Path | None = None) -> Iterator[Path]:
-        with tempfile.TemporaryDirectory() as name:
-            root = Path(name)
-            shutil.copytree(_FIXTURES / "positive", root, dirs_exist_ok=True)
-            if policy_source is not None:
-                shutil.copyfile(policy_source, root / "tools/checks/policy.toml")
-            yield root
+
+class RenderedMintShapeTests(unittest.TestCase):
+    """A mint is whatever CommonMark renders as one, never whatever starts at column zero.
+
+    GitHub renders a table row indented up to three spaces as a row, an ATX heading indented up
+    to three spaces as a heading, and an underlined line carrying no `#` at all as a heading.
+    Each shape hands out the identifier a reader sees, so each one has to be a mint here; a
+    fourth space turns all of them into an indented code block, which quotes rather than mints.
+    """
+
+    def test_an_indented_backlog_row_refuses_the_second_mint(self) -> None:
+        duplicate = "  " + _row("CT-I1-036", _ROLE_GOAL, "CT-I1-013")
+        document = _backlog(_row("CT-I1-036", _CATALOG_GOAL, "CT-I1-030"), duplicate)
+        with _repository() as root:
+            _write(root, _SPEC, document)
+
+            report = verify(root, "full")
+
+        self.assertEqual(
+            [(item.rule_id, item.path, item.line) for item in _refusals(report)],
+            [(_STABLE_ID_REFUSAL, _SPEC, _line_of(document, duplicate))],
+            report.findings,
+        )
+
+    def test_an_indented_decision_heading_refuses_the_second_mint(self) -> None:
+        self._assert_decision_collision_refuses("  " + _D68_REVIEW_RECORDS)
+
+    def test_a_setext_decision_heading_refuses_the_second_mint(self) -> None:
+        self._assert_decision_collision_refuses(_SETEXT_REVIEW_RECORDS + _SETEXT_LEVEL_TWO)
+
+    def test_a_setext_level_one_decision_heading_refuses_the_second_mint(self) -> None:
+        self._assert_decision_collision_refuses(_SETEXT_REVIEW_RECORDS + _SETEXT_LEVEL_ONE)
+
+    def test_a_four_space_indent_quotes_the_line_and_mints_nothing(self) -> None:
+        document = (
+            f"{_DECISIONS_TITLE}{_D68_ROLE_FACTS}\nStage participants resolve from role facts.\n\n"
+            f"    {_D68_REVIEW_RECORDS}"
+        )
+        with _repository() as root:
+            _write(root, _DECISIONS, document)
+            _write(
+                root,
+                _SPEC,
+                _backlog(
+                    _row("CT-I1-036", _CATALOG_GOAL, "CT-I1-030"),
+                    "    " + _row("CT-I1-036", _ROLE_GOAL, "CT-I1-013"),
+                ),
+            )
+
+            report = verify(root, "full")
+
+        self.assertEqual(_refusals(report), ())
+        self.assertTrue(report.ok, report.findings)
+
+    def test_a_quoted_heading_mints_nothing(self) -> None:
+        """A `>` block quotes someone else's heading, so it declares nothing here."""
+
+        document = (
+            f"{_DECISIONS_TITLE}{_D68_ROLE_FACTS}\nStage participants resolve from role facts.\n\n"
+            f"> {_D68_REVIEW_RECORDS}"
+        )
+        with _repository() as root:
+            _write(root, _DECISIONS, document)
+
+            report = verify(root, "full")
+
+        self.assertEqual(_refusals(report), ())
+        self.assertTrue(report.ok, report.findings)
+
+    def _assert_decision_collision_refuses(self, duplicate: str) -> None:
+        document = (
+            f"{_DECISIONS_TITLE}{_D68_ROLE_FACTS}\nStage participants resolve from role facts.\n\n"
+            f"{duplicate}\nA review record is one verdict per exact head.\n"
+        )
+        with _repository() as root:
+            _write(root, _DECISIONS, document)
+
+            report = verify(root, "full")
+
+        self.assertEqual(
+            [(item.rule_id, item.path, item.line) for item in _refusals(report)],
+            [(_DECISION_REFUSAL, _DECISIONS, _line_of(document, duplicate.splitlines()[0]))],
+            report.findings,
+        )
+
+
+@contextmanager
+def _repository(policy_source: Path | None = None) -> Iterator[Path]:
+    with tempfile.TemporaryDirectory() as name:
+        root = Path(name)
+        shutil.copytree(_FIXTURES / "positive", root, dirs_exist_ok=True)
+        if policy_source is not None:
+            shutil.copyfile(policy_source, root / "tools/checks/policy.toml")
+        yield root
+
+
+def _refusals(report: PolicyReport) -> tuple[Finding, ...]:
+    return tuple(item for item in report.findings if item.rule_id in _REFUSALS)
 
 
 def _write(root: Path, relative: str, content: str) -> None:
