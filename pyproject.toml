@@ -123,12 +123,21 @@ ignore = ["D", "PLR0913", "PLR0917", "TRY003"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
 "tests/acceptance/increment-1/**/*.py" = ["INP001"]
+"tests/conformance/harness-adapter/**/*.py" = ["INP001"]
 "tests/contracts/task-management/**/*.py" = ["INP001"]
 "tests/migration/**/*.py" = ["INP001", "S108", "PLR2004", "ARG001"]
 "tests/test_manifest_generation.py" = ["INP001", "PLR2004", "ARG001"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["ctower_api", "ctower_client", "ctower_kernel", "ctowerctl", "tools"]
+known-first-party = [
+  "ctower_api",
+  "ctower_client",
+  "ctower_kernel",
+  "ctower_runner",
+  "ctower_runner_sdk",
+  "ctowerctl",
+  "tools",
+]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -147,11 +156,14 @@ exclude = ["tests/repository/fixtures/"]
 mypy_path = [
   "tests/type_overlays",
   "apps/ctower-api/src",
+  "apps/ctower-runner/src",
   "apps/ctowerctl/src",
   "generated/python",
   "packages/ctower-kernel/src",
+  "packages/ctower-runner-sdk/src",
   "tests",
   "tests/acceptance/increment-1",
+  "tests/conformance/harness-adapter",
 ]
 
 # These byte-frozen traces import names installed dynamically by tests/conftest.py. Their
@@ -176,9 +188,11 @@ addopts = "--strict-config --strict-markers"
 testpaths = ["tests"]
 pythonpath = [
   "apps/ctower-api/src",
+  "apps/ctower-runner/src",
   "apps/ctowerctl/src",
   "generated/python",
   "packages/ctower-kernel/src",
+  "packages/ctower-runner-sdk/src",
   "tests",
 ]
 

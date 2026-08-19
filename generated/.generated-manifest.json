@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:03f10f11e8e99642f4ec2cc97d9a4d99b346a6b66781de1d2a99f981806aa486"
+          "sha256": "sha256:c0f8aba2d2533d48100eb99d5de4196cdcb5df1b69ce0485a461e0468bcf82a3"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:5728746c795eae7124dad77c92e7ce58b570e9126b14d5ac9685cfc43dad9c98"
+          "sha256": "sha256:8013104a844c0e9aa81520d447e1fa6b81de30bc73bd1c4532635a80d0595ed1"
         }
       ],
       "tool_version": "2"
@@ -417,6 +417,18 @@
           "sha256": "sha256:a7cadf4b123e1cf76a4079b964c094099bc4b35b9ad1c4cc69ec098f1e85c78e"
         },
         {
+          "path": "contracts/runner/credential-lease.schema.json",
+          "sha256": "sha256:678da041d21f29aa6ad71894ed38f56aedbd94d383b5bcac840d15f9e755a81c"
+        },
+        {
+          "path": "contracts/runner/harness-capability.schema.json",
+          "sha256": "sha256:a077b4b87fb83e9cb1b8e32827aeee2213905580950c69faa3777b4ca6f5efd2"
+        },
+        {
+          "path": "contracts/runner/harness-spec.schema.json",
+          "sha256": "sha256:183b8879e3e93a0fe15edfa712c6ad0ebee7586e850159c41574bec0ef58cfa0"
+        },
+        {
           "path": "contracts/runtime/dream-dispatch-effect.schema.json",
           "sha256": "sha256:07c8f49c19c9c12134cef1734a5f55cb5d5634cb8b93182cefc190cef98b2eeb"
         },
@@ -580,7 +592,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:d3d1e7a201e1deaf4f57ce0b46fa2f5bd56dc24e235651b3ae23a3830333f0ba"
+          "sha256": "sha256:bb1be4802072a3124be7ba8e4ea2191e1e31a7c4e949e5334c4672d110e670ad"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",
