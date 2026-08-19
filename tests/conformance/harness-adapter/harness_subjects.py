@@ -1,12 +1,19 @@
 """Every implementation the one shared suite drives, built the same way.
 
-Two subjects today: the real `hermes` binding and the deterministic fault-injection fake.
-The suite below them never branches on which is which — that is the whole point of the
-earning rule, and a suite that grew a per-binding branch would prove nothing.
+Three subjects: the real `hermes` and `codex` bindings and the deterministic fault-injection
+fake. The suite below them never branches on which is which — that is the whole point of the
+earning rule, and a suite that grew a per-binding branch would prove nothing. Registering a
+subject here is the only step a new binding takes to enter it; no cell above knows how many
+subjects there are, or which one it is running against.
+
+The two real bindings sit on opposite sides of the survey. Hermes ships both resilience
+layers, so ctower configures and observes them; the direct-CLI codex ships neither, so ctower
+provides them. A contract proven twice on the same side of that split would not be proven.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Protocol
@@ -28,6 +35,12 @@ from harness_doubles import (
     pool_records,
 )
 
+from ctower_runner.codex.binding import CodexBinding
+from ctower_runner.codex.ceremonies import CeremonyInvocation, CeremonyOutcome
+from ctower_runner.codex.corpus import CODEX_CORPUS
+from ctower_runner.codex.liveness import classify_pane as classify_codex_pane
+from ctower_runner.codex.pool import CodexAccount, CodexPool, ConfigHomeStore
+from ctower_runner.codex.spec import harness_spec_document as codex_spec_document
 from ctower_runner.hermes.binding import HermesBinding
 from ctower_runner.hermes.corpus import HERMES_CORPUS
 from ctower_runner.hermes.liveness import classify_pane
@@ -47,15 +60,17 @@ from ctower_runner_sdk.registry import HarnessRegistry
 from ctower_runner_sdk.seam import CredentialReference
 from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
 
+# Exactly what the cells import. A per-binding builder that no cell names is reached through
+# `BUILDERS`, `DOCUMENTS`, or `subjects()` and is not part of this module's surface — which is
+# why `build_hermes` is here and `build_codex` is not: three cells drive the hermes column by
+# name, and none drives any column by name that the parametrization already covers.
 __all__ = [
     "BUILDERS",
     "DOCUMENTS",
     "PROFILE_KEY",
-    "SEAT_KEY",
     "SEAT_PROJECT",
     "DocumentBuilder",
     "SubjectBuilder",
-    "build_fake",
     "build_hermes",
     "fake_document",
     "hermes_document",
@@ -81,6 +96,14 @@ _FAULT_PANES: dict[str, str] = {
     "context_saturation": HERMES_CORPUS[7].sample,
     "dead_auth": HERMES_CORPUS[10].sample,
 }
+_CODEX_ARTIFACT_DIGEST = digest_of(b"codex-cli-artifact-under-test")
+_CODEX_CONFIG_DIGEST = digest_of(b"codex-config-home-under-test")
+_CODEX_HEALTHY_PANE = CODEX_CORPUS[7].sample
+_CODEX_FAULT_PANES: dict[str, str] = {
+    "cap_menu": CODEX_CORPUS[6].sample,
+    "context_saturation": CODEX_CORPUS[9].sample,
+    "dead_auth": CODEX_CORPUS[4].sample,
+}
 _FAKE_STATES: dict[Fault, LivenessState] = {
     "cap_menu": "capped",
     "context_saturation": "saturated",
@@ -91,6 +114,14 @@ _FAKE_STATES: dict[Fault, LivenessState] = {
 
 def hermes_document() -> dict[str, object]:
     return harness_spec_document(artifact_digest=_ARTIFACT_DIGEST, config_digest=_CONFIG_DIGEST)
+
+
+def codex_document() -> dict[str, object]:
+    """The second real binding's declaration, answered `no` on both native layers."""
+
+    return codex_spec_document(
+        artifact_digest=_CODEX_ARTIFACT_DIGEST, config_digest=_CODEX_CONFIG_DIGEST
+    )
 
 
 def fake_document() -> dict[str, object]:
@@ -182,16 +213,33 @@ def _inputs(spec: HarnessSpec) -> DispatchInputs:
     )
 
 
+class _PaneClassifier(Protocol):
+    """One binding's own pane reader, as the control calls it."""
+
+    def __call__(
+        self, pane: str, *, saturation_percent: int, pane_changed: bool = False
+    ) -> LivenessState: ...
+
+
 @dataclass(slots=True)
-class _HermesControl:
-    """Drive the real binding by choosing which captured pane it is looking at."""
+class _PaneControl:
+    """Drive a real binding by choosing which of its own captured panes it is looking at.
+
+    Both real bindings are driven through this one control, which is what keeps a per-binding
+    branch out of the suite: the corpus, the fault panes, and the classifier are that binding's
+    own, and everything the cells above call is identical.
+    """
 
     state: SubstrateState
     spec: HarnessSpec
+    healthy: str
+    faults: Mapping[str, str]
+    cases: tuple[CorpusCase, ...]
+    classifier: _PaneClassifier
 
     def inject(self, fault: Fault | None) -> None:
         self.state.fault = fault
-        self.state.pane = _FAULT_PANES.get(fault or "", _HEALTHY_PANE)
+        self.state.pane = self.faults.get(fault or "", self.healthy)
 
     def set_tree(self, *, dirty: tuple[str, ...], pushed: bool) -> None:
         self.state.dirty = dirty
@@ -204,10 +252,10 @@ class _HermesControl:
         return tuple(self.state.mutations)
 
     def corpus(self) -> tuple[CorpusCase, ...]:
-        return HERMES_CORPUS
+        return self.cases
 
     def classify(self, sample: str) -> LivenessState:
-        return classify_pane(sample, saturation_percent=self.spec.context_window_percent)
+        return self.classifier(sample, saturation_percent=self.spec.context_window_percent)
 
 
 @dataclass(slots=True)
@@ -293,8 +341,100 @@ def build_hermes(
         pool=pool,
         inputs=_inputs(spec),
         credential=seat_credential(),
-        control=_HermesControl(state=state, spec=spec),
+        control=_PaneControl(
+            state=state,
+            spec=spec,
+            healthy=_HEALTHY_PANE,
+            faults=_FAULT_PANES,
+            cases=HERMES_CORPUS,
+            classifier=classify_pane,
+        ),
     )
+
+
+def build_codex(
+    *, guard: StubGuard | None = None, receipts: StubReceipts | None = None
+) -> ConformanceSubject:
+    """Compose the second real binding over the same deterministic ports.
+
+    The rollout double is the same object that serves hermes its gateway log: both are a
+    served-model source answering for one attempt, and what separates them is which source each
+    binding DECLARED, not which double it was handed.
+    """
+
+    spec = _spec(codex_document())
+    state = SubstrateState(
+        pane=_CODEX_HEALTHY_PANE,
+        brief_digest=_BRIEF_DIGEST,
+        gateway_model=spec.probe.model_ref,
+    )
+    clock = StepClock()
+    pool = CodexPool(spec, _config_homes(), _StubCeremonies(), PROFILE_KEY, clock, lease_ids)
+    return ConformanceSubject(
+        name="codex",
+        binding_class="real",
+        binding=CodexBinding(
+            spec,
+            supervisor=StubSupervisor(state),
+            rollout=StubGateway(state),
+            workspace=StubWorkspace(state),
+            writeback_port=StubWriteback(state),
+            pool=pool,
+            boundary=DispatchBoundary(
+                guard or StubGuard(), receipts or StubReceipts(), GUARD_VERSION
+            ),
+            clock=clock,
+        ),
+        pool=pool,
+        inputs=_inputs(spec),
+        credential=seat_credential(),
+        control=_PaneControl(
+            state=state,
+            spec=spec,
+            healthy=_CODEX_HEALTHY_PANE,
+            faults=_CODEX_FAULT_PANES,
+            cases=CODEX_CORPUS,
+            classifier=classify_codex_pane,
+        ),
+    )
+
+
+class _StubCeremonies:
+    """The fleet's ceremonies, as this binding is allowed to ask them. Nothing is executed.
+
+    A ceremony reports what it installed and whether its own hook completed; its refusals are
+    the ceremony's own and are exercised where they belong, in this row's acceptance suite.
+    """
+
+    def run(self, invocation: CeremonyInvocation) -> CeremonyOutcome:
+        return CeremonyOutcome(
+            ceremony=invocation.ceremony,
+            installed_identity="seat-three@example.test",
+            installed_generation=2,
+            hook_completed=True,
+        )
+
+
+def _config_homes() -> ConfigHomeStore:
+    """One config home per account: the provided pool's whole topology, as data.
+
+    The same three engine records the configure-and-observe pool observes, keyed here by the
+    account's own decoded identity and carrying the adjacent token fields the projection must
+    leave behind. Nothing is keyed by label: a label has pointed at the wrong account twice.
+    """
+
+    records = pool_records(BASE_TIME + timedelta(hours=6))
+    accounts = {
+        str(record["subscription_identity"]): CodexAccount(
+            account_identity=str(record["subscription_identity"]),
+            codex_home=f"/srv/codex-homes/{index}",
+            refresh_generation=1,
+            entry=record,
+        )
+        for index, record in enumerate(records)
+    }
+    live = str(records[0]["subscription_identity"])
+    return ConfigHomeStore(accounts=accounts, live_identity=live)
 
 
 def build_fake(
@@ -344,14 +484,16 @@ class DocumentBuilder(Protocol):
 
 BUILDERS: tuple[tuple[str, SubjectBuilder], ...] = (
     ("hermes", build_hermes),
+    ("codex", build_codex),
     ("fault-injection-fake", build_fake),
 )
 
-# The authored half of the same two subjects, for cells that vary a declaration rather than
+# The authored half of the same three subjects, for cells that vary a declaration rather than
 # a substrate. A capability a binding could declare is data, and a suite that can only see
 # the capabilities today's fleet happens to hold would encode that accident as law.
 DOCUMENTS: tuple[tuple[str, DocumentBuilder], ...] = (
     ("hermes", hermes_document),
+    ("codex", codex_document),
     ("fault-injection-fake", fake_document),
 )
 
@@ -359,7 +501,7 @@ DOCUMENTS: tuple[tuple[str, DocumentBuilder], ...] = (
 def subjects() -> tuple[ConformanceSubject, ...]:
     """Every implementation under test, in one tuple the whole suite parametrizes over."""
 
-    return (build_hermes(), build_fake())
+    return (build_hermes(), build_codex(), build_fake())
 
 
 def _fake_entries() -> tuple[EntryState, ...]:

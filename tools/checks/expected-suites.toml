@@ -39,6 +39,7 @@ phase_order = [
   "CT-I2-010",
   "CT-I1-035",
   "CT-I1-041",
+  "CT-I1-043",
 ]
 
 [[suite]]
@@ -1263,4 +1264,20 @@ status = "deferred"
 path = "tests/acceptance/increment-1"
 patterns = ["test_harness_seam.py"]
 command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_harness_seam.py", "-q"]
+timeout_seconds = 900
+
+[[suite]]
+id = "codex-binding-acceptance"
+owner = "CT-I1-043"
+phase = "CT-I1-043"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_codex_binding.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_codex_binding.py",
+  "-q",
+]
 timeout_seconds = 900

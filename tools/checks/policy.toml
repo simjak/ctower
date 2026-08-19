@@ -158,14 +158,14 @@ paths = ["packages/ctower-runner-sdk/src/**"]
 allowed_dependencies = []
 
 [[ownership]]
-name = "runner-hermes"
+name = "runner-bindings"
 paths = ["apps/ctower-runner/src/**"]
 allowed_dependencies = ["runner-sdk"]
 
 [[ownership]]
 name = "harness-conformance-tests"
 paths = ["tests/conformance/**"]
-allowed_dependencies = ["runner-hermes", "runner-sdk"]
+allowed_dependencies = ["runner-bindings", "runner-sdk"]
 
 [[ownership]]
 name = "kernel-pools"
@@ -305,7 +305,7 @@ allowed_dependencies = ["runtime-manifest-tools"]
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports", "process-execution-tools", "runner-hermes", "runner-sdk"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports", "process-execution-tools", "runner-bindings", "runner-sdk"]
 
 [[ownership]]
 name = "kernel-module-tests"

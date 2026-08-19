@@ -31,9 +31,17 @@ SPEC_OWNED: frozenset[str] = frozenset(
 )
 
 # Names this seam introduces. Every one is `<subject>-<condition>`, matching the house
-# vocabulary, and none collides with a name already in SPEC or the kernel.
+# vocabulary, and none collides with a name already in SPEC or the kernel. The set grows only
+# when a binding introduces a condition no existing name states, and the three entries below
+# arrived with the first ctower-PROVIDED pool over a direct CLI: a runtime routed through
+# another harness is refused a harness value of its own, a mutating credential verb refuses an
+# argument it cannot read, and a snapshot older than the live refresh generation is refused
+# rather than installed. Each carries a different remedy from `rotation-incomplete`, and
+# collapsing any of them into it would send the reader to the wrong repair. Adding a synonym
+# for a condition already named here is the failure this list exists to prevent.
 SEAM_MINTED: frozenset[str] = frozenset(
     {
+        "credential-verb-unknown-flag",
         "harness-capability-unsupported",
         "harness-credential-forbidden",
         "harness-credential-seat-mismatch",
@@ -42,6 +50,7 @@ SEAM_MINTED: frozenset[str] = frozenset(
         "harness-guard-decision-invalid",
         "harness-layer-conflict",
         "harness-receipt-undurable",
+        "harness-runtime-not-a-harness",
         "harness-seam-unpublished",
         "harness-served-model-self-reported",
         "harness-spec-digest-mismatch",
@@ -54,6 +63,7 @@ SEAM_MINTED: frozenset[str] = frozenset(
         "park-expired",
         "pool-probe-classifier-refused",
         "pool-state-stale",
+        "rotation-refused-stale-generation",
         "rotation-refused-unreachable",
         "teardown-refused-dead-auth",
         "teardown-would-destroy-sole-work",
