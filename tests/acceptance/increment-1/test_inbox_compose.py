@@ -257,3 +257,42 @@ def test_naming_a_project_on_the_address_list_answers_only_within_this_seats_gra
         "REAL_PROJECT_SCOPED_ADDRESSES "
         f"offered={len(offered)} narrowed={len(narrowed.correspondents)} refused=apex"
     )
+
+
+def test_the_unnarrowed_address_list_answers_only_within_this_seats_grant(
+    tenant: TenantFixture,
+) -> None:
+    """RED — the open disclosure of ticket bf20e6b6, written as the law it breaks.
+
+    `list_inbox_correspondents` selects every `project_seats` row in the tenant and
+    evaluates no grant, so a seat holding one Project's grant is handed the rosters
+    of Projects it may not read. It escapes the INV-69 inventory only because its
+    signature names no scope — a blind spot this candidate closes separately.
+
+    This cell asks the unnarrowed list the question INV-69 asks every other
+    Project-scoped read: answer within this principal's own grants. It fails on
+    today's record, and that failure is the finding.
+
+    It also contradicts, deliberately and visibly, this module's own
+    `test_the_offered_addresses_are_exactly_the_ones_the_command_accepts`
+    (AC-INBOX-01, D55), which asserts the foreign address IS offered because the
+    send command accepts it. Both cannot hold. Turning this one green means
+    superseding that criterion — a decision, not a refactor.
+    """
+
+    _director_id, director = provision_seat(tenant, "director")
+    provision_seat(tenant, "apex-engineer", project_key="apex")
+
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=director) as client,
+    ):
+        listed = client.list_inbox_correspondents()
+
+    offered = [(item.project_key, item.seat_key) for item in listed.correspondents]
+    print("REAL_UNNARROWED_ADDRESSES offered=" + json.dumps(offered))
+    assert ("apex", "apex-engineer") not in offered
+    assert {project_key for project_key, _seat_key in offered} <= {"ctower"}
