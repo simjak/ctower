@@ -27,6 +27,13 @@ browser driver — is `_inbox_stub`. One build and one browser serve every
 assertion below, so the drive happens once for the module rather than once per
 class.
 
+The credential-limits surface is asserted here for that reason and no other. It
+is a read-only server-rendered screen, so its claims need the served document
+rather than the browser, and the one thing it must never do — put credential
+material on a page — is composed at render time out of a parser, a screen and a
+stylesheet. Standing a second build and a second server up to fetch one more
+route would double this suite's cost to prove less.
+
 The promotion form is still never submitted here: its transport is proved
 against the real module in ``tests/repository/test_inbox_promotion_ui``, the
 send transport the same way in ``test_inbox_send_ui``, and the compose
@@ -48,8 +55,10 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
     from dogfood import _inbox_stub as stub
+    from dogfood import _pool_stub as pools
 else:
     from tests.dogfood import _inbox_stub as stub
+    from tests.dogfood import _pool_stub as pools
 
 __all__ = ()
 
@@ -71,6 +80,9 @@ _UNCONFIRMED_COMPOSE_SENTENCE = (
 _UNCONFIRMED_COMPOSE_NOTICE = f"not confirmed {_UNCONFIRMED_COMPOSE_SENTENCE}"
 _SEND_FIELDS = ("project_key", "severity", "text", "thread_id", "to")
 _COMPOSE_FIELDS = ("project_key", "severity", "text", "to")
+# the record's three independent axes, and the accounts the pool stub answers with
+_POOL_AXES = 3
+_POOL_ENTRIES = 4
 
 
 class _Drive:
@@ -83,6 +95,7 @@ class _Drive:
         self.drives: list[dict[str, Any]] = []
         self.composes: list[dict[str, Any]] = []
         self.thread_source = ""
+        self.limits_source = ""
 
     def open(self) -> None:
         try:
@@ -90,6 +103,7 @@ class _Drive:
             port = self.stack.enter_context(stub.dogfood_server(source))
             shots = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
             self.thread_source = stub.route_body(port, f"/inbox?thread={stub.THREAD_ID}") or ""
+            self.limits_source = stub.route_body(port, "/limits") or ""
             report = stub.drive_surface(port, shots)
             self.captures = cast("list[dict[str, Any]]", report["captures"])
             self.drives = cast("list[dict[str, Any]]", report["drives"])
@@ -461,6 +475,65 @@ class InboxComposeRenderTests(unittest.TestCase):
                 self.assertEqual(tuple(sorted(payload)), _COMPOSE_FIELDS)
                 self.assertIn(payload["to"], stub.ADDRESSABLE)
                 self.assertRegex(cast("str", command["idempotency_key"]), r"^[0-9a-f-]{36}$")
+
+
+class LimitsSurfaceRenderTests(unittest.TestCase):
+    """What the credential-limits document says, and the field family it lacks."""
+
+    limits_source: ClassVar[str] = ""
+
+    def setUp(self) -> None:
+        type(self).limits_source = _DRIVE.limits_source
+
+    def test_the_route_answered_with_the_recorded_sweep(self) -> None:
+        document = self.limits_source
+        self.assertNotEqual(document, "", "the limits route did not answer at all")
+        self.assertIn(pools.CAPPED_IDENTITY, document)
+        self.assertIn(pools.SELECTABLE_IDENTITY, document)
+        self.assertIn(pools.UNMETERED_PROVIDER, document)
+        self.assertIn(pools.DRIFT_DETAIL, document)
+
+    def test_every_account_keeps_its_own_clock_and_its_own_axes(self) -> None:
+        """The claim a single-status screen cannot make, made in a served page.
+
+        Two accounts are capped at two different times and a third is available
+        with no reset time at all. A surface that folded the pool into one state
+        would have one clock here, or none.
+        """
+        document = self.limits_source
+        self.assertIn("resets 2026-08-20 06:29:00 UTC", document)
+        self.assertIn("resets 2026-08-20 08:00:00 UTC", document)
+        self.assertIn("no reset time recorded", document)
+        for axis in ("auth", "quota", "reach"):
+            with self.subTest(axis=axis):
+                self.assertIn(f'<span class="limits-axis-name">{axis}</span>', document)
+        # three axes per account and no fourth field promoted beside them
+        self.assertEqual(document.count('class="limits-axis-name"'), _POOL_AXES * _POOL_ENTRIES)
+        # an axis nobody could observe is not an available axis, and the record's
+        # own word for it reaches the page unchanged
+        self.assertIn(">unknown</span>", document)
+        self.assertIn(">edge-challenged</span>", document)
+
+    def test_the_page_states_the_per_entry_rule_and_counts_nothing_itself(self) -> None:
+        document = self.limits_source
+        self.assertIn("no single pool verdict", document)
+        self.assertIn("three clocks, not one state", document)
+        # the only pool-level number on the page is the one the record answered with
+        self.assertIn("2 selectable · swept 2026-08-17 20:00:00 UTC", document)
+
+    def test_the_served_document_carries_no_credential_material(self) -> None:
+        """The projection allowlist, checked where it would actually fail.
+
+        The stub answers this route with an entry carrying a fingerprint the
+        read projection has no field for. Nothing between the record and the
+        page may pick it up — not the parser, not the props the framework
+        serializes beside the markup, not a stray attribute.
+        """
+        document = self.limits_source
+        self.assertNotIn(pools.POISON_FINGERPRINT, document)
+        self.assertNotIn("secret_fingerprint", document)
+        self.assertNotIn(stub.CREDENTIAL, document)
+        self.assertNotIn("Bearer", document)
 
 
 if __name__ == "__main__":
