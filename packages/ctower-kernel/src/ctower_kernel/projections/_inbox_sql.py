@@ -21,6 +21,7 @@ from ctower_kernel.projections.inbox import (
     InboxThreadSummary,
 )
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record._project_scope import project_scope_grants
 from ctower_kernel.record.events import EventKind
 from ctower_kernel.record.inbox_events import InboxSeverity
 from ctower_kernel.record.transaction import project_scope_refusal
@@ -45,6 +46,7 @@ _ADDRESSABLE_SEATS = """
       )
 """
 _IN_ONE_PROJECT = "      AND seat.project_key = %s\n"
+_IN_GRANTED_PROJECTS = "      AND seat.project_key = ANY(%s)\n"
 _BY_SEAT_KEY = "    ORDER BY seat_key\n"
 
 
@@ -118,12 +120,18 @@ def list_threads(dsn: str, actor: Actor, *, unread: bool) -> InboxThreadList:
     )
 
 
-def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
-    """Read the addresses this principal can open a thread to, and only those.
+def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList | RecordProblem:
+    """Read the addresses this principal can open a thread to inside its own grants.
 
-    The seats are the persisted ones, not a catalog of names a fleet might use,
-    and they are narrowed to exactly what the send command accepts as an
-    address. That command resolves a recipient by ``(tenant_id, seat_key)``
+    Naming no Project asks for every Project this principal reaches, so the grant
+    itself bounds the answer under INV-69: the chokepoint hands back that grant and
+    is then asked to confirm the very set the rows are drawn from, which leaves the
+    read no way to disclose a Project the same chokepoint would refuse by name.
+    Operator authority reaches the whole tenant and so is bounded by nothing.
+
+    Inside that bound the seats are the persisted ones, not a catalog of names a
+    fleet might use, and they are narrowed further to what the send command accepts
+    as an address. That command resolves a recipient by ``(tenant_id, seat_key)``
     while the registry only makes a seat key unique per project, so three legal
     registry states have no address in them at all: a key two seats share, which
     refuses as ambiguous; the reader's own seat, which refuses as self; and a
@@ -134,12 +142,24 @@ def list_correspondents(dsn: str, actor: Actor) -> InboxCorrespondentList:
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
+        granted = project_scope_grants(
+            connection, tenant_id=actor.tenant_id, principal_id=actor.principal_id
+        )
+        refusal = project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=granted,
+            allow_operator_read=True,
+        )
+        if refusal is not None:
+            return refusal
         seat_key = _seat_key(connection, actor)
         rows: list[dict[str, object]] = []
         if seat_key != _UNADDRESSABLE:
             rows = connection.execute(
-                _ADDRESSABLE_SEATS + _BY_SEAT_KEY,
-                (actor.tenant_id, actor.principal_id),
+                _ADDRESSABLE_SEATS + _IN_GRANTED_PROJECTS + _BY_SEAT_KEY,
+                (actor.tenant_id, actor.principal_id, list(granted)),
             ).fetchall()
     return _correspondent_list(rows, seat_key)
 

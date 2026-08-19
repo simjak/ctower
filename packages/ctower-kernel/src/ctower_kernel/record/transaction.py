@@ -21,6 +21,12 @@ from psycopg.types.json import Jsonb
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record._commands import reserve_command
 from ctower_kernel.record._event_store import EventSubject, append_event, enqueue_event
+from ctower_kernel.record._project_scope import (
+    human_project_grants,
+    operator_scope_allowed,
+    scope_principal,
+    seat_project_grants,
+)
 from ctower_kernel.record.events import EventEnvelope
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -64,16 +70,16 @@ def project_scope_refusal(
     the closed default. A disabled principal never reaches either authority path.
     """
 
-    principal = _scope_principal(connection, tenant_id, principal_id)
+    principal = scope_principal(connection, tenant_id, principal_id)
     if principal is not None and bool(principal["disabled"]):
         return _project_scope_denied(command_id)
-    human_grants = _human_project_grants(principal)
-    if _operator_scope_allowed(principal, human_grants, allow_operator_read=allow_operator_read):
+    human_grants = human_project_grants(principal)
+    if operator_scope_allowed(principal, human_grants, allow_operator_read=allow_operator_read):
         return None
     requested = set(project_keys)
     if not requested and not operator_only:
         return None
-    grants = (human_grants or set()) | _seat_project_grants(connection, tenant_id, principal_id)
+    grants = (human_grants or set()) | seat_project_grants(connection, tenant_id, principal_id)
     if not operator_only and requested <= grants:
         return None
     return _project_scope_denied(command_id)
@@ -87,66 +93,6 @@ def _project_scope_denied(command_id: UUID | None) -> RecordProblem:
         title="Project scope denied",
         command_id=command_id,
     )
-
-
-def _scope_principal(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, principal_id: UUID
-) -> dict[str, object] | None:
-    return connection.execute(
-        """
-        SELECT principal.kind, principal.disabled,
-               binding.project_keys AS human_project_keys
-        FROM principals AS principal
-        LEFT JOIN human_role_bindings AS binding
-          ON binding.tenant_id = principal.tenant_id
-         AND binding.principal_id = principal.principal_id
-        LEFT JOIN human_role_binding_revocations AS revocation
-          ON revocation.tenant_id = binding.tenant_id
-         AND revocation.binding_id = binding.binding_id
-        WHERE principal.tenant_id = %s AND principal.principal_id = %s
-          AND (binding.binding_id IS NULL OR revocation.binding_id IS NULL)
-        ORDER BY binding.granted_at DESC NULLS LAST
-        LIMIT 1
-        """,
-        (tenant_id, principal_id),
-    ).fetchone()
-
-
-def _human_project_grants(principal: dict[str, object] | None) -> set[str] | None:
-    return (
-        set(cast(list[str], principal["human_project_keys"]))
-        if principal is not None and principal["human_project_keys"] is not None
-        else None
-    )
-
-
-def _operator_scope_allowed(
-    principal: dict[str, object] | None,
-    human_grants: set[str] | None,
-    *,
-    allow_operator_read: bool,
-) -> bool:
-    return (
-        principal is not None
-        and principal["kind"] == "operator"
-        and (allow_operator_read or human_grants is None)
-    )
-
-
-def _seat_project_grants(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, principal_id: UUID
-) -> set[str]:
-    return {
-        str(row["project_key"])
-        for row in connection.execute(
-            """
-            SELECT project_key
-            FROM project_seats
-            WHERE tenant_id = %s AND principal_id = %s
-            """,
-            (tenant_id, principal_id),
-        ).fetchall()
-    }
 
 
 def project_mutation_refusal(
