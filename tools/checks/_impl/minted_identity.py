@@ -27,7 +27,7 @@ _MIGRATIONS = "packages/ctower-kernel/migrations"
 # row indented by up to three spaces as a row, so the mint follows the render rather than
 # column zero; a fourth space makes an indented code block, which quotes and never mints.
 _MINTED_STABLE_ID = re.compile(r"^ {0,3}\|\s*(CT-[A-Z0-9]+-[0-9]+)\s*\|")
-# Read against a heading's opening line: `## D68`, the same line indented by up to three
+# Read against every line a heading renders: `## D68`, the same line indented by up to three
 # spaces, or a setext `D68 — title` underlined by `---` or `===` and carrying no `#` at all.
 _MINTED_DECISION = re.compile(r"^ {0,3}(?:#{1,6}[ \t]+)?(D[0-9]+)(?![0-9A-Za-z])")
 _MINTED_MIGRATION = re.compile(r"^([0-9]{4})_.+\.sql$")
@@ -98,20 +98,24 @@ def _quotation_free_lines(text: str) -> Iterator[tuple[int, str]]:
 
 
 def _heading_lines(text: str) -> Iterator[tuple[int, str]]:
-    """Number the opening line of every heading CommonMark renders, and its bytes.
+    """Number every line of every heading CommonMark renders, and its bytes.
 
     A decision is minted by the heading a reader sees, not by a `#` in column zero: three
     leading spaces still render a heading, and a `D68 — title` line underlined by `---` or
     `===` renders one with no `#` anywhere. Asking the parser for its headings takes every such
-    shape at once. A quoted heading stays quoted — a fence or comment never opens a heading at
-    all, and a heading inside a `>` block opens on a line that still carries its marker, which
-    no mint pattern accepts.
+    shape at once. The minted unit is the whole heading block rather than the line that opens
+    it, because a setext underline absorbs every paragraph line above it: `D68 — title` sitting
+    on the second line of such a block renders inside the same heading a reader and GitHub both
+    see. A quoted heading stays quoted — a fence or comment never opens a heading at all, and a
+    heading inside a `>` block opens on a line that still carries its marker, which no mint
+    pattern accepts.
     """
 
     lines = text.splitlines()
     for token in _MARKDOWN.parse(text):
         if token.type == "heading_open" and token.map is not None:
-            yield token.map[0] + 1, lines[token.map[0]]
+            for index in range(*token.map):
+                yield index + 1, lines[index]
 
 
 def _quoted_lines(text: str) -> frozenset[int]:

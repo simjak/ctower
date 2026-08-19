@@ -118,6 +118,9 @@ _D68_REVIEW_RECORDS = "## D68 — Tracked review records are one verdict per exa
 _SETEXT_REVIEW_RECORDS = _D68_REVIEW_RECORDS.removeprefix("## ")
 _SETEXT_LEVEL_TWO = "-" * 62 + "\n"
 _SETEXT_LEVEL_ONE = "=" * 62 + "\n"
+# A setext underline absorbs every paragraph line above it, so this whole block renders as one
+# `<h2>` and the identifier a reader sees sits on its second line.
+_MULTI_LINE_SETEXT = f"Prose that joins the heading\n{_SETEXT_REVIEW_RECORDS}{_SETEXT_LEVEL_TWO}"
 
 _DECISION_COLLISION = (
     f"{_DECISIONS_TITLE}"
@@ -316,6 +319,9 @@ class RenderedMintShapeTests(unittest.TestCase):
     to three spaces as a heading, and an underlined line carrying no `#` at all as a heading.
     Each shape hands out the identifier a reader sees, so each one has to be a mint here; a
     fourth space turns all of them into an indented code block, which quotes rather than mints.
+    The minted unit is the whole heading block: a setext underline pulls the paragraph above it
+    into the heading, so a `D68 — title` line below the block's first line renders in the same
+    `<h2>` and declares the same decision twice.
     """
 
     def test_an_indented_backlog_row_refuses_the_second_mint(self) -> None:
@@ -340,6 +346,27 @@ class RenderedMintShapeTests(unittest.TestCase):
 
     def test_a_setext_level_one_decision_heading_refuses_the_second_mint(self) -> None:
         self._assert_decision_collision_refuses(_SETEXT_REVIEW_RECORDS + _SETEXT_LEVEL_ONE)
+
+    def test_a_multi_line_setext_heading_refuses_a_mint_below_its_first_line(self) -> None:
+        self._assert_decision_collision_refuses(_MULTI_LINE_SETEXT, _SETEXT_REVIEW_RECORDS)
+
+    def test_a_multi_line_setext_heading_mints_the_number_a_later_heading_repeats(self) -> None:
+        """The block mints in both directions: here it takes `D68`, and the ATX heading repeats."""
+
+        document = (
+            f"{_DECISIONS_TITLE}{_MULTI_LINE_SETEXT}"
+            f"\nA review record is one verdict per exact head.\n\n{_D68_ROLE_FACTS}"
+        )
+        with _repository() as root:
+            _write(root, _DECISIONS, document)
+
+            report = verify(root, "full")
+
+        self.assertEqual(
+            [(item.rule_id, item.path, item.line) for item in _refusals(report)],
+            [(_DECISION_REFUSAL, _DECISIONS, _line_of(document, _D68_ROLE_FACTS))],
+            report.findings,
+        )
 
     def test_a_four_space_indent_quotes_the_line_and_mints_nothing(self) -> None:
         document = (
@@ -377,7 +404,11 @@ class RenderedMintShapeTests(unittest.TestCase):
         self.assertEqual(_refusals(report), ())
         self.assertTrue(report.ok, report.findings)
 
-    def _assert_decision_collision_refuses(self, duplicate: str) -> None:
+    def _assert_decision_collision_refuses(
+        self, duplicate: str, minting: str | None = None
+    ) -> None:
+        """Refuse `duplicate` below the real `## D68`, at `minting` or the block's first line."""
+
         document = (
             f"{_DECISIONS_TITLE}{_D68_ROLE_FACTS}\nStage participants resolve from role facts.\n\n"
             f"{duplicate}\nA review record is one verdict per exact head.\n"
@@ -387,9 +418,10 @@ class RenderedMintShapeTests(unittest.TestCase):
 
             report = verify(root, "full")
 
+        minted_line = _line_of(document, minting or duplicate.splitlines()[0])
         self.assertEqual(
             [(item.rule_id, item.path, item.line) for item in _refusals(report)],
-            [(_DECISION_REFUSAL, _DECISIONS, _line_of(document, duplicate.splitlines()[0]))],
+            [(_DECISION_REFUSAL, _DECISIONS, minted_line)],
             report.findings,
         )
 
