@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f9947a2b0bdb09138a57a08c84817de127405f32641b2d8ec6bdb7c97103c3b1
+Authored contract digest: sha256:918802814353ac3cbc5ff9ca4a0ed58e6cdbcce8c6f5721d3f15eaf2f5e27b29
 """
 
 from __future__ import annotations
@@ -34,6 +34,8 @@ __all__ = [
     "BeatDispatchEffectList",
     "BeatRoutine",
     "BeatRoutineList",
+    "BeatRoutineRetireRequest",
+    "BeatRoutineRetirementReceipt",
     "BeatSchedule",
     "BlockIntent",
     "BlockerOpenedAuditData",
@@ -665,6 +667,10 @@ class BeatDispatchEffect(_BoundaryModel):
     prompt: Annotated[str, Field(min_length=1, max_length=16384)]
     target_session: Literal["commander", "mc-commander-manibo"]
     emitted_at: _Rfc3339DateTime
+
+
+class BeatRoutineRetireRequest(_BoundaryModel):
+    pass
 
 
 class BeatSchedule(_BoundaryModel):
@@ -1747,6 +1753,16 @@ class BeatRoutine(_BoundaryModel):
     next_fire_at: _Rfc3339DateTime
 
 
+class BeatRoutineRetirementReceipt(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_id: UUID
+    retired_at: _Rfc3339DateTime
+    retirement_id: UUID
+    revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    routine_ref: Annotated[str, Field(pattern="^ctower\\.beat\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+
+
 class BootstrapReceipt(_BoundaryModel):
     command_id: UUID
     commander_id: UUID
@@ -2291,6 +2307,9 @@ class Problem(_BoundaryModel):
         "auth-provider-unverifiable",
         "auth-role-denied",
         "auth-session-invalid",
+        "beat-routine-already-retired",
+        "beat-routine-not-found",
+        "beat-routine-retire-forbidden",
         "bootstrap-consumed",
         "bootstrap-expired",
         "bootstrap-nonempty",
