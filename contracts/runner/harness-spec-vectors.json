@@ -1,0 +1,146 @@
+{
+  "schema": "ctower.harness-spec-vectors/v1",
+  "notes": [
+    "Deterministic registration vectors. Each document is parsed as DATA and then resolved against",
+    "its own answered survey; no vector executes package code.",
+    "`base` is the one accepted document; every refusal vector states only its override, so a",
+    "refusal is provably caused by that field and not by an unrelated difference."
+  ],
+  "base": {
+    "schema": "ctower.harness-spec/v1",
+    "key": "vector-harness",
+    "revision": 1,
+    "artifact_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+    "config_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+    "input_protocol": { "kind": "profile_directory_exec", "submit_separately": true },
+    "output_protocol": { "kind": "pane_footer" },
+    "capabilities": ["INTERRUPT_AND_RESUME", "CHECKPOINT", "PARK", "REAP", "POOL_OBSERVE"],
+    "ack_predicate": { "kind": "composer_cleared", "detail": "the composer is empty after submit" },
+    "liveness_sources": [
+      { "fact": "served_model", "source": "gateway_log", "proves": "serving" },
+      { "fact": "served_model", "source": "pane_footer", "proves": "request" },
+      { "fact": "context_used_pct", "source": "pane_footer", "proves": "observation" },
+      { "fact": "cap", "source": "pane_footer", "proves": "observation" },
+      { "fact": "pool", "source": "pool_state", "proves": "observation" }
+    ],
+    "context_window_percent": 90,
+    "probe": {
+      "product": "vector-product",
+      "endpoint": "/v1/responses",
+      "model_ref": "vector-model",
+      "workload_shape": "representative",
+      "classified_on": "response_body"
+    },
+    "pool": { "cache_invalidation_hook": "pool-proxy-restart", "providers": ["vector-provider"] },
+    "survey": {
+      "native_pool": true,
+      "native_fallback": true,
+      "config_surface": "authored_config_only",
+      "identity_proof": "decoded_claim",
+      "reset_semantics": "provider_reset_at",
+      "rotation_cache": "proxy_restart",
+      "subagent_inheritance": "per_task_lease",
+      "egress_topology": "shared"
+    },
+    "layers": { "pool": "configure", "fallback": "configure" },
+    "status": "active"
+  },
+  "vectors": [
+    {
+      "name": "answered-survey-registers-with-derived-roles",
+      "override": {},
+      "outcome": "registered",
+      "roles": { "pool": "configure", "fallback": "configure" }
+    },
+    {
+      "name": "unknown-field-is-not-tolerated",
+      "override": { "harness_home": "/home/agent/.hermes" },
+      "outcome": "refused",
+      "refusal": "harness-spec-incompatible"
+    },
+    {
+      "name": "missing-survey-answer-leaves-the-role-undecidable",
+      "remove": ["survey.egress_topology"],
+      "outcome": "refused",
+      "refusal": "harness-survey-incomplete"
+    },
+    {
+      "name": "native-pool-plus-ctower-pool-is-never-both",
+      "override": { "layers": { "pool": "provide", "fallback": "configure" } },
+      "outcome": "refused",
+      "refusal": "harness-layer-conflict"
+    },
+    {
+      "name": "native-fallback-plus-ctower-fallback-is-never-both",
+      "override": { "layers": { "pool": "configure", "fallback": "provide" } },
+      "outcome": "refused",
+      "refusal": "harness-layer-conflict"
+    },
+    {
+      "name": "absent-native-layer-declared-as-configure-has-nothing-to-configure",
+      "override": {
+        "survey": {
+          "native_pool": false,
+          "native_fallback": true,
+          "config_surface": "authored_config_only",
+          "identity_proof": "decoded_claim",
+          "reset_semantics": "provider_reset_at",
+          "rotation_cache": "proxy_restart",
+          "subagent_inheritance": "per_task_lease",
+          "egress_topology": "shared"
+        }
+      },
+      "outcome": "refused",
+      "refusal": "harness-layer-conflict"
+    },
+    {
+      "name": "revoked-spec-is-refused-and-never-a-generic-process",
+      "override": { "status": "revoked" },
+      "outcome": "refused",
+      "refusal": "harness-spec-revoked"
+    },
+    {
+      "name": "malformed-artifact-digest-is-a-mismatch",
+      "override": { "artifact_digest": "sha256:not-a-digest" },
+      "outcome": "refused",
+      "refusal": "harness-spec-digest-mismatch"
+    },
+    {
+      "name": "serving-truth-must-be-declared-by-some-source",
+      "override": {
+        "liveness_sources": [{ "fact": "served_model", "source": "pane_footer", "proves": "request" }]
+      },
+      "outcome": "registered",
+      "roles": { "pool": "configure", "fallback": "configure" },
+      "note": "A request-only source registers; it is recorded as a conflict at observation time and never as serving truth."
+    },
+    {
+      "name": "single-token-probe-registers-but-can-only-report-unknown",
+      "override": {
+        "probe": {
+          "product": "vector-product",
+          "endpoint": "/v1/responses",
+          "model_ref": "vector-model",
+          "workload_shape": "single_token",
+          "classified_on": "response_body"
+        }
+      },
+      "outcome": "registered",
+      "roles": { "pool": "configure", "fallback": "configure" }
+    },
+    {
+      "name": "status-line-classifier-is-refused-as-a-state-source",
+      "override": {
+        "probe": {
+          "product": "vector-product",
+          "endpoint": "/v1/responses",
+          "model_ref": "vector-model",
+          "workload_shape": "representative",
+          "classified_on": "status_line"
+        }
+      },
+      "outcome": "refused",
+      "refusal": "pool-probe-classifier-refused"
+    }
+  ]
+}

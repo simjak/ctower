@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/runner/harness-capability.schema.json",
+  "title": "HarnessCapability",
+  "description": "A capability is declared data, never a runtime discovery. The closed list is the whole vocabulary a binding may claim; an undeclared capability is unsupported by name rather than attempted.",
+  "type": "string",
+  "enum": [
+    "LIVE_INPUT",
+    "INTERRUPT_AND_RESUME",
+    "STEER_DURABLE_COMMAND_ID",
+    "CHECKPOINT",
+    "PARK",
+    "REAP",
+    "POOL_OBSERVE",
+    "POOL_ROTATE_RECORD",
+    "POOL_PROBE"
+  ]
+}
