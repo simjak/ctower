@@ -11,7 +11,7 @@ from datetime import timedelta
 
 import pytest
 from harness_doubles import BASE_TIME, GUARD_VERSION, StubGuard, StubReceipts
-from harness_subjects import BUILDERS, SubjectBuilder, subjects
+from harness_subjects import BUILDERS, DOCUMENTS, DocumentBuilder, SubjectBuilder, subjects
 
 from ctower_runner_sdk.conformance import ConformanceSubject
 from ctower_runner_sdk.facts import DispatchReceipt
@@ -19,11 +19,14 @@ from ctower_runner_sdk.fake import Fault
 from ctower_runner_sdk.guard import GuardVerdict
 from ctower_runner_sdk.policy import input_refusal
 from ctower_runner_sdk.refusals import Refusal
+from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
 
 __all__: tuple[str, ...] = ()
 
 _BUILDS = tuple(builder for _, builder in BUILDERS)
 _IDS = tuple(name for name, _ in BUILDERS)
+_DOCUMENTS = tuple(document for _, document in DOCUMENTS)
+_DOC_IDS = tuple(name for name, _ in DOCUMENTS)
 _UNACKNOWLEDGED: tuple[Fault, ...] = (
     "unacknowledged_dispatch",
     "queued_composer",
@@ -34,6 +37,12 @@ _UNACKNOWLEDGED: tuple[Fault, ...] = (
 def _spawn(subject: ConformanceSubject) -> DispatchReceipt | Refusal:
     inputs = subject.inputs
     return subject.binding.spawn(inputs.attempt, inputs.seat, inputs.brief, inputs.context)
+
+
+def _capabilities(document: dict[str, object]) -> list[str]:
+    declared = document["capabilities"]
+    assert isinstance(declared, list)
+    return [str(item) for item in declared]
 
 
 @pytest.mark.parametrize("subject", subjects(), ids=lambda item: item.name)
@@ -68,11 +77,45 @@ def test_an_unacknowledged_composer_refuses_with_zero_session_start_fact(
 def test_input_into_a_working_lane_needs_the_declared_interrupt_capability(
     subject: ConformanceSubject,
 ) -> None:
-    refusal = input_refusal(subject.binding.spec, "working")
+    """The declaration decides, and only the declaration.
 
-    assert isinstance(refusal, Refusal)
-    assert refusal.name == "harness-capability-unsupported"
-    assert input_refusal(subject.binding.spec, "idle") is None
+    Every binding bound today happens to lack this capability, so an unconditional refusal
+    passes and reads like law. It is not law, it is the current fleet: the next harness whose
+    steering model is an interrupt would fail this suite on the day it registers, and the
+    suite would be edited to fit it — which is exactly what the one unchanged suite exists to
+    prevent. The rule is `iff`, in both directions, for every subject.
+    """
+
+    spec = subject.binding.spec
+    refusal = input_refusal(spec, "working")
+
+    if spec.declares("INTERRUPT_AND_RESUME"):
+        assert refusal is None
+    else:
+        assert isinstance(refusal, Refusal), refusal
+        assert refusal.name == "harness-capability-unsupported"
+        assert dict(refusal.detail)["capability"] == "INTERRUPT_AND_RESUME"
+    assert input_refusal(spec, "idle") is None
+
+
+@pytest.mark.parametrize("document", _DOCUMENTS, ids=_DOC_IDS)
+def test_a_binding_that_declares_the_interrupt_capability_takes_input_while_working(
+    document: DocumentBuilder,
+) -> None:
+    """The positive half of the same `iff`, pinned before a binding needs it.
+
+    An interrupt-capable harness is authored data away from every subject here, so the world
+    the cell above refuses in is proven against the world it must accept in — from the same
+    documents, through the same contract, with one capability declared.
+    """
+
+    declared = document()
+    declared["capabilities"] = sorted({*_capabilities(declared), "INTERRUPT_AND_RESUME"})
+    spec = parse_harness_spec(declared)
+
+    assert isinstance(spec, HarnessSpec), spec
+    assert spec.declares("INTERRUPT_AND_RESUME")
+    assert input_refusal(spec, "working") is None
 
 
 @pytest.mark.parametrize("build", _BUILDS, ids=_IDS)

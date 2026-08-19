@@ -49,8 +49,10 @@ from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
 
 __all__ = [
     "BUILDERS",
+    "DOCUMENTS",
     "PROFILE_KEY",
     "SEAT_PROJECT",
+    "DocumentBuilder",
     "SubjectBuilder",
     "build_fake",
     "build_hermes",
@@ -330,9 +332,23 @@ class SubjectBuilder(Protocol):
     ) -> ConformanceSubject: ...
 
 
+class DocumentBuilder(Protocol):
+    """One binding's authored declaration, before anything is built over it."""
+
+    def __call__(self) -> dict[str, object]: ...
+
+
 BUILDERS: tuple[tuple[str, SubjectBuilder], ...] = (
     ("hermes", build_hermes),
     ("fault-injection-fake", build_fake),
+)
+
+# The authored half of the same two subjects, for cells that vary a declaration rather than
+# a substrate. A capability a binding could declare is data, and a suite that can only see
+# the capabilities today's fleet happens to hold would encode that accident as law.
+DOCUMENTS: tuple[tuple[str, DocumentBuilder], ...] = (
+    ("hermes", hermes_document),
+    ("fault-injection-fake", fake_document),
 )
 
 
