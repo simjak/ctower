@@ -155,9 +155,24 @@ def test_composing_twice_to_one_seat_stays_one_pair_grouped_thread(
     print(f"REAL_COMPOSE_PAIR_GROUPED thread={thread_id} messages={len(read_back.messages)}")
 
 
-def test_the_offered_addresses_are_exactly_the_ones_the_command_accepts(
+def test_the_offered_addresses_are_the_accepted_ones_inside_this_seats_grant(
     tenant: TenantFixture,
 ) -> None:
+    """Every address the list offers is one the command accepts — and no other Project's.
+
+    The list withholds four classes, and each is withheld for a reason the reader
+    can act on. Three are mirrors of a command refusal: a seat key two seats share
+    refuses as ambiguous, the reader's own seat refuses as self, and a reader
+    holding no seat can address nobody. The fourth is the grant: a Project this
+    principal holds no grant on is not its to enumerate, so the roster of `apex`
+    is absent from a `ctower` seat's picker under INV-69.
+
+    That fourth class is deliberately *not* a mirror. The comms plane stays
+    tenant-wide, so the foreign compose below is still accepted; what the picker
+    stops doing is disclosing who is there. Discovery and delivery answer two
+    different questions, and only discovery is a Project-scoped read.
+    """
+
     provision_seat(tenant, "director")
     provision_seat(tenant, "shared-seat")
     provision_seat(tenant, "shared-seat", project_key="apex")
@@ -201,11 +216,12 @@ def test_the_offered_addresses_are_exactly_the_ones_the_command_accepts(
         seatless_send = _compose(base_url, unseated, "director", "No seat of my own.")
 
     assert sorted(opened) == [
-        ("apex", "shared-seat"),
         ("ctower", "director"),
         ("ctower", "shared-seat"),
     ]
     assert all(response.status_code in _ACCEPTED_SEND_STATUS for response in opened.values())
+    # the grant bounds discovery, not delivery: the address this list withholds is
+    # still deliverable, so the picker narrows without the transport changing
     assert foreign.status_code in _ACCEPTED_SEND_STATUS
     assert unknown.status_code == _NOT_FOUND_STATUS
     assert _refusal_code(unknown) == "inbox-recipient-not-found"
@@ -222,11 +238,12 @@ def test_naming_a_project_on_the_address_list_answers_only_within_this_seats_gra
 ) -> None:
     """Narrowing the picker to one Project is a scoped read, so it answers under INV-69.
 
-    The unnarrowed list is unchanged and stays every address this seat may open a
-    thread to. Naming a Project asks a different question, and the record answers
-    it only for a Project this principal actually holds a grant on: a foreign
-    Project is refused by its own name rather than quietly answered empty, so
-    "no addresses there" and "not yours to ask about" never look alike.
+    Naming a Project asks for a subset of what the unnarrowed list already bounds
+    to this principal's grants, so the two answers agree about `ctower` and neither
+    of them mentions `apex`. They differ in how they say so: the unnarrowed list
+    leaves a foreign Project out, while naming one is refused by its own name
+    rather than quietly answered empty, so "no addresses there" and "not yours to
+    ask about" never look alike.
     """
 
     _director_id, director = provision_seat(tenant, "director")
@@ -247,7 +264,7 @@ def test_naming_a_project_on_the_address_list_answers_only_within_this_seats_gra
 
     offered = [(item.project_key, item.seat_key) for item in listed.correspondents]
     problem = cast(Problem, refusal.value.problem)
-    assert ("apex", "shared-seat") in offered
+    assert ("apex", "shared-seat") not in offered
     assert [(item.project_key, item.seat_key) for item in narrowed.correspondents] == [
         address for address in offered if address[0] == "ctower"
     ]
@@ -262,22 +279,17 @@ def test_naming_a_project_on_the_address_list_answers_only_within_this_seats_gra
 def test_the_unnarrowed_address_list_answers_only_within_this_seats_grant(
     tenant: TenantFixture,
 ) -> None:
-    """RED — the open disclosure of ticket bf20e6b6, written as the law it breaks.
+    """The closing cell of ticket bf20e6b6: naming no Project still names this seat's.
 
-    `list_inbox_correspondents` selects every `project_seats` row in the tenant and
-    evaluates no grant, so a seat holding one Project's grant is handed the rosters
-    of Projects it may not read. It escapes the INV-69 inventory only because its
-    signature names no scope — a blind spot this candidate closes separately.
+    `list_inbox_correspondents` used to select every `project_seats` row in the
+    tenant and evaluate no grant, so a seat holding one Project's grant was handed
+    the rosters of Projects it may not read — and it escaped the INV-69 inventory
+    only because its signature names no scope.
 
     This cell asks the unnarrowed list the question INV-69 asks every other
-    Project-scoped read: answer within this principal's own grants. It fails on
-    today's record, and that failure is the finding.
-
-    It also contradicts, deliberately and visibly, this module's own
-    `test_the_offered_addresses_are_exactly_the_ones_the_command_accepts`
-    (AC-INBOX-01, D55), which asserts the foreign address IS offered because the
-    send command accepts it. Both cannot hold. Turning this one green means
-    superseding that criterion — a decision, not a refactor.
+    Project-scoped read: answer within this principal's own grants. A `ctower`
+    seat is never told that `apex` has an engineer in it, and the record's own
+    grant — not the request's shape — is what decides that.
     """
 
     _director_id, director = provision_seat(tenant, "director")

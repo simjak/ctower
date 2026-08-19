@@ -313,9 +313,11 @@ changing anything.
 | `inbox read-state` | `<thread_id>` | — |
 
 `send` starts a two-party thread when `--thread` is omitted. On an existing thread, `--to` must name the
-other participant. `correspondents` lists the addresses this principal may open a thread to: the registered project seats,
-less its own, less any seat key a second seat also holds, and none at all when this principal holds no
-seat — exactly what `send` and `notify` accept as `--to`, so anything it omits they refuse by name. `send`, `ack`, and `promote` are protected, spoolable mutations; an exact command replay
+other participant. `correspondents` lists the addresses this principal may open a thread to: the registered project seats
+inside the projects this principal holds a grant on, less its own, less any seat key a second seat also
+holds, and none at all when this principal holds no seat. The first three omissions are exactly what `send`
+and `notify` refuse by name; the fourth is not, because the grant bounds who a principal may discover
+while the transport underneath stays tenant-wide. `send`, `ack`, and `promote` are protected, spoolable mutations; an exact command replay
 returns its original result, while reusing the command ID with different input is refused as
 `idempotency-conflict`.
 

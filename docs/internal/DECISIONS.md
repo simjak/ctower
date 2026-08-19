@@ -3240,3 +3240,66 @@ decision fixes the seam's shape and admits its build tickets. It supersedes noth
    final pre-dispatch boundary remains a hard prerequisite that moves with the first dispatch rather
    than being waived, so this epic's activation ordering against Increment 2 is an operator/commander
    scope decision and not a lane's.
+
+## D73 — Correspondent discovery is a Project-scoped read; the comms plane underneath stays tenant-wide (authority, 2026-08-19, ticket bf20e6b6, director order `2026-08-19_1555--engineer-corr-grant2`)
+
+A P1 security-lens finding from the #530 delta review showed that `list_inbox_correspondents` selected
+every `project_seats` row in the tenant and evaluated no grant, so a seat holding one Project's grant was
+handed the rosters of Projects it may not read. Two prior seats reported the finding as accurate and
+stopped on the same fork: the read mirrored a transport that is itself tenant-wide, so narrowing only the
+read would break the offered-equals-accepted equality D55 clause 2 and AC-INBOX-01 state. The director
+ordered the narrowing. This entry records what that costs and what it does not change.
+
+1. **Discovery and delivery answer different questions, and only discovery is Project-scoped.** Asking
+   *who is registered in a Project* is a read of that Project's facts and is bound by [INV-69](SPEC.md#inv-69)
+   like every other one. Asking the record to *deliver* to a seat is a transport act on a plane whose scope
+   is the tenant. The two were conflated because the list happened to be derived from the command's
+   acceptance rule; they are separated here on purpose.
+2. **The unnarrowed correspondents read binds its rows to the caller's own grant.** This supersedes D55
+   clause 2's sentence *"The read leaves out each one for the same reason the command refuses it"* as an
+   exhaustive account of what the read withholds, and D70 clause 4's *"Correspondent reads may filter by
+   project"* as a statement that filtering is optional. Naming no Project now asks for every Project the
+   caller's grant reaches, not for the tenant. Unrestricted operator authority reaches every Project the
+   tenant registered a seat in, so an operator's answer is unchanged. D55's three other withheld classes —
+   a seat key two seats share, the reader's own seat, and a reader holding no seat — are unchanged and are
+   still each a mirror of a command refusal.
+3. **The grant comes from the chokepoint, never from a second derivation.** `project_scope_grants` is
+   exported beside `project_scope_refusal` from the same Record module and is the only place a read may
+   learn which Projects a principal reaches. The correspondents read composes both: it binds its rows to
+   that grant and then asks the refusal to confirm the very set it is about to disclose, so the read has no
+   way to answer for a Project the same chokepoint would refuse by name. A read that derives project scope
+   from `project_seats` or `human_role_bindings` on its own is a second authority and is refused at review.
+4. **The offered set is now a subset of the accepted set, and that asymmetry is stated rather than
+   discovered.** An address the list withholds under clause 2 stays deliverable: a `ctower` seat that
+   already knows an `apex` seat key can still write to it, and the command still answers `202`. This is not
+   a boundary that leaks; it is a boundary that was never claimed. Making the comms plane itself
+   Project-bound would refuse every cross-project seat-to-seat message in the fleet, including the
+   mission-control `tools/notify` mirror, and is not authorized here — it remains its own ticket with its
+   own blast-radius evidence, exactly as the rejected alternative in the 2026-08-19 escalation described.
+5. **The guard's discovery rule was also a defect, and it is fixed for the class.** The projection read
+   inventory now enrols a read by the shape of its answer — any type declaring a `project_key`/`project_keys`
+   field, or carrying rows that do — rather than by a hand-written return-type list, so a parameterless read
+   handing back Project-keyed rows can never again be invisible to it. No read carries an exemption.
+6. **No route, operation, request shape, response shape, principal, environment variable, flag, or
+   migration is added, and no gate is weakened.** `GET /v1/inbox/correspondents` keeps its path, its
+   optional `project_key`, and its response schema; the read gains only the typed `project-scope-denied`
+   answer every other Project-scoped read already carries, which a disabled principal is the one caller to
+   see. AC-COMMS-03 and AC-INBOX-01 are revised in the same candidate.
+
+Rejected alternatives:
+
+- **Leaving the read unscoped and listing it as an authored exemption.** The disposition the previous seat
+  drafted. Coherent, and rejected by the director: an address list is the fleet's cheapest map of who else
+  exists, and handing a seat the roster of a Project it cannot read discloses the Project's staffing whether
+  or not the message would have been delivered.
+- **Making the whole comms plane Project-bound in this candidate.** It would restore the
+  offered-equals-accepted equality exactly, and it is the coherent end state. Rejected *here* only as
+  unscoped: it supersedes D70 clause 4 outright, adds the chokepoint to both recipient-resolution paths in
+  `inbox/_sql.py`, and begins refusing live cross-project traffic that has never been measured.
+- **Narrowing the read by the Projects the reader holds a seat in.** One query, no new export, and wrong:
+  it ignores human role-binding grants and operator authority, so it would answer a different question from
+  the chokepoint about the same principal — the defect clause 3 exists to prevent.
+- **Staging the finding as a known-open red.** Impossible by construction and confirmed against this tree:
+  `pytest.mark.xfail` is rejected by the required-suite gate in both affected suites, `exceptions.yaml`
+  cannot reach a suite result and has never carried an entry, and both prior remedy waves (#507, #520)
+  shipped the guard extension in the same candidate as the fix. Guard and fix land together here too.
