@@ -31,15 +31,16 @@ SPEC_OWNED: frozenset[str] = frozenset(
 )
 
 # Names this seam introduces. Every one is `<subject>-<condition>`, matching the house
-# vocabulary, and none collides with a name already in SPEC or the kernel. The set grows
-# only when a binding introduces a condition no existing name states: the two
-# `rotation-refused-*` entries below arrived with the first ctower-PROVIDED pool, because a
-# rotation refused for a concurrent holder and one refused for a stale snapshot generation
-# carry different remedies and collapsing either into `rotation-incomplete` would send the
-# reader to the wrong repair. Adding a synonym for a condition already named here is the
-# failure this list exists to prevent.
+# vocabulary, and none collides with a name already in SPEC or the kernel. The set grows only
+# when a binding introduces a condition no existing name states. The direct-CLI binding adds
+# runtime-routing, unknown-credential-argument, and stale-generation refusals; the provided
+# Claude pool adds the concurrent-holder refusal. Each carries a different remedy from
+# `rotation-incomplete`, and collapsing any of them into it would send the reader to the wrong
+# repair. Adding a synonym for a condition already named here is the failure this list exists
+# to prevent.
 SEAM_MINTED: frozenset[str] = frozenset(
     {
+        "credential-verb-unknown-flag",
         "harness-capability-unsupported",
         "harness-credential-forbidden",
         "harness-credential-seat-mismatch",
@@ -48,6 +49,7 @@ SEAM_MINTED: frozenset[str] = frozenset(
         "harness-guard-decision-invalid",
         "harness-layer-conflict",
         "harness-receipt-undurable",
+        "harness-runtime-not-a-harness",
         "harness-seam-unpublished",
         "harness-served-model-self-reported",
         "harness-spec-digest-mismatch",
