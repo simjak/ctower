@@ -16,8 +16,10 @@ from psycopg import sql
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.control_worker import load_routine_revisions
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.runtime import Routine, RoutineRevision
 from ctower_kernel.runtime.gates import ActivityGate
+from ctower_kernel.runtime.items import CompleteRoutineWorkItemCommand, RoutineWorkItem
 from ctower_kernel.runtime.postgres import PostgresRuntime
 
 __all__: tuple[str, ...] = ()
@@ -238,6 +240,9 @@ def test_ac_rtn_02_movement_gate_skips_when_quiet_and_fires_on_movement(
 
     # movement: a new event lands -> next evaluation fires
     _append_event(tenant)
+    # AC-RWI-03 suppression is unconditional across the gate set: the gate matrix only
+    # observes a fire once the previous window carries its owner receipt.
+    _close_item(runtime, tenant, first.work_items[0])
     third_due = datetime.now(UTC).replace(microsecond=0) - timedelta(seconds=1)
     assert third_due > quiet_due
     _advance_trigger(tenant, watcher, third_due)
@@ -366,6 +371,15 @@ def test_ac_rtn_03_five_representative_schedules_register_and_fire(tenant: Tenan
 
     # Ctower owns only the queued occurrence evidence. Host-twin activity and
     # crontab deletion remain external-custodian facts.
+
+
+def _close_item(runtime: Routine, tenant: TenantFixture, item: RoutineWorkItem) -> None:
+    operator = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    receipt = runtime.complete_routine_work_item(
+        operator,
+        CompleteRoutineWorkItemCommand(uuid4(), item.work_item_id, "artifact:gate-matrix"),
+    )
+    assert not isinstance(receipt, RecordProblem)
 
 
 def _due_mark(revision: RoutineRevision, now: datetime) -> datetime:

@@ -25,14 +25,21 @@ _UI_REMOVED_FILES = (
 )
 
 
+_REGISTRY_DENOMINATOR = 17
+_ITEM_PATH_REFERENCES = 10
+
+
 def test_active_routine_contracts_and_surfaces_contain_no_session_dispatch() -> None:
     pack_root = ROOT / "packs/routines"
     packs = tuple(sorted(pack_root.glob("*/v1.yaml")))
-    assert packs
+    assert len(packs) == _REGISTRY_DENOMINATOR
+    item_path = 0
     for path in packs:
         pack = cast(dict[str, object], json.loads(path.read_text(encoding="utf-8")))
         assert pack.get("handler_kind") != "beat_dispatch", path
         assert "target_session" not in json.dumps(pack), path
+        item_path += 1 if pack.get("handler_kind") == "routine_item" else 0
+    assert item_path == _ITEM_PATH_REFERENCES
 
     openapi = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     assert not any("beat" in path for path in cast(dict[str, object], openapi["paths"]))

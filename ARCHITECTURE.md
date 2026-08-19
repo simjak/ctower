@@ -866,9 +866,18 @@ are independent and make health `STATE UNKNOWN` when stale.
 
 Activity-gated Routine output is an Inbox work item, not a session injection. The item points to one Knowledge
 record and carries the routine identity, schedule window, owner/escalation seats, and typed gate evidence.
-While an earlier item remains open, a later fire appends one typed suppression naming that blocker; an expired
-window or degraded gate read appends one idempotent alarm for the escalation seat. Closure requires an owner
-receipt that references the delivered artifact, and no active Runtime or HTTP/CLI surface targets a session.
+While an earlier item remains open, a later fire appends one typed suppression naming that blocker; the gate a
+Routine carries never exempts it from that suppression. Closure requires an owner receipt that references the
+delivered artifact, and no active Runtime or HTTP/CLI surface targets a session.
+
+Every window carries one append-only alarm episode keyed by `(tenant_id, revision_digest, scheduled_for)`. A
+partial item-state read appends a `degraded` observation instead of a clean no-alarm; a window that ends with no
+receipt appends the one ordinary `missed_window` alarm; a receipt accepted while the episode is still open
+resolves it as `recovered_receipted` with no ordinary alarm. The escalation seat is the one bound by the active
+Routine revision, never caller-supplied, and it is resolved at alarm time against a live seat in the owning
+seat's project scope; a missing, stale, revoked, or foreign-scope binding appends `escalation_unresolved` with
+its reason and claims no delivery. The episode state is derived from its observations rather than stored, so
+replay, restart, and concurrent boundary attempts add no second episode and no second ordinary alarm.
 
 Each of the four nightly dream Routines emits exactly one immutable `dream_dispatch` effect at its UTC
 boundary. The effect carries the project-or-fleet scope, `skills/dreamer/SKILL.md`, and the hard-model

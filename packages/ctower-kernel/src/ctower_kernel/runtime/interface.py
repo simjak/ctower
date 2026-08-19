@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ctower_kernel.runtime.gates import ActivityGate
 from ctower_kernel.runtime.items import (
     CompleteRoutineWorkItemCommand,
+    RoutineAlarmEpisode,
     RoutineItemSpec,
     RoutineWorkItem,
     RoutineWorkItemAlarm,
@@ -363,6 +364,8 @@ class _RoutineStore(Protocol):
         self, actor: Actor, command: CompleteRoutineWorkItemCommand
     ) -> RoutineWorkItemReceipt | RecordProblem: ...
 
+    def alarm_episodes(self, tenant_id: UUID) -> tuple[RoutineAlarmEpisode, ...]: ...
+
 
 class _FixedOperationStore(Protocol):
     def start_synthetic(
@@ -440,6 +443,11 @@ class Routine:
         self, actor: Actor, command: CompleteRoutineWorkItemCommand
     ) -> RoutineWorkItemReceipt | RecordProblem:
         return self._store.complete_routine_work_item(actor, command)
+
+    def alarm_episodes(self, tenant_id: UUID) -> tuple[RoutineAlarmEpisode, ...]:
+        """Project every append-only alarm episode this tenant has recorded."""
+
+        return self._store.alarm_episodes(tenant_id)
 
 
 @dataclass(frozen=True, slots=True)

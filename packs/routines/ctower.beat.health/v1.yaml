@@ -1,0 +1,34 @@
+{
+  "schema_id": "ctower.routine/v4",
+  "routine_ref": "ctower.beat.health@1",
+  "schedule": {
+    "kind": "minute_hour_set",
+    "timezone": "UTC",
+    "minutes": [
+      14,
+      34,
+      54
+    ],
+    "hours": null
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 1200,
+  "handler_kind": "routine_item",
+  "component_digests": [
+    "sha256:460d2612eff57e1fdfdb37d114007b3b53737f4dabd962259f10e00d73432a9f"
+  ],
+  "activity_gate": {
+    "kind": "always"
+  },
+  "revision_digest": "sha256:b859e6a89fece6c720dcf4cd29a6a40e6c95689f77fbf21c214274cffb805b25",
+  "routine_item": {
+    "item_key": "health",
+    "knowledge_ref": "ctower.beat.health",
+    "document_id": "b5d134cf-b227-57c4-906c-e7df295efca9",
+    "owner_seat": "ctower-commander",
+    "escalation_seat": "ctower-commander"
+  }
+}

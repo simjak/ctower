@@ -96,7 +96,7 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0080_routine_item_document_pins.sql",
-    "schema_sha256": ("sha256:7dd056b70a364e9949c7819bc0739a539ad0457cba97494f51fcaf77a0b7c7a0"),
+    "schema_sha256": ("sha256:182e52b12657d5a396075c3fa71b8dc4406c46e1150eb9afbf7f51173eb9d775"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:1f52d73a3183653115a48de1b66a8991bb010226b122a85cb7bd09983e83613c"

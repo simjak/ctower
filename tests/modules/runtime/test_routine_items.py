@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
 
+from ctower_kernel.runtime import (
+    CatchUpPolicy,
+    ConcurrencyPolicy,
+    RoutineRevision,
+    ScheduleKind,
+)
 from ctower_kernel.runtime.items import (
     CompleteRoutineWorkItemCommand,
+    EscalationUnresolvedReason,
+    RoutineAlarmEpisode,
+    RoutineAlarmEpisodeState,
     RoutineAlarmKind,
     RoutineGateEvidence,
     RoutineItemSpec,
@@ -24,7 +34,9 @@ __all__: tuple[str, ...] = ()
 
 _DOCUMENT_ID = UUID("00000000-0000-4000-8000-000000000001")
 _SCHEDULED = datetime(2026, 8, 18, 6, 0, tzinfo=UTC)
+_DIGEST = "sha256:" + "a" * 64
 _NAIVE = datetime(2026, 8, 18, 6, 0)  # noqa: DTZ001 - the refusal under proof
+_MAX_TIMEOUT_SECONDS = 86400
 
 
 def test_routine_item_spec_has_a_knowledge_pointer_and_no_embedded_instructions() -> None:
@@ -254,6 +266,7 @@ def test_suppression_and_alarm_render_their_recorded_windows() -> None:
     alarm = RoutineWorkItemAlarm(
         alarm_id=uuid4(),
         routine_ref="mc-cron.operator-report@1",
+        revision_digest=_DIGEST,
         scheduled_for=_SCHEDULED,
         work_item_id=None,
         escalation_seat="ctower-commander",
@@ -264,3 +277,116 @@ def test_suppression_and_alarm_render_their_recorded_windows() -> None:
     assert suppression.response_payload()["window"] == _SCHEDULED.isoformat()
     assert alarm.response_payload()["work_item_id"] is None
     assert alarm.response_payload()["kind"] == "missed_window"
+    assert alarm.response_payload()["unresolved_reason"] is None
+
+
+def test_the_writer_can_never_author_a_window_that_ends_before_it_starts() -> None:
+    """F1 world: only the test derived an expiry from wall time; the writer cannot.
+
+    The production path sets ``window_ends_at = scheduled_for + timeout_seconds``.
+    ``timeout_seconds`` is bounded to at least one second by the Routine revision
+    value type and again by the ``routine_revisions`` column check, so migration
+    0079's ``window_ends_at > scheduled_for`` constraint is unreachable from it.
+    """
+
+    for refused in (0, -1, _MAX_TIMEOUT_SECONDS + 1):
+        with pytest.raises(ValueError, match="Routine timeout is outside"):
+            _revision_with_timeout(refused)
+    for accepted in (1, 600, _MAX_TIMEOUT_SECONDS):
+        revision = _revision_with_timeout(accepted)
+        assert _SCHEDULED + timedelta(seconds=revision.timeout_seconds) > _SCHEDULED
+
+    ledger = (
+        Path(__file__).parents[3]
+        / "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
+    ).read_text(encoding="utf-8")
+    assert "timeout_seconds integer NOT NULL CHECK (timeout_seconds BETWEEN 1 AND 86400)" in ledger
+
+
+def test_alarm_observation_binds_its_unresolved_reason_to_the_unresolved_kind() -> None:
+    with pytest.raises(ValueError, match="unresolved escalation observation"):
+        _alarm(RoutineAlarmKind.MISSED_WINDOW, EscalationUnresolvedReason.STALE)
+    with pytest.raises(ValueError, match="unresolved escalation observation"):
+        _alarm(RoutineAlarmKind.ESCALATION_UNRESOLVED, None)
+
+    episode = RoutineAlarmEpisode(
+        tenant_id=uuid4(),
+        routine_ref="mc-cron.operator-report@1",
+        revision_digest=_DIGEST,
+        scheduled_for=_SCHEDULED,
+        observations=(
+            _alarm(RoutineAlarmKind.DEGRADED_READ, None),
+            _alarm(RoutineAlarmKind.MISSED_WINDOW, None),
+        ),
+    )
+    assert episode.state is RoutineAlarmEpisodeState.CONFIRMED_UNCONSUMED
+    assert episode.ordinary_alarms == 1
+    assert episode.response_payload()["state"] == "confirmed-unconsumed"
+
+
+def test_alarm_episode_refuses_an_empty_or_repeated_observation_set() -> None:
+    with pytest.raises(ValueError, match="at least one observation"):
+        _episode(())
+    with pytest.raises(ValueError, match="each observation kind at most once"):
+        _episode(
+            (
+                _alarm(RoutineAlarmKind.DEGRADED_READ, None),
+                _alarm(RoutineAlarmKind.DEGRADED_READ, None),
+            )
+        )
+    recovered = _episode(
+        (
+            _alarm(RoutineAlarmKind.DEGRADED_READ, None),
+            _alarm(RoutineAlarmKind.RECOVERED_RECEIPTED, None),
+        )
+    )
+    unresolved = _episode(
+        (_alarm(RoutineAlarmKind.ESCALATION_UNRESOLVED, EscalationUnresolvedReason.FOREIGN_SCOPE),)
+    )
+    assert recovered.state is RoutineAlarmEpisodeState.RECOVERED_RECEIPTED
+    assert recovered.ordinary_alarms == 0
+    assert unresolved.state is RoutineAlarmEpisodeState.ESCALATION_UNRESOLVED
+
+
+def _revision_with_timeout(timeout_seconds: int) -> RoutineRevision:
+    return RoutineRevision(
+        routine_ref="mc-cron.operator-report@1",
+        revision_digest=_DIGEST,
+        schedule_kind=ScheduleKind.MINUTE_HOUR_SET,
+        timezone="UTC",
+        local_time=None,
+        concurrency=ConcurrencyPolicy.ALWAYS_ENQUEUE_BOUNDED,
+        catch_up=CatchUpPolicy.SKIP_MISSED,
+        catch_up_cap=1,
+        handler_kind="routine_item",
+        timeout_seconds=timeout_seconds,
+        component_digests=("sha256:" + "b" * 64,),
+        minute_marks=(0,),
+        routine_item=_spec(),
+    )
+
+
+def _alarm(
+    kind: RoutineAlarmKind, reason: EscalationUnresolvedReason | None
+) -> RoutineWorkItemAlarm:
+    return RoutineWorkItemAlarm(
+        alarm_id=uuid4(),
+        routine_ref="mc-cron.operator-report@1",
+        revision_digest=_DIGEST,
+        scheduled_for=_SCHEDULED,
+        work_item_id=uuid4(),
+        escalation_seat="ctower-commander",
+        kind=kind,
+        recorded_at=_SCHEDULED,
+        unresolved_reason=reason,
+    )
+
+
+def _episode(observations: tuple[RoutineWorkItemAlarm, ...]) -> RoutineAlarmEpisode:
+    return RoutineAlarmEpisode(
+        tenant_id=uuid4(),
+        routine_ref="mc-cron.operator-report@1",
+        revision_digest=_DIGEST,
+        scheduled_for=_SCHEDULED,
+        observations=observations,
+    )

@@ -1,0 +1,34 @@
+{
+  "schema_id": "ctower.routine/v4",
+  "routine_ref": "ctower.beat.digest@1",
+  "schedule": {
+    "kind": "minute_hour_set",
+    "timezone": "Europe/Vilnius",
+    "minutes": [
+      12
+    ],
+    "hours": [
+      7
+    ]
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 86400,
+  "handler_kind": "routine_item",
+  "component_digests": [
+    "sha256:320417a0a6e5e2080f68fb135b924421a86a1270febfda5d12832ab6eb8e49ea"
+  ],
+  "activity_gate": {
+    "kind": "always"
+  },
+  "revision_digest": "sha256:15c8d32533630a4268bb295beb54ca43e6a485b8fee6075a241310acc32b2345",
+  "routine_item": {
+    "item_key": "digest",
+    "knowledge_ref": "ctower.beat.digest",
+    "document_id": "a4a29e76-19e6-5563-be0c-5ee81e3fe6ba",
+    "owner_seat": "ctower-commander",
+    "escalation_seat": "ctower-commander"
+  }
+}

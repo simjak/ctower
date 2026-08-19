@@ -1226,3 +1226,20 @@ path = "tests/contracts/routine_items"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/contracts/routine_items", "-q"]
 timeout_seconds = 120
+
+[[suite]]
+id = "routine-work-item-acceptance"
+owner = "CT-I1-035"
+phase = "CT-I1-035"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_routine_items.py", "test_routine_item_episodes.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_routine_items.py",
+  "tests/acceptance/increment-1/test_routine_item_episodes.py",
+  "-q",
+]
+timeout_seconds = 900

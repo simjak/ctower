@@ -2,7 +2,7 @@
   "schema": "ctower.migrations/v4",
   "adoption_baseline": {
     "through": "0080_routine_item_document_pins.sql",
-    "schema_sha256": "sha256:7dd056b70a364e9949c7819bc0739a539ad0457cba97494f51fcaf77a0b7c7a0",
+    "schema_sha256": "sha256:182e52b12657d5a396075c3fa71b8dc4406c46e1150eb9afbf7f51173eb9d775",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:1f52d73a3183653115a48de1b66a8991bb010226b122a85cb7bd09983e83613c"
   },
@@ -743,7 +743,7 @@
     },
     {
       "path": "0079_routine_work_items.sql",
-      "sha256": "sha256:be7d869d384d191396e1118f6b320285d1dadb47ba3a5eeac2f1a9ee05b9ff12",
+      "sha256": "sha256:0225d51bf4ef92da17eae392f47af1e89c9079260b7e1a22ee07350dbbce2b40",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_routine_items.py::test_ac_rwi_01_fire_appends_one_pointer_only_inbox_item_and_replays_zero",

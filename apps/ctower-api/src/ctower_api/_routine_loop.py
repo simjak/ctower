@@ -32,6 +32,11 @@ _PACK_PATHS = (
     "routines/ctower.dream.ctower/v1.yaml",
     "routines/ctower.dream.bh-loop/v1.yaml",
     "routines/ctower.dream.fleet/v1.yaml",
+    "routines/ctower.beat.health/v1.yaml",
+    "routines/ctower.beat.director-drive/v1.yaml",
+    "routines/ctower.beat.bhloop/v1.yaml",
+    "routines/ctower.beat.sprint/v1.yaml",
+    "routines/ctower.beat.digest/v1.yaml",
     "routines/mc-cron.manibo-report/v1.yaml",
     "routines/mc-cron.structural-report/v1.yaml",
     "routines/mc-cron.manibo-merge-watch/v1.yaml",
@@ -47,6 +52,11 @@ _EXPECTED_ROUTINE_REFS = frozenset(
         "ctower.dream.ctower@1",
         "ctower.dream.bh-loop@1",
         "ctower.dream.fleet@1",
+        "ctower.beat.health@1",
+        "ctower.beat.director-drive@1",
+        "ctower.beat.bhloop@1",
+        "ctower.beat.sprint@1",
+        "ctower.beat.digest@1",
         "mc-cron.manibo-report@1",
         "mc-cron.structural-report@1",
         "mc-cron.manibo-merge-watch@1",
@@ -106,7 +116,7 @@ class RoutineLoop:
 
 
 def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
-    """Load only the twelve authored packs and reject every untyped field."""
+    """Load the complete seventeen-reference registry and reject every untyped field."""
 
     revisions = tuple(_load_revision(pack_root / relative) for relative in _PACK_PATHS)
     references = {revision.routine_ref for revision in revisions}

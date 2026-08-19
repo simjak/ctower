@@ -18771,7 +18771,7 @@
           "$ref": "#/$defs/routineItem"
         },
         "routine_ref": {
-          "pattern": "^mc-cron\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "pattern": "^(ctower\\.beat|mc-cron)\\.[a-z][a-z0-9._-]*@[1-9][0-9]*$",
           "type": "string"
         },
         "schedule": {
@@ -20636,7 +20636,7 @@
     {
       "id": "https://ctower.dev/contracts/runtime/routine-v4.schema.json",
       "path": "contracts/runtime/routine-v4.schema.json",
-      "sha256": "sha256:27fd2b6f66d80418d4cd791f0497e2ebd2eb2240b3b2bfd26d99f5ec35b34333"
+      "sha256": "sha256:1150fad64ec659e1cea770a5099f18e029a9d220ecf0aaf998d5a6d24b87e509"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/routine-work-item-alarm.schema.json",

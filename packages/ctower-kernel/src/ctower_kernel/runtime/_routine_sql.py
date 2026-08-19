@@ -31,9 +31,9 @@ from ctower_kernel.runtime import (
     _routine_rows,
 )
 from ctower_kernel.runtime._retirement_guard import lock_routine_tenant, routine_is_retired
+from ctower_kernel.runtime._routine_alarms_sql import append_episode_observations
 from ctower_kernel.runtime._routine_ids import stable_uuid7 as _stable_uuid7
 from ctower_kernel.runtime._routine_work_items_sql import (
-    _append_expired_work_item_alarms,
     _append_work_item,
     _append_work_item_suppression,
     _open_work_item,
@@ -211,9 +211,7 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                 """,
                 (next_fire, now, tenant_id, _digest(revision.revision_digest)),
             )
-        alarms.extend(
-            _append_expired_work_item_alarms(connection, tenant_id, actor_principal_id, now)
-        )
+        alarms.extend(append_episode_observations(connection, tenant_id, actor_principal_id, now))
         watermark = _scheduler_watermark(connection, tenant_id, now)
     return SchedulerScan(
         tenant_id=tenant_id,
@@ -272,11 +270,6 @@ def _apply_work_item_blocker(
     blockers: dict[str, UUID],
 ) -> OccurrencePlan:
     if revision.routine_item is None or plan.outcome is not OccurrenceOutcome.QUEUED:
-        return plan
-    if (
-        revision.activity_gate is not None
-        and revision.activity_gate.kind == "new_movement_since_watermark"
-    ):
         return plan
     blocker = blockers.get(revision.routine_ref)
     if blocker is None:
