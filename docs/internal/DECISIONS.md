@@ -3162,3 +3162,81 @@ This decision establishes that shape and the rescue boundary.
    one-file/one-verdict/one-head regression proof, the bounded 31-source rescue, and the corresponding
    manifest. It adds no product route, principal, runtime authority, feature flag, environment
    variable, or gate waiver.
+
+## D72 — The harness-adapter seam: five verbs over the existing Supervisor Interface, one credential pool per harness, and never both layers (architecture + authority, 2026-08-19)
+
+D10 already owns process control — `probe`, `launch`, `observe`, `deliver_input`, `interrupt`,
+`terminate`, `snapshot`, `adopt`, every mutation carrying attempt ID, idempotent command ID, and
+fencing epoch — and that vocabulary is not reopened here. What it deliberately does not model is the
+harness-facing layer above it: `launch` cannot report that the pane it started is serving a different
+model than the one requested, and `probe` cannot report that a lane is alive but past its context
+window and therefore no longer trustworthy. The fleet has been running that layer by hand in five
+Mission Control scripts, and every rule below was paid for by a recorded production incident. This
+decision fixes the seam's shape and admits its build tickets. It supersedes nothing.
+
+1. **The seam is one revision-pinned `HarnessSpec` plus exactly five verbs.** The spec is DATA —
+   key, revision, artifact and config digests, input/output protocol, declared capabilities, ACK
+   predicate, liveness evidence sources, declared context-window percentage, probe shape, and pool
+   cache-invalidation hook — parsed without executing package code, the shape D11 already requires of
+   every extension manifest. An adapter that cannot declare a capability does not discover it at
+   runtime, and an unknown, incompatible, revoked, or digest-mismatched spec is a refusal and never a
+   fallback to a generic process. The verbs are `spawn`, `liveness`, `collect`, `writeback`, and
+   `teardown`, composed over the existing Supervisor Interface. `spawn` returns a receipt only after
+   the binding's own declared ACK predicate is observed, because delivery is not acknowledgement.
+   `liveness` never returns a boolean and never defaults to alive; cap and saturation are classified
+   before any working marker and win over it, and an unobservable substrate is named rather than
+   guessed. `collect` derives artifacts from committed refs and durable records only, never from pane
+   text, and never depends on the seat's cooperation. `writeback` writes every fact as the seat under
+   the seat's own project-seat credential inside the exhaustive `capture`/`transition`/`evidence`
+   scopes, emits a stage change only as a REQUEST, and reports the server's answer; an adapter
+   holding an operator or commander credential is a design failure. `teardown`'s `checkpoint`, `park`,
+   and `reap` orders preserve work and continuation, and `reap` is refused while sole work is
+   unpushed. Harness-private observation exists only inside a binding and crosses the seam as typed
+   facts.
+2. **The credential pool is a sibling Interface resolved at `spawn`, never a sixth verb.** One pool
+   per harness exposing `acquire`, `meter`, `limits`, `rotate`, and `probe`, with new credential
+   material entering only through `request_mint`, which the pool may ask for and never perform. There
+   is deliberately NO copy verb. OAuth refresh tokens here are single-use chains, so installing a
+   copied auth file replays a consumed token and the provider revokes the whole chain — every grant
+   derived from that login dies at once. Every entry is its own device-flow mint; rotation switches
+   which entry an attempt rides, never which file sits where. Secrets remain references and never
+   values, and observation projects a strict named-field allowlist because credential fields sit
+   adjacent to the metadata being read. Pool membership stays operator-owned in every class: ctower
+   acquires, meters, and reports, and never mints an entry, refills credits, or raises a plan;
+   reaching a credential is not entitlement to it. Credentials are read at spawn, so a rotation
+   reaches a running lane only through a respawn — D13's active-pointer rule applied to credentials —
+   and a `rotate` is incomplete until its declared cache-invalidation hook completes, with any
+   pre-hook observation discarded rather than recorded.
+3. **Never both.** Where the harness ships the layer, the adapter configures and observes it. Where
+   the harness lacks the layer, the adapter provides it through ctower's registry and the existing
+   ceremonies. Never both. Two rotation policies over one credential set do not add redundancy; they
+   add a race over single-use refresh chains, which is the failure that revokes everything at once.
+   The choice is per layer and per harness, read from that binding's answered capability survey and
+   never from the harness's name, and a binding whose survey is unanswered has no decidable role and
+   does not enter the conformance suite. Ctower's contribution where a layer already exists is
+   registry, ledger, policy, configuration, and observation — not a second rotation policy competing
+   with a working one, and never a write to the harness's own auth state. One writer per file.
+4. **AUTH is not QUOTA is not REACH: every pool entry carries three orthogonal states.** `auth` is
+   `healthy`, `lineage-dead`, or `chain-burned`; `quota` is `available`, capped with a known reset,
+   capped with an unknown reset, `unfunded`, or `unknown`; `reach` is `ok`, `edge-challenged`, or
+   `unknown`. No path collapses them, an entry is selectable only when all three are clear, and
+   `unknown` is never `available`. A mint moves only the `auth` axis, so no ceremony adds quota and a
+   reachability fault never routes to a credential ceremony — a CDN challenge is a 403 that a
+   single-status model reads as dead lineage, which would burn a fresh single-use device flow against
+   a credential that was never broken and still not work. Entries are keyed by the credential's own
+   decoded identity claim and never by its label, and a discovered-but-unenrolled identity is never
+   selectable pending an operator keep-or-evict decision. Correlated identical failure across
+   independent identities behind one egress is evidence about the path, not about N credentials.
+   `limits` returns per-entry rows carrying each account's own reset clock and never an aggregate
+   substrate verdict, and acquisition fails only when every entry is unselectable.
+5. **CT-I1-041 through CT-I1-044 are admitted** to deliver the seam and its `hermes` binding, the
+   `claude-code` binding that earns the public Seam, the `codex` binding and the
+   runtime-under-a-harness distinction it enforces, and the later wave's blocking survey. D10's
+   earning rule is unchanged: the public Seam publishes only when two real Adapters plus one
+   deterministic fault-injection fake pass one shared conformance suite, and seven candidate adapters
+   do not earn it faster. These items add no operator or commander credential in an adapter, no stage
+   advancement, no scheduling or cadence authority, no remote or image Seam, no record-tier
+   connection from the runner, no product route, and no gate waiver. INV-58's CommandGuard at the
+   final pre-dispatch boundary remains a hard prerequisite that moves with the first dispatch rather
+   than being waived, so this epic's activation ordering against Increment 2 is an operator/commander
+   scope decision and not a lane's.
