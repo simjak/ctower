@@ -74,6 +74,10 @@ def test_beat_effect_contract_is_strict_and_http_list_is_authored() -> None:
     paths = cast(dict[str, object], document["paths"])
     assert "/v1/runtime/beat-dispatches" in paths
     assert "/v1/runtime/beat-routines" in paths
+    assert "/v1/runtime/beat-routines/{routine_ref}/retire" in paths
+    schemas = cast(dict[str, object], cast(dict[str, object], document["components"])["schemas"])
+    assert "BeatRoutineRetireRequest" in schemas
+    assert "BeatRoutineRetirementReceipt" in schemas
 
 
 def _json(path: Path) -> dict[str, object]:
