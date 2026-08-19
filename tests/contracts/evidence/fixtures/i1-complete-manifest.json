@@ -1394,6 +1394,17 @@
     },
     {
       "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-SES-05",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-ses-05 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-007",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-TM-01",
       "disposition": "applicable",
       "reason": "SPEC#ac-tm-01 declares this criterion; in force at the active phase",
