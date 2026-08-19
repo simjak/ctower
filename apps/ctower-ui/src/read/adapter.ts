@@ -1,9 +1,4 @@
-import {
-  CADENCE_SOURCE_LABEL,
-  readCadenceRegistry,
-  readCrewSessions,
-  readWorkSessions,
-} from "./runtimeReads";
+import { readCrewSessions, readWorkSessions } from "./runtimeReads";
 import { httpRecordAdapter } from "./httpRecordAdapter";
 import { readCrewProfile, readCrewRoster } from "./sources/crewRoster";
 import { readDeliveryMetrics } from "./sources/delivery";
@@ -48,7 +43,6 @@ export type ScreenKey =
   | "portfolio"
   | "ticket"
   | "inbox"
-  | "heartbeats"
   | "files"
   | "workspace"
   | "explorer"
@@ -66,7 +60,6 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   inbox:
     "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/correspondents" +
     " + /v1/inbox/messages + /v1/inbox/notifications + /promotion",
-  heartbeats: CADENCE_SOURCE_LABEL,
   files: "git tree",
   workspace: "live tmux sessions + git",
   explorer: "git worktree list + diff",
@@ -94,7 +87,6 @@ export const recordAdapter: RecordAdapter = {
   inboxCorrespondents: httpRecordAdapter.inboxCorrespondents,
   inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,
 
-  cadenceRegistry: readCadenceRegistry,
   authoredFiles: async (path: string | null): Promise<Reading<AuthoredFiles>> =>
     await reading(async () => await readAuthoredFiles(path)),
   sessionWorkspace: async (crew: string | null): Promise<Reading<SessionWorkspace>> =>

@@ -27,7 +27,6 @@ export const RAIL: readonly RailItem[] = [
   { href: "/board", label: "Dashboard", group: null },
   { href: "/inbox", label: "Inbox", group: null },
   { href: "/ticket", label: "Latest ticket", group: "Work" },
-  { href: "/heartbeats", label: "Heartbeats", group: "Work" },
   { href: "/metrics", label: "Metrics", group: "Work" },
   { href: "/feed", label: "Feed", group: "Session" },
   { href: "/workspace", label: "Workspace", group: "Session" },

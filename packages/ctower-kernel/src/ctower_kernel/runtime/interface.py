@@ -10,11 +10,15 @@ from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from ctower_kernel.runtime.beats import BeatDispatchEffect, BeatDispatchSpec
 from ctower_kernel.runtime.gates import ActivityGate
-from ctower_kernel.runtime.retirement import (
-    BeatRoutineRetireCommand,
-    BeatRoutineRetirementReceipt,
+from ctower_kernel.runtime.items import (
+    CompleteRoutineWorkItemCommand,
+    RoutineAlarmEpisode,
+    RoutineItemSpec,
+    RoutineWorkItem,
+    RoutineWorkItemAlarm,
+    RoutineWorkItemReceipt,
+    RoutineWorkItemSuppression,
 )
 
 if TYPE_CHECKING:
@@ -50,7 +54,7 @@ __all__ = [
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 _FIXED_HANDLERS = frozenset({"synthetic_four_stage", "daily_backup", "record_anchor"})
-_HANDLERS = _FIXED_HANDLERS | {"dream_dispatch", "beat_dispatch"}
+_HANDLERS = _FIXED_HANDLERS | {"dream_dispatch", "routine_item"}
 _MAX_CATCH_UP = 100
 _MAX_TIMEOUT_SECONDS = 86400
 _MAX_MINUTE_MARK = 59
@@ -341,7 +345,10 @@ class SchedulerScan:
     occurrences: tuple[RoutineOccurrence, ...]
     jobs: tuple[FixedOperationJob, ...]
     dream_dispatches: tuple[DreamDispatchEffect, ...] = ()
-    beat_dispatches: tuple[BeatDispatchEffect, ...] = ()
+    work_items: tuple[RoutineWorkItem, ...] = ()
+    work_item_suppressions: tuple[RoutineWorkItemSuppression, ...] = ()
+    work_item_alarms: tuple[RoutineWorkItemAlarm, ...] = ()
+    session_writes: tuple[UUID, ...] = ()
 
 
 class _RoutineStore(Protocol):
@@ -353,9 +360,11 @@ class _RoutineStore(Protocol):
 
     def tenant_ids(self) -> tuple[UUID, ...]: ...
 
-    def retire_beat_routine(
-        self, actor: Actor, command: BeatRoutineRetireCommand
-    ) -> BeatRoutineRetirementReceipt | RecordProblem: ...
+    def complete_routine_work_item(
+        self, actor: Actor, command: CompleteRoutineWorkItemCommand
+    ) -> RoutineWorkItemReceipt | RecordProblem: ...
+
+    def alarm_episodes(self, tenant_id: UUID) -> tuple[RoutineAlarmEpisode, ...]: ...
 
 
 class _FixedOperationStore(Protocol):
@@ -430,12 +439,15 @@ class Routine:
     def tenant_ids(self) -> tuple[UUID, ...]:
         return self._store.tenant_ids()
 
-    def retire_beat_routine(
-        self,
-        actor: Actor,
-        command: BeatRoutineRetireCommand,
-    ) -> BeatRoutineRetirementReceipt | RecordProblem:
-        return self._store.retire_beat_routine(actor, command)
+    def complete_routine_work_item(
+        self, actor: Actor, command: CompleteRoutineWorkItemCommand
+    ) -> RoutineWorkItemReceipt | RecordProblem:
+        return self._store.complete_routine_work_item(actor, command)
+
+    def alarm_episodes(self, tenant_id: UUID) -> tuple[RoutineAlarmEpisode, ...]:
+        """Project every append-only alarm episode this tenant has recorded."""
+
+        return self._store.alarm_episodes(tenant_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -456,7 +468,7 @@ class RoutineRevision:
     dream_dispatch: DreamDispatchSpec | None = None
     minute_marks: tuple[int, ...] = ()
     hour_marks: tuple[int, ...] | None = None
-    beat_dispatch: BeatDispatchSpec | None = None
+    routine_item: RoutineItemSpec | None = None
     activity_gate: ActivityGate | None = None
 
     def __post_init__(self) -> None:
@@ -525,8 +537,8 @@ def _validate_revision_identity(revision: RoutineRevision) -> None:
         raise ValueError("Routine handler is outside the authored fixed subset")
     if (revision.handler_kind == "dream_dispatch") != (revision.dream_dispatch is not None):
         raise ValueError("only a dream-dispatch Routine carries effect facts")
-    if (revision.handler_kind == "beat_dispatch") != (revision.beat_dispatch is not None):
-        raise ValueError("only a beat-dispatch Routine carries fleet beat facts")
+    if (revision.handler_kind == "routine_item") != (revision.routine_item is not None):
+        raise ValueError("only a routine-item Routine carries Inbox work-item facts")
 
 
 def _validate_revision_limits(revision: RoutineRevision) -> None:

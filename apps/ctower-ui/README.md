@@ -105,7 +105,6 @@ and no screen knows a URL.
 | Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`, `/sessions`)                                                                       | a typed feed, through `adapter.ts` alone                                       |
 | Portfolio           | ctower read API (`/v1/board` once per configured project, `/v1/inbox/threads`)                                                                 | the same typed feed, through `adapter.ts` alone                                |
 | Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`, `/v1/inbox/correspondents`)                                                    | —                                                                              |
-| Heartbeats          | ctower read API (`/v1/runtime/beat-routines`, `/v1/runtime/beat-dispatches`)                                                                   | —                                                                              |
 | Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
 | Workspace · Feed    | tmux `list-sessions` / `list-panes` / `capture-pane -p -J`                                                                                     | recorded session facts                                                         |
 | Explorer            | `git worktree list` + `git diff <resolved trunk>...HEAD`                                                                                       | recorded worktree facts                                                        |
@@ -245,17 +244,16 @@ this view carries none, which the suite asserts rather than assumes.
 
 ### Honest empty states — and the difference between empty and unreachable
 
-Board, Ticket, Inbox and Heartbeats render live record facts. Feed session facts, Files, Workspace
+Board, Ticket and Inbox render live record facts. Feed session facts, Files, Workspace
 and Explorer have no source in ctower today, so each renders its approved layout and
 an explicit block naming what is missing. No screen invents a number, a name, a duration or a
 token count.
 
-Three panels stopped citing future work in this round, because the record began answering for
-them: the ticket **work timeline** reads `/v1/tickets/{id}/sessions`, the crew profile's
-**session cost** reads `/v1/projects/{key}/sessions` filtered by the crew's own name, and
-**Heartbeats** reads the instance's cadence registry instead of the host's crontab. A ticket, a
-crew or a routine that holds none of those is now a *silence* — the record answered and holds
-none — which is a different claim from the missing capability those panels used to declare.
+Two panels stopped citing future work in this round, because the record began answering for
+them: the ticket **work timeline** reads `/v1/tickets/{id}/sessions`, and the crew profile's
+**session cost** reads `/v1/projects/{key}/sessions` filtered by the crew's own name. A ticket or
+crew that holds none of those is now a *silence* — the record answered and holds none — which is
+a different claim from the missing capability those panels used to declare.
 
 The block also says **which kind of nothing** it is. `ticket.comment_added`, `proof.changed`,
 `workflow.changed` and `work.changed` are recorded kinds: a ticket carrying none of them is a

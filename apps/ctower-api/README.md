@@ -61,18 +61,10 @@ before mutation, and records substrate-bound lane/model facts plus the Routine o
 Runtime Interface. The same boundary exposes the online-only operator `dream-lane bind` ceremony: it
 derives the principal from authentication and atomically appends one event plus one immutable lane binding;
 non-operators and second bindings receive typed refusals.
-The same composition exposes the five registered fleet-beat revisions and their immutable effects through
-operator-only reads. The registration read includes exact timezone-local minute/hour marks and next fire
-time; digest and sprint use literal Europe/Vilnius hours so their UTC instants follow DST. Each
-corrected digest replaces only the tenant's active trigger, so this read remains exactly five while prior
-revision/effect facts remain immutable. Each effect carries the full digest-verified prompt baked into the revision and the fixed `commander` target; the
-API neither injects tmux input nor accepts a delivery claim. Server-side delivery custody remains absent
-until a separately authorized lane-binding ceremony exists.
-`POST /v1/runtime/beat-routines/{routine_ref}/retire` is the one beat mutation. It accepts an exact
-versioned fleet-beat path and idempotency key but no body, verifies persisted operator authority before
-target disclosure, and returns the immutable retirement receipt. Its transaction preserves history and
-removes only the active trigger; the database guard prevents registration by an older binary from restoring
-that trigger. The surface does not extend to other Routine families or Commander authority.
+Activity-gated Routine revisions emit one pointer-only Inbox work item for the owning seat. The item carries
+typed gate evidence and a Knowledge reference; the API exposes no session-targeted dispatch or prompt delivery
+path. A consumed item closes only with a receipt naming the delivered artifact, while blocking, missed-window,
+and degraded-read facts remain visible as typed immutable records.
 The artifact contains a closed first-party connector registry whose only admitted implementation is the real
 GitLab v4 HTTP Adapter for the narrow GitLab Issue co-source. A strict Catalog v2 payload becomes an
 immutable runtime binding plus an unresolved secret-reference name; deployment supplies the resolved token

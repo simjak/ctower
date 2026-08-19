@@ -30,7 +30,6 @@ from ctowerctl._argument_types import (
 from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
 from ctowerctl._digest_parser import digest_parser
 from ctowerctl._dispatch_parser import (
-    beat_dispatch_parser,
     dream_dispatch_parser,
     dream_lane_parser,
 )
@@ -105,7 +104,6 @@ def _parser() -> argparse.ArgumentParser:
     _spool_parser(areas.add_parser("spool"))
     attention_parser(areas.add_parser("attention"))
     dream_dispatch_parser(areas.add_parser("dream-dispatch"))
-    beat_dispatch_parser(areas.add_parser("beat-dispatch"))
     dream_lane_parser(areas.add_parser("dream-lane"))
     return parser
 

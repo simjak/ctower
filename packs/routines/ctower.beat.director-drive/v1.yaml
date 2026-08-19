@@ -1,19 +1,33 @@
 {
-  "schema_id": "ctower.routine/v3",
+  "schema_id": "ctower.routine/v4",
   "routine_ref": "ctower.beat.director-drive@1",
-  "revision_digest": "sha256:27427daf99fb64ba5d2d4bbd48fe1023d924289cd99c2332ba48add12b3649a6",
-  "schedule": {"kind": "minute_hour_set", "timezone": "UTC", "minutes": [4, 34], "hours": null},
+  "schedule": {
+    "kind": "minute_hour_set",
+    "timezone": "UTC",
+    "minutes": [
+      4,
+      34
+    ],
+    "hours": null
+  },
   "dst_policy": "wall_clock_once",
   "concurrency": "always_enqueue_bounded",
   "catch_up": "skip_missed",
   "catch_up_cap": 1,
   "timeout_seconds": 1800,
-  "handler_kind": "beat_dispatch",
-  "component_digests": ["sha256:f2fcdf0589b945a89a6d29e404f33b1221f4e55c3987c1cf550212f258e3fe1c"],
-  "beat_dispatch": {
-    "beat_key": "director-drive", "prompt_source": "state/beats/director-drive.txt",
-    "prompt_sha256": "sha256:f2fcdf0589b945a89a6d29e404f33b1221f4e55c3987c1cf550212f258e3fe1c",
-    "prompt": "DIRECTOR DRIVE (every 30m, operator standing order). Process both durable director inboxes first: run tools/notify --read --as director, then list and read pending native threads with tools/ctower-seat-inbox-read --seat director. Verify every commander claim against primary evidence. Break stalls by name. Drive the open program set: R2931 capacity+credentials; R2933 pool feature+docs; drills; R2907/R2926 transfer suite; R2919 load tests; R2932 regression gates. Escalate operator decisions immediately. Record movement in durable state. Count tasks, never time.\n",
-    "target_session": "commander"
+  "handler_kind": "routine_item",
+  "component_digests": [
+    "sha256:80aa5ca0b25a24e069047f52381b95e5ea3e01ada5af1a9af4c5a38596a2f336"
+  ],
+  "activity_gate": {
+    "kind": "always"
+  },
+  "revision_digest": "sha256:f30357e10ec1b15624ed8a2df4e0f2b9fef9942cdd3f10a9ca18ae543e559003",
+  "routine_item": {
+    "item_key": "director-drive",
+    "knowledge_ref": "ctower.beat.director-drive",
+    "document_id": "8c9ab2d9-e870-5667-937f-158ef194f694",
+    "owner_seat": "ctower-commander",
+    "escalation_seat": "ctower-commander"
   }
 }

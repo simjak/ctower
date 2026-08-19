@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import time
 from typing import cast
+from uuid import UUID
 
 from ctower_kernel.runtime import (
     CatchUpPolicy,
@@ -13,7 +14,7 @@ from ctower_kernel.runtime import (
     ScheduleKind,
     _gate_sql,
 )
-from ctower_kernel.runtime.beats import BeatDispatchSpec
+from ctower_kernel.runtime.items import RoutineItemSpec
 
 
 def revision(row: dict[str, object]) -> RoutineRevision:
@@ -33,14 +34,14 @@ def revision(row: dict[str, object]) -> RoutineRevision:
             minimum_model_tier=str(row["minimum_model_tier"]),
             excluded_model_families=tuple(cast(list[str], row["excluded_model_families"])),
         )
-    beat_dispatch = None
-    if row.get("beat_key") is not None:
-        beat_dispatch = BeatDispatchSpec(
-            beat_key=str(row["beat_key"]),
-            prompt_source=str(row["prompt_source"]),
-            prompt_sha256="sha256:" + bytes(cast(bytes, row["prompt_sha256"])).hex(),
-            prompt=str(row["prompt"]),
-            target_session=str(row["target_session"]),
+    routine_item = None
+    if row.get("item_key") is not None:
+        routine_item = RoutineItemSpec(
+            item_key=str(row["item_key"]),
+            knowledge_ref=str(row["knowledge_ref"]),
+            document_id=cast(UUID, row["document_id"]),
+            owner_seat=str(row["owner_seat"]),
+            escalation_seat=str(row["escalation_seat"]),
         )
     return RoutineRevision(
         routine_ref=str(row["routine_ref"]),
@@ -64,6 +65,6 @@ def revision(row: dict[str, object]) -> RoutineRevision:
             if row["schedule_hours"] is not None
             else None
         ),
-        beat_dispatch=beat_dispatch,
+        routine_item=routine_item,
         activity_gate=_gate_sql.activity_gate_from_row(row),
     )

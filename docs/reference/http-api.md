@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **107 operations**. The API schema version is separate
+durable-ticket slice*, version `0.0.0`. It declares **104 operations**. The API schema version is separate
 from the repository release version.
 
 !!! warning "Development contract, not a supported API"
@@ -42,7 +42,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 234 values, plus the optional diagnostic fields `command_id`, `current_version`,
+closed enumeration of 231 values, plus the optional diagnostic fields `command_id`, `current_version`,
 `unmet_facts`, and `prohibited_classes`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters

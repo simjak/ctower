@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
-from ctowerctl import _beat_dispatch_commands, _credential_commands, _ruling_commands
+from ctowerctl import _credential_commands, _ruling_commands
 from ctowerctl._attention_commands import mutation_command_names as attention_mutations
 from ctowerctl._company_commands import mutation_command_names as company_mutations
 from ctowerctl._company_commands import query_command_names as company_queries
@@ -41,7 +41,6 @@ __all__ = ["assert_explicit_handlers_cover_generated_operations"]
 _FORBIDDEN_MUTATION_NAMES = frozenset(
     {
         "bootstrap first-tenant",
-        "beat-dispatch retire",
         "credential seat issue",
         "credential seat revoke",
         "dream-lane bind",
@@ -76,7 +75,6 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         | attention_mutations()
         | dream_dispatch_mutations()
         | dream_lane_mutations()
-        | _beat_dispatch_commands.mutation_command_names()
         | (request_mutations() | _ruling_commands.mutation_command_names())
         | spawn_mutations()
     )
@@ -91,7 +89,6 @@ def assert_explicit_handlers_cover_generated_operations() -> None:
         | pool_queries()
         | session_queries()
         | dream_dispatch_queries()
-        | _beat_dispatch_commands.query_command_names()
         | (digest_queries() | request_queries() | _ruling_commands.query_command_names())
         | spawn_queries()
     )

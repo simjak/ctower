@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-work-item.schema.json",
+  "title": "RoutineWorkItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "work_item_id", "tenant_id", "routine_ref", "revision_digest",
+    "window", "owner_seat", "escalation_seat", "knowledge_ref", "document_id", "gate_evidence",
+    "status", "receipt"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.routine-work-item/v1"},
+    "work_item_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "revision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "window": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scheduled_for", "ends_at"],
+      "properties": {
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "ends_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "owner_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+    "escalation_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+    "knowledge_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+    "document_id": {"type": "string", "format": "uuid"},
+    "gate_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "result", "watermark_kind", "watermark_position", "observed_count", "detail"],
+      "properties": {
+        "kind": {"enum": ["always", "new_movement_since_watermark", "open_tickets_above"]},
+        "result": {"const": "fired"},
+        "watermark_kind": {"enum": ["none", "events.server_time", "tickets.server_time", "tickets.nonterminal"]},
+        "watermark_position": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+        "observed_count": {"type": "integer", "minimum": 0, "maximum": 1000000000},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "status": {"enum": ["open", "closed"]},
+    "receipt": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/receipt"}]}
+  },
+  "definitions": {
+    "receipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_ref", "delivered_at"],
+      "properties": {
+        "artifact_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+        "delivered_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

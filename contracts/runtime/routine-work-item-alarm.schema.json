@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-work-item-alarm.schema.json",
+  "title": "RoutineWorkItemAlarm",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "alarm_id", "routine_ref", "window", "work_item_id", "escalation_seat", "kind", "recorded_at"],
+  "properties": {
+    "schema_id": {"const": "ctower.routine-work-item-alarm/v1"},
+    "alarm_id": {"type": "string", "format": "uuid"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "window": {"type": "string", "format": "date-time"},
+    "work_item_id": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+    "escalation_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+    "kind": {"enum": ["missed_window", "degraded_read"]},
+    "recorded_at": {"type": "string", "format": "date-time"}
+  }
+}

@@ -25,19 +25,19 @@
   "catch_up": "skip_missed",
   "catch_up_cap": 1,
   "timeout_seconds": 900,
-  "handler_kind": "beat_dispatch",
+  "handler_kind": "routine_item",
   "component_digests": [
-    "sha256:556f4b6447e6d01c1c3a11f0068feca68fe3afb602008fb99599a17165aaf153"
+    "sha256:3656da615e645ac21c0308b05bf007796e504790e99a2d2cd87f87b2a9501dbb"
   ],
   "activity_gate": {
     "kind": "always"
   },
-  "beat_dispatch": {
-    "beat_key": "worktree-janitor-apply",
-    "prompt_source": "crontab/worktree-janitor-apply.txt",
-    "prompt_sha256": "sha256:556f4b6447e6d01c1c3a11f0068feca68fe3afb602008fb99599a17165aaf153",
-    "prompt": "Worktree janitor reconcile (R2945; migrated from the */5 flock crontab twin): run /srv/projects/mission-control/tools/worktree-janitor --apply. Reap a linked worktree ONLY when: no live tmux pane cwd inside it; no tracked changes or valuable untracked files; no commits ahead of its remote; exact HEAD authorized by a merged PR ref or contained in refreshed origin/main.",
-    "target_session": "commander"
-  },
-  "revision_digest": "sha256:09f750fc1708ceb5623f70491fa2b504679f37f0ae7e1f1f9e8ab5bc2e8ba7c8"
+  "revision_digest": "sha256:b5112191c7b0b358f37d0c37ea484681d523e05479af1faba20ae19a35efcf54",
+  "routine_item": {
+    "item_key": "worktree-janitor-apply",
+    "knowledge_ref": "mc-cron.worktree-janitor-apply",
+    "document_id": "b82a0ce2-280e-5a05-af2d-acb051441e6e",
+    "owner_seat": "ctower-commander",
+    "escalation_seat": "ctower-commander"
+  }
 }

@@ -468,26 +468,6 @@ inspect the complete flag grammar without receiving private inventory values:
 ctl dream-lane bind --help
 ```
 
-## Beat dispatch
-
-| Command | Positional | Flags |
-|---|---|---|
-| `beat-dispatch list` | — | — |
-| `beat-dispatch routines` | — | — |
-| `beat-dispatch retire` | `<routine_ref>` | required: `--command-id` |
-
-`beat-dispatch routines` lists active registered maintenance and activity-gated routines. Each row includes its
-schedule, prompt digest, target, next fire, and activity gate when one is registered. `list` returns immutable
-full-prompt dispatch effects. Registration is pack-driven; there is no general routine registration command.
-
-`retire` is an online-only, never-spooled operator mutation. Its positional value must be an exact versioned
-`ctower.beat.*@N` or `mc-cron.*@N` reference; it accepts no tenant, actor, schedule, prompt, digest, target,
-or request-file flag. Authority is the normal bounded stdin credential. Exact replay returns the same receipt.
-A later command for the same reference refuses as `beat-routine-already-retired`; unknown and foreign-only
-references refuse as `beat-routine-not-found`; a non-operator refuses as `beat-routine-retire-forbidden` before
-target disclosure. Retirement is terminal: later worker registration and an old binary after rollback cannot
-restore the active trigger.
-
 ## Migration (ctower-project)
 
 All eleven commands are authenticated and online-only. They are **not** spoolable.

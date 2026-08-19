@@ -209,7 +209,6 @@ class RailContractTests(unittest.TestCase):
                 "/explorer",
                 "/feed",
                 "/files",
-                "/heartbeats",
                 "/inbox",
                 "/metrics",
                 "/portfolio",

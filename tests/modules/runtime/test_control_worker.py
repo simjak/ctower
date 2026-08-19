@@ -43,9 +43,10 @@ from ctower_kernel.runtime import (
     RoutineRevision,
     SchedulerScan,
 )
-from ctower_kernel.runtime.retirement import (
-    BeatRoutineRetireCommand,
-    BeatRoutineRetirementReceipt,
+from ctower_kernel.runtime.items import (
+    CompleteRoutineWorkItemCommand,
+    RoutineAlarmEpisode,
+    RoutineWorkItemReceipt,
 )
 
 __all__: tuple[str, ...] = ()
@@ -80,10 +81,15 @@ class _RoutineStore:
         self.scans += 1
         return SchedulerScan(tenant_id, self.scans, datetime.now(UTC), (), ())
 
-    def retire_beat_routine(
-        self, actor: Actor, command: BeatRoutineRetireCommand
-    ) -> BeatRoutineRetirementReceipt | RecordProblem:
+    def complete_routine_work_item(
+        self, actor: Actor, command: CompleteRoutineWorkItemCommand
+    ) -> RoutineWorkItemReceipt | RecordProblem:
+        _ = actor, command
         raise NotImplementedError
+
+    def alarm_episodes(self, tenant_id: UUID) -> tuple[RoutineAlarmEpisode, ...]:
+        assert tenant_id == self.tenant_id
+        return ()
 
 
 class _ProjectionStore:

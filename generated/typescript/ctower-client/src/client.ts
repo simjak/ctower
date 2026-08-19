@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:7eb50a67373c1661dcaba6bb838a29ff0116952b6a641fd72033ddde050306de
+// Authored contract digest: sha256:901475c5c349e4d175b8e21823f432fffa3510d8b357d0382998196bd8a8a600
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -285,14 +285,6 @@ export type IssueSeatCredentialInput = Readonly<{
   readonly body: Models.SeatCredentialIssueRequest;
 }>;
 
-export type ListBeatDispatchEffectsInput = Readonly<{
-
-}>;
-
-export type ListBeatRoutinesInput = Readonly<{
-
-}>;
-
 export type ListDreamDispatchEffectsInput = Readonly<{
 
 }>;
@@ -475,11 +467,6 @@ export type ResolveCloseWorkflowInput = Readonly<{
   readonly body: Models.ResolveCloseRequest;
 }>;
 
-export type RetireBeatRoutineInput = Readonly<{
-  readonly "routineRef": string;
-  readonly "IdempotencyKey": string;
-}>;
-
 export type RevokeSeatCredentialInput = Readonly<{
   readonly "credentialId": string;
   readonly "IdempotencyKey": string;
@@ -594,8 +581,6 @@ export type OperationInputs = Readonly<{
   readonly "importEstateRulings": ImportEstateRulingsInput;
   readonly "ingestInboxNotification": IngestInboxNotificationInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
-  readonly "listBeatDispatchEffects": ListBeatDispatchEffectsInput;
-  readonly "listBeatRoutines": ListBeatRoutinesInput;
   readonly "listDreamDispatchEffects": ListDreamDispatchEffectsInput;
   readonly "listInboxCorrespondents": ListInboxCorrespondentsInput;
   readonly "listInboxThreads": ListInboxThreadsInput;
@@ -630,7 +615,6 @@ export type OperationInputs = Readonly<{
   readonly "relateRequestTicket": RelateRequestTicketInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
-  readonly "retireBeatRoutine": RetireBeatRoutineInput;
   readonly "revokeSeatCredential": RevokeSeatCredentialInput;
   readonly "runSyntheticWorkflow": RunSyntheticWorkflowInput;
   readonly "sendInboxMessage": SendInboxMessageInput;
@@ -697,8 +681,6 @@ export type OperationResults = Readonly<{
   readonly "importEstateRulings": Models.EstateImportResult;
   readonly "ingestInboxNotification": Models.InboxSendResult;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
-  readonly "listBeatDispatchEffects": Models.BeatDispatchEffectList;
-  readonly "listBeatRoutines": Models.BeatRoutineList;
   readonly "listDreamDispatchEffects": Models.DreamDispatchEffectList;
   readonly "listInboxCorrespondents": Models.InboxCorrespondentList;
   readonly "listInboxThreads": Models.InboxThreadList;
@@ -733,7 +715,6 @@ export type OperationResults = Readonly<{
   readonly "relateRequestTicket": Models.RequestChangeResult;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
-  readonly "retireBeatRoutine": Models.BeatRoutineRetirementReceipt;
   readonly "revokeSeatCredential": Models.SeatCredentialReceipt;
   readonly "runSyntheticWorkflow": Models.SyntheticRunReceipt;
   readonly "sendInboxMessage": Models.InboxSendResult;
@@ -1078,18 +1059,6 @@ export class CtowerClient {
     return this.execute("issueSeatCredential", input);
   }
 
-  public async listBeatDispatchEffects(
-    input: ListBeatDispatchEffectsInput,
-  ): Promise<Models.BeatDispatchEffectList> {
-    return this.execute("listBeatDispatchEffects", input);
-  }
-
-  public async listBeatRoutines(
-    input: ListBeatRoutinesInput,
-  ): Promise<Models.BeatRoutineList> {
-    return this.execute("listBeatRoutines", input);
-  }
-
   public async listDreamDispatchEffects(
     input: ListDreamDispatchEffectsInput,
   ): Promise<Models.DreamDispatchEffectList> {
@@ -1292,12 +1261,6 @@ export class CtowerClient {
     input: ResolveCloseWorkflowInput,
   ): Promise<Models.WorkflowReceipt> {
     return this.execute("resolveCloseWorkflow", input);
-  }
-
-  public async retireBeatRoutine(
-    input: RetireBeatRoutineInput,
-  ): Promise<Models.BeatRoutineRetirementReceipt> {
-    return this.execute("retireBeatRoutine", input);
   }
 
   public async revokeSeatCredential(

@@ -63,6 +63,10 @@
         "proof.changed",
         "workflow.changed",
         "routine.occurrence_recorded",
+        "routine.work_item_appended",
+        "routine.work_item_suppressed",
+        "routine.work_item_completed",
+        "routine.work_item_alarm_raised",
         "routine.retired",
         "runtime.dream_dispatch_consumed",
         "runtime.dream_lane_bound",
@@ -127,7 +131,7 @@
     },
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36}|pool-observation:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|routine-work-item:[0-9a-f-]{36}|routine-retirement:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|dream-lane:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36}|request:[0-9a-f-]{36}|request-proposal:[0-9a-f-]{36}|ruling:[0-9a-f-]{36}|estate-import:[0-9a-f-]{36}|company-record:[0-9a-f-]{36}|spawn-record:[0-9a-f-]{36}|pool-observation:[0-9a-f-]{36})$"
     },
     "tenant_id": {
       "type": "string",
@@ -294,6 +298,70 @@
             },
             "payload": {
               "$ref": "#/$defs/routineOccurrenceRecorded"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "routine.work_item_appended"
+            },
+            "origin": {
+              "const": "control_worker"
+            },
+            "stream_id": {
+              "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/routineWorkItemAppended"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "routine.work_item_suppressed"
+            },
+            "origin": {
+              "const": "control_worker"
+            },
+            "stream_id": {
+              "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/routineWorkItemSuppressed"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "routine.work_item_completed"
+            },
+            "origin": {
+              "const": "api"
+            },
+            "stream_id": {
+              "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/routineWorkItemCompleted"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "routine.work_item_alarm_raised"
+            },
+            "origin": {
+              "const": "control_worker"
+            },
+            "stream_id": {
+              "pattern": "^routine-work-item:[0-9a-f-]{36}$"
+            },
+            "payload": {
+              "$ref": "#/$defs/routineWorkItemAlarmRaised"
             }
           }
         },
@@ -1394,6 +1462,101 @@
           "minimum": -64800,
           "maximum": 64800
         }
+      }
+    },
+    "routineWorkItemAppended": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "escalation_seat",
+        "gate_evidence",
+        "knowledge_ref",
+        "owner_seat",
+        "revision_digest",
+        "routine_ref",
+        "scheduled_for",
+        "window_ends_at",
+        "work_item_id"
+      ],
+      "properties": {
+        "document_id": {"type": "string", "format": "uuid"},
+        "escalation_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "gate_evidence": {"$ref": "#/$defs/routineWorkItemGateEvidence"},
+        "knowledge_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+        "owner_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "revision_digest": {"$ref": "#/$defs/sha256"},
+        "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "window_ends_at": {"type": "string", "format": "date-time"},
+        "work_item_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "routineWorkItemSuppressed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocking_item_id", "routine_ref", "scheduled_for", "suppression_id"],
+      "properties": {
+        "blocking_item_id": {"type": "string", "format": "uuid"},
+        "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "suppression_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "routineWorkItemCompleted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_ref", "delivered_at", "owner_seat", "receipt_id", "work_item_id"],
+      "properties": {
+        "artifact_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+        "delivered_at": {"type": "string", "format": "date-time"},
+        "owner_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "receipt_id": {"type": "string", "format": "uuid"},
+        "work_item_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "routineWorkItemAlarmRaised": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alarm_id",
+        "escalation_seat",
+        "kind",
+        "recorded_at",
+        "routine_ref",
+        "scheduled_for",
+        "work_item_id"
+      ],
+      "properties": {
+        "alarm_id": {"type": "string", "format": "uuid"},
+        "escalation_seat": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "kind": {"enum": ["missed_window", "degraded_read"]},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "work_item_id": {"type": ["string", "null"], "format": "uuid"}
+      }
+    },
+    "routineWorkItemGateEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detail",
+        "kind",
+        "observed_count",
+        "result",
+        "watermark_kind",
+        "watermark_position"
+      ],
+      "properties": {
+        "detail": {"type": "string", "minLength": 1, "maxLength": 500},
+        "kind": {"enum": ["always", "new_movement_since_watermark", "open_tickets_above"]},
+        "observed_count": {"type": "integer", "minimum": 0},
+        "result": {"const": "fired"},
+        "watermark_kind": {
+          "enum": ["none", "events.server_time", "tickets.server_time", "tickets.nonterminal"]
+        },
+        "watermark_position": {"type": ["string", "null"], "format": "date-time"}
       }
     },
     "routineRetired": {

@@ -303,38 +303,6 @@ export interface TailNote {
   readonly sourcePath: string;
 }
 
-export type BeatHealth = "alive" | "late" | "dead" | "unknown";
-
-export interface Beat {
-  readonly seat: string;
-  readonly beat: string;
-  readonly schedule: string;
-  readonly lastFire: string | null;
-  readonly nextFire: string | null;
-  readonly health: BeatHealth;
-  readonly why: string | null;
-}
-
-export interface CadenceRegistry {
-  readonly beats: readonly Beat[];
-  /** The derivation the source used, so the screen states it without knowing it. */
-  readonly healthRule: string;
-  readonly registered: number;
-  readonly arriving: number;
-  readonly late: number;
-  readonly notArriving: number;
-  /**
-   * Beats whose liveness could not be established, counted rather than left as
-   * the remainder of a subtraction. Round-3 QA (#238) found four tiles summing
-   * to four of five registered beats, so the operator had to notice the missing
-   * one by arithmetic.
-   */
-  readonly unaccounted: number;
-  /** Which source answered — `crontab` or `systemd user timers`. */
-  readonly sourceLabel: string;
-  readonly sweptAt: string;
-}
-
 export interface TreeEntry {
   readonly path: string;
   readonly depth: number;
@@ -928,8 +896,6 @@ export interface RecordAdapter {
   ticketAudit: (ticketId: string, projectKey: string) => Promise<Reading<readonly RecordEvent[]>>;
   /** Per-session work facts: who, duration, tokens, outcome. */
   workSessions: (ticketId: string, projectKey: string) => Promise<Reading<readonly WorkSession[]>>;
-  /** Registered scheduled wakes and their fire history. */
-  cadenceRegistry: () => Promise<Reading<CadenceRegistry>>;
   /** The authenticated principal's durable inbox threads projection. */
   inbox: () => Promise<Reading<InboxProjection>>;
   /** One durable inbox thread; this recipient read advances its own cursor. */
@@ -964,10 +930,9 @@ export interface RecordAdapter {
 /**
  * The reads `read/httpRecordAdapter.ts` implements against the instance.
  *
- * It is not every read the API answers: the ticket work sessions and the
- * cadence registry are instance reads too, and they live in
- * `read/runtimeReads.ts` so that module can hold their folding without this one
- * growing a second subject. `read/adapter.ts` binds both.
+ * ticket work sessions are instance reads too, and they live in
+ * `read/runtimeReads.ts` so that module can hold their parsing without this one
+ * growing a second subject. `read/adapter.ts` binds them.
  */
 export type RecordApiReads = Pick<
   RecordAdapter,

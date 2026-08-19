@@ -4,63 +4,45 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import cast
 
 import psycopg
-from fastapi.testclient import TestClient
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.control_worker import ControlWorker, build_worker, load_routine_revisions
-from ctower_api.interface import create_app
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.runtime import Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime
 
 __all__: tuple[str, ...] = ()
 
 _ROOT = Path(__file__).parents[3]
-_HTTP_OK = 200
 
 
 def test_running_worker_records_one_due_routine_across_duplicate_scan_and_restart(
     tenant: TenantFixture,
 ) -> None:
-    store = PostgresRuntime(tenant.database.runtime_dsn)
-    runtime = Routine(store)
+    """AC-RWI-01/06: an authored beat reference fires one item through the real worker."""
+
+    runtime = Routine(PostgresRuntime(tenant.database.runtime_dsn))
     health = _health_revision()
     runtime.register(tenant.tenant_id, health, first_fire_at=_due_fire(health))
     worker = _worker(tenant, runtime)
-    app = create_app(
-        PostgresRecord(tenant.database.runtime_dsn),
-        beat_dispatch_runtime=store,
-    )
 
-    with TestClient(app) as client:
-        assert _effects(client, tenant.operator_credential) == []
-        worker.tick()
-        first_read = _effects(client, tenant.operator_credential)
-        assert len(first_read) == 1
-        first = first_read[0]
-        routines = _routines(client, tenant.operator_credential)
-        worker.tick()
-        restarted = _worker(tenant, runtime)
-        restarted.tick()
-        replay = _effects(client, tenant.operator_credential)
+    worker.tick()
+    first = _work_item_rows(tenant, health)
+    worker.tick()
+    _worker(tenant, runtime).tick()
+    replay = _work_item_rows(tenant, health)
 
-    assert replay == [first]
-    health_routines = [
-        routine for routine in routines if routine["routine_ref"] == health.routine_ref
-    ]
-    assert len(health_routines) == 1
-    assert health_routines[0]["revision_digest"] == health.revision_digest
-    assert first["routine_ref"] == health.routine_ref
-    assert first["revision_digest"] == health.revision_digest
-    assert _durable_rows(tenant, health) == [(first["occurrence_id"], "queued", "beat_dispatch")]
+    assert len(first) == 1
+    assert replay == first
+    assert first[0][1] == health.routine_ref
+    assert first[0][2] == "open"
+    assert _occurrence_rows(tenant, health) == [(first[0][3], "queued")]
     print(
-        f"ROUTINE-E2E revision={health.revision_digest} occurrence_id=<occurrence-id> "
-        "outcome=queued effect=beat_dispatch duplicate_restart_count=1"
+        f"ROUTINE-E2E revision={health.revision_digest} routine={health.routine_ref} "
+        f"work_item={first[0][0]} outcome=queued duplicate_restart_count=1"
     )
 
 
@@ -100,40 +82,39 @@ def _due_fire(revision: RoutineRevision) -> datetime:
     return due
 
 
-def _effects(client: TestClient, credential: str) -> list[dict[str, object]]:
-    payload = _get(client, "/v1/runtime/beat-dispatches", credential)
-    return cast(list[dict[str, object]], payload["effects"])
-
-
-def _routines(client: TestClient, credential: str) -> list[dict[str, object]]:
-    payload = _get(client, "/v1/runtime/beat-routines", credential)
-    return cast(list[dict[str, object]], payload["routines"])
-
-
-def _get(client: TestClient, path: str, credential: str) -> dict[str, object]:
-    response = client.get(path, headers={"Authorization": f"Bearer {credential}"})
-    assert response.status_code == _HTTP_OK, (
-        f"running ctower returned {response.status_code}, including disabled/503"
-    )
-    return cast(dict[str, object], response.json())
-
-
-def _durable_rows(
-    tenant: TenantFixture,
-    revision: RoutineRevision,
-) -> list[tuple[object, object, object]]:
+def _work_item_rows(
+    tenant: TenantFixture, revision: RoutineRevision
+) -> list[tuple[object, object, object, object]]:
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         rows = connection.execute(
             """
-            SELECT occurrence.occurrence_id::text, occurrence.outcome, job.operation
-            FROM routine_occurrences AS occurrence
-            JOIN operation_jobs AS job USING (tenant_id, occurrence_id)
-            WHERE occurrence.tenant_id = %s AND occurrence.revision_digest = %s
-            ORDER BY occurrence.scheduled_for
+            SELECT work_item_id::text, routine_ref, status, scheduled_for
+            FROM inbox_work_items
+            WHERE tenant_id = %s AND revision_digest = %s
+            ORDER BY scheduled_for
             """,
-            (tenant.tenant_id, bytes.fromhex(revision.revision_digest.removeprefix("sha256:"))),
+            (tenant.tenant_id, _digest(revision)),
         ).fetchall()
     return [tuple(row) for row in rows]
+
+
+def _occurrence_rows(
+    tenant: TenantFixture, revision: RoutineRevision
+) -> list[tuple[object, object]]:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        rows = connection.execute(
+            """
+            SELECT scheduled_for, outcome FROM routine_occurrences
+            WHERE tenant_id = %s AND revision_digest = %s
+            ORDER BY scheduled_for
+            """,
+            (tenant.tenant_id, _digest(revision)),
+        ).fetchall()
+    return [tuple(row) for row in rows]
+
+
+def _digest(revision: RoutineRevision) -> bytes:
+    return bytes.fromhex(revision.revision_digest.removeprefix("sha256:"))
 
 
 def _registered_routine_refs(tenant: TenantFixture) -> list[str]:

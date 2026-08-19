@@ -103,11 +103,6 @@ def test_shadow_ctl_dispatches_the_recorded_r2948_operator_bind(
             "secret-service:ctower-development/operator",
         ),
         (
-            ["--as", "operator", "beat-dispatch", "list"],
-            ["beat-dispatch", "list"],
-            "secret-service:ctower-development/operator",
-        ),
-        (
             ["--as", "commander", "dream-dispatch", "list"],
             ["dream-dispatch", "list"],
             "secret-service:ctower-development/commander",

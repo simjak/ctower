@@ -189,67 +189,6 @@ class SessionPayloadTests(unittest.TestCase):
         )
 
 
-class CadenceTests(unittest.TestCase):
-    """#238 — a beat that can go neither green nor red carries no signal."""
-
-    def test_an_evenly_spaced_schedule_states_its_own_gap(self) -> None:
-        self.assertEqual(_outcomes()["evenScheduleIntervalIsItsGap"], 15 * 60 * 1000)
-
-    def test_an_unevenly_spaced_schedule_takes_the_widest_gap(self) -> None:
-        self.assertEqual(
-            _outcomes()["unevenScheduleTakesTheWidestGap"],
-            55 * 60 * 1000,
-            "the shortest gap was taken as the interval, which marks a beat late "
-            "through a stretch it was never scheduled to fire in",
-        )
-
-    def test_a_once_daily_schedule_is_allowed_a_day(self) -> None:
-        self.assertEqual(_outcomes()["dailyScheduleIsADay"], 24 * 60 * 60 * 1000)
-
-    def test_the_gap_across_midnight_is_counted_like_any_other(self) -> None:
-        self.assertEqual(
-            _outcomes()["wrapAroundGapIsCounted"],
-            23 * 60 * 60 * 1000,
-            "the wrap from the last fire of one day to the first of the next was dropped",
-        )
-
-    def test_every_registered_beat_lands_in_exactly_one_tile(self) -> None:
-        for name in ("tilesCountEveryRegisteredBeat", "tilesOnTheObservedRegistry"):
-            with self.subTest(case=name):
-                registry = _case(name)
-                marked = (
-                    registry["arriving"]
-                    + registry["late"]
-                    + registry["notArriving"]
-                    + registry["unaccounted"]
-                )
-                self.assertEqual(
-                    marked,
-                    registry["registered"],
-                    "a beat sits in no tile, so the operator has to subtract to notice it",
-                )
-
-    def test_the_live_registry_names_its_one_unestablished_beat(self) -> None:
-        registry = _case("tilesOnTheObservedRegistry")
-        self.assertEqual(registry["registered"], 5)
-        self.assertEqual(registry["arriving"], 4)
-        self.assertEqual(registry["unaccounted"], 1)
-
-    def test_no_last_fire_and_no_interval_are_different_sentences(self) -> None:
-        no_fire = _case("healthWithNoLastFire")
-        no_interval = _case("healthWithNoInterval")
-        self.assertEqual(no_fire["health"], "unknown")
-        self.assertEqual(no_interval["health"], "unknown")
-        self.assertNotEqual(
-            no_fire["why"],
-            no_interval["why"],
-            "two different unknowns were collapsed into one sentence",
-        )
-
-    def test_a_fire_one_interval_old_is_alive(self) -> None:
-        self.assertEqual(_case("healthOfAFireOneIntervalOld")["health"], "alive")
-
-
 class ChatStreamTests(unittest.TestCase):
     """#242 — the chat view is the readable one, or the toggle is decorative."""
 

@@ -37,6 +37,7 @@ phase_order = [
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
+  "CT-I1-035",
 ]
 
 [[suite]]
@@ -1029,22 +1030,6 @@ command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_ticket
 timeout_seconds = 900
 
 [[suite]]
-id = "fleet-beat-contracts"
-owner = "CT-I1-019"
-phase = "CT-I1-019"
-status = "required"
-path = "tests/contracts/runtime"
-patterns = ["test_beat_dispatch_contract.py"]
-command = [
-  "{python}",
-  "-m",
-  "pytest",
-  "tests/contracts/runtime/test_beat_dispatch_contract.py",
-  "-q",
-]
-timeout_seconds = 120
-
-[[suite]]
 id = "fleet-beat-schedule"
 owner = "CT-I1-019"
 phase = "CT-I1-019"
@@ -1059,22 +1044,6 @@ command = [
   "-q",
 ]
 timeout_seconds = 120
-
-[[suite]]
-id = "fleet-beat-acceptance"
-owner = "CT-I1-019"
-phase = "CT-I1-019"
-status = "required"
-path = "tests/acceptance/increment-1"
-patterns = ["test_beat_dispatch_effect.py"]
-command = [
-  "{python}",
-  "-m",
-  "pytest",
-  "tests/acceptance/increment-1/test_beat_dispatch_effect.py",
-  "-q",
-]
-timeout_seconds = 900
 
 [[suite]]
 id = "increment-1-acceptance"
@@ -1246,4 +1215,31 @@ status = "deferred"
 path = "tests/acceptance/increment-1"
 patterns = ["test_spawn_product_surfaces.py"]
 command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_spawn_product_surfaces.py", "-q"]
+timeout_seconds = 900
+
+[[suite]]
+id = "routine-work-item-contracts"
+owner = "CT-I1-035"
+phase = "CT-I1-035"
+status = "deferred"
+path = "tests/contracts/routine_items"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/routine_items", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "routine-work-item-acceptance"
+owner = "CT-I1-035"
+phase = "CT-I1-035"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_routine_items.py", "test_routine_item_episodes.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_routine_items.py",
+  "tests/acceptance/increment-1/test_routine_item_episodes.py",
+  "-q",
+]
 timeout_seconds = 900

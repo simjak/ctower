@@ -1,19 +1,37 @@
 {
-  "schema_id": "ctower.routine/v3",
+  "schema_id": "ctower.routine/v4",
   "routine_ref": "ctower.beat.sprint@1",
-  "revision_digest": "sha256:b38a150e1adbeaa315145d3ca4f9866ff0e6511d2e1e1a27b60b981236808d05",
-  "schedule": {"kind": "minute_hour_set", "timezone": "Europe/Vilnius", "minutes": [23], "hours": [2, 8, 14, 20]},
+  "schedule": {
+    "kind": "minute_hour_set",
+    "timezone": "Europe/Vilnius",
+    "minutes": [
+      23
+    ],
+    "hours": [
+      2,
+      8,
+      14,
+      20
+    ]
+  },
   "dst_policy": "wall_clock_once",
   "concurrency": "always_enqueue_bounded",
   "catch_up": "skip_missed",
   "catch_up_cap": 1,
   "timeout_seconds": 21600,
-  "handler_kind": "beat_dispatch",
-  "component_digests": ["sha256:a0fd8e11dbd81634d66025298bc60868c3cc5967bd3fc9e821fd53cb444ec963"],
-  "beat_dispatch": {
-    "beat_key": "sprint", "prompt_source": "state/beats/sprint.txt",
-    "prompt_sha256": "sha256:a0fd8e11dbd81634d66025298bc60868c3cc5967bd3fc9e821fd53cb444ec963",
-    "prompt": "manibo SPRINT PLANNING & RECONCILIATION (every 6h, operator standing order; system-cron since 2026-08-10 — never expires). Reconcile manibo sprint state vs verified reality: read the commander's latest drain/lane reports, pull real counters (gh -R jakit-labs/manibo open PRs + issues; GitLab open toward zero), check no lane idle and no CLEAN PR ages (verify CLEAN vs gh before acting), refresh manibo board rows if stale. Drive gaps via the manibo commander inbox. At most ONE consolidated operator question, only if a genuine decision blocks. Count in tasks, never time.",
-    "target_session": "commander"
+  "handler_kind": "routine_item",
+  "component_digests": [
+    "sha256:e2fd9821210b602920c219f227fc74dc7ecce7fb3f7718f1d95a67e5d9a6c045"
+  ],
+  "activity_gate": {
+    "kind": "always"
+  },
+  "revision_digest": "sha256:7fb7b77848c348e89a60cf261f70dd1d5c9f480dac02f48799d5beac44d3a364",
+  "routine_item": {
+    "item_key": "sprint",
+    "knowledge_ref": "ctower.beat.sprint",
+    "document_id": "a042c7a0-4b92-5054-9f6c-1e82624cc241",
+    "owner_seat": "ctower-commander",
+    "escalation_seat": "ctower-commander"
   }
 }

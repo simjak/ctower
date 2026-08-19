@@ -1,12 +1,10 @@
 // Drivers for the read-layer decisions round-3 QA found wrong on the live board.
 //
-// Four screens each showed a number or a verdict that was not what the sources
+// Three screens each showed a number or a verdict that was not what the sources
 // held: Explorer measured every branch against a 25-commit-stale local ref
 // (#236), Org filed a quarter of the fleet under "project not recorded" while
-// tmux held their project (#237), Heartbeats rendered a beat firing every ten
-// minutes as never-fired and counted it in no tile (#238), and the Feed's chat
-// view rendered the terminal's own wrap column and every spinner tick as a
-// bubble (#242).
+// tmux held their project (#237), and the Feed's chat view rendered the
+// terminal's own wrap column and every spinner tick as a bubble (#242).
 //
 // Each of those decisions is a pure function on values, so this drives the real
 // functions with the values the live sources produce — no bundler, no network,
@@ -16,8 +14,6 @@
 import { chooseBase } from "../../apps/ctower-ui/src/read/sources/worktrees.ts";
 import type { BaseProbe } from "../../apps/ctower-ui/src/read/sources/worktrees.ts";
 import { projectOf } from "../../apps/ctower-ui/src/read/sources/crewRoster.ts";
-import { healthOf, registryOf } from "../../apps/ctower-ui/src/read/sources/cadenceHealth.ts";
-import { scheduleIntervalMs } from "../../apps/ctower-ui/src/read/beatRegistry.ts";
 import { toWorkSession } from "../../apps/ctower-ui/src/read/runtimeReads.ts";
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
@@ -26,7 +22,7 @@ import {
   boardCardContextFor,
   boardEmptyKind,
 } from "../../apps/ctower-ui/src/read/boardProjection.ts";
-import type { Beat, BoardCard } from "../../apps/ctower-ui/src/read/interface.ts";
+import type { BoardCard } from "../../apps/ctower-ui/src/read/interface.ts";
 
 const results: Record<string, unknown> = {};
 
@@ -86,71 +82,6 @@ results.projectFromTheTagWhenTheLogIsUnreadable = projectOf(null, "bh-loop", log
 // and with neither, an unreadable log stays unread rather than becoming "none"
 results.projectStaysUnreadWhenNothingAnswered = projectOf(null, null, logUnread);
 results.projectNotRecordedWhenThereIsNoLogFile = projectOf(null, null, logMissing);
-
-/* ── #238 · how long silence is allowed to last, and the tiles ────────────
-   The registry is the record's now, so lateness is decided by the routine's own
-   minute/hour set rather than by a guessed marker file. A set is not necessarily
-   evenly spaced: `0,5 * * * *` fires twice an hour with gaps of five minutes and
-   fifty-five, and calling the interval five would mark that beat late for most
-   of every hour it was never scheduled to fire in. */
-
-const schedule = (minutes: readonly number[], hours: readonly number[] | null) => ({
-  routineRef: "ctower.beat.fixture@1",
-  beatKey: "fixture",
-  targetSession: "commander",
-  nextFireAt: "2026-08-14T23:09:00Z",
-  minutes,
-  hours,
-  timezone: "UTC",
-});
-
-results.evenScheduleIntervalIsItsGap = scheduleIntervalMs(schedule([9, 24, 39, 54], null));
-results.unevenScheduleTakesTheWidestGap = scheduleIntervalMs(schedule([0, 5], null));
-results.dailyScheduleIsADay = scheduleIntervalMs(schedule([12], [7]));
-results.wrapAroundGapIsCounted = scheduleIntervalMs(schedule([0], [0, 1]));
-
-const beat = (name: string, health: Beat["health"]): Beat => ({
-  seat: "agent",
-  beat: name,
-  schedule: "*/10 * * * *",
-  lastFire: null,
-  nextFire: null,
-  health,
-  why: null,
-});
-
-results.tilesCountEveryRegisteredBeat = registryOf(
-  [
-    beat("a", "alive"),
-    beat("b", "alive"),
-    beat("c", "late"),
-    beat("d", "dead"),
-    beat("e", "unknown"),
-  ],
-  "/v1/runtime/beat-routines",
-  "2026-08-04T08:00:00.000Z",
-  "rule"
-);
-
-// the exact live shape QA found: five registered, four with a dispatch on record
-results.tilesOnTheObservedRegistry = registryOf(
-  [
-    beat("ctower-migration-drive", "alive"),
-    beat("ctower-beat-watchdog", "alive"),
-    beat("idle-alarm", "alive"),
-    beat("wip-alarm", "alive"),
-    beat("ctower-feed-notify", "unknown"),
-  ],
-  "/v1/runtime/beat-routines",
-  "2026-08-04T08:00:00.000Z",
-  "rule"
-);
-
-// a beat whose fire is known but whose schedule states no interval is not the
-// same claim as a beat that never fired
-results.healthWithNoLastFire = healthOf(null, 600_000, 1_000_000_000);
-results.healthWithNoInterval = healthOf(999_000_000, null, 1_000_000_000);
-results.healthOfAFireOneIntervalOld = healthOf(1_000_000_000 - 600_000, 600_000, 1_000_000_000);
 
 /* ── #242 · the chat view's turns ─────────────────────────────────────────
    The capture arrives with the TUI's two-column padding, and five of eleven
