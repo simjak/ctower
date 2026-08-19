@@ -216,18 +216,23 @@ of ctower reads.
 
 ### Routines
 
-**Status: BUILT — fixed routine definitions, occurrences, gates, and dispatch effects.**
+**Status: BUILT — fixed routine definitions, occurrences, gates, work items, receipts, and
+suppression.**
 
-Scheduled work carrying its instructions. A routine does not interrupt anyone: it creates a work
-item/dispatch effect for an external consumer, which survives a scheduler scan; completion is not
-inferred from the effect.
+Scheduled work that points at its instructions instead of repeating them. A routine does not
+interrupt anyone: it files a work item addressed to the seat that owns the work, and the item
+survives a scheduler scan. The item names the policy document to follow; it never carries the
+instructions itself. Completion is not inferred from the item being seen.
 
 ```
-  ROUTINE fires ──► occurrence + immutable dispatch effect ──► external consumer may act
+  ROUTINE fires ──► work item for the owning seat ──► the seat delivers, then files a receipt
        │
-       └── suppression while the last occurrence is unconsumed: Status: NOT BUILT —
-           SPECIFIED ONLY (the receipt/suppression design in the decision log and the
-           pending routine-items ticket); today every fire emits an occurrence
+       ├── suppression while the last work item has no receipt: **Status: BUILT** — the next
+       │   fire is suppressed and records which item is blocking it. Opening or reading the
+       │   item never closes it; only the receipt does. There is never a second open item.
+       │
+       └── a window that ends with no receipt: **Status: BUILT** — one alarm to the escalation
+           seat, once per window, however many times the scheduler looks.
 ```
 
 - **Software:** every night, check dependencies for new security advisories. Every Monday, produce

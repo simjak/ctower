@@ -273,11 +273,6 @@ def _apply_work_item_blocker(
 ) -> OccurrencePlan:
     if revision.routine_item is None or plan.outcome is not OccurrenceOutcome.QUEUED:
         return plan
-    if (
-        revision.activity_gate is not None
-        and revision.activity_gate.kind == "new_movement_since_watermark"
-    ):
-        return plan
     blocker = blockers.get(revision.routine_ref)
     if blocker is None:
         blocker = _open_work_item(connection, tenant_id, revision.routine_ref)
