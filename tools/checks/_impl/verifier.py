@@ -9,6 +9,7 @@ from pathlib import Path
 from tools.checks._impl.catalog_admission import catalog_admission_findings
 from tools.checks._impl.config import PolicyConfigurationError, load_exceptions, load_policy
 from tools.checks._impl.generated import verify_generated_manifest
+from tools.checks._impl.minted_identity import minted_identity_findings
 from tools.checks._impl.model import (
     Budget,
     ClassMetric,
@@ -356,7 +357,10 @@ def _evaluate_checks(
     profile: str,
     sources: tuple[SourceMetric, ...],
 ) -> list[Finding]:
-    findings: list[Finding] = list(catalog_admission_findings(root))
+    findings: list[Finding] = [
+        *catalog_admission_findings(root),
+        *minted_identity_findings(root),
+    ]
     checks = policy.profiles[profile]
     if "source" in checks:
         findings.extend(item for metric in sources for item in _source_findings(metric, policy))
