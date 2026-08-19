@@ -2768,6 +2768,32 @@
         "AC-COMMS-03",
         "AC-COMMS-04"
       ]
+    },
+    {
+      "path": "contracts/runner/harness-spec.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-48",
+        "INV-77",
+        "AC-HAD-01",
+        "AC-HAD-09"
+      ]
+    },
+    {
+      "path": "contracts/runner/harness-capability.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-48",
+        "AC-HAD-02"
+      ]
+    },
+    {
+      "path": "contracts/runner/credential-lease.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-69",
+        "AC-HAD-10"
+      ]
     }
   ]
 }

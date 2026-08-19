@@ -207,6 +207,29 @@ The project scope control is the mockup's own CSS-only mechanism — four radios
 one `.mtscope` block per project — so switching a tab swaps every card, bar and legend at once and
 a number can never belong to a project the tab does not name.
 
+### Limits, and the field the read has no place for
+
+`/limits` renders `GET /v1/pools`: the latest credential-pool sweep per harness profile. It is the
+one read on this surface whose *source* sits beside credential material, so it is also the one with
+a security argument rather than only an honesty one — and that argument is the authored contract's,
+not this boundary's. `PoolObservedEntry`, the write, may carry a fingerprint. `PoolEntryState`, the
+read this page asks for, is a closed object with no field a token, key or fingerprint can occupy at
+all. `read/poolLimits.ts` reads it one named field at a time, so the projection is a boundary rather
+than an intention: a payload that arrives carrying a credential field loses it here, and
+`tests/repository/test_limits_ui.py` asserts the field set against the contract itself rather than
+against a list typed into a test.
+
+Nothing on the page is aggregated. The record deliberately answers per entry — one account, its own
+three axes, its own reset clock — and a profile holding two capped accounts and one available one
+is not one word. So `auth`, `quota` and `reach` are three chips rather than one status, `unknown`
+carries a neutral treatment on both axes that have one because an axis nobody could observe is not
+an available axis, and the only pool-level number on the screen is `selectable_entry_count`, which
+the server states. The rows are never re-sorted or recounted here.
+
+This screen has no vendored mockup: the approved set predates the pools read. Its rules live in
+`app/conductor.css` beside the chat workspace's and are built only from the vendored sheet's own
+variables, so both themes and every token stay the frame's.
+
 ### Portfolio, and the three ways a zero can lie
 
 The per-project Board answers one project's question; an operator supervising several was reading

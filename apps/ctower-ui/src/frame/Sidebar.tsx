@@ -144,6 +144,18 @@ const ICONS: Readonly<Record<string, ReactNode>> = {
       <rect x="10.5" y="11" width="4" height="3" rx=".6" stroke="currentColor" strokeWidth="1.2" />
     </>
   ),
+  // a gauge: a pool has a level and a clock, and neither is a single verdict
+  "/limits": icon(
+    <>
+      <path
+        d="M2.5 11.5a5.5 5.5 0 1 1 11 0"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <path d="M8 11.5 11 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </>
+  ),
 };
 
 /**

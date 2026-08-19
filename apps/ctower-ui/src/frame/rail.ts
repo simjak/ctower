@@ -33,6 +33,11 @@ export const RAIL: readonly RailItem[] = [
   { href: "/explorer", label: "Explorer", group: "Session" },
   { href: "/files", label: "Files", group: "Session" },
   { href: "/team", label: "Org", group: "Company" },
+  // the credential pools the fleet draws on. A shadow read of a shipped API,
+  // filed under the company that owns the accounts — never a primary product
+  // surface: the locked five are Home, Board, Ticket detail, Fleet, Analytics,
+  // and this boundary is not the browser product that carries them.
+  { href: "/limits", label: "Limits", group: "Company" },
 ];
 
 /**

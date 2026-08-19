@@ -13,7 +13,7 @@ instance's own authorized command paths.
 
 | | |
 | --- | --- |
-| Renders | The board, one ticket in full, the delivery metrics, the cadence registry, the portfolio, the org roster, and a chat workspace over the durable inbox. |
+| Renders | The board, one ticket in full, the delivery metrics, the cadence registry, the portfolio, the org roster, the harness credential limits, and a chat workspace over the durable inbox. |
 | Writes | Three things, all through the instance's own operations: a message on a conversation, a new conversation, and a link from a conversation to a ticket. |
 | Holds | Nothing. Every read and every command runs on the server; no bearer, session or token reaches the browser. |
 
