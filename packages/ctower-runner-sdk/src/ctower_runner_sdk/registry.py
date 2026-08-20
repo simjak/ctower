@@ -26,8 +26,40 @@ __all__ = [
 
 type BindingClass = Literal["real", "fault_injection_fake"]
 
+
 # D10's earning rule, unchanged: two real Adapters plus one deterministic fake.
 REQUIRED_REAL_BINDINGS = 2
+
+# This is deliberately closed. A model, profile, or runtime reference cannot become a new
+# harness merely by being proposed to the registry. Adding a first-party binding is an explicit
+# source change that names its own artifact and conformance rows; it is never caller data.
+_TRUSTED_HARNESS_REFS: frozenset[str] = frozenset(
+    {"claude-code", "codex", "fault-injection-fake", "hermes"}
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _ClosedRegistrationSource:
+    """The registry-owned admission source; no proposal can add an authority to it."""
+
+    harness_refs: frozenset[str] = _TRUSTED_HARNESS_REFS
+
+    def refusal_for(self, proposed_key: str) -> Refusal | None:
+        if proposed_key in self.harness_refs:
+            return None
+        return Refusal(
+            name="harness-runtime-not-a-harness",
+            observed=f"{proposed_key!r} was proposed as a harness but is outside the closed seam",
+            meaning=(
+                "a model or runtime cannot mint a harness category without a first-party "
+                "binding and its pinned conformance evidence"
+            ),
+            action=(
+                "pin one of the registered first-party harness references; "
+                "do not register a runtime"
+            ),
+            detail=(("proposed_harness_ref", proposed_key),),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,17 +86,23 @@ class HarnessRegistry:
     """The closed set of registered bindings, and the publication verdict over them."""
 
     def __init__(self) -> None:
+        self._authority_source = _ClosedRegistrationSource()
         self._specs: dict[str, HarnessSpec] = {}
         self._classes: dict[str, BindingClass] = {}
 
     def register(
-        self, document: Mapping[str, object], binding_class: BindingClass
+        self,
+        document: Mapping[str, object],
+        binding_class: BindingClass,
     ) -> HarnessSpec | Refusal:
         """Parse, resolve the survey, and admit — or refuse by exact name."""
 
         parsed = parse_harness_spec(document)
         if isinstance(parsed, Refusal):
             return parsed
+        authority_refusal = self._authority_refusal(parsed)
+        if authority_refusal is not None:
+            return authority_refusal
         conflict = _semantic_refusal(parsed)
         if conflict is not None:
             return conflict
@@ -74,6 +112,9 @@ class HarnessRegistry:
         self._specs[parsed.key] = parsed
         self._classes[parsed.key] = binding_class
         return parsed
+
+    def _authority_refusal(self, spec: HarnessSpec) -> Refusal | None:
+        return self._authority_source.refusal_for(spec.key)
 
     def resolve(self, harness_ref: str) -> HarnessSpec | Refusal:
         """Return the registered spec for an observed harness value, or refuse by name.

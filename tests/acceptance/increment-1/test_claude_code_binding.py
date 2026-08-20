@@ -25,7 +25,7 @@ from ctower_runner.claude_code.binding import CLAUDE_CODE_PROBE, CLAUDE_CODE_WRA
 from ctower_runner.claude_code.corpus import CLAUDE_CODE_CORPUS, captured_cases
 from ctower_runner.claude_code.liveness import classify_pane, context_used_pct, pane_digest
 from ctower_runner.claude_code.pool import ClaudeCodePool, ConfigHome, ConfigHomeStore
-from ctower_runner.claude_code.spawn import failover, wrapper_pin_refusal
+from ctower_runner.claude_code.spawn import failover
 from ctower_runner.claude_code.spec import (
     CLAUDE_CODE_KEY,
     CLAUDE_CODE_SATURATION_PERCENT,
@@ -42,7 +42,8 @@ from ctower_runner.claude_code.transcript import (
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.attempt import AttemptPin
 from ctower_runner_sdk.conformance import CorpusCase
-from ctower_runner_sdk.credentials import Lease
+from ctower_runner_sdk.credentials import Lease, MeterObservation
+from ctower_runner_sdk.policy import dispatch_pin_refusal
 from ctower_runner_sdk.refusals import SEAM_MINTED, SPEC_OWNED, Refusal
 from ctower_runner_sdk.registry import REQUIRED_REAL_BINDINGS, HarnessRegistry
 from ctower_runner_sdk.rotation import RotationEvent
@@ -96,6 +97,12 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     parsed = parse_harness_spec(_document(overrides))
     assert isinstance(parsed, HarnessSpec), parsed
     return parsed
+
+
+def _registration_registry() -> HarnessRegistry:
+    """Return the registry with its closed first-party admission source."""
+
+    return HarnessRegistry()
 
 
 def _record(identity: str, quota_state: str, reset_at: datetime, seed: str) -> dict[str, object]:
@@ -167,10 +174,12 @@ def _attempt(
 def test_two_real_bindings_plus_one_fake_publish_the_seam() -> None:
     """The row's whole point: the second real binding is what earns publication."""
 
-    registry = HarnessRegistry()
+    hermes = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
+    registry = _registration_registry()
 
     registry.register(
-        hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG), "real"
+        hermes,
+        "real",
     )
     registry.register(_document(), "real")
     registry.register(_fake_document(), "fault_injection_fake")
@@ -181,7 +190,7 @@ def test_two_real_bindings_plus_one_fake_publish_the_seam() -> None:
 
 
 def test_this_binding_alone_does_not_publish_the_seam() -> None:
-    registry = HarnessRegistry()
+    registry = _registration_registry()
     registry.register(_document(), "real")
     registry.register(_fake_document(), "fault_injection_fake")
 
@@ -203,8 +212,9 @@ def test_the_role_table_derives_provide_on_both_layers_from_the_answers() -> Non
 def test_declaring_configure_over_a_layer_this_harness_lacks_is_refused() -> None:
     """`never both` in its own direction: a claimed native layer that is not there."""
 
-    refusal = HarnessRegistry().register(
-        _document({"layers": {"pool": "configure", "fallback": "provide"}}), "real"
+    refusal = _registration_registry().register(
+        _document({"layers": {"pool": "configure", "fallback": "provide"}}),
+        "real",
     )
 
     assert isinstance(refusal, Refusal), refusal
@@ -216,7 +226,7 @@ def test_an_unanswered_survey_question_refuses_rather_than_leaving_the_role_to_a
     survey = dict(cast("dict[str, object]", _document()["survey"]))
     survey.pop("rotation_cache")
 
-    refusal = HarnessRegistry().register(_document({"survey": survey}), "real")
+    refusal = _registration_registry().register(_document({"survey": survey}), "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-survey-incomplete"
@@ -405,7 +415,7 @@ def test_observation_projects_the_allowlist_and_leaves_the_adjacent_token_behind
     rows = pool.limits()
     lease = pool.acquire(model_ref="claude-opus-5", tier=_PROFILE)
     assert isinstance(lease, Lease), lease
-    pool.meter(lease, {"event": "spawn", "model_ref": lease.model_ref})
+    pool.meter(lease, MeterObservation(event="spawn", model_ref=lease.model_ref))
 
     bodies = (str([row.to_mapping() for row in rows]), str(lease.to_mapping()), str(pool.metered))
     for body in bodies:
@@ -533,19 +543,20 @@ def test_an_attempt_pinned_to_another_composition_dispatches_nothing() -> None:
     spec = _spec()
     observed = "  Claude-Code/FORK v2  "
 
-    refusal = wrapper_pin_refusal(
+    refusal = dispatch_pin_refusal(
         spec, _attempt(spec, harness_ref=observed, composition_digest="claude-code@1+sha256:x")
     )
 
     assert isinstance(refusal, Refusal), refusal
-    assert refusal.name == "harness-spec-digest-mismatch"
-    assert dict(refusal.detail)["observed_harness_ref"] == observed
+    assert refusal.name == "harness-dispatch-pin-mismatch"
+    assert dict(refusal.detail)["mismatched_fields"] == "harness_ref,composition_digest"
+    assert dict(refusal.detail)["attempt_harness_ref"] == observed
 
 
 def test_an_attempt_pinned_to_this_spec_is_not_refused() -> None:
     spec = _spec()
 
-    assert wrapper_pin_refusal(spec, _attempt(spec)) is None
+    assert dispatch_pin_refusal(spec, _attempt(spec)) is None
 
 
 def test_failover_after_a_checkpoint_is_a_new_attempt_and_never_a_later_epoch() -> None:

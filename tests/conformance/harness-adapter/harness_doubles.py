@@ -93,8 +93,9 @@ class StubSupervisor:
             return None
         return f"cmd-{attempt.attempt_id}-{len(text)}"
 
-    def terminate(self, attempt: AttemptPin) -> None:
+    def terminate(self, attempt: AttemptPin) -> bool:
         self._state.mutations.append(f"terminate:{attempt.attempt_id}")
+        return True
 
 
 class StubGateway:
