@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
+  "title": "LaterWaveHarnessSurvey",
+  "description": "Revision-pinned CT-I1-044 survey data. Unknown evidence is explicit and cannot be used to choose a configure/provide role.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "revision", "observed_at", "sources", "questions", "candidates"],
+  "properties": {
+    "schema": { "const": "ctower.later-wave-harness-survey/v1" },
+    "revision": { "const": 1 },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/question" }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/candidate" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "revision", "locator"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$"
+        },
+        "kind": {
+          "enum": ["repo", "design", "runbook", "binary", "installed-doc", "absence-probe"]
+        },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "locator": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "prompt"],
+      "properties": {
+        "id": {
+          "enum": [
+            "native_pool",
+            "native_fallback",
+            "config_surface",
+            "identity_proof",
+            "reset_window_semantics",
+            "rotation_cache_semantics",
+            "subagent_credential_inheritance",
+            "egress_topology",
+            "probe_target",
+            "credit_weights"
+          ]
+        },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "value", "evidence", "note"],
+      "properties": {
+        "state": { "enum": ["verified", "not_applicable", "unverified"] },
+        "value": { "type": ["boolean", "string", "null"] },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" }
+        },
+        "note": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      }
+    },
+    "registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["refused", "not_applicable"] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "capability_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["liveness", "evidence", "reason"],
+      "properties": {
+        "liveness": {
+          "type": "string",
+          "pattern": "^(unknown|inherited:[a-z][a-z0-9_.-]{2,127})$"
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" }
+        },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "classification",
+        "effective_route",
+        "adapter_work",
+        "role_disposition",
+        "registration",
+        "capability_declaration",
+        "answers"
+      ],
+      "properties": {
+        "key": { "enum": ["openclaw", "qwen-code", "zcode", "deepseek"] },
+        "classification": {
+          "enum": ["harness_gateway_routed", "harness_baseline", "harness_stub", "model"]
+        },
+        "effective_route": {
+          "enum": ["gateway", "qwen-cli", "unbound-stub", "hermes-profile"]
+        },
+        "adapter_work": { "enum": ["blocked_until_survey", "zero"] },
+        "role_disposition": { "enum": ["undecidable", "not_applicable"] },
+        "registration": { "$ref": "#/$defs/registration" },
+        "capability_declaration": { "$ref": "#/$defs/capability_declaration" },
+        "answers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "native_pool",
+            "native_fallback",
+            "config_surface",
+            "identity_proof",
+            "reset_window_semantics",
+            "rotation_cache_semantics",
+            "subagent_credential_inheritance",
+            "egress_topology",
+            "probe_target",
+            "credit_weights"
+          ],
+          "properties": {
+            "native_pool": { "$ref": "#/$defs/answer" },
+            "native_fallback": { "$ref": "#/$defs/answer" },
+            "config_surface": { "$ref": "#/$defs/answer" },
+            "identity_proof": { "$ref": "#/$defs/answer" },
+            "reset_window_semantics": { "$ref": "#/$defs/answer" },
+            "rotation_cache_semantics": { "$ref": "#/$defs/answer" },
+            "subagent_credential_inheritance": { "$ref": "#/$defs/answer" },
+            "egress_topology": { "$ref": "#/$defs/answer" },
+            "probe_target": { "$ref": "#/$defs/answer" },
+            "credit_weights": { "$ref": "#/$defs/answer" }
+          }
+        }
+      }
+    }
+  }
+}
