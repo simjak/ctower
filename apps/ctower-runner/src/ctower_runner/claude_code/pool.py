@@ -38,6 +38,7 @@ from uuid import UUID
 from ctower_runner_sdk.credentials import (
     EntryState,
     Lease,
+    MeterObservation,
     MintRequest,
     ProbeReading,
     ProbeResponse,
@@ -148,10 +149,16 @@ class ClaudeCodePool:
             acquired_at=self._clock(),
         )
 
-    def meter(self, lease: Lease, observation: Mapping[str, object]) -> None:
-        """Record usage and cost against the leased entry. No second opinion is formed."""
+    def meter(self, lease: Lease, observation: MeterObservation) -> None:
+        """Project typed usage fields and preserve the lease as the authority."""
 
-        self.metered.append({"lease_id": str(lease.lease_id), **dict(observation)})
+        self.metered.append(
+            {
+                "lease_id": str(lease.lease_id),
+                "event": observation["event"],
+                "model_ref": observation["model_ref"],
+            }
+        )
 
     def limits(self, profile_key: str | None = None) -> tuple[EntryState, ...]:
         """Per-entry rows, each with its own reset clock. Never an aggregate verdict.

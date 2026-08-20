@@ -28,7 +28,7 @@ from ctower_kernel.record.pool_events import (
     REGISTRATION_STATES,
     PoolObservationEntryPayload,
 )
-from ctower_runner.codex.route import CodexRoute, classify_route
+from ctower_runner.codex.route import CodexRegistrationAuthority
 from ctower_runner.hermes.spec import HERMES_KEY, digest_of, harness_spec_document
 from ctower_runner_sdk.credentials import EntryState, project_entry
 from ctower_runner_sdk.credits import ModelWeight, TokenUsage, WeightTable
@@ -72,9 +72,9 @@ def _spec() -> HarnessSpec:
     return parsed
 
 
-def _registration_route(spec: HarnessSpec | None = None) -> CodexRoute:
+def _registration_route(spec: HarnessSpec | None = None) -> CodexRegistrationAuthority:
     resolved = _spec() if spec is None else spec
-    return classify_route(runtime_ref=resolved.key, spec=resolved)
+    return CodexRegistrationAuthority(resolved)
 
 
 def _python_files(root: Path) -> Iterator[Path]:
@@ -250,7 +250,7 @@ def test_a_digest_mismatch_performs_zero_dispatch_and_refuses_by_name(field: str
     document = _document()
     document[field] = "sha256:not-a-real-digest"
 
-    refusal = HarnessRegistry().register(document, "real", route=_registration_route())
+    refusal = HarnessRegistry().register(document, "real", authority=_registration_route())
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-spec-digest-mismatch"
@@ -260,7 +260,7 @@ def test_a_revoked_spec_is_a_refusal_and_never_a_fallback_to_a_generic_process()
     document = _document()
     document["status"] = "revoked"
 
-    refusal = HarnessRegistry().register(document, "real", route=_registration_route())
+    refusal = HarnessRegistry().register(document, "real", authority=_registration_route())
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-spec-revoked"
@@ -269,7 +269,7 @@ def test_a_revoked_spec_is_a_refusal_and_never_a_fallback_to_a_generic_process()
 
 def test_the_public_seam_does_not_publish_on_one_real_binding() -> None:
     registry = HarnessRegistry()
-    registry.register(_document(), "real", route=_registration_route())
+    registry.register(_document(), "real", authority=_registration_route())
 
     refusal = registry.publication()
 

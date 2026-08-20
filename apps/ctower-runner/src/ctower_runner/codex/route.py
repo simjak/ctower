@@ -32,6 +32,7 @@ from ctower_runner_sdk.spec import HarnessSpec
 from ctower_runner_sdk.survey import LayerRoles, derive_roles
 
 __all__ = [
+    "CodexRegistrationAuthority",
     "CodexRoute",
     "RouteClass",
     "classify_route",
@@ -55,6 +56,7 @@ class CodexRoute:
     runtime_ref: str
     route_class: RouteClass
     layers: LayerRoles
+    authority_digest: str
 
     def mints_a_harness_value(self) -> bool:
         """Whether this route is entitled to a harness value of its own."""
@@ -68,11 +70,22 @@ class CodexRoute:
 
     def to_mapping(self) -> dict[str, object]:
         return {
+            "authority_digest": self.authority_digest,
             "harness_ref": self.harness_ref,
             "layers": self.layers.to_mapping(),
             "route_class": self.route_class,
             "runtime_ref": self.runtime_ref,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class CodexRegistrationAuthority:
+    """Route factory bound to a trusted parent harness, never to the proposed document."""
+
+    parent_spec: HarnessSpec
+
+    def route_for(self, proposed_key: str) -> CodexRoute:
+        return classify_route(runtime_ref=proposed_key, spec=self.parent_spec)
 
 
 def classify_route(*, runtime_ref: str, spec: HarnessSpec) -> CodexRoute:
@@ -90,12 +103,14 @@ def classify_route(*, runtime_ref: str, spec: HarnessSpec) -> CodexRoute:
             runtime_ref=runtime_ref,
             route_class="direct_cli_harness",
             layers=derive_roles(spec.survey),
+            authority_digest=spec.composition_digest(),
         )
     return CodexRoute(
         harness_ref=spec.key,
         runtime_ref=runtime_ref,
         route_class="runtime_under_harness",
         layers=derive_roles(spec.survey),
+        authority_digest=spec.composition_digest(),
     )
 
 

@@ -27,7 +27,7 @@ from _codex_fixtures import (
 )
 
 from ctower_runner.codex.binding import CODEX_PROBE, CODEX_WRAPPER
-from ctower_runner.codex.route import classify_route, mint_refusal
+from ctower_runner.codex.route import CodexRegistrationAuthority, classify_route, mint_refusal
 from ctower_runner.codex.spec import CODEX_KEY
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.facts import LivenessFact
@@ -67,7 +67,7 @@ def test_declaring_configure_over_a_layer_the_direct_cli_lacks_is_refused(
     layers: dict[str, str],
 ) -> None:
     refusal = HarnessRegistry().register(
-        _document({"layers": layers}), "real", route=_registration_route()
+        _document({"layers": layers}), "real", authority=_registration_route()
     )
 
     assert isinstance(refusal, Refusal), refusal
@@ -84,7 +84,9 @@ def test_declaring_provide_over_the_routed_runtimes_hosted_pool_is_refused() -> 
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
     hosted["layers"] = {"pool": "provide", "fallback": "configure"}
 
-    refusal = HarnessRegistry().register(hosted, "real", route=_registration_route(_hermes_spec()))
+    refusal = HarnessRegistry().register(
+        hosted, "real", authority=_registration_route(_hermes_spec())
+    )
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-layer-conflict"
@@ -96,7 +98,7 @@ def test_an_unanswered_survey_question_refuses_rather_than_leaving_the_role_to_a
     question: str,
 ) -> None:
     refusal = HarnessRegistry().register(
-        _unanswered(_document(), question), "real", route=_registration_route()
+        _unanswered(_document(), question), "real", authority=_registration_route()
     )
 
     assert isinstance(refusal, Refusal), refusal
@@ -109,7 +111,7 @@ def test_an_unanswered_survey_on_the_hosting_harness_refuses_the_routed_class_to
     refusal = HarnessRegistry().register(
         _unanswered(hosted, "native_fallback"),
         "real",
-        route=_registration_route(_hermes_spec()),
+        authority=_registration_route(_hermes_spec()),
     )
 
     assert isinstance(refusal, Refusal), refusal
@@ -155,11 +157,10 @@ def test_no_second_harness_value_is_minted_for_anything_reached_as_a_runtime(
 def test_registration_chokepoint_refuses_model_and_vendor_keys_without_mutation(
     proposed_key: str,
 ) -> None:
-    route = classify_route(runtime_ref="/srv/codex-homes/seat-three", spec=_spec())
     document = _document({"key": proposed_key})
     registry = HarnessRegistry()
 
-    refusal = registry.register(document, "real", route=route)
+    refusal = registry.register(document, "real", authority=CodexRegistrationAuthority(_spec()))
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-runtime-not-a-harness"
@@ -172,8 +173,8 @@ def test_registration_chokepoint_refuses_model_and_vendor_keys_without_mutation(
 def test_a_refused_runtime_leaves_the_registry_with_the_bindings_it_already_had() -> None:
     registry = HarnessRegistry()
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
-    registry.register(hosted, "real", route=_registration_route(_hermes_spec()))
-    registry.register(_document(), "real", route=_registration_route())
+    registry.register(hosted, "real", authority=_registration_route(_hermes_spec()))
+    registry.register(_document(), "real", authority=_registration_route())
     route = classify_route(runtime_ref="deepseek-v4-pro", spec=_hermes_spec())
 
     assert mint_refusal(route, "deepseek-v4-pro") is not None
