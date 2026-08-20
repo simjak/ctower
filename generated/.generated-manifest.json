@@ -429,6 +429,10 @@
           "sha256": "sha256:183b8879e3e93a0fe15edfa712c6ad0ebee7586e850159c41574bec0ef58cfa0"
         },
         {
+          "path": "contracts/runner/later-wave-harness-survey.schema.json",
+          "sha256": "sha256:a6b5d828cbfffce7dfdf7c7688903c4cd9f7229553e0c19403a37ef7800a7c1a"
+        },
+        {
           "path": "contracts/runtime/dream-dispatch-effect.schema.json",
           "sha256": "sha256:07c8f49c19c9c12134cef1734a5f55cb5d5634cb8b93182cefc190cef98b2eeb"
         },
@@ -592,7 +596,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:6cd5fc98a24d55227a16ef37794789e665b0686890392cec1e9ee14564c85cb8"
+          "sha256": "sha256:298c22dc67b10b1775dd7fbfd3da8f183cda055e08e2505db19d25689536184e"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

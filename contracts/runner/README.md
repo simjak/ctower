@@ -1,8 +1,9 @@
 # Runner (harness-adapter seam) contracts
 
-The authored data half of the harness-adapter seam (CT-I1-041, D72). Three contracts live here and
-nothing else does: `harness-spec.schema.json`, the closed `harness-capability.schema.json`
-vocabulary it draws from, and `credential-lease.schema.json`.
+The authored data half of the harness-adapter seam (CT-I1-041, D72). The base seam contracts live
+here: `harness-spec.schema.json`, the closed `harness-capability.schema.json` vocabulary it draws
+from, and `credential-lease.schema.json`. CT-I1-044 adds a separate, refusal-oriented survey
+contract and data document; it does not register a later-wave binding.
 
 A `HarnessSpec` is **data**. It is parsed without executing package code — the shape D11 already
 requires of every extension manifest — so a binding that cannot declare a capability does not
@@ -30,3 +31,9 @@ no field a credential value can occupy: secrets are references, never values.
 
 These contracts activate no dispatch. Execution stays `not_exercised` at the component level;
 `ctower-runner-sdk` parses this data and `ctower-runner` binds `hermes` to it.
+
+`later-wave-harness-survey.schema.json` and `later-wave-harness-survey.json` are authored
+revision-pinned evidence for the four CT-I1-044 candidates. Every unanswered fact is explicit
+`unverified`, so `configure`/`provide` remains undecidable and registration is refused. The
+`deepseek` entry is a model disposition, not a HarnessSpec: its adapter work is zero and its
+serving truth remains inherited from the Hermes profile route.
