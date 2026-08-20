@@ -189,3 +189,233 @@ chat runtime exists to provide. Adopting one installs the projection-lag defect 
 Query with client fetching. `apps/ctower-ui` is Next App Router with server components and no
 client data layer, because its browser holds no credential at all. The tokens, the component
 vocabulary and the copy rules port; the data layer does not.
+
+---
+
+## 4. The four panes, mapped to real backends
+
+Shell: three columns via `react-resizable-panels`, the right column split horizontally. Below
+1100px the existing route-chosen single-pane collapse in `conductor.css` applies unchanged — no
+pane is ever dropped, and a phone reaches all four one at a time.
+
+Each pane below names the seam verb or API operation it reads, and the failure it is designed to
+refuse to fake.
+
+### 4.1 Left — projects → crews → workspaces
+
+**Backend:** the seam's registry plus `liveness`. In API terms today: `listSpawnRecords` /
+`getSpawnRecord` / `appendSpawnTransition` (`GET|POST /v1/spawn-records…`) for the attempt
+registry, `listProjectSessions` (`GET /v1/projects/{project_key}/sessions`) for a project's work
+sessions, and `readPoolLimits` (`GET /v1/pools`) for the credential axis. The diff badges come
+from `src/read/sources/{worktrees,gitTree,landedChanges}.ts`. §7 lists what is still missing.
+
+Rows are **project** (its 6px mark) → **seat** → **workspace**. The Commander is a seat in the
+list, not a chrome affordance — the brief says *incl. commander*, and the board already renders
+the commander as an ordinary source.
+
+Three rules make this rail honest:
+
+- **Unread is an accent bar, not the word "unread"** — the existing ctower-ui rule, and D5.
+- **`capped` and `saturated` outrank any working marker.** `AC-HAD-04` classifies cap and
+  saturation *before* any working marker and states that both count as not working while a
+  spinner or timer advances. A spinner advancing over a capped pane is exactly the failure the
+  classification order exists to prevent, and it is a failure this seat has seen for real: a
+  quota-dead pane renders a normal footer and an advancing timer with no visible error. The rail
+  must never show a lane as busy when it is out of credits.
+- **A workspace whose read did not answer shows `not reached` with its classified failure**, never
+  a `+0 −0`. `+0 −0` is a measurement; a failed read is not. `AC-HAD-03` gives the shape:
+  `substrate-unobservable:<probe>` surfacing as `STATE_UNKNOWN`.
+
+### 4.2 Centre — the transcript, and the steer question the brief asked
+
+**Backend:** `writeback` for outgoing turns, the `collect` transcript path for incoming ones.
+
+Turn rows as Conductor draws them: agent turn, collapsible `Thinking`, inline tool rows
+(*icon · label · truncated monospace command*), `INTERRUPTED` chip, elapsed stamp, per-turn
+copy/more, `Next unread ›`. Operator turns sit on the operator's side of the column —
+`src/surfaces/chat/Transcript.tsx` already makes that choice, and its header comment records why:
+the rejected screen drew every message as an identical card, so the reader had to *read* each row
+to learn whose it was.
+
+Three ctower-forced additions, in order of how much they change the drawing.
+
+**(a) The steer capability is declared data, and today both shipped bindings refuse mid-turn
+input.** The brief asked the seam to *name* this per-harness capability. It does — the closed
+capability vocabulary is `contracts/runner/harness-capability.schema.json`, whose description is
+the whole design in one line: *"A capability is declared data, never a runtime discovery… an
+undeclared capability is unsupported by name rather than attempted."* Three of its nine values
+govern this pane:
+
+| Capability | What it licenses the composer to do |
+| --- | --- |
+| `LIVE_INPUT` | deliver input to a lane at all |
+| `INTERRUPT_AND_RESUME` | deliver input into a lane that is **working** |
+| `STEER_DURABLE_COMMAND_ID` | the harness returns a durable command ID, so a steer can be *acknowledged* rather than assumed |
+
+What the two shipped bindings actually declare:
+
+| Binding | Declares | Does not declare | Composer state while the lane is `working` |
+| --- | --- | --- | --- |
+| `hermes` | `STEER_DURABLE_COMMAND_ID`, `CHECKPOINT`, `PARK`, `REAP`, `POOL_OBSERVE`, `POOL_ROTATE_RECORD`, `POOL_PROBE` | `INTERRUPT_AND_RESUME` | **disabled** |
+| `claude-code` | `CHECKPOINT`, `PARK`, `REAP`, `POOL_OBSERVE`, `POOL_PROBE` | `INTERRUPT_AND_RESUME`, `STEER_DURABLE_COMMAND_ID` | **disabled** |
+
+Both omissions are deliberate and both carry their reason in source.
+`apps/ctower-runner/src/ctower_runner/hermes/spec.py:38–40`: *"Steering into a live hermes turn is
+how an hour of a reviewer's real finding was nearly lost, so input into a working lane refuses by
+name rather than being delivered on the hope that the turn was between messages."*
+`apps/ctower-runner/src/ctower_runner/claude_code/spec.py:45–47`: *"this TUI queues a mid-turn
+paste into its composer instead of refusing it, so input into a working lane would be silently
+swallowed rather than delivered."* The enforcement is
+`packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py:144–160` — `input_refusal` returns
+`harness-capability-unsupported` unless the lane is not working or the spec declares the
+capability.
+
+**This is the single biggest gap between the operator's stated target and what ctower can honestly
+draw**, and it must be designed for rather than papered over. "ChatGPT with crew members" implies
+a composer you can always type into. On today's bindings you can type into an idle lane and not a
+working one. The design answer:
+
+- The composer's enabled state is **derived from the selected lane's `HarnessSpec` capabilities ×
+  its current `liveness` state**, never from a UI-local guess. One function, one source.
+- While a lane is `working` on a binding without `INTERRUPT_AND_RESUME`, the composer stays
+  **visible, focusable and typable, and the send control is disabled**, carrying the refusal's own
+  words on the control (D5): *this harness declares no interrupt capability; delivering into a
+  live turn would destroy whatever that turn is holding.* Typed text is preserved and sends when
+  the turn ends. A disabled control that explains itself is honest; a control that accepts a
+  message and drops it is the failure `claude-code`'s comment describes.
+- A binding that *does* declare `INTERRUPT_AND_RESUME` unlocks the same composer with no other
+  change. The pane does not special-case a harness; it reads a capability.
+
+**(b) Durability state on every outgoing turn.** `unsent` → `durability pending` → accepted, with
+one stable command ID preserved across disconnect and reload (`AC-UX-09`, which also requires that
+retry, refusal and quarantine be distinguishable without opening developer tools). A turn is not
+accepted because the composer cleared; it is accepted because the record said so **and** the
+projection folded. Note the trap this sits on: both bindings' `ack_predicate` is literally
+`composer_cleared` — `claude-code`'s detail is *"the composer is empty and the pane shows an
+active turn after submit"* — which is the harness's evidence that the harness received it, and is
+a different claim from ctower's record having accepted it. The UI must not conflate the two.
+`AC-HAD-02` is the same rule from the seam's side: delivery is never assumed, and steer counts as
+acknowledged only when the harness returns the durable command ID — which, per the table above,
+`claude-code` cannot do at all.
+
+**(c) The model chip is the next attempt's pin, not a live switch.** Conductor's composer chip
+(`✳ Opus 4.8 1M`) reads as a live model swap. ctower cannot offer that. `AC-HAD-07`: for a binding
+whose survey says *no native fallback*, cross-provider failover is a **new attempt** with its own
+pinned composition after a successful checkpoint, *never* an in-session swap; CT-I1-042 says the
+same for `claude-code` in as many words. So the chip is labelled for what it is — the composition
+the **next** attempt will pin — and changing it while the lane is `working` stages that next
+attempt rather than pretending to retune the running one. For a configure-and-observe binding the
+chip is **read-only** with its source named: `hermes`'s survey answers `config_surface:
+authored_config_only`, and it spawns through a profile directory whose own config owns model and
+reasoning effort. An input that appears to set a value ctower does not own is a lie in a control.
+
+### 4.3 Right-top — workspace explorer and the change list
+
+**Backend:** the crew worktree observed read-only, plus `collect`.
+
+Conductor's shape: `All files · Changes N · Checks`, a totals line, per-row dimmed-directory +
+bold-basename with a right-aligned `+N −N`, `Create PR` in the chrome. `TreePane.tsx` and
+`FileDiffSwitch.tsx` already render both halves.
+
+The ctower delta is the one that makes `Create PR` honest. `AC-HAD-06`: `collect` derives
+artifacts from **committed refs and durable records only**; an uncommitted worktree returns
+`checkpoint-uncollectable` naming the dirty paths; no terminal capture, pane text, or session
+existence can fill an evidence slot. The SDK's `collect_refusal`
+(`policy.py:163+`) carries the reason: *"A fix that is not committed is not a fix, and an audit
+that reads the working tree cannot tell the difference."* Therefore:
+
+- The change list separates **committed** from **uncommitted** rows visibly. They are different
+  claims, and only one of them a successor can read.
+- `Create PR` is a real `disabled` control while the tree is dirty, with the dirty paths named
+  *on the control* (D5) — the treatment `New ticket` already gets in read-only v1 — not in a page
+  banner.
+- The `Checks` tab shows the gate verdicts that exist and `not reached` where a gate was not run.
+  It does not compose an aggregate "passing" out of a partial set. (D1.)
+
+### 4.4 Right-bottom — the terminal, and who it may speak for
+
+The brief called this pane maximum-risk and asked what it must never do. **SPEC has already
+settled it**, in more detail than the question assumed, and the answer is not "design a terminal" —
+it is "render the console foundation that already exists, and add nothing to it."
+
+The governing sentence is `docs/internal/SPEC.md:885`: *"Structured events and durable commands
+are authoritative. The raw terminal is a compatibility view."* The implementation reality note at
+`SPEC.md:14` is blunter: *"The console foundation has no browser UI and grants no typing
+authority."*
+
+What exists today, shipped under CT-I1-021 and already in the HTTP contract:
+
+| Operation | Path | Role in this pane |
+| --- | --- | --- |
+| `listVisibleConsoleSessions` | `GET /v1/console/sessions` | discovery — what this Actor may view at all |
+| `mintConsoleViewGrant` | `POST /v1/console/sessions/{id}/grants` | authority — one grant, one stream |
+| `renewConsoleViewGrant` | `POST /v1/console/sessions/{id}/renewals` | continuation, re-evaluating every fact |
+| `streamConsoleEvents` | `GET /v1/console/sessions/{id}/events` | the bounded SSE stream itself |
+| `allowConsoleSession` / `revokeConsoleSession` / `setConsoleKillSwitch` | `/v1/admin/console/…` | operator-side allowance, revocation, global kill switch |
+
+Every one of them carries `x-ctower-cli: null` and `x-ctower-spool: "forbidden"`: these are
+browser-facing, same-origin, never spooled, and deliberately have no CLI equivalent.
+
+The laws the pane inherits, and what each forbids it from drawing:
+
+- **INV-91 — visibility is an exact current-fact join.** A session is visible only when an
+  append-only operator allowance joins the authenticated **non-Commander** Actor's exact Project
+  grant, seat/crew assignment interval, recorded work session, runtime attempt, runner identity and
+  epoch, registered backend reference, live tmux `@project`, and session incarnation. *The
+  allowance is eligibility rather than authority* — viewing additionally requires a
+  `ConsoleViewGrant` bound to the exact human role binding, browser session, session reference,
+  policy revision, and **one stream use**. A grant lasts at most **five minutes**, renewal
+  re-evaluates every fact, and one continuous chain lasts at most **thirty minutes**.
+  → The pane draws a **grant clock**, not an "always on" terminal. Approaching expiry is a visible
+  state, and renewal is a real request that can be refused. A pane that keeps painting after its
+  grant lapsed is asserting authority it does not have.
+- **INV-92 / AC-CON-04 — output is bounded RESTRICTED custody with typed gaps.** Chunks are at
+  most 16 KiB decoded, delivery and replay each bounded to 1 MiB/minute, pending bytes to 256 KiB,
+  and *"every unprovable range, truncation, rate limit, or slow consumer appends a gap before it
+  is signalled."*
+  → **Gaps are rendered inline, in the stream, as a first-class row.** A terminal that silently
+  drops bytes and one that saw everything are different claims, and the gap event is the only
+  thing that distinguishes them. This is D1 applied to a byte range.
+- **AC-CON-05 — plaintext and key values appear in no ordinary row, response, URL, error, log,
+  telemetry, or export**, recoverable only through the NOLOGIN `console_output_reader` role, with
+  every recovery appending an access fact.
+  → The pane offers **no download, no copy-all, no export**. A "copy transcript" button is a
+  custody hole with a friendly label.
+- **AC-CON-03 — the SSE URL carries no credential**, returns `Cache-Control: no-store`,
+  `X-Accel-Buffering: no`, no compression and no CORS authority, and the route accepts only the
+  configured exact private Origin, secure human-session cookie, and matching CSRF proof.
+- **AC-CON-06 — revocation, expiry, any replacement fence, and the global kill switch close every
+  affected stream with a typed reason within five seconds**, and repeated denials suspend the
+  Actor.
+  → The close reason is **shown**, not swallowed into a blank pane. "The stream stopped" and "your
+  grant was revoked" and "the kill switch is on" are three different facts an operator must be
+  able to tell apart without opening developer tools.
+
+**What the pane must never do**, stated as the design's own refusals — each one is a line item
+absent from AC-CON-07's evidence chain, which is to say each one would invalidate the console
+candidate if it appeared:
+
+1. **Never accept a keystroke.** No typing authority (`SPEC.md:14`), no pane write, no shell
+   execution, no generic process route (AC-CON-07). Steering goes through the composer as a
+   durable input command with a client command ID — §4.2 — never through keystrokes into a pane.
+   The pane has no input element at all; there is nothing to disable, because there is nothing.
+2. **Never source evidence.** `AC-HAD-06`: no terminal capture, pane text, or session existence
+   can fill an evidence slot. A `Create PR` or a proof verdict that reads the terminal is
+   forbidden by the same rule that makes `collect` refuse a dirty tree.
+3. **Never serve as liveness truth.** `AC-HAD-03` refuses a seat self-report as serving truth;
+   `liveness` reads its declared evidence sources or reports `unknown` by name.
+4. **Never be reachable other than privately.** AC-CON-07 requires a literal loopback or Tailscale
+   bind with an `ss -tlnp` inventory proving no wildcard or public Console listener; Funnel and
+   public routes are named absent.
+5. **Never show a Commander session.** INV-91 says *non-Commander* engagement. This is a
+   discovery-level fact, so the cockpit's rail must not render a Commander terminal tab even
+   greyed — a greyed tab discloses that the session exists.
+
+Two smaller pane decisions inherited from what already exists: it keeps **one fixed dark palette
+in both app themes** (`src/surfaces/terminal/TerminalPane.tsx` already does this and records why
+beside the CSS), and it carries its **redaction mark** inline, because a stream that had a
+credential shape redacted out of it and one that never contained one are different claims.
+
+The tab strip mirrors Conductor's `Setup · Run · ● Terminal · +`, but every tab is a *reading*, so
+all of them stay live in read-only v1 — the same reason the Chat/Raw and File/Diff switches are
+live today.
