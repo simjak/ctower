@@ -7,6 +7,7 @@ fastapi==0.141.1
 feedparser==6.0.14
 feedparser-sgmllib==2.1.0
 httpx==0.28.1
+hypothesis==6.165.10
 jsonschema==4.26.0
 keyring==25.7.0
 # CommonMark token oracle from https://github.com/executablebooks/markdown-it-py

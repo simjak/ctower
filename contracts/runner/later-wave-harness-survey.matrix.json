@@ -1,0 +1,599 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
+  "schema": "ctower.later-wave-harness-survey-matrix/v1",
+  "revision": 1,
+  "question_order": [
+    "native_pool",
+    "native_fallback",
+    "config_surface",
+    "identity_proof",
+    "reset_window_semantics",
+    "rotation_cache_semantics",
+    "subagent_credential_inheritance",
+    "egress_topology",
+    "probe_target",
+    "credit_weights"
+  ],
+  "answer_token_encoding": {
+    "unknown": {
+      "state": "unverified",
+      "value": null
+    },
+    "model_route": {
+      "state": "not_applicable",
+      "value": "model"
+    },
+    "verified_tokens": "state=verified and value=<token>"
+  },
+  "legal_combination_law": "For every unordered pair below, legal combinations are the Cartesian product of the two declared domains minus the default rules and that row's rules. The violation set is generated from these rules; no survey example is normative.",
+  "domains": {
+    "native_pool": [
+      "unknown",
+      "native_pool",
+      "no_native_pool",
+      "model_route"
+    ],
+    "native_fallback": [
+      "unknown",
+      "native_credential_fallback",
+      "no_native_fallback",
+      "model_fallback_only",
+      "model_route"
+    ],
+    "config_surface": [
+      "unknown",
+      "authored_config_only",
+      "env_overridable",
+      "account_file",
+      "model_route"
+    ],
+    "identity_proof": [
+      "unknown",
+      "decoded_claim",
+      "account_file",
+      "persisted_device_key",
+      "direct_cli_account",
+      "model_route"
+    ],
+    "reset_window_semantics": [
+      "unknown",
+      "provider_reset_at",
+      "rolling_block",
+      "weekly_plan",
+      "model_route"
+    ],
+    "rotation_cache_semantics": [
+      "unknown",
+      "native_pool_cache",
+      "provided_pool_cache",
+      "config_home_respawn",
+      "no_rotation_cache",
+      "model_route"
+    ],
+    "subagent_credential_inheritance": [
+      "unknown",
+      "per_task_lease",
+      "parent_credential",
+      "separate_acquisition",
+      "no_credential_inheritance",
+      "model_route"
+    ],
+    "egress_topology": [
+      "unknown",
+      "shared",
+      "isolated",
+      "model_route"
+    ],
+    "probe_target": [
+      "unknown",
+      "gateway_endpoint",
+      "direct_cli_endpoint",
+      "representative_endpoint",
+      "model_route"
+    ],
+    "credit_weights": [
+      "unknown",
+      "published_directional",
+      "unpublished",
+      "model_route"
+    ]
+  },
+  "default_rules": [
+    "model-route-coherence"
+  ],
+  "rules": {
+    "model-route-coherence": {
+      "applies_to": "every unordered pair",
+      "legal": "model_route may pair only with model_route or unknown; unknown is non-claim and is compatible with every value",
+      "forbidden": "a model_route value paired with any verified harness value"
+    },
+    "no-native-pool-native-cache": {
+      "pair": [
+        "native_pool",
+        "rotation_cache_semantics"
+      ],
+      "legal": "all domain pairs except the forbidden combination",
+      "forbidden": [
+        [
+          "no_native_pool",
+          "native_pool_cache"
+        ]
+      ],
+      "reason": "A harness without a native pool cannot also claim the native pool's cache invalidation semantics."
+    },
+    "native-pool-no-provided-cache": {
+      "pair": [
+        "native_pool",
+        "rotation_cache_semantics"
+      ],
+      "legal": "all domain pairs except the forbidden combination",
+      "forbidden": [
+        [
+          "native_pool",
+          "provided_pool_cache"
+        ]
+      ],
+      "reason": "A harness with a native pool cannot also claim ctower's provided pool cache semantics over that credential set."
+    },
+    "no-native-pool-no-native-subagent-lease": {
+      "pair": [
+        "native_pool",
+        "subagent_credential_inheritance"
+      ],
+      "legal": "all domain pairs except the forbidden combination",
+      "forbidden": [
+        [
+          "no_native_pool",
+          "per_task_lease"
+        ]
+      ],
+      "reason": "A harness without a native pool cannot claim native per-task credential leasing."
+    },
+    "authored-config-account-file-never-both": {
+      "pair": [
+        "config_surface",
+        "identity_proof"
+      ],
+      "legal": "all domain pairs except the forbidden combination",
+      "forbidden": [
+        [
+          "authored_config_only",
+          "account_file"
+        ]
+      ],
+      "reason": "An authored-config-only surface cannot simultaneously claim an account-file identity as its credential surface."
+    },
+    "direct-cli-identity-gateway-probe-never-both": {
+      "pair": [
+        "identity_proof",
+        "probe_target"
+      ],
+      "legal": "all domain pairs except the forbidden combination",
+      "forbidden": [
+        [
+          "direct_cli_account",
+          "gateway_endpoint"
+        ]
+      ],
+      "reason": "A direct-CLI identity proof cannot describe a gateway endpoint probe."
+    },
+    "gateway-device-identity-direct-probe-never-both": {
+      "pair": [
+        "identity_proof",
+        "probe_target"
+      ],
+      "legal": "all domain pairs except the forbidden combination",
+      "forbidden": [
+        [
+          "persisted_device_key",
+          "direct_cli_endpoint"
+        ]
+      ],
+      "reason": "A gateway device-pairing proof cannot describe a direct-CLI endpoint probe."
+    }
+  },
+  "pairs": [
+    {
+      "left": "native_pool",
+      "right": "native_fallback",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "config_surface",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "identity_proof",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "reset_window_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "rotation_cache_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence",
+        "no-native-pool-native-cache",
+        "native-pool-no-provided-cache"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "subagent_credential_inheritance",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence",
+        "no-native-pool-no-native-subagent-lease"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_pool",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "config_surface",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "identity_proof",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "reset_window_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "rotation_cache_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "subagent_credential_inheritance",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "native_fallback",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "identity_proof",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence",
+        "authored-config-account-file-never-both"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "reset_window_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "rotation_cache_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "subagent_credential_inheritance",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "config_surface",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "identity_proof",
+      "right": "reset_window_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "identity_proof",
+      "right": "rotation_cache_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "identity_proof",
+      "right": "subagent_credential_inheritance",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "identity_proof",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "identity_proof",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence",
+        "direct-cli-identity-gateway-probe-never-both",
+        "gateway-device-identity-direct-probe-never-both"
+      ]
+    },
+    {
+      "left": "identity_proof",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "reset_window_semantics",
+      "right": "rotation_cache_semantics",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "reset_window_semantics",
+      "right": "subagent_credential_inheritance",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "reset_window_semantics",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "reset_window_semantics",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "reset_window_semantics",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "rotation_cache_semantics",
+      "right": "subagent_credential_inheritance",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "rotation_cache_semantics",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "rotation_cache_semantics",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "rotation_cache_semantics",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "subagent_credential_inheritance",
+      "right": "egress_topology",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "subagent_credential_inheritance",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "subagent_credential_inheritance",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "egress_topology",
+      "right": "probe_target",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "egress_topology",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    },
+    {
+      "left": "probe_target",
+      "right": "credit_weights",
+      "legal": "all domain pairs except the default model-route rule and the listed pair rules",
+      "rules": [
+        "model-route-coherence"
+      ]
+    }
+  ],
+  "candidate_context": {
+    "openclaw": {
+      "effective_route": "gateway",
+      "forbidden": [
+        {
+          "question": "identity_proof",
+          "value": "direct_cli_account"
+        },
+        {
+          "question": "probe_target",
+          "value": "direct_cli_endpoint"
+        }
+      ]
+    },
+    "qwen-code": {
+      "effective_route": "qwen-cli",
+      "forbidden": []
+    },
+    "zcode": {
+      "effective_route": "unbound-stub",
+      "forbidden": []
+    },
+    "deepseek": {
+      "effective_route": "hermes-profile",
+      "legal": "model_route for every question except credit_weights, which may be unknown"
+    }
+  },
+  "signed_off": {
+    "seat": "engineer",
+    "crew": "engineer-044-r5",
+    "model": "gpt-5.6-luna",
+    "claim": "The ten-question dependency matrix is a closed declarative law: domains plus default and pair rules derive the violation set.",
+    "stood_under": "CT-I1-044, sealed harness-adapter design c07c049c, and the r4 F4 finding that example mutations did not close the impossible-survey class.",
+    "if_this_breaks": "Re-derive every pair from the ten-question contract and update the matrix revision; do not append another judge example as a special case."
+  }
+}
