@@ -34,7 +34,7 @@ from httpx import Response
 from support.acceptance import accept_pending_commands
 from support.catalog import activate_project_prefixes
 from support.telemetry import telemetry_headers
-from support.tenant_fixture import TenantFixture
+from support.tenant_fixture import TenantFixture, provision_seat
 
 from ctower_api.interface import create_app
 from ctower_kernel.inbox import Inbox, PostgresInbox
@@ -129,9 +129,8 @@ def test_the_seat_credential_and_not_the_bundle_is_what_mints_a_manibo_address(
         unminted = _compose(client, tenant.commander_credential, _MANIBO_SEAT)
         seat = _issue_seat(client, tenant, project_key=_MANIBO, seat_key=_MANIBO_SEAT)
         opened = _compose(client, tenant.commander_credential, _MANIBO_SEAT)
-        offered = client.get(
-            "/v1/inbox/correspondents", headers=_bearer(tenant.commander_credential)
-        )
+        _operator_id, operator = provision_seat(tenant, "fleet-operator", kind="operator")
+        offered = client.get("/v1/inbox/correspondents", headers=_bearer(operator))
 
     assert (unminted.status_code, unminted.json()["code"]) == (
         HTTP_NOT_FOUND,
