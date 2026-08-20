@@ -85,3 +85,107 @@ its README's first line is *"This is **not** `apps/ctower-web`"* — an operator
 running development instance, whose browser receives no API bearer, no session, and no credential
 of any kind, because every read happens server-side. The cockpit lands there. It does not land on
 `apps/ctower-web`, and §6.5 says why it may not arrive there by accretion.
+
+---
+
+## 3. Aesthetic: paperclip's system is the base
+
+Paperclip's design language is a documented, enforced system, not a look, which is what makes
+"the same clean UI" a portable instruction rather than a mood. Read
+`/srv/projects/paperclip-eval/DESIGN.md` first; it is the anchor document and it says of itself
+that Storybook *"is the verification surface — it documents the system; it does not define it."*
+
+Its product stance is already ctower's, verbatim:
+
+> Paperclip is an operational control plane… The user is an operator scanning state and making
+> decisions. Every screen should answer, in order: *what is happening, does it need me, what do I
+> do about it.* Density in service of scanning beats whitespace in service of aesthetics — but
+> density comes from information, never from chrome.
+
+### 3.1 What is actually being adopted
+
+| Layer | Paperclip's rule | Source |
+| --- | --- | --- |
+| Token source | Exactly one. `ui/src/index.css`, Tailwind v4, no config file, tokens as CSS custom properties via `@theme`. A parallel `tokens/` directory is named as forbidden because it would produce two sources of truth. | `DESIGN.md` §"The token layer" |
+| Runtime tunability | `@theme inline` bakes literals at build time, so anything that must retune at runtime (dark mode, theme editor) lives in a non-inline block. | same |
+| Type | `--font-sans: "InterVariable", "Inter", ui-sans-serif, …`; `--font-mono` is a system monospace stack. | `ui/src/index.css:23–24` |
+| Colour | OKLCH neutral semantic core — `--background: oklch(1 0 0)`, `--foreground: oklch(0.145 0 0)`, `--muted-foreground: oklch(0.556 0 0)`, `--border: oklch(0.922 0 0)` — with a complete `.dark` override block and a `--sidebar-*` family. | `index.css:74–91`, `.dark` at `289+` |
+| Radius | **One knob.** `--radius: 0.5rem` and a multiplicative ladder — `--radius-sm: calc(var(--radius) * 0.6)` through `--radius-4xl: calc(var(--radius) * 2.6)` — so the whole app's corner language retunes from a single value. | `index.css:59–74` |
+| Status | One seed hue per state, consumed through a `color-mix` recipe that derives both modes from that one seed: `.status-chip { background-color: color-mix(in srgb, var(--sc) 15%, white); color: color-mix(in srgb, var(--sc) 82%, black); border-color: var(--sc) }`, with a `.dark` counterpart at 22%/80%/48%. | `index.css:1951–1959` |
+| Motion | Two tiers. Primitives `--motion-duration-{instant,fast,base,slow,deliberate}` = 80/160/240/360/520ms plus two house curves (`--motion-ease-out-expo: cubic-bezier(0.16,1,0.3,1)`, `--motion-ease-standard: cubic-bezier(0.4,0,0.2,1)`); every scoped token (`--motion-tool-enter`, `--motion-cot-collapse`, `--motion-diff-reveal`…) references a primitive. `prefers-reduced-motion` zeroes the **primitives**, and the comment states the reason: *"Zeroing the primitives cascades to every scoped token that references them."* | `index.css:221–253`, `544–560` |
+| Components | shadcn `new-york`, `baseColor: neutral`, `cssVariables: true`, lucide icons. | `ui/components.json` |
+
+Adopt all of the above. Two of paperclip's own principles are worth restating because they are
+the ones that decide the cockpit's hard cases: **Principle 4**, *hierarchy through structure, not
+decoration — a screen should survive the removal of one visual layer*; and **Principle 6**,
+*machine values look machine-made* — IDs, costs, token counts, timestamps and log output use the
+monospace token and shared formatting helpers, never per-screen formatting.
+
+### 3.2 One thing the instruction does not mean
+
+`DESIGN.md`'s own status line: *"Governs structure, not brand. Brand values (color, type,
+iconography) are intentionally unspecified: they are being redesigned and will land as token
+values only."* So "the same clean UI as paperclip" cannot mean "paperclip's hues", because
+paperclip does not consider its hues settled. It means the structure, the density stance, the
+single-token-source discipline, the one-knob ladders, the derive-both-modes-from-one-seed recipe,
+and the copy rules. That is the portable part, and it is the part that survives paperclip's own
+next redesign.
+
+### 3.3 The deltas ctower's laws force
+
+**D1 · A third state class: `unknown`.** Paperclip's status set is `idle/running/paused/error`
+and `backlog/todo/in_progress/in_review/done/blocked/cancelled` (`index.css:155–165`) — every
+value is a *known* state. ctower must render a fourth thing: a read that did not answer.
+`AC-UX-03` requires degradation to flip views to `STATE UNKNOWN` and states that *no test case
+displays "All clear."* `AC-HAD-03` returns `substrate-unobservable:<probe>`; `AC-HAD-10`'s quota
+axis carries `capped(reset_unknown)` and `unknown` as first-class values.
+→ Mint `--state-unknown` alongside the status hues, feed it through the same `--sc` recipe, and
+forbid it from resolving to the idle grey or to any success hue. Paperclip's own Budget tab is the
+counter-example this delta exists to prevent — see §5.5.
+
+**D2 · No shadows, no gradients, no glows, in either theme.**
+`apps/ctower-ui/design-reference/app.css:5` opens with exactly that rule, and the light set is
+lifted from the manibo Vercel pack *"and its `--shadow-sm: none`"* (`app.css:10`). shadcn
+`new-york` reaches for subtle elevation by default. Keep ctower's rule: it is the stricter reading
+of paperclip's own Principle 4, so this is a defaults conflict, not a principles conflict.
+
+**D3 · Keep ctower's semantic marks; port paperclip's recipe.** ctower's six state marks, its
+seven-stage ramp (`--stage-1: #a3a3a3` …, `app.css:56`) and its three project marks
+(`--p-ctower: #7c3aed`, `--p-manibo: #0d9488`, `--p-bhloop: #be185d`, `app.css:51–53`, each with
+its own dark-mode value at `114–116`) are vocabulary the operator has already learned, carried by
+a small mark and never by chip chrome. Port the *mechanism* — one seed per state, both modes
+derived by `color-mix`, icon hues separately tuned to clear contrast as bare glyphs — not the hue
+values. §3.2 is why: paperclip's hues are the part paperclip itself has not settled.
+
+**D4 · No per-agent decorative gradient.** Paperclip mints ten brand gradients
+(`--agent-1a/1b` … `--agent-10a/10b`, `index.css:128+`). ctower identifies a lane by **seat name +
+project mark + harness**, all of which are facts. A gradient assigned by index is a fourth
+identity that means nothing and competes with the project mark for the same glance. Drop it.
+
+**D5 · Copy discipline is stricter than paperclip's.** The operator's binding amendment recorded
+in `apps/ctower-ui/README.md` is: *remove unnecessary text; a screen that needs a paragraph to
+explain itself fails the gate.* Paperclip's Tools tab stacks three explanatory banners plus a
+sidebar essay on one screen (§5.2). Adopt paperclip's grid, spacing and density; do not adopt its
+banner habit. ctower's rule already says where the words go instead: a control's caveat lives on
+the control, a number's derivation lives in that number's hover, and a declared absence is a mark
+plus the fact plus a citation chip.
+
+**D6 · Machine values are mono, and ctower's list is longer.** Paperclip's Principle 6 covers IDs,
+costs, token counts, timestamps and log output. ctower adds ULID prefixes, composition and
+artifact digests, `HarnessSpec` revisions, per-account reset clocks, provider-native credit units,
+fencing tokens, and console cursor positions. `src/surfaces/Count.tsx` already enforces that a
+count carries its unit; extend the same rule to every value above.
+
+**D7 · Adopt three dependencies; refuse a fourth.** `react-resizable-panels` (paperclip wraps it
+at `ui/src/components/ui/resizable-panels.tsx`) gives the four-pane geometry with persisted sizes.
+`@xterm/xterm` + `@xterm/addon-fit` gives the terminal pane's rendering. `cmdk` gives the palette
+that Conductor's `⌘L to focus` implies. **Do not adopt `@assistant-ui/react` or any chat runtime.**
+ctower's transcript is a projection of durable events, not a chat runtime; `AC-UX-09` requires a
+browser command to remain visibly `unsent` or `durability pending` until authoritative acceptance
+and never to paint optimistic state as accepted, and optimistic local echo is precisely what a
+chat runtime exists to provide. Adopting one installs the projection-lag defect as a library.
+
+**D8 · The stack ports at the token layer only.** Paperclip is Vite + React Router + TanStack
+Query with client fetching. `apps/ctower-ui` is Next App Router with server components and no
+client data layer, because its browser holds no credential at all. The tokens, the component
+vocabulary and the copy rules port; the data layer does not.
