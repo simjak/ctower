@@ -31,9 +31,10 @@ _QUESTIONS = (
     "credit_weights",
 )
 _CANDIDATES = ("openclaw", "qwen-code", "zcode", "deepseek")
-_MATRIX_SHA256 = "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+_MATRIX_SHA256 = "cc9f4f9fee632816a9d7825f87cbf8346fccdcc8d5e65dfb4d3f1b30a640cfa5"
 _MATRIX_PAIR_COUNT = 45
 Violation = tuple[str, str, str, str, str, str]
+EvidenceViolation = tuple[str, str, str, str]
 
 
 def _document() -> dict[str, Any]:
@@ -70,51 +71,73 @@ def _token_values(matrix: dict[str, Any], question: str) -> list[str]:
 
 
 def _derived_violation_set() -> tuple[Violation, ...]:
-    """Derive cases from matrix rules; no hand-picked survey is the mechanism."""
+    """Derive pair and route cases from the matrix law, not judge examples."""
     matrix = _matrix()
-    pairs = cast(list[dict[str, Any]], matrix["pairs"])
-    rules = cast(dict[str, dict[str, Any]], matrix["rules"])
     cases: list[Violation] = []
-    for pair in pairs:
-        left = cast(str, pair["left"])
-        right = cast(str, pair["right"])
-        for rule_id in cast(list[str], pair["rules"]):
-            rule = rules[rule_id]
-            if rule_id == "model-route-coherence":
-                cases.extend(
-                    ("qwen-code", left, "model_route", right, answer_value, rule_id)
-                    for answer_value in _token_values(matrix, right)
-                    if answer_value not in {"unknown", "model_route"}
+    for index, left in enumerate(_QUESTIONS):
+        for right in _QUESTIONS[index + 1 :]:
+            cases.extend(
+                (
+                    "qwen-code",
+                    left,
+                    "model_route",
+                    right,
+                    answer_value,
+                    "model-route-coherence",
                 )
-                cases.extend(
-                    ("qwen-code", left, answer_value, right, "model_route", rule_id)
-                    for answer_value in _token_values(matrix, left)
-                    if answer_value not in {"unknown", "model_route"}
-                )
-            else:
-                cases.extend(
-                    ("qwen-code", left, values[0], right, values[1], rule_id)
-                    for values in cast(list[list[str]], rule["forbidden"])
-                )
-
-    # Route context is also derived from the matrix, not copied from a judge example.
-    context = cast(dict[str, dict[str, Any]], matrix["candidate_context"])["openclaw"]
-    for forbidden in cast(list[dict[str, str]], context["forbidden"]):
-        other = next(question for question in _QUESTIONS if question != forbidden["question"])
-        cases.append(
-            (
-                "openclaw",
-                forbidden["question"],
-                forbidden["value"],
-                other,
-                "unknown",
-                "candidate-context",
+                for answer_value in _token_values(matrix, right)
+                if answer_value not in {"unknown", "model_route"}
             )
+            cases.extend(
+                (
+                    "qwen-code",
+                    left,
+                    answer_value,
+                    right,
+                    "model_route",
+                    "model-route-coherence",
+                )
+                for answer_value in _token_values(matrix, left)
+                if answer_value not in {"unknown", "model_route"}
+            )
+
+    for rule in cast(list[dict[str, Any]], matrix["pair_rules"]):
+        left, right = cast(list[str], rule["pair"])
+        cases.extend(
+            ("qwen-code", left, values[0], right, values[1], cast(str, rule["id"]))
+            for values in cast(list[list[str]], rule["forbidden"])
         )
+
+    for candidate, context in cast(dict[str, dict[str, Any]], matrix["candidate_context"]).items():
+        for forbidden in cast(list[dict[str, str]], context.get("forbidden", [])):
+            other = next(question for question in _QUESTIONS if question != forbidden["question"])
+            cases.append(
+                (
+                    candidate,
+                    forbidden["question"],
+                    forbidden["value"],
+                    other,
+                    "unknown",
+                    "candidate-context",
+                )
+            )
     return tuple(cases)
 
 
+def _derived_evidence_violation_set() -> tuple[EvidenceViolation, ...]:
+    return tuple(
+        (
+            cast(str, rule["candidate"]),
+            cast(str, rule["question"]),
+            cast(str, rule["value"]),
+            cast(str, rule["id"]),
+        )
+        for rule in cast(list[dict[str, Any]], _matrix()["evidence_claim_support"])
+    )
+
+
 _VIOLATION_CASES = _derived_violation_set()
+_EVIDENCE_VIOLATION_CASES = _derived_evidence_violation_set()
 
 
 def _set_token(document: dict[str, Any], candidate: str, question: str, answer_value: str) -> None:
@@ -134,31 +157,40 @@ def _set_token(document: dict[str, Any], candidate: str, question: str, answer_v
 def test_matrix_is_complete_and_revision_pinned() -> None:
     matrix = _matrix()
     assert tuple(matrix["question_order"]) == _QUESTIONS
-    assert len(matrix["pairs"]) == _MATRIX_PAIR_COUNT
-    assert {frozenset((pair["left"], pair["right"])) for pair in matrix["pairs"]} == {
+    question_pairs = {
         frozenset((left, right))
         for index, left in enumerate(_QUESTIONS)
         for right in _QUESTIONS[index + 1 :]
     }
-    expected_rule_ids = [
-        rule_id
-        for pair in matrix["pairs"]
-        for rule_id in pair["rules"]
-        if rule_id != "model-route-coherence"
-        for _ in matrix["rules"][rule_id]["forbidden"]
-    ]
+    assert len(question_pairs) == _MATRIX_PAIR_COUNT
+    assert {
+        frozenset(rule["pair"]) for rule in cast(list[dict[str, Any]], matrix["pair_rules"])
+    } <= question_pairs
+
     schema = _schema()
-    schema_rules = schema["$defs"]["candidate"]["properties"]["answers"]["allOf"]
-    assert [rule["x-ctower-matrix-rule-id"] for rule in schema_rules] == expected_rule_ids
-    assert schema["x-ctower-matrix-default-rules"] == ["model-route-coherence"]
-    context_rules = schema["$defs"]["candidate"]["allOf"][0]["then"]["properties"]["answers"][
-        "allOf"
+    answer_rules = schema["$defs"]["answers"]["allOf"]
+    schema_rule_ids = [item["$ref"].rsplit("/", 1)[-1] for item in answer_rules]
+    assert schema_rule_ids == [
+        "model-route-coherence",
+        *[rule["id"] for rule in matrix["pair_rules"]],
     ]
-    expected_context = [
-        {"question": item["question"], "forbidden_value": item["value"]}
-        for item in matrix["candidate_context"]["openclaw"]["forbidden"]
-    ]
-    assert [rule["x-ctower-matrix-context-rule"] for rule in context_rules] == expected_context
+    for rule_id in schema_rule_ids:
+        assert schema["$defs"][rule_id]["x-ctower-matrix-rule-id"] == rule_id
+
+    expected_route_rules: list[dict[str, str]] = []
+    for candidate, context in matrix["candidate_context"].items():
+        expected_route_rules.extend(
+            {
+                "candidate": candidate,
+                "effective_route": context["effective_route"],
+                "question": forbidden["question"],
+                "forbidden_value": forbidden["value"],
+            }
+            for forbidden in context.get("forbidden", [])
+        )
+    assert schema["x-ctower-route-rules"] == expected_route_rules
+    assert schema["x-ctower-evidence-claim-rules"] == matrix["evidence_claim_support"]
+    assert schema["x-ctower-matrix-default-rules"] == matrix["default_rules"]
     raw = _MATRIX.read_bytes()
     assert hashlib.sha256(raw).hexdigest() == _MATRIX_SHA256
 
@@ -229,3 +261,68 @@ def _assert_violation_refused(case: Violation) -> None:
 def test_every_derived_matrix_violation_is_refused() -> None:
     for case in _VIOLATION_CASES:
         _assert_violation_refused(case)
+
+
+def test_qwen_cli_route_rejects_a_gateway_probe_target() -> None:
+    document = copy.deepcopy(_document())
+    qwen = _candidates(document)["qwen-code"]
+    qwen["answers"]["probe_target"] = {
+        "state": "verified",
+        "value": "gateway_endpoint",
+        "evidence": ["qwen-docs-0215"],
+    }
+
+    assert _errors(document), "qwen-cli cannot claim a gateway representative probe"
+
+
+def test_qwen_published_directional_weights_require_supporting_evidence() -> None:
+    document = copy.deepcopy(_document())
+    qwen = _candidates(document)["qwen-code"]
+    qwen["answers"]["credit_weights"] = {
+        "state": "verified",
+        "value": "published_directional",
+        "evidence": ["qwen-docs-0215", "ctower-weight-registry-d724"],
+    }
+
+    assert _errors(document), "published Qwen weights need Qwen-specific supporting evidence"
+
+
+def test_r6_matrix_declares_route_and_evidence_support_laws() -> None:
+    matrix = _matrix()
+    assert {
+        "question": "probe_target",
+        "value": "gateway_endpoint",
+    } in matrix["candidate_context"]["qwen-code"]["forbidden"]
+    assert matrix["evidence_claim_support"] == [
+        {
+            "id": "qwen-published-directional-weights",
+            "candidate": "qwen-code",
+            "question": "credit_weights",
+            "state": "verified",
+            "value": "published_directional",
+            "required_evidence": ["qwen-directional-weight-table"],
+            "available": False,
+        }
+    ]
+
+
+def _assert_evidence_violation_refused(case: EvidenceViolation) -> None:
+    candidate, question, answer_value, rule_id = case
+    document = copy.deepcopy(_document())
+    answer = _candidates(document)[candidate]["answers"][question]
+    answer["state"] = "verified"
+    answer["value"] = answer_value
+    answer.pop("note", None)
+
+    assert _errors(document), f"derived evidence violation accepted: {rule_id} {case}"
+
+
+@settings(max_examples=32, derandomize=True, deadline=None)
+@given(st.sampled_from(_EVIDENCE_VIOLATION_CASES))
+def test_derived_evidence_claim_violations_are_refused(case: EvidenceViolation) -> None:
+    _assert_evidence_violation_refused(case)
+
+
+def test_every_derived_evidence_claim_violation_is_refused() -> None:
+    for case in _EVIDENCE_VIOLATION_CASES:
+        _assert_evidence_violation_refused(case)

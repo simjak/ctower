@@ -18456,34 +18456,52 @@
       "$defs": {
         "answer": {
           "additionalProperties": false,
-          "oneOf": [
+          "allOf": [
             {
-              "properties": {
-                "state": {
-                  "const": "unverified"
-                },
-                "value": {
-                  "const": null
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "unverified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "const": null
+                  }
                 }
               }
             },
             {
-              "properties": {
-                "state": {
-                  "const": "not_applicable"
-                },
-                "value": {
-                  "const": "model"
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "not_applicable"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "const": "model"
+                  }
                 }
               }
             },
             {
-              "properties": {
-                "state": {
-                  "const": "verified"
-                },
-                "value": {
-                  "type": "string"
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -18519,6 +18537,104 @@
           ],
           "type": "object"
         },
+        "answers": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/$defs/model-route-coherence"
+            },
+            {
+              "$ref": "#/$defs/no-native-pool-native-cache"
+            },
+            {
+              "$ref": "#/$defs/native-pool-no-provided-cache"
+            },
+            {
+              "$ref": "#/$defs/no-native-pool-no-native-subagent-lease"
+            },
+            {
+              "$ref": "#/$defs/authored-config-account-file-never-both"
+            },
+            {
+              "$ref": "#/$defs/direct-cli-identity-gateway-probe-never-both"
+            },
+            {
+              "$ref": "#/$defs/gateway-device-identity-direct-probe-never-both"
+            }
+          ],
+          "properties": {
+            "config_surface": {
+              "$ref": "#/$defs/answer"
+            },
+            "credit_weights": {
+              "$ref": "#/$defs/answer"
+            },
+            "egress_topology": {
+              "$ref": "#/$defs/answer"
+            },
+            "identity_proof": {
+              "$ref": "#/$defs/answer"
+            },
+            "native_fallback": {
+              "$ref": "#/$defs/answer"
+            },
+            "native_pool": {
+              "$ref": "#/$defs/answer"
+            },
+            "probe_target": {
+              "$ref": "#/$defs/answer"
+            },
+            "reset_window_semantics": {
+              "$ref": "#/$defs/answer"
+            },
+            "rotation_cache_semantics": {
+              "$ref": "#/$defs/answer"
+            },
+            "subagent_credential_inheritance": {
+              "$ref": "#/$defs/answer"
+            }
+          },
+          "required": [
+            "native_pool",
+            "native_fallback",
+            "config_surface",
+            "identity_proof",
+            "reset_window_semantics",
+            "rotation_cache_semantics",
+            "subagent_credential_inheritance",
+            "egress_topology",
+            "probe_target",
+            "credit_weights"
+          ],
+          "type": "object"
+        },
+        "authored-config-account-file-never-both": {
+          "not": {
+            "properties": {
+              "config_surface": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "authored_config_only"
+                  }
+                }
+              },
+              "identity_proof": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "account_file"
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "authored-config-account-file-never-both"
+        },
         "candidate": {
           "additionalProperties": false,
           "allOf": [
@@ -18528,124 +18644,10 @@
                   "key": {
                     "const": "openclaw"
                   }
-                },
-                "required": [
-                  "key"
-                ]
+                }
               },
               "then": {
-                "properties": {
-                  "adapter_work": {
-                    "const": "blocked_until_survey"
-                  },
-                  "answers": {
-                    "allOf": [
-                      {
-                        "not": {
-                          "properties": {
-                            "identity_proof": {
-                              "properties": {
-                                "state": {
-                                  "const": "verified"
-                                },
-                                "value": {
-                                  "const": "direct_cli_account"
-                                }
-                              },
-                              "required": [
-                                "state",
-                                "value"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "identity_proof"
-                          ]
-                        },
-                        "x-ctower-matrix-context-rule": {
-                          "forbidden_value": "direct_cli_account",
-                          "question": "identity_proof"
-                        }
-                      },
-                      {
-                        "not": {
-                          "properties": {
-                            "probe_target": {
-                              "properties": {
-                                "state": {
-                                  "const": "verified"
-                                },
-                                "value": {
-                                  "const": "direct_cli_endpoint"
-                                }
-                              },
-                              "required": [
-                                "state",
-                                "value"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "probe_target"
-                          ]
-                        },
-                        "x-ctower-matrix-context-rule": {
-                          "forbidden_value": "direct_cli_endpoint",
-                          "question": "probe_target"
-                        }
-                      }
-                    ],
-                    "patternProperties": {
-                      "^.+$": {
-                        "allOf": [
-                          {
-                            "not": {
-                              "$ref": "#/$defs/model-answer"
-                            }
-                          },
-                          {
-                            "properties": {
-                              "evidence": {
-                                "contains": {
-                                  "const": "design-seam-c07"
-                                }
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "capability_declaration": {
-                    "properties": {
-                      "liveness": {
-                        "const": "unknown"
-                      },
-                      "reason": {
-                        "const": "Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."
-                      }
-                    }
-                  },
-                  "classification": {
-                    "const": "harness_gateway_routed"
-                  },
-                  "effective_route": {
-                    "const": "gateway"
-                  },
-                  "registration": {
-                    "properties": {
-                      "reason": {
-                        "const": "The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."
-                      },
-                      "status": {
-                        "const": "refused"
-                      }
-                    }
-                  },
-                  "role_disposition": {
-                    "const": "undecidable"
-                  }
-                }
+                "$ref": "#/$defs/openclaw-candidate"
               }
             },
             {
@@ -18654,68 +18656,10 @@
                   "key": {
                     "const": "qwen-code"
                   }
-                },
-                "required": [
-                  "key"
-                ]
+                }
               },
               "then": {
-                "properties": {
-                  "adapter_work": {
-                    "const": "blocked_until_survey"
-                  },
-                  "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "allOf": [
-                          {
-                            "not": {
-                              "$ref": "#/$defs/model-answer"
-                            }
-                          },
-                          {
-                            "properties": {
-                              "evidence": {
-                                "contains": {
-                                  "const": "qwen-docs-0215"
-                                }
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "capability_declaration": {
-                    "properties": {
-                      "liveness": {
-                        "const": "unknown"
-                      },
-                      "reason": {
-                        "const": "The binary is installed, but no representative authenticated serving observation was run."
-                      }
-                    }
-                  },
-                  "classification": {
-                    "const": "harness_baseline"
-                  },
-                  "effective_route": {
-                    "const": "qwen-cli"
-                  },
-                  "registration": {
-                    "properties": {
-                      "reason": {
-                        "const": "The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."
-                      },
-                      "status": {
-                        "const": "refused"
-                      }
-                    }
-                  },
-                  "role_disposition": {
-                    "const": "undecidable"
-                  }
-                }
+                "$ref": "#/$defs/qwen-code-candidate"
               }
             },
             {
@@ -18724,75 +18668,10 @@
                   "key": {
                     "const": "zcode"
                   }
-                },
-                "required": [
-                  "key"
-                ]
+                }
               },
               "then": {
-                "properties": {
-                  "adapter_work": {
-                    "const": "blocked_until_survey"
-                  },
-                  "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "allOf": [
-                          {
-                            "$ref": "#/$defs/unverified-answer"
-                          },
-                          {
-                            "properties": {
-                              "evidence": {
-                                "allOf": [
-                                  {
-                                    "contains": {
-                                      "const": "design-seam-c07"
-                                    }
-                                  },
-                                  {
-                                    "contains": {
-                                      "const": "local-command-absence"
-                                    }
-                                  }
-                                ]
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "capability_declaration": {
-                    "properties": {
-                      "liveness": {
-                        "const": "unknown"
-                      },
-                      "reason": {
-                        "const": "A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."
-                      }
-                    }
-                  },
-                  "classification": {
-                    "const": "harness_stub"
-                  },
-                  "effective_route": {
-                    "const": "unbound-stub"
-                  },
-                  "registration": {
-                    "properties": {
-                      "reason": {
-                        "const": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."
-                      },
-                      "status": {
-                        "const": "refused"
-                      }
-                    }
-                  },
-                  "role_disposition": {
-                    "const": "undecidable"
-                  }
-                }
+                "$ref": "#/$defs/zcode-candidate"
               }
             },
             {
@@ -18801,98 +18680,10 @@
                   "key": {
                     "const": "deepseek"
                   }
-                },
-                "required": [
-                  "key"
-                ]
+                }
               },
               "then": {
-                "properties": {
-                  "adapter_work": {
-                    "const": "zero"
-                  },
-                  "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "anyOf": [
-                                {
-                                  "const": "design-seam-c07"
-                                },
-                                {
-                                  "const": "auth-runbook-2026-08-17"
-                                }
-                              ]
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "properties": {
-                      "config_surface": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "credit_weights": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "egress_topology": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "identity_proof": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "native_fallback": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "native_pool": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "probe_target": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "reset_window_semantics": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "rotation_cache_semantics": {
-                        "$ref": "#/$defs/model-answer"
-                      },
-                      "subagent_credential_inheritance": {
-                        "$ref": "#/$defs/model-answer"
-                      }
-                    }
-                  },
-                  "capability_declaration": {
-                    "properties": {
-                      "liveness": {
-                        "const": "inherited:hermes.gateway_log"
-                      },
-                      "reason": {
-                        "const": "The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."
-                      }
-                    }
-                  },
-                  "classification": {
-                    "const": "model"
-                  },
-                  "effective_route": {
-                    "const": "hermes-profile"
-                  },
-                  "registration": {
-                    "properties": {
-                      "reason": {
-                        "const": "DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."
-                      },
-                      "status": {
-                        "const": "not_applicable"
-                      }
-                    }
-                  },
-                  "role_disposition": {
-                    "const": "not_applicable"
-                  }
-                }
+                "$ref": "#/$defs/deepseek-candidate"
               }
             }
           ],
@@ -18904,288 +18695,7 @@
               ]
             },
             "answers": {
-              "additionalProperties": false,
-              "allOf": [
-                {
-                  "not": {
-                    "properties": {
-                      "native_pool": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "no_native_pool"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "rotation_cache_semantics": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "native_pool_cache"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "native_pool",
-                      "rotation_cache_semantics"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "no-native-pool-native-cache"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "native_pool": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "native_pool"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "rotation_cache_semantics": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "provided_pool_cache"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "native_pool",
-                      "rotation_cache_semantics"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "native-pool-no-provided-cache"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "native_pool": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "no_native_pool"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "subagent_credential_inheritance": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "per_task_lease"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "native_pool",
-                      "subagent_credential_inheritance"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "no-native-pool-no-native-subagent-lease"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "config_surface": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "authored_config_only"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "identity_proof": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "account_file"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "config_surface",
-                      "identity_proof"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "authored-config-account-file-never-both"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "identity_proof": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "direct_cli_account"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "probe_target": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "gateway_endpoint"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "identity_proof",
-                      "probe_target"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "direct-cli-identity-gateway-probe-never-both"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "identity_proof": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "persisted_device_key"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "probe_target": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "direct_cli_endpoint"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "identity_proof",
-                      "probe_target"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "gateway-device-identity-direct-probe-never-both"
-                }
-              ],
-              "properties": {
-                "config_surface": {
-                  "$ref": "#/$defs/config-surface-answer"
-                },
-                "credit_weights": {
-                  "$ref": "#/$defs/credit-weights-answer"
-                },
-                "egress_topology": {
-                  "$ref": "#/$defs/egress-topology-answer"
-                },
-                "identity_proof": {
-                  "$ref": "#/$defs/identity-proof-answer"
-                },
-                "native_fallback": {
-                  "$ref": "#/$defs/native-fallback-answer"
-                },
-                "native_pool": {
-                  "$ref": "#/$defs/native-pool-answer"
-                },
-                "probe_target": {
-                  "$ref": "#/$defs/probe-target-answer"
-                },
-                "reset_window_semantics": {
-                  "$ref": "#/$defs/reset-window-semantics-answer"
-                },
-                "rotation_cache_semantics": {
-                  "$ref": "#/$defs/rotation-cache-semantics-answer"
-                },
-                "subagent_credential_inheritance": {
-                  "$ref": "#/$defs/subagent-credential-inheritance-answer"
-                }
-              },
-              "required": [
-                "native_pool",
-                "native_fallback",
-                "config_surface",
-                "identity_proof",
-                "reset_window_semantics",
-                "rotation_cache_semantics",
-                "subagent_credential_inheritance",
-                "egress_topology",
-                "probe_target",
-                "credit_weights"
-              ],
-              "type": "object"
+              "$ref": "#/$defs/answers"
             },
             "capability_declaration": {
               "$ref": "#/$defs/capability_declaration"
@@ -19317,6 +18827,160 @@
             }
           ]
         },
+        "deepseek-answers": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answers"
+            },
+            {
+              "properties": {
+                "config_surface": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "credit_weights": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "egress_topology": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "identity_proof": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "native_fallback": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "native_pool": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "probe_target": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "reset_window_semantics": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "rotation_cache_semantics": {
+                  "$ref": "#/$defs/model-answer"
+                },
+                "subagent_credential_inheritance": {
+                  "$ref": "#/$defs/model-answer"
+                }
+              }
+            }
+          ]
+        },
+        "deepseek-candidate": {
+          "allOf": [
+            {
+              "properties": {
+                "adapter_work": {
+                  "const": "zero"
+                },
+                "answers": {
+                  "$ref": "#/$defs/deepseek-answers"
+                },
+                "capability_declaration": {
+                  "properties": {
+                    "liveness": {
+                      "const": "inherited:hermes.gateway_log"
+                    },
+                    "reason": {
+                      "const": "The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."
+                    }
+                  }
+                },
+                "classification": {
+                  "const": "model"
+                },
+                "effective_route": {
+                  "const": "hermes-profile"
+                },
+                "registration": {
+                  "properties": {
+                    "reason": {
+                      "const": "DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."
+                    },
+                    "status": {
+                      "const": "not_applicable"
+                    }
+                  }
+                },
+                "role_disposition": {
+                  "const": "not_applicable"
+                }
+              }
+            },
+            {
+              "properties": {
+                "answers": {
+                  "patternProperties": {
+                    "^(native_pool|native_fallback|config_surface|identity_proof|reset_window_semantics|rotation_cache_semantics|subagent_credential_inheritance|egress_topology|probe_target)$": {
+                      "properties": {
+                        "evidence": {
+                          "contains": {
+                            "const": "design-seam-c07"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "properties": {
+                "answers": {
+                  "properties": {
+                    "credit_weights": {
+                      "properties": {
+                        "evidence": {
+                          "allOf": [
+                            {
+                              "contains": {
+                                "const": "auth-runbook-2026-08-17"
+                              }
+                            },
+                            {
+                              "contains": {
+                                "const": "ctower-weight-registry-d724"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "direct-cli-identity-gateway-probe-never-both": {
+          "not": {
+            "properties": {
+              "identity_proof": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "direct_cli_account"
+                  }
+                }
+              },
+              "probe_target": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "gateway_endpoint"
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "direct-cli-identity-gateway-probe-never-both"
+        },
         "egress-topology-answer": {
           "allOf": [
             {
@@ -19342,6 +19006,33 @@
               }
             }
           ]
+        },
+        "gateway-device-identity-direct-probe-never-both": {
+          "not": {
+            "properties": {
+              "identity_proof": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "persisted_device_key"
+                  }
+                }
+              },
+              "probe_target": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "direct_cli_endpoint"
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "gateway-device-identity-direct-probe-never-both"
         },
         "identity-proof-answer": {
           "allOf": [
@@ -19384,13 +19075,230 @@
                 "value": {
                   "const": "model"
                 }
-              },
-              "required": [
-                "state",
-                "value"
-              ]
+              }
             }
           ]
+        },
+        "model-route-coherence": {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "config_surface": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "identity_proof": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "reset_window_semantics": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "egress_topology": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "probe_target": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "credit_weights": {
+                    "properties": {
+                      "value": {
+                        "const": "model"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "config_surface": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "credit_weights": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "egress_topology": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "identity_proof": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "native_fallback": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "native_pool": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "probe_target": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "reset_window_semantics": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "rotation_cache_semantics": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              },
+              "subagent_credential_inheritance": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/unverified-answer"
+                  },
+                  {
+                    "$ref": "#/$defs/model-answer"
+                  }
+                ]
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "model-route-coherence"
         },
         "native-fallback-answer": {
           "allOf": [
@@ -19440,6 +19348,228 @@
                       "no_native_pool"
                     ]
                   }
+                }
+              }
+            }
+          ]
+        },
+        "native-pool-no-provided-cache": {
+          "not": {
+            "properties": {
+              "native_pool": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "native_pool"
+                  }
+                }
+              },
+              "rotation_cache_semantics": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "provided_pool_cache"
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "native-pool-no-provided-cache"
+        },
+        "no-native-pool-native-cache": {
+          "not": {
+            "properties": {
+              "native_pool": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "no_native_pool"
+                  }
+                }
+              },
+              "rotation_cache_semantics": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "native_pool_cache"
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "no-native-pool-native-cache"
+        },
+        "no-native-pool-no-native-subagent-lease": {
+          "not": {
+            "properties": {
+              "native_pool": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "no_native_pool"
+                  }
+                }
+              },
+              "subagent_credential_inheritance": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "per_task_lease"
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-rule-id": "no-native-pool-no-native-subagent-lease"
+        },
+        "openclaw-answers": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answers"
+            },
+            {
+              "properties": {
+                "config_surface": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "credit_weights": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "egress_topology": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "identity_proof": {
+                  "$ref": "#/$defs/persisted-device-key-answer"
+                },
+                "native_fallback": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "native_pool": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "probe_target": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "reset_window_semantics": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "rotation_cache_semantics": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "subagent_credential_inheritance": {
+                  "$ref": "#/$defs/unverified-answer"
+                }
+              }
+            }
+          ]
+        },
+        "openclaw-candidate": {
+          "allOf": [
+            {
+              "properties": {
+                "adapter_work": {
+                  "const": "blocked_until_survey"
+                },
+                "answers": {
+                  "$ref": "#/$defs/openclaw-answers"
+                },
+                "capability_declaration": {
+                  "properties": {
+                    "liveness": {
+                      "const": "unknown"
+                    },
+                    "reason": {
+                      "const": "Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."
+                    }
+                  }
+                },
+                "classification": {
+                  "const": "harness_gateway_routed"
+                },
+                "effective_route": {
+                  "const": "gateway"
+                },
+                "registration": {
+                  "properties": {
+                    "reason": {
+                      "const": "The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."
+                    },
+                    "status": {
+                      "const": "refused"
+                    }
+                  }
+                },
+                "role_disposition": {
+                  "const": "undecidable"
+                }
+              }
+            },
+            {
+              "properties": {
+                "answers": {
+                  "patternProperties": {
+                    "^.+$": {
+                      "properties": {
+                        "evidence": {
+                          "contains": {
+                            "const": "design-seam-c07"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "properties": {
+                "answers": {
+                  "properties": {
+                    "identity_proof": {
+                      "not": {
+                        "properties": {
+                          "value": {
+                            "const": "direct_cli_account"
+                          }
+                        }
+                      }
+                    },
+                    "probe_target": {
+                      "not": {
+                        "properties": {
+                          "value": {
+                            "const": "direct_cli_endpoint"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "persisted-device-key-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/verified-answer"
+            },
+            {
+              "properties": {
+                "value": {
+                  "const": "persisted_device_key"
                 }
               }
             }
@@ -19500,6 +19630,194 @@
             "prompt"
           ],
           "type": "object"
+        },
+        "qwen-answers": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answers"
+            },
+            {
+              "properties": {
+                "config_surface": {
+                  "$ref": "#/$defs/config-surface-answer"
+                },
+                "credit_weights": {
+                  "$ref": "#/$defs/credit-weights-answer"
+                },
+                "egress_topology": {
+                  "$ref": "#/$defs/egress-topology-answer"
+                },
+                "identity_proof": {
+                  "$ref": "#/$defs/identity-proof-answer"
+                },
+                "native_fallback": {
+                  "$ref": "#/$defs/native-fallback-answer"
+                },
+                "native_pool": {
+                  "$ref": "#/$defs/native-pool-answer"
+                },
+                "probe_target": {
+                  "$ref": "#/$defs/probe-target-answer"
+                },
+                "reset_window_semantics": {
+                  "$ref": "#/$defs/reset-window-semantics-answer"
+                },
+                "rotation_cache_semantics": {
+                  "$ref": "#/$defs/rotation-cache-semantics-answer"
+                },
+                "subagent_credential_inheritance": {
+                  "$ref": "#/$defs/subagent-credential-inheritance-answer"
+                }
+              }
+            }
+          ]
+        },
+        "qwen-cli-route-probe": {
+          "if": {
+            "properties": {
+              "answers": {
+                "properties": {
+                  "probe_target": {
+                    "properties": {
+                      "value": {
+                        "const": "gateway_endpoint"
+                      }
+                    }
+                  }
+                }
+              },
+              "effective_route": {
+                "const": "qwen-cli"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "answers": {
+                "properties": {
+                  "probe_target": {
+                    "not": {
+                      "properties": {
+                        "value": {
+                          "const": "gateway_endpoint"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-matrix-context-rule": {
+            "candidate": "qwen-code",
+            "effective_route": "qwen-cli",
+            "forbidden_value": "gateway_endpoint",
+            "question": "probe_target"
+          }
+        },
+        "qwen-code-candidate": {
+          "allOf": [
+            {
+              "properties": {
+                "adapter_work": {
+                  "const": "blocked_until_survey"
+                },
+                "answers": {
+                  "$ref": "#/$defs/qwen-answers"
+                },
+                "capability_declaration": {
+                  "properties": {
+                    "liveness": {
+                      "const": "unknown"
+                    },
+                    "reason": {
+                      "const": "The binary is installed, but no representative authenticated serving observation was run."
+                    }
+                  }
+                },
+                "classification": {
+                  "const": "harness_baseline"
+                },
+                "effective_route": {
+                  "const": "qwen-cli"
+                },
+                "registration": {
+                  "properties": {
+                    "reason": {
+                      "const": "The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."
+                    },
+                    "status": {
+                      "const": "refused"
+                    }
+                  }
+                },
+                "role_disposition": {
+                  "const": "undecidable"
+                }
+              }
+            },
+            {
+              "properties": {
+                "answers": {
+                  "patternProperties": {
+                    "^.+$": {
+                      "properties": {
+                        "evidence": {
+                          "contains": {
+                            "const": "qwen-docs-0215"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/qwen-cli-route-probe"
+            },
+            {
+              "$ref": "#/$defs/qwen-published-directional-support"
+            }
+          ]
+        },
+        "qwen-published-directional-support": {
+          "if": {
+            "properties": {
+              "answers": {
+                "properties": {
+                  "credit_weights": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "published_directional"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "answers": {
+                "properties": {
+                  "credit_weights": {
+                    "properties": {
+                      "evidence": {
+                        "contains": {
+                          "const": "qwen-directional-weight-table"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "x-ctower-evidence-claim-rule": "qwen-published-directional-weights"
         },
         "registration": {
           "additionalProperties": false,
@@ -19594,7 +19912,7 @@
               ]
             },
             "locator": {
-              "maxLength": 256,
+              "maxLength": 512,
               "minLength": 1,
               "type": "string"
             },
@@ -19619,7 +19937,7 @@
             "auth-runbook-2026-08-17",
             "hermes-binding-d724",
             "claude-binding-d724",
-            "codex-candidate-ee197",
+            "codex-binding-main-539",
             "qwen-cli-0215",
             "qwen-docs-0215",
             "local-command-absence",
@@ -19667,11 +19985,131 @@
                 "value": {
                   "const": null
                 }
-              },
-              "required": [
-                "state",
-                "value"
-              ]
+              }
+            }
+          ]
+        },
+        "verified-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "properties": {
+                "state": {
+                  "const": "verified"
+                }
+              }
+            }
+          ]
+        },
+        "zcode-answers": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answers"
+            },
+            {
+              "properties": {
+                "config_surface": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "credit_weights": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "egress_topology": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "identity_proof": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "native_fallback": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "native_pool": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "probe_target": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "reset_window_semantics": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "rotation_cache_semantics": {
+                  "$ref": "#/$defs/unverified-answer"
+                },
+                "subagent_credential_inheritance": {
+                  "$ref": "#/$defs/unverified-answer"
+                }
+              }
+            }
+          ]
+        },
+        "zcode-candidate": {
+          "allOf": [
+            {
+              "properties": {
+                "adapter_work": {
+                  "const": "blocked_until_survey"
+                },
+                "answers": {
+                  "$ref": "#/$defs/zcode-answers"
+                },
+                "capability_declaration": {
+                  "properties": {
+                    "liveness": {
+                      "const": "unknown"
+                    },
+                    "reason": {
+                      "const": "A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."
+                    }
+                  }
+                },
+                "classification": {
+                  "const": "harness_stub"
+                },
+                "effective_route": {
+                  "const": "unbound-stub"
+                },
+                "registration": {
+                  "properties": {
+                    "reason": {
+                      "const": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."
+                    },
+                    "status": {
+                      "const": "refused"
+                    }
+                  }
+                },
+                "role_disposition": {
+                  "const": "undecidable"
+                }
+              }
+            },
+            {
+              "properties": {
+                "answers": {
+                  "patternProperties": {
+                    "^.+$": {
+                      "properties": {
+                        "evidence": {
+                          "allOf": [
+                            {
+                              "contains": {
+                                "const": "design-seam-c07"
+                              }
+                            },
+                            {
+                              "contains": {
+                                "const": "local-command-absence"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           ]
         }
@@ -19679,7 +20117,7 @@
       "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Revision-pinned CT-I1-044 survey data. The ten-question dependency matrix is closed over finite semantic domains; its default and pair rules derive refusals rather than enumerating judge examples.",
+      "description": "Revision-pinned CT-I1-044 survey data. The compact dependency matrix is the single law for pair, route, and evidence-claim refusals; this schema is its auditable validation projection.",
       "properties": {
         "candidates": {
           "allOf": [
@@ -19757,7 +20195,7 @@
               "const": 1
             },
             "sha256": {
-              "const": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+              "const": "cc9f4f9fee632816a9d7825f87cbf8346fccdcc8d5e65dfb4d3f1b30a640cfa5"
             }
           },
           "required": [
@@ -19859,10 +20297,10 @@
               "revision": "d72408e7"
             },
             {
-              "id": "codex-candidate-ee197",
+              "id": "codex-binding-main-539",
               "kind": "repo",
-              "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 reviewed-at revision (OPEN, not landed on origin/main; not the current PR head)",
-              "revision": "ee197705b9503e4e8e86c2a39f83db0878bb986e"
+              "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 merged into origin/main at merge commit 9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99 (PR head 1058d09a9796bba1292b021ee81f57d56e2fccba)",
+              "revision": "9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99"
             },
             {
               "id": "qwen-cli-0215",
@@ -19911,12 +20349,45 @@
       "type": "object",
       "x-ctower-dependency-matrix": {
         "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
-        "law": "default rules plus pair rules; violation cases are derived",
+        "law": "pair_rules plus candidate_context plus evidence_claim_support",
         "revision": 1,
-        "sha256": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+        "sha256": "cc9f4f9fee632816a9d7825f87cbf8346fccdcc8d5e65dfb4d3f1b30a640cfa5"
       },
+      "x-ctower-evidence-claim-rules": [
+        {
+          "available": false,
+          "candidate": "qwen-code",
+          "id": "qwen-published-directional-weights",
+          "question": "credit_weights",
+          "required_evidence": [
+            "qwen-directional-weight-table"
+          ],
+          "state": "verified",
+          "value": "published_directional"
+        }
+      ],
       "x-ctower-matrix-default-rules": [
         "model-route-coherence"
+      ],
+      "x-ctower-route-rules": [
+        {
+          "candidate": "openclaw",
+          "effective_route": "gateway",
+          "forbidden_value": "direct_cli_account",
+          "question": "identity_proof"
+        },
+        {
+          "candidate": "openclaw",
+          "effective_route": "gateway",
+          "forbidden_value": "direct_cli_endpoint",
+          "question": "probe_target"
+        },
+        {
+          "candidate": "qwen-code",
+          "effective_route": "qwen-cli",
+          "forbidden_value": "gateway_endpoint",
+          "question": "probe_target"
+        }
       ]
     },
     "contracts/runtime/dream-dispatch-effect.schema.json": {
@@ -22624,7 +23095,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.schema.json",
-      "sha256": "sha256:25e0ad83b5a93a669d312aed6f318b543f0fa1c58c077c40b39084ab80cf06d0"
+      "sha256": "sha256:020469f6b8a600a1aa1db626ec910271717ae7bd0989430787b3968507d0f577"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",

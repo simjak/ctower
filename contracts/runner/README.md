@@ -39,13 +39,14 @@ revision-pinned evidence for the four CT-I1-044 candidates. Every unanswered fac
 serving truth remains inherited from the Hermes profile route.
 
 The survey schema is closed over exact revision-pinned source snapshots, exact question
-ID/prompt pairs, the observation timestamp paired with those snapshots, and the complete
-45-pair dependency matrix in `later-wave-harness-survey.matrix.json`. The matrix defines the
-finite answer domains, legal combinations, and derived violation set; the schema encodes its
-never-both refusals and candidate-route restrictions rather than matching judge examples.
-It rejects non-null values for `unverified` answers, unsupported evidence for a verified claim,
-unresolved evidence IDs, contradictory refusal/liveness reasons, and candidate
+ID/prompt pairs, the observation timestamp paired with those snapshots, and the compact
+single-law matrix in `later-wave-harness-survey.matrix.json`. The matrix's ten domains imply
+all 45 unordered question pairs; its named pair rules, candidate-context route rules, and
+candidate/question/value evidence-support rules are projected into reusable schema `$defs`.
+The schema rejects non-null values for `unverified` answers, unsupported evidence for a
+verified claim, unresolved evidence IDs, contradictory refusal/liveness reasons, and candidate
 role/registration/liveness or answer combinations that contradict the four declared
 dispositions. `tests/conformance/harness-adapter/test_survey_registration.py` is a
-validation-only conformance proof: its bounded Hypothesis search generates matrix violations
-and must find zero that validate; it does not execute or bind a harness.
+validation-only conformance proof: its bounded Hypothesis search derives pair, route, and
+evidence-claim violations from the matrix and must find zero that validate; it does not
+execute or bind a harness.

@@ -34,10 +34,10 @@
       "locator": "apps/ctower-runner/src/ctower_runner/claude_code/binding.py"
     },
     {
-      "id": "codex-candidate-ee197",
+      "id": "codex-binding-main-539",
       "kind": "repo",
-      "revision": "ee197705b9503e4e8e86c2a39f83db0878bb986e",
-      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 reviewed-at revision (OPEN, not landed on origin/main; not the current PR head)"
+      "revision": "9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99",
+      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 merged into origin/main at merge commit 9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99 (PR head 1058d09a9796bba1292b021ee81f57d56e2fccba)"
     },
     {
       "id": "qwen-cli-0215",
@@ -510,6 +510,6 @@
   "matrix": {
     "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
     "revision": 1,
-    "sha256": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+    "sha256": "cc9f4f9fee632816a9d7825f87cbf8346fccdcc8d5e65dfb4d3f1b30a640cfa5"
   }
 }
