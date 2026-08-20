@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ctower — operator cockpit (R3109 design mockup)</title>
+
+    <!--
+      The one static mockup for docs/internal/design/operator-cockpit.md.
+      Open it directly from disk; there is no build step and no network fetch.
+
+      What this file is: paperclip's token system (one token source, one radius
+      knob, one color-mix status recipe, two-tier motion) carrying ctower's
+      eight deltas. Every state drawn here is one the doc argues for, and the
+      hard cases are drawn deliberately rather than avoided:
+
+        · the composer's send control is DISABLED, because neither shipped
+          binding declares INTERRUPT_AND_RESUME and the selected lane is working
+        · one outgoing turn sits in `durability pending`, not sent
+        · one lane is `capped`, outranking its advancing timer
+        · one workspace is `not reached`, not `+0 -0`
+        · Create PR is disabled and names the dirty paths on the control
+        · the terminal carries a grant clock, a gap row and a redaction mark,
+          and has no input element at all
+        · budget renders `no cap configured` as unknown, with no progress track
+    -->
+
+    <style>
+      /* ────────────────────────────────────────────────────────────────────
+         TOKENS — the single source. Ported from paperclip's ui/src/index.css:
+         OKLCH neutral semantic core, one --radius knob with a MULTIPLICATIVE
+         ladder, one seed hue per status consumed through a color-mix recipe,
+         two-tier motion primitives that a reduced-motion block zeroes so every
+         scoped token follows.
+
+         ctower deltas applied here: D1 mints --state-unknown as a first-class
+         hue; D2 forbids shadow/gradient/glow in both themes; D3 keeps ctower's
+         own project marks and feeds them through paperclip's mechanism; D4
+         mints no per-agent decorative gradient.
+         ──────────────────────────────────────────────────────────────────── */
+      :root {
+        --font-sans: "InterVariable", "Inter", ui-sans-serif, system-ui,
+          -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+
+        /* one knob; every corner in the app is derived from it */
+        --radius: 0.5rem;
+        --radius-sm: calc(var(--radius) * 0.6);
+        --radius-md: calc(var(--radius) * 0.8);
+        --radius-lg: var(--radius);
+        --radius-xl: calc(var(--radius) * 1.4);
+
+        /* semantic core */
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.145 0 0);
+        --card: oklch(1 0 0);
+        --muted: oklch(0.97 0 0);
+        --muted-foreground: oklch(0.556 0 0);
+        --border: oklch(0.922 0 0);
+        --sidebar: oklch(0.985 0 0);
+        --sidebar-border: oklch(0.922 0 0);
+        --accent-soft: oklch(0.96 0 0);
+
+        /* status seeds. One hue per state; both themes derive from the seed. */
+        --state-working: #2563eb;
+        --state-idle: #a8aeb2;
+        --state-capped: #f59e0b;
+        --state-error: #dc2626;
+        --state-proven: #16a34a;
+        /* D1 — the fourth thing: a read that did not answer. It resolves to
+           neither the idle grey nor any success hue, by construction. */
+        --state-unknown: #7c3aed;
+
+        /* D3 — ctower's own project marks, carried by a 6px mark, never chrome */
+        --p-ctower: #7c3aed;
+        --p-manibo: #0d9488;
+        --p-bhloop: #be185d;
+
+        /* motion primitives + two house curves */
+        --motion-duration-instant: 80ms;
+        --motion-duration-fast: 160ms;
+        --motion-duration-base: 240ms;
+        --motion-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+        /* scoped tokens reference the primitives, never a literal */
+        --motion-tool-enter: var(--motion-duration-base);
+        --motion-chip-enter: var(--motion-duration-fast);
+      }
+
+      [data-theme="dark"] {
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --card: oklch(0.175 0 0);
+        --muted: oklch(0.225 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --border: oklch(0.269 0 0);
+        --sidebar: oklch(0.175 0 0);
+        --sidebar-border: oklch(0.269 0 0);
+        --accent-soft: oklch(0.225 0 0);
+        --p-ctower: #b191f0;
+        --p-manibo: #5fc9b0;
+        --p-bhloop: #e58ab4;
+        --state-unknown: #b191f0;
+      }
+
+      /* Zeroing the PRIMITIVES cascades to every scoped token that references
+         them — the reason motion tokens are not baked at build time. */
+      @media (prefers-reduced-motion: reduce) {
+        :root {
+          --motion-duration-instant: 0ms;
+          --motion-duration-fast: 0ms;
+          --motion-duration-base: 0ms;
+        }
+      }
+
+      /* ── base ─────────────────────────────────────────────────────────── */
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--foreground);
+        background: var(--background);
+        -webkit-font-smoothing: antialiased;
+      }
+      /* D6 — machine values are machine-made, and ctower's list is longer:
+         digests, revisions, reset clocks, credit units, cursor positions. */
+      .mono, code {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        font-variant-numeric: tabular-nums;
+      }
+      .dim { color: var(--muted-foreground); }
+
+      /* ── the status recipe: one seed, both themes derived ─────────────── */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 1px 7px;
+        border: 1px solid;
+        border-radius: var(--radius-sm);
+        font-size: 10.5px;
+        font-weight: 550;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        background-color: color-mix(in srgb, var(--sc) 15%, white);
+        color: color-mix(in srgb, var(--sc) 82%, black);
+        border-color: var(--sc);
+        animation: chip-in var(--motion-chip-enter) var(--motion-ease-out-expo);
+      }
+      [data-theme="dark"] .chip {
+        background-color: color-mix(in srgb, var(--sc) 22%, transparent);
+        color: color-mix(in srgb, var(--sc) 80%, white);
+        border-color: color-mix(in srgb, var(--sc) 48%, transparent);
+      }
+      @keyframes chip-in { from { opacity: 0; } to { opacity: 1; } }
+      .sc-working  { --sc: var(--state-working); }
+      .sc-idle     { --sc: var(--state-idle); }
+      .sc-capped   { --sc: var(--state-capped); }
+      .sc-error    { --sc: var(--state-error); }
+      .sc-proven   { --sc: var(--state-proven); }
+      .sc-unknown  { --sc: var(--state-unknown); }
+
+      /* a bare status glyph is tuned separately — it must clear contrast
+         without the chip's background behind it */
+      .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+
+      /* ── the shell: conductor.css's own geometry ──────────────────────── */
+      .app { display: flex; flex-direction: column; height: 100dvh; }
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 44px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+        background: var(--sidebar);
+        flex: none;
+      }
+      .brand { font-weight: 620; letter-spacing: -0.01em; }
+      .topbar .spacer { flex: 1; }
+      .ghost {
+        font: inherit;
+        font-size: 11.5px;
+        color: var(--muted-foreground);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 3px 9px;
+        cursor: pointer;
+      }
+      .ghost:hover { color: var(--foreground); background: var(--accent-soft); }
+
+      .panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+      @media (min-width: 1100px) {
+        /* the shape apps/ctower-ui/src/app/conductor.css already ships */
+        .panes { grid-template-columns: 276px minmax(0, 1fr) 372px; }
+      }
+      .pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+      .pane + .pane { border-left: 1px solid var(--border); }
+      .rail { background: var(--sidebar); }
+      .scroll { overflow-y: auto; min-height: 0; flex: 1; }
+
+      .pane-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 10px;
+        flex: none;
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .pane-head .spacer { flex: 1; }
+
+      /* below 1100px the shell collapses to one route-chosen pane rather than
+         dropping any of them — a phone reaches all four, one at a time */
+      @media (max-width: 1099px) {
+        .pane[data-collapse] { display: none; }
+        .mobile-note { display: block; }
+      }
+      .mobile-note {
+        display: none;
+        padding: 10px 12px;
+        font-size: 11.5px;
+        color: var(--muted-foreground);
+        border-bottom: 1px solid var(--border);
+      }
+
+      /* ── left rail: project → seat → workspace ────────────────────────── */
+      .proj {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 10px 5px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .mark { width: 6px; height: 6px; border-radius: 1px; flex: none; }
+
+      .seat { padding: 4px 10px 2px 20px; font-weight: 560; font-size: 12px; }
+      .ws {
+        display: grid;
+        grid-template-columns: 3px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 10px 5px 20px;
+        cursor: pointer;
+        border: 0;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+      }
+      .ws:hover { background: var(--accent-soft); }
+      .ws[aria-current="true"] { background: var(--accent-soft); }
+      /* unread is a bar, not the word "unread" (D5) */
+      .ws .unread { width: 3px; height: 14px; border-radius: 2px; background: transparent; }
+      .ws[data-unread="true"] .unread { background: var(--state-working); }
+      .ws .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .diffs { display: flex; gap: 6px; }
+      .add { color: color-mix(in srgb, var(--state-proven) 78%, var(--foreground)); }
+      .del { color: color-mix(in srgb, var(--state-error) 72%, var(--foreground)); }
+
+      /* ── centre: the transcript ───────────────────────────────────────── */
+      .tabs { display: flex; align-items: stretch; gap: 0; border-bottom: 1px solid var(--border); flex: none; }
+      .tab {
+        border: 0;
+        background: transparent;
+        font: inherit;
+        font-size: 12px;
+        color: var(--muted-foreground);
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+      }
+      .tab[aria-selected="true"] { color: var(--foreground); border-bottom-color: var(--foreground); font-weight: 560; }
+      .tab:hover { color: var(--foreground); }
+
+      .turns { padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
+      .turn { display: flex; flex-direction: column; gap: 6px; }
+      .turn-head { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted-foreground); }
+      .who { font-weight: 600; color: var(--foreground); font-size: 12px; }
+      /* the operator's turns sit on the operator's side — the reader learns
+         whose a row is by position, without reading it */
+      .turn.mine { align-items: flex-end; }
+      .bubble {
+        background: var(--muted);
+        border-radius: var(--radius-lg);
+        padding: 7px 11px;
+        max-width: 78%;
+      }
+      .body { max-width: 74ch; }
+      .body p { margin: 0 0 8px; }
+      .body p:last-child { margin-bottom: 0; }
+
+      details.think { border-left: 2px solid var(--border); padding-left: 10px; }
+      details.think > summary {
+        cursor: pointer;
+        color: var(--muted-foreground);
+        font-size: 11.5px;
+        list-style: none;
+      }
+      details.think > summary::-webkit-details-marker { display: none; }
+      details.think > summary::before { content: "▸ "; }
+      details.think[open] > summary::before { content: "▾ "; }
+      details.think .think-body { color: var(--muted-foreground); font-size: 12px; padding-top: 5px; }
+
+      .tool {
+        display: grid;
+        grid-template-columns: 14px auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        padding: 3px 0;
+        animation: tool-in var(--motion-tool-enter) var(--motion-ease-standard);
+      }
+      @keyframes tool-in { from { opacity: 0; } to { opacity: 1; } }
+      .tool .glyph { color: var(--muted-foreground); font-size: 11px; text-align: center; }
+      .tool .label { font-size: 11.5px; color: var(--muted-foreground); }
+      .tool .cmd {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: color-mix(in srgb, var(--foreground) 72%, var(--muted-foreground));
+      }
+
+      /* ── the composer ─────────────────────────────────────────────────── */
+      .composer { flex: none; border-top: 1px solid var(--border); padding: 10px 12px 11px; background: var(--background); }
+      .composer textarea {
+        width: 100%;
+        resize: none;
+        font: inherit;
+        color: inherit;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 9px 11px;
+        min-height: 54px;
+      }
+      .composer textarea:focus-visible { outline: 2px solid var(--state-working); outline-offset: -1px; }
+      .composer-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .pin {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 2px 8px;
+        font-size: 11px;
+        color: var(--muted-foreground);
+      }
+      .pin b { font-weight: 600; color: var(--foreground); }
+      button.send {
+        margin-left: auto;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 560;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        padding: 5px 14px;
+        background: var(--foreground);
+        color: var(--background);
+        cursor: pointer;
+      }
+      button.send:disabled {
+        cursor: not-allowed;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        border-color: var(--border);
+      }
+      /* a control's caveat lives ON the control (D5), never in a page banner */
+      .on-control {
+        flex-basis: 100%;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        border-left: 2px solid var(--state-capped);
+        padding-left: 8px;
+        margin-top: 2px;
+      }
+
+      /* ── right-top: the change list ───────────────────────────────────── */
+      .totals { padding: 7px 12px; font-size: 11.5px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+      .group-label {
+        padding: 8px 12px 4px;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .file {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: baseline;
+        padding: 3px 12px;
+      }
+      .file:hover { background: var(--accent-soft); }
+      .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .path .dir { color: var(--muted-foreground); }
+      .path .base { font-weight: 560; }
+      .pr-row { flex: none; border-top: 1px solid var(--border); padding: 9px 12px; }
+      button.pr {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 560;
+        width: 100%;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        padding: 6px 12px;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        cursor: not-allowed;
+      }
+
+      /* ── right-bottom: the console pane ───────────────────────────────── */
+      .console-wrap { flex: none; border-top: 1px solid var(--border); display: flex; flex-direction: column; height: 42%; min-height: 178px; }
+      .grant {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 10px;
+        font-size: 11px;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted-foreground);
+      }
+      /* one fixed dark palette in BOTH app themes — a terminal that restyles
+         with the app is a terminal whose output you cannot trust to be verbatim */
+      .term {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        background: #12141a;
+        color: #d7dae0;
+        padding: 8px 10px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .term .op { color: #7f8796; }
+      /* every unprovable range appends a gap BEFORE it is signalled; a stream
+         that dropped bytes and one that saw everything are different claims */
+      .term .gap {
+        color: #f0b429;
+        border-top: 1px dashed #4a4433;
+        border-bottom: 1px dashed #4a4433;
+        margin: 5px 0;
+        padding: 3px 0;
+      }
+      .term .redacted { color: #8fb8f0; }
+      .term-foot {
+        flex: none;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 5px 10px;
+        border-top: 1px solid var(--border);
+        font-size: 10.5px;
+        color: var(--muted-foreground);
+      }
+
+      /* ── the readiness / spend strip in the right pane head ───────────── */
+      .cells { padding: 6px 12px 10px; display: flex; flex-direction: column; gap: 3px; }
+      .cell { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 11.5px; }
+      .cell .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .verdict {
+        margin: 8px 12px 0;
+        padding: 7px 9px;
+        border: 1px solid var(--border);
+        border-left: 2px solid var(--state-unknown);
+        border-radius: var(--radius-sm);
+        font-size: 11.5px;
+      }
+      /* no cap configured is UNKNOWN, not healthy — and it draws no progress
+         track, because a bar with no denominator is a picture of a number
+         nobody computed */
+      .spend { padding: 6px 12px 12px; font-size: 11.5px; display: flex; flex-direction: column; gap: 4px; }
+
+      /* ── board two: the crew page (§5.7) ──────────────────────────────
+         Nine paperclip tabs to seven ctower can prove. Rendered as a second
+         board in the same file rather than as a fourth tab on the workspace
+         pane — putting a readiness verdict under a tab labelled "Changes" is
+         the same category error as paperclip's Tools page (§5.2). */
+      .board2 { border-top: 4px solid var(--border); background: var(--background); }
+      .crumb { padding: 12px 20px 0; font-size: 11.5px; color: var(--muted-foreground); }
+      .idhead { display: flex; align-items: center; gap: 12px; padding: 8px 20px 12px; flex-wrap: wrap; }
+      .idhead h2 { margin: 0; font-size: 19px; font-weight: 640; letter-spacing: -0.015em; }
+      .idhead .role { color: var(--muted-foreground); font-size: 12px; }
+      .idhead .spacer { flex: 1; }
+      .crewtabs { padding: 0 20px; border-bottom: 1px solid var(--border); display: flex; gap: 0; flex-wrap: wrap; }
+      .board2 .panel { padding: 14px 20px 24px; max-width: 760px; }
+      .board2 h3 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .board2 .cells { padding: 0; }
+      .board2 .cell { padding: 4px 0; border-bottom: 1px solid var(--border); }
+      .board2 .cell .what { font-size: 12px; }
+      .board2 .cell .src { display: block; font-size: 10.5px; color: var(--muted-foreground); }
+      .board2 .verdict { margin: 12px 0 0; }
+      .board2 .spend { padding: 0; margin-top: 6px; }
+
+      .legend {
+        border-top: 1px solid var(--border);
+        padding: 9px 12px 14px;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        background: var(--sidebar);
+      }
+      .legend b { color: var(--foreground); font-weight: 600; }
+      .legend ul { margin: 5px 0 0; padding-left: 16px; }
+      .legend li { margin: 2px 0; }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <!-- ── top bar ─────────────────────────────────────────────────── -->
+      <header class="topbar">
+        <span class="mark" style="background: var(--p-ctower)" aria-hidden="true"></span>
+        <span class="brand">ctower cockpit</span>
+        <span class="dim mono">operator · shadow instance</span>
+        <span class="spacer"></span>
+        <button class="ghost" id="theme" type="button">Toggle theme</button>
+      </header>
+
+      <p class="mobile-note">
+        Below 1100px the shell collapses to one route-chosen pane. No pane is dropped — all four
+        are reachable one at a time.
+      </p>
+
+      <div class="panes">
+        <!-- ══ LEFT — projects → seats → workspaces ═════════════════════ -->
+        <nav class="pane rail" aria-label="Projects and crews">
+          <div class="pane-head">Crews<span class="spacer"></span><span class="dim mono">7 lanes</span></div>
+          <div class="scroll">
+            <div class="proj"><span class="mark" style="background: var(--p-ctower)"></span>ctower</div>
+
+            <div class="seat">Commander</div>
+            <button class="ws" type="button">
+              <span class="unread"></span>
+              <span class="name">main</span>
+              <span class="chip sc-idle"><span class="dot" style="background: var(--state-idle)"></span>idle</span>
+            </button>
+
+            <div class="seat">designer-cockpit-2</div>
+            <button class="ws" type="button" aria-current="true" data-unread="true">
+              <span class="unread"></span>
+              <span class="name">cockpit-design</span>
+              <span class="diffs mono"><span class="add">+412</span><span class="del">−18</span></span>
+            </button>
+
+            <div class="seat">engineer-seam</div>
+            <!-- AC-HAD-04: cap and saturation are classified BEFORE any working
+                 marker and win over it. The timer is still advancing; the lane
+                 is not working. -->
+            <button class="ws" type="button">
+              <span class="unread"></span>
+              <span class="name">adapter-codex</span>
+              <span class="chip sc-capped"><span class="dot" style="background: var(--state-capped)"></span>capped</span>
+            </button>
+            <button class="ws" type="button" data-unread="true">
+              <span class="unread"></span>
+              <span class="name">seam-conformance</span>
+              <span class="diffs mono"><span class="add">+1.1k</span><span class="del">−204</span></span>
+            </button>
+
+            <div class="proj"><span class="mark" style="background: var(--p-manibo)"></span>manibo</div>
+            <div class="seat">reviewer-intake</div>
+            <button class="ws" type="button">
+              <span class="unread"></span>
+              <span class="name">intake-fence</span>
+              <span class="chip sc-working"><span class="dot" style="background: var(--state-working)"></span>working</span>
+            </button>
+            <!-- a read that did not answer is not a read that returned zero -->
+            <button class="ws" type="button">
+              <span class="unread"></span>
+              <span class="name">estate-import</span>
+              <span class="chip sc-unknown">not reached</span>
+            </button>
+
+            <div class="proj"><span class="mark" style="background: var(--p-bhloop)"></span>bhloop</div>
+            <div class="seat">qa-loop</div>
+            <button class="ws" type="button">
+              <span class="unread"></span>
+              <span class="name">voice-latency</span>
+              <span class="chip sc-idle"><span class="dot" style="background: var(--state-idle)"></span>idle</span>
+            </button>
+          </div>
+
+          <div class="legend">
+            <b>substrate-unobservable:worktree_read</b>
+            <ul>
+              <li><b>estate-import</b> declares a git source that did not answer.</li>
+              <li>It renders <b>not reached</b>, never <span class="mono">+0 −0</span>: a source that
+                exists and did not answer is not a source that has no changes.</li>
+            </ul>
+          </div>
+        </nav>
+
+        <!-- ══ CENTRE — the transcript ══════════════════════════════════ -->
+        <main class="pane" aria-label="Crew transcript">
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="false">seam-conformance</button>
+            <button class="tab" role="tab" aria-selected="true">cockpit-design</button>
+            <button class="tab" role="tab" aria-selected="false">intake-fence</button>
+            <button class="tab" role="tab" aria-selected="false" aria-label="New lane">+</button>
+          </div>
+
+          <div class="scroll">
+            <div class="turns">
+              <div class="turn mine">
+                <div class="turn-head"><span class="who">You</span><span>19:04</span></div>
+                <div class="bubble">Read the task file, follow it exactly, and report to the status file.</div>
+              </div>
+
+              <div class="turn">
+                <div class="turn-head">
+                  <span class="who">designer-cockpit-2</span>
+                  <span class="mono">claude-opus-5</span>
+                  <span>·</span>
+                  <span class="mono">7m 12s</span>
+                </div>
+
+                <details class="think">
+                  <summary>Thinking</summary>
+                  <div class="think-body">
+                    The board doc's SPEC citations check out. Two things it missed: the console
+                    session grant model already exists, and paperclip's own DESIGN.md says its
+                    brand values are unspecified.
+                  </div>
+                </details>
+
+                <div class="tool">
+                  <span class="glyph">⌘</span><span class="label">Read</span>
+                  <code class="cmd">contracts/runner/harness-capability.schema.json</code>
+                </div>
+                <div class="tool">
+                  <span class="glyph">⌘</span><span class="label">Bash</span>
+                  <code class="cmd">grep -n "INTERRUPT_AND_RESUME" apps/ctower-runner packages/ctower-runner-sdk</code>
+                </div>
+
+                <div class="body">
+                  <p>
+                    Neither shipped binding declares <code>INTERRUPT_AND_RESUME</code>. The
+                    composer is derived from capability × liveness, not special-cased per harness.
+                  </p>
+                </div>
+              </div>
+
+              <!-- AC-HAD-02: delivery is never assumed; the harness's ACK predicate
+                   (composer_cleared) is the harness receiving it, which is NOT ctower's
+                   record accepting it. -->
+              <div class="turn mine">
+                <div class="turn-head">
+                  <span class="who">You</span>
+                  <span class="chip sc-unknown">durability pending</span>
+                  <span class="mono">cmd_01JQ8W…F3</span>
+                </div>
+                <div class="bubble">Carry the terminal pane's grant clock into slice 2.</div>
+              </div>
+
+              <div class="turn">
+                <div class="turn-head">
+                  <span class="who">designer-cockpit-2</span>
+                  <span class="chip sc-error">interrupted by user</span>
+                  <span class="mono">1m 04s</span>
+                </div>
+                <div class="body"><p>Rewriting §9 against the phase ladder…</p></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── the composer ───────────────────────────────────────────
+               The lane is `working` and `claude-code` declares no
+               INTERRUPT_AND_RESUME, so send is a real disabled control that
+               explains itself ON the control. The textarea stays typable and
+               the text is preserved; what is refused is delivery, not typing. -->
+          <form class="composer" onsubmit="return false">
+            <label class="dim" for="msg" style="font-size: 11px">Message designer-cockpit-2</label>
+            <textarea id="msg" placeholder="Ask to make changes, @mention files, run /commands">Also record the four-inventory cost per operation.</textarea>
+            <div class="composer-row">
+              <!-- Conductor's chip reads as a live model swap. This one says
+                   what it is: the composition the NEXT attempt will pin. -->
+              <span class="pin">next attempt pins <b class="mono">claude-opus-5</b></span>
+              <span class="pin">effort <b>high</b></span>
+              <span class="pin mono">cfg d4e1…9ab</span>
+              <button class="send" type="submit" disabled>Send</button>
+              <p class="on-control">
+                <b>claude-code</b> declares no <code>INTERRUPT_AND_RESUME</code> and this lane is
+                working. Delivering into a live turn would destroy whatever that turn is holding.
+                Your text is kept and sends when the turn ends.
+              </p>
+            </div>
+          </form>
+        </main>
+
+        <!-- ══ RIGHT — workspace, then console ══════════════════════════ -->
+        <aside class="pane" data-collapse aria-label="Workspace and console">
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="false">All files</button>
+            <button class="tab" role="tab" aria-selected="true">Changes 6</button>
+            <button class="tab" role="tab" aria-selected="false">Checks</button>
+          </div>
+
+          <div class="scroll">
+            <div class="totals">
+              <span><b>6</b> files changed</span>
+              <span class="mono add">+412</span>
+              <span class="mono del">−18</span>
+            </div>
+
+            <!-- AC-HAD-06: collect derives artifacts from committed refs and
+                 durable records ONLY. Committed and uncommitted are different
+                 claims and are never mixed into one list. -->
+            <div class="group-label">Committed · collectable</div>
+            <div class="file">
+              <span class="path"><span class="dir">docs/internal/design/</span><span class="base">operator-cockpit.md</span></span>
+              <span class="diffs mono"><span class="add">+389</span></span>
+            </div>
+            <div class="file">
+              <span class="path"><span class="dir">docs/internal/design/</span><span class="base">operator-cockpit.html</span></span>
+              <span class="diffs mono"><span class="add">+21</span></span>
+            </div>
+            <div class="file">
+              <span class="path"><span class="dir">apps/ctower-ui/src/app/</span><span class="base">conductor.css</span></span>
+              <span class="diffs mono"><span class="add">+2</span><span class="del">−18</span></span>
+            </div>
+
+            <div class="group-label">Uncommitted · <span class="mono">checkpoint-uncollectable</span></div>
+            <div class="file">
+              <span class="path"><span class="dir">apps/ctower-ui/src/surfaces/crew/</span><span class="base">CrewRail.tsx</span></span>
+              <span class="chip sc-capped">dirty</span>
+            </div>
+            <div class="file">
+              <span class="path"><span class="dir">apps/ctower-ui/src/surfaces/terminal/</span><span class="base">TerminalPane.tsx</span></span>
+              <span class="chip sc-capped">dirty</span>
+            </div>
+
+          </div>
+
+          <div class="pr-row">
+            <button class="pr" type="button" disabled>Create PR — 2 uncommitted paths</button>
+            <p class="dim" style="margin: 6px 0 0; font-size: 11px">
+              <code>CrewRail.tsx</code> and <code>TerminalPane.tsx</code> are uncommitted. An
+              uncommitted change is not derivable from any ref a successor can read.
+            </p>
+          </div>
+
+          <!-- ── the console pane ─────────────────────────────────────────
+               Read-only by law, not by choice: the console foundation grants no
+               typing authority. There is no input element in this pane at all,
+               so there is nothing to disable. -->
+          <section class="console-wrap" aria-label="Console">
+            <div class="tabs" role="tablist">
+              <button class="tab" role="tab" aria-selected="false">Setup</button>
+              <button class="tab" role="tab" aria-selected="false">Run</button>
+              <button class="tab" role="tab" aria-selected="true">● Terminal</button>
+            </div>
+
+            <div class="grant">
+              <span class="chip sc-working">view grant</span>
+              <span class="mono">expires 03:41</span>
+              <span class="dim">· chain 11:22 of 30:00</span>
+              <span class="spacer" style="flex: 1"></span>
+              <button class="ghost" type="button">Renew</button>
+            </div>
+
+            <div class="term">
+              <div><span class="op">$</span> uv run pytest tests/conformance/harness-adapter -q</div>
+              <div>collected 214 items</div>
+              <div>................................................ [ 22%]</div>
+              <div class="gap">
+                ── gap · 3 unprovable ranges · rate limit at cursor 0x1f4a2 ──<br />
+                bytes between 0x1f4a2 and 0x1f9c0 were not delivered and are not replayable
+              </div>
+              <div>................................................ [ 64%]</div>
+              <div><span class="redacted">[redacted: credential shape matched at cursor 0x2011c]</span></div>
+              <div>...................... [100%]</div>
+              <div><span class="op">214 passed in 41.02s</span></div>
+            </div>
+
+            <div class="term-foot">
+              <span class="chip sc-proven">redaction active</span>
+              <span>fidelity: 3 gaps recorded</span>
+              <span class="mono">cursor 0x2f118</span>
+              <span class="dim">read-only · no typing authority · no export</span>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         BOARD TWO — the crew page. Paperclip's IA (persistent identity header,
+         breadcrumb, one horizontal tab strip, actions in the header) carrying
+         the seven tabs ctower can prove instead of paperclip's nine.
+         ═════════════════════════════════════════════════════════════════ -->
+    <section class="board2" aria-label="Crew page">
+      <p class="crumb">Crews › ctower › designer-cockpit-2 › Readiness</p>
+      <div class="idhead">
+        <span class="mark" style="background: var(--p-ctower)" aria-hidden="true"></span>
+        <h2>designer-cockpit-2</h2>
+        <span class="role">Designer · ctower</span>
+        <span class="chip sc-working"><span class="dot" style="background: var(--state-working)"></span>working</span>
+        <span class="spacer"></span>
+        <button class="ghost" type="button">Checkpoint</button>
+        <button class="ghost" type="button">Park</button>
+      </div>
+
+      <div class="crewtabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true">Readiness</button>
+        <button class="tab" role="tab" aria-selected="false">Authority</button>
+        <button class="tab" role="tab" aria-selected="false">Composition</button>
+        <button class="tab" role="tab" aria-selected="false">Credentials</button>
+        <button class="tab" role="tab" aria-selected="false">Instructions</button>
+        <button class="tab" role="tab" aria-selected="false">Runs &amp; evidence</button>
+        <button class="tab" role="tab" aria-selected="false">Spend</button>
+      </div>
+
+      <div class="panel">
+        <!-- Eight cells, each with the rule that proves it. No aggregate green
+             without all eight: "Saved" answers whether a form persisted, and is
+             not a readiness claim. -->
+        <h3>Readiness · composed, never asserted</h3>
+        <div class="cells">
+          <div class="cell">
+            <span class="what">Survey answered → configure-or-provide derived
+              <span class="src">8 required answers · roles pool=provide, fallback=provide</span></span>
+            <span class="chip sc-proven">proven</span>
+          </div>
+          <div class="cell">
+            <span class="what">Never both
+              <span class="src">no native layer also enabled in ctower's own</span></span>
+            <span class="chip sc-proven">proven</span>
+          </div>
+          <div class="cell">
+            <span class="what">Composition pinned
+              <span class="src mono">claude-code r1 · art 8c11…4f · cfg d4e1…9ab</span></span>
+            <span class="chip sc-proven">proven</span>
+          </div>
+          <div class="cell">
+            <span class="what">Credential pool selectable
+              <span class="src">3 entries · 1 capped(reset 04:12Z) · 1 edge-challenged · 1 clear</span></span>
+            <span class="chip sc-capped">1 of 3 selectable</span>
+          </div>
+          <div class="cell">
+            <span class="what">Guard decision current
+              <span class="src mono">policy r14 · normalized plan a09c…21</span></span>
+            <span class="chip sc-proven">proven</span>
+          </div>
+          <div class="cell">
+            <span class="what">Liveness observable
+              <span class="src">declared sources: session transcript, pane-content hash</span></span>
+            <span class="chip sc-proven">proven</span>
+          </div>
+          <div class="cell">
+            <span class="what">Project scope bound
+              <span class="src mono">ctower</span></span>
+            <span class="chip sc-proven">proven</span>
+          </div>
+          <div class="cell">
+            <span class="what">Spend priceable
+              <span class="src">registry served no weight table for this profile</span></span>
+            <span class="chip sc-unknown">weight table unknown</span>
+          </div>
+        </div>
+
+        <p class="verdict">
+          <b>Not ready.</b> One cell capped and one unknown. Closes when the pool holds a
+          selectable entry on all three axes and the registry serves a current weight table.
+          <span class="dim">Green is earned by evidence, or it is not shown — and no cell here
+          says "Saved."</span>
+        </p>
+
+        <h3 style="margin-top: 20px">Spend · credits by model × account</h3>
+        <div class="spend">
+          <div class="cell">
+            <span class="what">claude-opus-5 × acct-2</span>
+            <span class="mono">14 820 mcr · 812k in / 96k out</span>
+          </div>
+          <div class="cell">
+            <span class="what">claude-fable-5 × acct-1 <span class="src">aux, attributed separately</span></span>
+            <span class="mono">1 204 mcr · 61k in / 9k out</span>
+          </div>
+          <!-- `no cap configured` is UNKNOWN, not HEALTHY, and there is no
+               progress track: a bar with no denominator is a picture of a
+               number nobody computed. -->
+          <div class="cell"><span class="what">Monthly cap</span><span class="chip sc-unknown">no cap configured</span></div>
+          <div class="cell"><span class="what">Weight table</span><span class="chip sc-unknown">revision unknown</span></div>
+          <p class="dim" style="margin: 8px 0 0; font-size: 11.5px">
+            No dollar figure is shown. A stale or missing weight table refuses rather than
+            silently mispricing, and credits are metered in provider-native units so
+            <i>which model on which account drained this plan</i> is answerable directly.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      // The only script in the file. The theme toggle exists because the
+      // one-seed color-mix recipe deriving BOTH modes is a claim the mockup
+      // should let a reader check rather than take on faith.
+      document.getElementById("theme").addEventListener("click", function () {
+        var el = document.documentElement;
+        el.dataset.theme = el.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>

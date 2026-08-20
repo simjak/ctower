@@ -10,8 +10,14 @@ dependencies are active. What this file is for is that when R3109 does earn a ti
 argument is already made, already checked against the seam contract, and already carries its
 citations.
 
-Companion artifact: `operator-cockpit.html` beside this file — one static mockup of the four-pane
-shell, openable with no build step.
+Companion artifact: `operator-cockpit.html` beside this file — one static mockup, openable
+directly from disk with no build step and no network fetch. It carries two boards: the four-pane
+cockpit, and the crew page's seven tabs (§5.7) with its Readiness verdict rendered. Both themes
+are live; the theme toggle exists so a reader can check the one-seed `color-mix` claim of §3
+rather than take it on faith. Every hard state the doc argues for is drawn deliberately — the
+disabled composer, a turn in `durability pending`, a `capped` lane outranking its timer, a
+workspace `not reached`, `Create PR` naming its dirty paths, a console gap row, and `no cap
+configured` rendered as unknown with no progress track.
 
 **Direction, verbatim (operator, 2026-08-20):** *"I want the same clean UI as paperclip has for
 ctower."* Paperclip's visual language is the target aesthetic. Two reads were granted with it:
