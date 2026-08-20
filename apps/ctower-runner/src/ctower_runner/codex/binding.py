@@ -122,11 +122,18 @@ class CodexBinding:
         lease = self._pool.acquire(model_ref=self._spec.probe.model_ref, tier=attempt.profile_ref)
         if isinstance(lease, Refusal):
             return lease
-        pinned = attempt.with_lease(lease.lease_id)
-        decision = self._boundary.clear(self._plan(pinned, seat, context), self._clock())
+        identity = lease.entry.subscription_identity
+        home = self._pool.home_for(identity)
+        if isinstance(home, Refusal):
+            return home
+        pinned = attempt.with_lease(
+            lease.lease_id, credential_identity=identity, credential_home=home
+        )
+        plan = self._plan(pinned, seat, context)
+        decision = self._boundary.clear(plan, self._clock())
         if isinstance(decision, Refusal):
             return decision
-        self._supervisor.launch(self._plan(pinned, seat, context), pinned)
+        self._supervisor.launch(plan, pinned)
         command_id = self._supervisor.deliver_input(pinned, brief.text)
         pane = self._supervisor.observe(pinned, 0)
         if command_id is None or pane is None or brief.digest in pane:
@@ -252,8 +259,16 @@ class CodexBinding:
             profile_ref=attempt.profile_ref,
             composition_digest=attempt.composition_digest,
             program=CODEX_WRAPPER,
-            argv=(seat.seat_key, "--model", self._spec.probe.model_ref),
+            argv=(
+                seat.seat_key,
+                "--config-home",
+                attempt.credential_home or "",
+                "--model",
+                self._spec.probe.model_ref,
+            ),
             worktree_path=context.worktree_path,
+            credential_identity=attempt.credential_identity,
+            credential_home=attempt.credential_home,
         )
 
     def _context(self, attempt: AttemptPin) -> WorkspaceContext:

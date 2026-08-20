@@ -181,9 +181,13 @@ class _Supervisor:
     def __init__(self, pane: str | None) -> None:
         self._pane = pane
         self.launched: list[str] = []
+        self.launched_plans: list[ExecutionPlan] = []
+        self.launched_attempts: list[AttemptPin] = []
 
     def launch(self, plan: ExecutionPlan, attempt: AttemptPin) -> str:
         self.launched.append(plan.normalized_digest())
+        self.launched_plans.append(plan)
+        self.launched_attempts.append(attempt)
         return f"pane-{attempt.attempt_id}"
 
     def observe(self, attempt: AttemptPin, after_cursor: int) -> str | None:
@@ -447,7 +451,15 @@ def test_the_plan_carries_the_runtime_reference_and_the_model_as_separate_argume
     assert plan.program == CODEX_WRAPPER
     assert plan.harness_ref == CODEX_KEY
     assert plan.profile_ref == _PROFILE
-    assert plan.argv == (_SEAT, "--model", _spec().probe.model_ref)
+    assert plan.credential_identity == _HEALTHY
+    assert plan.credential_home == "/srv/codex-homes/seat-three"
+    assert plan.argv == (
+        _SEAT,
+        "--config-home",
+        "/srv/codex-homes/seat-three",
+        "--model",
+        _spec().probe.model_ref,
+    )
     assert _spec().probe.model_ref not in (plan.harness_ref, plan.profile_ref)
 
 
@@ -615,6 +627,34 @@ def test_a_mixed_pool_acquires_from_its_healthy_account_and_reports_three_clocks
     assert not isinstance(lease, Refusal), lease
     assert lease.entry.subscription_identity == _HEALTHY
     assert len({row.quota_reset_at for row in rows}) == _DISTINCT_CLOCKS
+
+
+def test_a_pool_refuses_a_profile_outside_its_registered_pool_before_selection() -> None:
+    refusal = _pool().acquire(model_ref=_spec().probe.model_ref, tier="reviewer")
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-credential-profile-mismatch"
+
+
+@pytest.mark.parametrize("mismatch", ("store-key", "account-identity", "projected-identity"))
+def test_pool_identity_lineage_must_match_before_any_entry_is_selected(mismatch: str) -> None:
+    store = _store()
+    account = store.accounts[_HEALTHY]
+    if mismatch == "store-key":
+        store.accounts["wrong@example.test"] = store.accounts.pop(_HEALTHY)
+    elif mismatch == "account-identity":
+        store.accounts[_HEALTHY] = dataclasses.replace(
+            account, account_identity="wrong@example.test"
+        )
+    else:
+        store.accounts[_HEALTHY] = dataclasses.replace(
+            account, entry={**account.entry, "subscription_identity": "wrong@example.test"}
+        )
+
+    refusal = _pool(store).acquire(model_ref=_spec().probe.model_ref, tier=_PROFILE)
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "credential-identity-mismatch"
 
 
 def test_observation_projects_the_allowlist_and_leaves_the_adjacent_token_behind() -> None:
@@ -850,3 +890,22 @@ def test_the_pool_entry_is_keyed_by_identity_and_a_label_carries_no_authority() 
     assert {row.subscription_identity for row in rows} == set(_IDENTITIES)
     assert len({row.entry_label for row in rows}) == 1
     assert project_entry(_record(_HEALTHY, "available", _NOW, "c")).entry_label == "codex"
+
+
+def test_spawn_pins_the_selected_identity_and_home_into_the_attempt_and_guarded_plan() -> None:
+    supervisor = _Supervisor(_healthy_pane())
+    receipt = _spawn(_binding(pane=_healthy_pane(), supervisor=supervisor))
+
+    assert not isinstance(receipt, Refusal), receipt
+    assert supervisor.launched_attempts[0].credential_identity == _HEALTHY
+    assert supervisor.launched_attempts[0].credential_home == "/srv/codex-homes/seat-three"
+    plan = supervisor.launched_plans[0]
+    assert plan.credential_identity == _HEALTHY
+    assert plan.credential_home == "/srv/codex-homes/seat-three"
+    assert plan.argv == (
+        _SEAT,
+        "--config-home",
+        "/srv/codex-homes/seat-three",
+        "--model",
+        _spec().probe.model_ref,
+    )

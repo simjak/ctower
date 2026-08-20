@@ -41,8 +41,10 @@ SPEC_OWNED: frozenset[str] = frozenset(
 SEAM_MINTED: frozenset[str] = frozenset(
     {
         "credential-verb-unknown-flag",
+        "credential-identity-mismatch",
         "harness-capability-unsupported",
         "harness-credential-forbidden",
+        "harness-credential-profile-mismatch",
         "harness-credential-seat-mismatch",
         "harness-dispatch-blocked",
         "harness-dispatch-needs-operator",

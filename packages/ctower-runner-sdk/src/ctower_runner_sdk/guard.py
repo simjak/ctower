@@ -39,6 +39,8 @@ class ExecutionPlan:
     program: str
     argv: tuple[str, ...]
     worktree_path: str
+    credential_identity: str | None = None
+    credential_home: str | None = None
 
     def normalized_digest(self) -> str:
         """A stable digest over every field a change to which is a different plan.
@@ -57,6 +59,8 @@ class ExecutionPlan:
             self.program,
             _framed(*self.argv),
             self.worktree_path,
+            _optional_frame(self.credential_identity),
+            _optional_frame(self.credential_home),
         )
         return f"sha256:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
 
@@ -145,6 +149,12 @@ def _framed(*parts: str) -> str:
     """Write each part behind its own byte length, so the sequence reads back one way."""
 
     return "".join(f"{len(part.encode('utf-8'))}:{part}" for part in parts)
+
+
+def _optional_frame(value: str | None) -> str:
+    """Frame an optional reference without conflating absence with an empty value."""
+
+    return "0" if value is None else f"1{_framed(value)}"
 
 
 def _verdict_refusal(decision: GuardDecision, plan: ExecutionPlan) -> Refusal:

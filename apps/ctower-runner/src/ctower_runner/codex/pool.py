@@ -128,6 +128,17 @@ class CodexPool:
         word per substrate cannot say so.
         """
 
+        if tier != self._profile_key:
+            return Refusal(
+                name="harness-credential-profile-mismatch",
+                observed=f"the codex pool for {self._profile_key!r} was asked for {tier!r}",
+                meaning="a lease cannot be relabelled as a foreign profile",
+                action=f"acquire through the registered {self._profile_key!r} pool",
+                detail=(("registered_profile", self._profile_key), ("requested_profile", tier)),
+            )
+        identity_refusal = self._identity_refusal()
+        if identity_refusal is not None:
+            return identity_refusal
         stale = self._staleness_refusal()
         if stale is not None:
             return stale
@@ -143,6 +154,21 @@ class CodexPool:
             entry=entry,
             acquired_at=self._clock(),
         )
+
+    def home_for(self, identity: str | None) -> str | Refusal:
+        """Resolve the selected account to its config-home reference after validation."""
+
+        refusal = self._identity_refusal()
+        if refusal is not None:
+            return refusal
+        if identity is None or identity not in self._store.accounts:
+            return Refusal(
+                name="credential-identity-mismatch",
+                observed="the selected lease has no validated account identity",
+                meaning="a launch without an account home cannot preserve credential lineage",
+                action="re-read the pool and acquire a validated entry",
+            )
+        return self._store.accounts[identity].codex_home
 
     def meter(self, lease: Lease, observation: Mapping[str, object]) -> None:
         """Record usage and cost against the leased entry. No second opinion is formed."""
@@ -273,6 +299,37 @@ class CodexPool:
             action=f"complete {hook} and re-observe before believing any entry state",
             detail=(("hook", hook),),
         )
+
+    def _identity_refusal(self) -> Refusal | None:
+        """Require store key, decoded identity, and projected identity to agree."""
+
+        for store_key, account in self._store.accounts.items():
+            try:
+                projected = project_entry(account.entry).subscription_identity
+            except (KeyError, TypeError, ValueError):
+                return Refusal(
+                    name="credential-identity-mismatch",
+                    observed="an account record could not be projected to a validated identity",
+                    meaning="selection cannot establish which config home owns the lease",
+                    action="repair the account identity record before selecting it",
+                )
+            if (
+                not account.account_identity
+                or store_key != account.account_identity
+                or projected != account.account_identity
+            ):
+                return Refusal(
+                    name="credential-identity-mismatch",
+                    observed="store key, decoded account identity, and projected identity disagree",
+                    meaning="a caller-supplied label or home cannot establish credential lineage",
+                    action="repair the account record before selecting it",
+                    detail=(
+                        ("store_key", store_key),
+                        ("account_identity", account.account_identity),
+                        ("projected_identity", projected or "unknown"),
+                    ),
+                )
+        return None
 
 
 def _ceremony_refusal(outcome: CeremonyOutcome) -> Refusal | None:
