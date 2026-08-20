@@ -10,13 +10,14 @@ from ctower_runner.codex.binding import CodexBinding
 from ctower_runner.codex.ceremonies import CeremonyInvocation, CeremonyOutcome
 from ctower_runner.codex.corpus import CODEX_CORPUS
 from ctower_runner.codex.pool import CodexAccount, CodexPool, ConfigHomeStore
-from ctower_runner.codex.route import CodexRoute, classify_route
+from ctower_runner.codex.route import CodexRegistrationAuthority
 from ctower_runner.codex.spec import CODEX_KEY, digest_of, harness_spec_document
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.attempt import AttemptPin, BriefBundle, SeatRef, WorkspaceContext
 from ctower_runner_sdk.facts import DispatchReceipt
 from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan, GuardDecision
 from ctower_runner_sdk.refusals import Refusal
+from ctower_runner_sdk.registry import HarnessRegistry
 from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
 
 __all__: tuple[str, ...] = ()
@@ -60,9 +61,10 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     return parsed
 
 
-def _registration_route(spec: HarnessSpec | None = None) -> CodexRoute:
-    resolved = _spec() if spec is None else spec
-    return classify_route(runtime_ref=resolved.key, spec=resolved)
+def registration_registry(*specs: HarnessSpec) -> HarnessRegistry:
+    """Compose a registry with its fixed trusted parent-harness authorities."""
+
+    return HarnessRegistry(authorities=tuple(CodexRegistrationAuthority(spec) for spec in specs))
 
 
 def _hermes_spec() -> HarnessSpec:
