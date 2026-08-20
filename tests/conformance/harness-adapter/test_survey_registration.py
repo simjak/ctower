@@ -214,9 +214,18 @@ def test_deepseek_is_a_model_route_with_zero_adapter_work() -> None:
 @settings(max_examples=256, derandomize=True, deadline=None)
 @given(st.sampled_from(_VIOLATION_CASES))
 def test_derived_matrix_violation_set_is_refused(case: Violation) -> None:
+    _assert_violation_refused(case)
+
+
+def _assert_violation_refused(case: Violation) -> None:
     candidate, left, left_token, right, right_token, rule_id = case
     document = copy.deepcopy(_document())
     _set_token(document, candidate, left, left_token)
     _set_token(document, candidate, right, right_token)
 
     assert _errors(document), f"derived violation accepted: {rule_id} {case}"
+
+
+def test_every_derived_matrix_violation_is_refused() -> None:
+    for case in _VIOLATION_CASES:
+        _assert_violation_refused(case)
