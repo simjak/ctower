@@ -74,6 +74,16 @@ jobs:
           -r requirements/verify.txt
 
       - name: Install Linux Secret Service test runtime
+        id: install_secret_service
+        continue-on-error: true
+        timeout-minutes: 5
+        run: >-
+          sudo apt-get update &&
+          sudo apt-get install --yes --no-install-recommends gnome-keyring
+
+      - name: Retry Linux Secret Service test runtime (once)
+        if: ${{ steps.install_secret_service.outcome == 'failure' }}
+        timeout-minutes: 5
         run: >-
           sudo apt-get update &&
           sudo apt-get install --yes --no-install-recommends gnome-keyring
