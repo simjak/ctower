@@ -61,6 +61,11 @@ class CodexRoute:
 
         return self.route_class == "direct_cli_harness"
 
+    def refusal_for(self, proposed_key: str) -> Refusal | None:
+        """Return the admission refusal for a proposed registry key, if any."""
+
+        return mint_refusal(self, proposed_key)
+
     def to_mapping(self) -> dict[str, object]:
         return {
             "harness_ref": self.harness_ref,
@@ -102,7 +107,7 @@ def mint_refusal(route: CodexRoute, proposed_key: str) -> Refusal | None:
     and that is doubly true here, where the value is being refused for what it names.
     """
 
-    if route.mints_a_harness_value() or proposed_key == route.harness_ref:
+    if proposed_key == route.harness_ref:
         return None
     return Refusal(
         name="harness-runtime-not-a-harness",

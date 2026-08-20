@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Protocol
 
 from ctower_runner_sdk.refusals import Refusal
 from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
@@ -21,10 +21,17 @@ __all__ = [
     "REQUIRED_REAL_BINDINGS",
     "BindingClass",
     "HarnessRegistry",
+    "RegistrationRoute",
     "RoleRow",
 ]
 
 type BindingClass = Literal["real", "fault_injection_fake"]
+
+
+class RegistrationRoute(Protocol):
+    """The route authority a composition root must consult before registry mutation."""
+
+    def refusal_for(self, proposed_key: str) -> Refusal | None: ...
 
 # D10's earning rule, unchanged: two real Adapters plus one deterministic fake.
 REQUIRED_REAL_BINDINGS = 2
@@ -58,13 +65,20 @@ class HarnessRegistry:
         self._classes: dict[str, BindingClass] = {}
 
     def register(
-        self, document: Mapping[str, object], binding_class: BindingClass
+        self,
+        document: Mapping[str, object],
+        binding_class: BindingClass,
+        *,
+        route: RegistrationRoute,
     ) -> HarnessSpec | Refusal:
         """Parse, resolve the survey, and admit — or refuse by exact name."""
 
         parsed = parse_harness_spec(document)
         if isinstance(parsed, Refusal):
             return parsed
+        route_refusal = route.refusal_for(parsed.key)
+        if route_refusal is not None:
+            return route_refusal
         conflict = _semantic_refusal(parsed)
         if conflict is not None:
             return conflict
