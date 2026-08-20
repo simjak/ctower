@@ -18,12 +18,12 @@ from _codex_fixtures import (
     _Guard,
     _healthy_pane,
     _hermes_spec,
-    registration_registry,
     _spawn,
     _spawn_attempt,
     _spec,
     _Supervisor,
     _unanswered,
+    registration_registry,
 )
 
 from ctower_runner.codex.binding import CODEX_PROBE, CODEX_WRAPPER

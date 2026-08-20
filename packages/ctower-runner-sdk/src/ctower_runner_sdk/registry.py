@@ -117,12 +117,16 @@ class HarnessRegistry:
             if authority_refusal is None:
                 return None
             first_digest_refusal = first_digest_refusal or authority_refusal
-        return first_digest_refusal or first_route_refusal or Refusal(
-            name="harness-registration-authority-unavailable",
-            observed=f"no trusted authority admits HarnessSpec {spec.key!r}",
-            meaning="registration requires a known parent-harness context before mutation",
-            action="register the parent harness authority before registering this binding",
-            detail=(("proposed_harness_ref", spec.key),),
+        return (
+            first_digest_refusal
+            or first_route_refusal
+            or Refusal(
+                name="harness-registration-authority-unavailable",
+                observed=f"no trusted authority admits HarnessSpec {spec.key!r}",
+                meaning="registration requires a known parent-harness context before mutation",
+                action="register the parent harness authority before registering this binding",
+                detail=(("proposed_harness_ref", spec.key),),
+            )
         )
 
     def resolve(self, harness_ref: str) -> HarnessSpec | Refusal:
