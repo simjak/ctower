@@ -749,3 +749,161 @@ for real dispatches.
 The result is paperclip's ergonomics — a card grid, a short form, a review step, an explicit test —
 carrying ctower's questions instead of a flag dump. Nothing in it is a new law, and every refusal
 it can show is one the seam already owes.
+
+---
+
+## 7. The laws that bind this UI
+
+Six. Each one has already changed a drawing decision above; this section is where they are stated
+once so a later reader does not have to re-derive them from the panes.
+
+### 7.1 Projection lag — a send is pending until the projection folds
+
+A write is invisible to every read API until durability is accepted **and** the projection is
+folded. A surface that mutates and re-renders once will not show its own write, and rendering the
+pending answer as sent is a live P1 in this codebase's history, not a hypothetical.
+
+`AC-UX-09` is the binding form: a browser command remains visibly `unsent` or `durability
+pending` until authoritative acceptance, preserves one stable command ID across disconnect and
+reload, and **never paints optimistic state as accepted**; retry, refusal and quarantine must be
+distinguishable without inspecting developer tools.
+
+The contract already carries the field — `SessionReceipt` has `durability_state` alongside
+`command_id` — so this is a rendering discipline, not a new backend concept. Two consequences the
+cockpit must honour: no chat runtime with optimistic local echo (D7), and the harness's own
+`ack_predicate` (`composer_cleared`) is **not** ctower's acceptance (§4.2b).
+
+### 7.2 Record-tier isolation — the browser talks only to the API
+
+The constitution: *"Runner, provider, web, CLI, extension, and YAML packs never connect to
+record-tier persistence."* `apps/ctower-ui` goes further than required, and should keep going
+further: its browser *"receives no API bearer, no session and no credential of any kind; every
+read happens server-side."*
+
+That is what makes the console pane's same-origin, cookie-and-CSRF-bound, credential-free SSE URL
+(`AC-CON-03`) implementable without handing the browser anything. It is also why D8 stops the
+paperclip port at the token layer: paperclip's client-fetching data layer assumes a browser that
+holds a credential, and this one does not.
+
+### 7.3 TypeScript is browser-only
+
+The constitution's hard boundary: *"Python: trusted control plane, runner, CLI, release helper.
+TypeScript: browser only."* So the cockpit's dependencies (D7) are browser dependencies, and
+nothing in this design proposes a TypeScript service, a Node data layer, or a second process. The
+`liveness` classifier, the guard, the pool, and the transcript collector are Python on the control
+plane; the cockpit renders their answers.
+
+### 7.4 The phase ladder — design against the seam contract, not against tmux
+
+`tools/checks/expected-suites.toml` states the ladder, and the numbers matter:
+
+| Phase | Position in `phase_order` | Status |
+| --- | --- | --- |
+| `CT-I1-021` (console foundation) | 26 of 38 | **before** the active phase — active |
+| `CT-I1-027` | 28 of 38 | `active_phase` |
+| `CT-I1-041` (seam + `hermes`) | 37 of 38 | merged, phase not active |
+| `CT-I1-042` (`claude-code`) | 38 of 38 | merged, phase not active |
+| `CT-I1-043`, `CT-I1-044` | absent from the ladder | not started |
+
+Read that column again, because it is the sequencing argument in §9 in one table: **the terminal
+pane's backend is already activated, and the chat pane's backend is nine phases out.** Suite
+status is derived from the ladder rather than chosen, so the seam's conformance suites are
+deferred today; they prove the adapter *code*, not a live dispatch path.
+
+The design consequence: the cockpit is designed against the **seam contract** — the five verbs,
+the capability vocabulary, the refusal names — and never against the mission-control tmux
+plumbing that currently runs live crews. Building against tmux would produce a surface that has to
+be rewritten the day the phase advances, and would tempt exactly the shortcuts (`pane text as
+truth`, `keystrokes as steer`) that `AC-HAD-03` and `AC-HAD-06` exist to forbid.
+
+### 7.5 A read that did not answer is not a read that returned zero
+
+`AC-UX-03`: degradation flips the relevant views to `STATE UNKNOWN`, and *no test case displays
+"All clear."* ctower-ui already enforces the distinction structurally — a `Reading` is unwrapped
+only in `frame/Declared.tsx`, so *"a source that exists and did not answer is never rendered as one
+that does not exist."*
+
+This is D1's law form, and it is the single rule that most of §5's anti-patterns violate:
+paperclip's `HEALTHY` over `No cap configured`, its `Every known tool this agent could name is
+allowed` over an empty set, its unbounded `Remaining` bar. Every one of them is an absent
+denominator rendered as a satisfied one.
+
+### 7.6 The cockpit is not a sixth primary route
+
+`AC-UX-01` fixes the product's primary-surface inventory at exactly Home, Board, contextual/direct
+Ticket detail, Fleet, and Analytics, with global navigation holding only the four non-contextual
+destinations. The cockpit lands on `apps/ctower-ui`, which is explicitly a non-product boundary
+(§2). If it is later proposed for the product surface it enters as Fleet's contextual detail or as
+a SPEC amendment. **It may not arrive by accretion.**
+
+Related copy law for anything the cockpit renders about delivery: `AC-UX-06` requires the exact
+facts `merged`, `staging verified`, `production verified`, `rolled back`, `incident`, and forbids
+calling a merge-only state done, released, or live. The `Create PR` / `Checks` corner of §4.3 is
+where a cockpit would be most tempted to say "shipped".
+
+---
+
+## 8. Gap list: what exists, and what is genuinely new work
+
+The contract holds **104 operations** today (`tests/contracts/http/test_codegen.py:29` —
+`_EXPECTED_OPERATION_COUNT = 104`). This section splits them against the four panes so nobody
+scopes a build without knowing which half they are in.
+
+### 8.1 What already exists and is reused
+
+| Cockpit need | Existing operation / schema | Notes |
+| --- | --- | --- |
+| Terminal pane, end to end | `listVisibleConsoleSessions`, `mintConsoleViewGrant`, `renewConsoleViewGrant`, `streamConsoleEvents`, `allowConsoleSession`, `revokeConsoleSession`, `setConsoleKillSwitch` | Seven operations, already active (§7.4). The pane is **pure UI work.** |
+| Left-rail lane rows | `listSpawnRecords` / `getSpawnRecord` (`GET /v1/spawn-records`, filterable by `project_key`, `status`) | `SpawnRecord` already carries `project_key`, `seat_key`, `crew_name`, `worktree_path`, `harness`, `model`, `effort`, `workspace_id`, `status` — the row shape the rail needs |
+| Lane state transitions | `appendSpawnTransition` (`POST /v1/spawn-records/{spawn_id}/transitions`) | |
+| Crew session registry | `listProjectSessions`, `listTicketSessions`, `startTicketSession`, `recordTicketSessionFact` | `TicketSession` carries `crew_name`, `harness_ref`, `model_ref`, `branch_ref`, `state`, `outcome`, token counts |
+| Durability rendering (§7.1) | `SessionReceipt.durability_state` + `command_id` | the field exists; the UI has to respect it |
+| **Credentials tab and wizard step 5, whole** | `readPoolLimits` (`GET /v1/pools`) | `PoolEntryState` already carries `auth_state`, `quota_state`, `quota_reset_at`, `reach_state`, `selectable`, `registration_state`, `subscription_identity`, `credit_state`, `metered_millicredits`. `PoolProfileLimits` adds `selectable_entry_count`, `earliest_known_reset_at`, `drift`. The schema's own description states the no-aggregate rule: *"a pool holding two exhausted entries and one near-full entry is not one word."* **No new operation needed.** |
+| **Spend tab** | the same `readPoolLimits` — `weights` (`PoolModelWeight`) + `topology_revision` | the versioned weight table `AC-HAD-12` requires is already in the read |
+| Pool observation write | `recordPoolObservation` | |
+| Chat plane, correspondents, threads | `listInboxThreads`, `readInboxThread`, `sendInboxMessage`, `ingestInboxNotification`, `listInboxCorrespondents`, `readInboxMessageState`, `acknowledgeInboxMessage`, `promoteInboxThread` | the existing composer/thread surfaces in `surfaces/chat/` bind to these today |
+| Board, tickets, timeline, evidence | `getBoard`, `getTicket`, `getTicketTimeline`, `listTicketAuditEvents`, proof and workflow operations | the right-hand pane's ticket context |
+| Shell, tokens, marks, tree badges | `apps/ctower-ui` (§2) | |
+
+The honest headline: **the terminal pane, the credentials surface and the spend surface need zero
+new API operations.** That is not a small finding — it is most of the wizard's hardest step and
+the whole of the highest-risk pane.
+
+### 8.2 What does not exist — seven operations, and what each one costs
+
+Each row is real work, because the contract is a **closed world**. Adding one operation to
+`contracts/http/openapi.yaml` is not the single edit point it looks like; it requires:
+
+1. `tools/codegen/_inventory.py` → `EXPECTED_OPERATIONS` (and `EXPECTED_SCHEMAS` per new component
+   schema), or `tools.codegen --write` aborts with an unexpected-operation-set error;
+2. `tests/contracts/http/test_openapi.py` → `_EXPECTED_OPERATION_METADATA`, the exact
+   cli/mutation/spool/principal/refusal-only tuple;
+3. `tests/contracts/http/test_codegen.py` → `_EXPECTED_OPERATION_COUNT` (currently `104`);
+4. `tests/contracts/http/test_scalar_profile_codegen.py` → `AUTHORED_OPERATION_COUNT` (currently
+   `97`) — the one that is updated separately and fails on its own afterwards;
+
+plus, wherever the operation carries a non-null `x-ctower-cli`, a real `ctowerctl` command (parser
+subparser, name list, and the area module's query/mutation builders). The console operations are
+the precedent for the alternative: all seven carry `x-ctower-cli: null` and
+`x-ctower-spool: "forbidden"`, which is the correct shape for a browser-facing cockpit read.
+
+| # | Missing operation | Pane | Why nothing existing covers it |
+| --- | --- | --- | --- |
+| G1 | **Read a lane's liveness** — `served_model`, `working` / `capped` / `saturated` / `unknown`, context percentage, the classified failure, and its evidence source | left rail (§4.1), composer gating (§4.2a) | `SpawnRecord.status` is a durable lifecycle status, not an observation of the substrate. `AC-HAD-03`/`AC-HAD-04` semantics — precedence, `substrate-unobservable:<probe>`, conflict-not-truth — have no HTTP surface at all. This is the single most load-bearing gap: without it the rail cannot honour "capped outranks working." |
+| G2 | **Read the harness registry** — registered `HarnessSpec` key, revision, digests, declared `capabilities`, `context_window_percent`, `liveness_sources`, survey answers and derived `layers` | composer gating (§4.2a), Readiness (§5.1), Composition tab, wizard steps 2–4 | The specs exist as Python constants and contract JSON. Nothing serves them over HTTP, so the browser cannot derive the composer's enabled state from declared capability — and a UI-local guess is exactly what §4.2a forbids. |
+| G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state | centre (§4.2) | No transcript operation exists. `listTicketAuditEvents` is a typed audit stream, not a harness transcript, and `AC-HAD-08` forbids any kernel/projection/CLI/board path from parsing a harness-private transcript format — so the binding must project typed facts and *those* need a read. |
+| G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME` | composer (§4.2) | `sendInboxMessage` is the tenant-wide comms plane; it never evaluates a project grant and is not a lane input. Steering a crew through the inbox would bypass the capability check entirely. |
+| G5 | **Read a workspace change set** — per-file `+N −N`, committed vs uncommitted separated, dirty paths named | right-top (§4.3) | `recordTicketChangeReference` is a write. The `+N −N` badges in `apps/ctower-ui` today come from server-side git reads in `src/read/sources/`, which is fine for an operator surface over a local checkout and is not an API. `AC-HAD-06`'s committed-only rule needs to be enforced *in the read*, not in the renderer. |
+| G6 | **Register a harness / submit a survey** — the wizard's write, returning `harness-survey-incomplete` / `harness-layer-conflict` / `harness-spec-incompatible` verbatim | wizard step 3 and 7 (§6) | The refusal vectors exist as test data (`harness-spec-vectors.json`); no operation performs the registration. Blocked on CT-I1-044 regardless. |
+| G7 | **Dry-run the guard** — obtain a CommandGuard decision for a normalized plan and return it, dispatching nothing | wizard step 7's `Test Agent` (§6.1) | The guard is invoked at the pre-dispatch boundary inside `spawn`. Exposing a decision-only path is a deliberate new operation, and it is the one place a "test" button can be honest. |
+
+Two of the seven (G6, G7) are blocked on tickets that have not started. Five (G1–G5) are
+implementable against merged seam code once its phase activates.
+
+### 8.3 One gap that is not an operation
+
+The left rail's `+N −N` badges and the change list currently read the local filesystem
+server-side. That works for `apps/ctower-ui` over a local development instance and does not
+generalise: a cockpit over a remote instance needs G5 as a real read, and until it has one, the
+rail must render `not reached` rather than a `+0 −0` for any workspace it cannot observe (§4.1).
+Naming this now avoids shipping a surface whose numbers are silently local-only.
