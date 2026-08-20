@@ -39,6 +39,9 @@ revision-pinned evidence for the four CT-I1-044 candidates. Every unanswered fac
 serving truth remains inherited from the Hermes profile route.
 
 The survey schema is closed over exact revision-pinned source snapshots, exact question
-ID/prompt pairs, and candidate answer-state/value matrices. It rejects non-null values for
-`unverified` answers, unresolved evidence IDs, and candidate role/registration/liveness or
-answer combinations that contradict the four declared dispositions.
+ID/prompt pairs, the observation timestamp paired with those snapshots, candidate
+answer-state/value matrices, and claim-to-evidence dependencies across all ten questions. It
+rejects non-null values for `unverified` answers, unsupported evidence for a verified claim,
+unresolved evidence IDs, contradictory refusal/liveness reasons, and candidate
+role/registration/liveness or answer combinations that contradict the four declared
+dispositions.
