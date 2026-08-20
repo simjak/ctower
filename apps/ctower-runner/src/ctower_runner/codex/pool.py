@@ -38,6 +38,7 @@ from ctower_runner.codex.substrate import CeremonyPort
 from ctower_runner_sdk.credentials import (
     EntryState,
     Lease,
+    MeterObservation,
     MintRequest,
     ProbeReading,
     ProbeResponse,
@@ -119,7 +120,7 @@ class CodexPool:
         self._lease_ids = lease_ids
         self._flap: dict[str, FlapWindow] = {}
         self._auto_flap: set[str] = set()
-        self.metered: list[Mapping[str, object]] = []
+        self.metered: list[dict[str, str]] = []
 
     def acquire(self, model_ref: str, tier: str) -> Lease | Refusal:
         """Lease an entry clear on all three axes, or refuse with the whole diagnosis.
@@ -172,10 +173,16 @@ class CodexPool:
             )
         return self._store.accounts[identity].codex_home
 
-    def meter(self, lease: Lease, observation: Mapping[str, object]) -> None:
-        """Record usage and cost against the leased entry. No second opinion is formed."""
+    def meter(self, lease: Lease, observation: MeterObservation) -> None:
+        """Project typed usage fields and preserve the lease as the authority."""
 
-        self.metered.append({"lease_id": str(lease.lease_id), **dict(observation)})
+        self.metered.append(
+            {
+                "lease_id": str(lease.lease_id),
+                "event": observation["event"],
+                "model_ref": observation["model_ref"],
+            }
+        )
 
     def limits(self, profile_key: str | None = None) -> tuple[EntryState, ...]:
         """Per-entry rows, each with its own reset clock. Never an aggregate verdict.
@@ -452,7 +459,7 @@ def _ceremony_refusal(outcome: CeremonyOutcome) -> Refusal | None:
     observed = f"{outcome.ceremony} refused at generation {outcome.installed_generation}"
     return Refusal(
         name="rotation-refused-stale-generation",
-        observed=f"{observed}: {outcome.detail}" if outcome.detail else observed,
+        observed=observed,
         meaning="installing that snapshot would replay a consumed token and revoke the chain",
         action="re-mint this account's own device flow; a snapshot is never the repair",
         detail=(

@@ -38,6 +38,7 @@ from ctower_runner.codex.substrate import (
     WritebackPort,
 )
 from ctower_runner_sdk.attempt import AttemptPin, BriefBundle, SeatRef, WorkspaceContext
+from ctower_runner_sdk.credentials import MeterObservation
 from ctower_runner_sdk.facts import (
     ArtifactSet,
     DispatchReceipt,
@@ -144,7 +145,9 @@ class CodexBinding:
         pane = self._supervisor.observe(pinned, 0)
         if command_id is None or pane is None or brief.text in pane:
             return _unacknowledged(brief, pane)
-        self._pool.meter(lease, {"event": "spawn", "model_ref": lease.model_ref})
+        self._pool.meter(
+            lease, MeterObservation(event="spawn", model_ref=lease.model_ref)
+        )
         return DispatchReceipt(
             attempt_id=str(pinned.attempt_id),
             composition_digest=pinned.composition_digest,
