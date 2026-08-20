@@ -1032,3 +1032,74 @@ the seam contract, SPEC, or source. None blocks slices 1–4.
    Whether that is an operator-principal command that the runner then converts, or something else,
    is a boundary question the seam design does not state, and getting it wrong is a credential-law
    violation rather than a UI bug.
+
+---
+
+## 11. Evidence index
+
+Every non-obvious claim above is traceable to one of these. Where a claim rests on a screenshot
+rather than source, it says so in place.
+
+### ctower source and contract
+
+| Subject | Where |
+| --- | --- |
+| Acceptance criteria | `docs/internal/SPEC.md` — AC-HAD-01..12 at 4872–4883; AC-UX-01..09 at 4794–4802; AC-CON-01..07 at 4599–4605 |
+| Terminal authority | `SPEC.md:885` (*"Structured events and durable commands are authoritative. The raw terminal is a compatibility view."*) and `SPEC.md:14` (*"The console foundation has no browser UI and grants no typing authority."*) |
+| Console invariants | `SPEC.md` INV-91 at 1570, INV-92 at 1571 |
+| Tickets | `SPEC.md` CT-I1-021 at 5309; CT-I1-041..044 at 5336–5342 |
+| Capability vocabulary | `contracts/runner/harness-capability.schema.json` — the closed nine-value list |
+| Spec shape, survey, probe, layers | `contracts/runner/harness-spec.schema.json` — `$defs.survey` (eight required), `$defs.probe` (five required), `$defs.layers` |
+| Registration refusals | `contracts/runner/harness-spec-vectors.json` — `harness-survey-incomplete`, `harness-layer-conflict`, `harness-spec-incompatible` |
+| Declared capabilities per binding | `apps/ctower-runner/src/ctower_runner/hermes/spec.py:38–49`; `apps/ctower-runner/src/ctower_runner/claude_code/spec.py:45–56` |
+| Steer and collect enforcement | `packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py` — `input_refusal` at 144–160, `collect_refusal` at 163+ |
+| HTTP surface | `contracts/http/openapi.yaml` — 104 operations; console operations under `/v1/console/…` and `/v1/admin/console/…` |
+| Pool read shape | `PoolLimitsView`, `PoolProfileLimits`, `PoolEntryState`, `PoolModelWeight` |
+| Closed-world inventories | `tools/codegen/_inventory.py`; `tests/contracts/http/{test_openapi,test_codegen,test_scalar_profile_codegen}.py` (`104` / `97`) |
+| Phase ladder | `tools/checks/expected-suites.toml` — `active_phase`, `phase_order` |
+| UI boundary and shell | `apps/ctower-ui/README.md`; `apps/ctower-ui/src/app/conductor.css:1–14, 55–58`; `apps/ctower-ui/design-reference/app.css:5, 10, 51–56`; `apps/ctower-ui/src/surfaces/**` |
+
+### paperclip source
+
+`/srv/projects/paperclip-eval/DESIGN.md` (product stance, eight principles, enforcement);
+`ui/src/index.css` (tokens: `23–24` type, `59–74` radius ladder and semantic core, `155–165`
+status hues, `221–253` motion, `544–560` reduced-motion collapse, `1951–1959` the `.status-chip`
+recipe, `289+` the `.dark` block); `ui/components.json`;
+`ui/src/components/agent-config-defaults.ts:8, 11`;
+`ui/src/adapters/claude-local/config-fields.tsx:239`;
+`ui/src/adapters/codex-local/config-fields.tsx:40`;
+`ui/src/components/ui/resizable-panels.tsx`; `ui/src/pages/DesignGuide.tsx`.
+
+### Screenshots
+
+`/srv/projects/mission-control/board/r3109-reference/` (97 files; the remainder are unrelated
+drops that landed in the same directory).
+
+| Subject | File |
+| --- | --- |
+| Conductor cockpit — the target | `cmux-drop-a58d9154-1d3f-4135-9ef7-6d0b860dd121.png` |
+| ctower board UI as-is | `cmux-drop-f71694a6-2796-42b3-84c8-ef7efded0b38.png` |
+| JAK-1, the R3109 brief | `cmux-drop-4b2b745d-fa8f-4ef0-9e57-b38cbf40c13a.png` |
+| Paperclip tasks list | `cmux-drop-f7b67672-d058-4f94-a93c-64d578d3db8c.png` |
+| Agents list (pinned models, mono) | `cmux-drop-52cc20d0-551f-40b5-97fc-e618eab13fd7.png` |
+| Agent · Dashboard | `cmux-drop-4d80140a-19f2-47f0-ae65-ea0aa1b65bad.png` |
+| Agent · Instructions | `cmux-drop-a1c3fe69-c594-42aa-86a4-b69f7d62e509.png` |
+| Agent · Skills | `cmux-drop-6688645d-50c9-4acc-b46e-c6943644152e.png` |
+| Agent · Secrets | `cmux-drop-4bfdb30b-e8ba-4e2d-b646-c748ba66b40e.png`, `cmux-drop-dae7e9c4-5b81-4614-936f-5caa4158aafa.png` |
+| Agent · Tools | `cmux-drop-60d6d6f1-fb3e-4321-baa2-023d7b91c54c.png` |
+| Agent · Budget | `cmux-drop-c7731c3f-57ec-4e0f-a1cc-94da5847d9a6.png` |
+| **Agent · Configuration** | **not in the corpus** — captured live under the operator's grant as `live-paperclip-commander-configuration.png` |
+| Add-a-new-agent, entry modal | `cmux-drop-31186ca7-ecef-4b93-bb24-97108bd0bc2c.png` |
+| Harness picker (nine cards, no registration state) | `cmux-drop-282bb981-1803-44a3-8470-b04e2feb13e3.png` |
+| New Agent · claude-code | `cmux-drop-57c873e0-15ae-4961-a2b3-6a118c8b7cb0.png` |
+| New Agent · hermes | `cmux-drop-3e674814-6e3c-4414-a7c1-1e7a0b4c6966.png` |
+| New Agent · codex (`Bypass sandbox` on) | `cmux-drop-3e2ae66c-07ba-46e3-89a7-b184c7d965df.png` |
+
+### Live reads
+
+`http://127.0.0.1:3100` under the operator's browsing grant, 2026-08-20:
+`/JAK/agents/commander/configuration` — the Configuration tab's full field set, `Primary model:
+Claude Fable 5`, the `Permissions` and `API Keys` blocks, `Configuration Revisions · 0`, and the
+switch states (`Skip permissions` = `aria-checked="true"`, `Enable Chrome` = false, `Can create
+new agents` = false, `Can create/import skills` = true, `Can assign tasks` = true); `/JAK/agents`
+— pinned models in monospace; `/JAK/dashboard` — `$0.00 Month Spend · Unlimited budget`.
