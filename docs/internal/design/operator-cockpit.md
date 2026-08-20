@@ -419,3 +419,192 @@ credential shape redacted out of it and one that never contained one are differe
 The tab strip mirrors Conductor's `Setup · Run · ● Terminal · +`, but every tab is a *reading*, so
 all of them stay live in read-only v1 — the same reason the Chat/Raw and File/Diff switches are
 live today.
+
+---
+
+## 5. The crew page: steal the IA, refuse six of the semantics
+
+Paperclip's agent detail is a **nine-tab strip under a persistent identity header** — `Dashboard ·
+Instructions · Skills · Configuration · Secrets · Tools · Runs · Audit · Budget` — with the header
+carrying `☆ · + Assign Task · ▷ Run Heartbeat · ⏸ Pause · [idle] · ⋯` and a breadcrumb
+(`Agents › Commander › Tools`). That skeleton is right and ctower should take it: one persistent
+identity, one horizontal tab strip, actions in the header, one breadcrumb. What is wrong is the
+semantics, in six specific ways, each of which is a named anti-pattern from the operator's
+critique cycle.
+
+Evidence note: §5.1–5.5 are read from the operator's screenshot corpus, and the Configuration tab
+is read **first-hand from the live instance** at `http://127.0.0.1:3100/JAK/agents/commander/configuration`
+(that tab is absent from the corpus; the operator's grant to browse the live app is what closes
+it). Its screenshot is archived beside the corpus as
+`live-paperclip-commander-configuration.png`.
+
+### 5.1 Anti-pattern: the hollow-by-default hire, with every page reporting green
+
+Across the corpus the seeded Commander holds **0 skills** (`0 of 5 enabled`, `Enabled on this
+agent: 0`), **0 tools** (`Allowed tools — 0 tools`), **0 secrets** (`No secrets are bound to this
+agent yet`), **no budget** (`Disabled`, `No cap configured`) — and every one of those pages
+reports a positive state: `Saved` on Skills, a green-check `Effective access` banner on Tools,
+`HEALTHY` on Budget. The live Configuration tab adds `Configuration Revisions · 0`.
+
+There is no view anywhere that answers *may this agent actually run?* "Saved" answers whether the
+form persisted. It is not a readiness claim, but it is the only green on the screen, so it reads
+as one.
+
+**ctower's fix — a Readiness verdict that is composed, not asserted.** ctower already has every
+component; they have never been assembled into one view:
+
+| Readiness cell | Source of truth |
+| --- | --- |
+| Survey answered → configure-or-provide decided | the `HarnessSpec` `survey` block; an unanswered survey is a **refusal** (`harness-survey-incomplete`), not a gap, and the candidate does not enter the conformance suite |
+| Never both | `AC-HAD-01` — a binding declaring a native layer *and* enabling ctower's own for that layer refuses `harness-layer-conflict` |
+| Composition pinned | `HarnessSpec` `key` + `revision` + `artifact_digest` + `config_digest`; unknown, incompatible, revoked or digest-mismatched ⇒ zero dispatch (`AC-HAD-09`) |
+| Credential pool selectable | `AC-HAD-10`'s three orthogonal axes, all three clear |
+| Guard current | a versioned CommandGuard decision for the exact normalized plan at the final pre-dispatch boundary (`AC-HAD-09`) |
+| Liveness observable | the spec's declared `liveness_sources`, or `liveness` returns **unknown by name** (`AC-HAD-03`) |
+| Project scope bound | `AC-HAD-05`; a foreign project key returns `project-scope-denied` with zero disclosure |
+| Spend priceable | `AC-HAD-12`'s versioned per-model per-direction weight table; stale or missing **refuses rather than silently mispricing** |
+
+Any cell unproven ⇒ the seat is not ready, and the page names which cell and what closes it.
+Green is earned by evidence or it is not shown. This is the same discipline as the board's
+declared-absence blocks, applied to a seat.
+
+### 5.2 Anti-pattern: the Tools page contradicts itself, on one screen, under a green check
+
+`cmux-drop-60d6d6f1…png`, verbatim, top to bottom:
+
+- ✓ **Effective access** — *"This is exactly the tool set Paperclip will accept for Commander…
+  The agent's prompt can narrow this list but **cannot expand it** — everything else is blocked by
+  default."*
+- **Installed apps** — `Saved` · *"No permitted apps yet. Bind an access profile to make apps
+  available here."*
+- **Allowed tools** — `0 tools` · *"No tools are allowed for this agent. Bind a tool profile to
+  grant access."*
+- **Why these tools?** → ACCESS PROFILES: *"No active profile applies to this agent, so it has no
+  allowed tools."* → UNAVAILABLE TOOLS: *"**Every known tool this agent could name is allowed.**"*
+
+The last two sentences are in the **same card**, four lines apart: *no allowed tools* and *every
+known tool is allowed*. Add the green check at the top and deny-by-default in the banner, and one
+viewport carries four statements of which at most two can be true. The final one is almost
+certainly an empty-set rendering bug — an empty *unavailable* list phrased as universal
+permission — which is exactly why an authority screen must never compute its sentences
+independently per card.
+
+**ctower's fix.** One derived allow-list, one screen, one computation. Every row states the rule
+that put it there and the rule that could remove it. An empty set renders as `no tools are
+allowed` **in the same words in every panel on the page**, and the page has no second panel free
+to disagree with the first. If two panels can disagree, the design is wrong, not the copy.
+
+### 5.3 Anti-pattern: authority scattered across five systems, with dangerous toggles ON under a `Standard` preset
+
+Where authority lives in paperclip today, counted:
+
+1. **Trust preset** (`Standard`) — the hire form and the Configuration tab.
+2. **Permission grants** — the Configuration tab's own `Permissions` block (`Can create new
+   agents`, `Can create/import skills`, `Can assign tasks`), plus *"Advanced permissions remain
+   editable through the EE permissions extension when installed."*
+3. **Adapter toggles** — `Skip permissions`, `Bypass sandbox`, `Enable Chrome`, `Enable search`,
+   on the adapter section of the same page.
+4. **Tool profiles and access profiles** — the Tools tab.
+5. **API keys** — a separate `API Keys` block, again on Configuration.
+
+Nothing composes them. There is no screen that answers **what may this agent do right now**, and
+the one screen that claims to — Tools · *Effective access* — is §5.2.
+
+Worse, they disagree by construction, and the disagreement is live right now:
+
+| Fact | Evidence |
+| --- | --- |
+| The committed hire default is `dangerouslySkipPermissions: true` | `ui/src/components/agent-config-defaults.ts:11` |
+| The adapter reads an unset value as opt-**out**, not opt-in | `ui/src/adapters/claude-local/config-fields.tsx:239` — `config.dangerouslySkipPermissions !== false` |
+| The running Commander has `Skip permissions` **on** | live read, `aria-checked="true"` on that switch at `/JAK/agents/commander/configuration` |
+| …under a trust preset labelled | `Standard` — *"Company-visible collaboration. This is the default for normal work."* |
+| The codex hire form ships the sandbox bypass toggled on | `cmux-drop-3e2ae66c…png` — `Bypass sandbox` green, under the same `Standard` preset |
+
+So the safe-sounding preset ships with permissions off. A preset that names a trust level and a
+toggle that silently overrides it are two authorities in one form, and the operator reads only the
+one with the reassuring word on it.
+
+**ctower's fix.** Authority is one screen and one word, and the dangerous toggle does not exist —
+not defaulted off, *absent*. `AC-HAD-09` makes the guard non-optional: **every** `spawn` obtains
+and enforces a current versioned CommandGuard decision for the exact normalized plan at its final
+pre-dispatch boundary; `block` and `needs_operator` dispatch nothing; a changed plan, an expired
+or replayed grant, or a direct bypass fails closed. A control that could turn that off is a
+control ctower may not draw, so there is nothing to default correctly and nothing to get wrong.
+
+### 5.4 Anti-pattern: instructions and config are unversioned walls that two live runs can disagree about
+
+The Instructions tab is a file list (`AGENTS.md` · `ENTRY`) beside a free-text markdown pane
+mixing strategy with operational detail (API endpoints, script paths). Its own caveat concedes the
+problem: *"Saved instructions affect the next run. Active runs keep the instructions they started
+with."* The Configuration tab says the same thing about adapter config — *"Saved adapter config
+affects the next run. Active runs keep the config they started with, and config changes may start
+a fresh adapter session"* — and then renders `Configuration Revisions · 0`.
+
+So two runs can be executing different instructions and different config, the product knows it,
+and nothing on screen names which run pinned which text. There is no version, no diff, no author,
+and no link from a run back to the text it ran under. It rots, and nothing detects the rot.
+
+**ctower's fix.** Instructions and config are revision-pinned like every other composition input,
+an attempt records the revision it pinned, and the Runs view links each attempt to that exact
+revision. This is not a new rule — it is the rule already applied to `HarnessSpec` revisions,
+workflow component revisions, and execution policy revisions. Instructions are not a special case.
+Paperclip is one field away from this; it already has a revisions counter, it just never
+increments it.
+
+### 5.5 Anti-pattern: budget `Disabled` rendering as `HEALTHY`
+
+`cmux-drop-c7731c3f…png`: `AGENT Commander` · `Monthly UTC budget` · `OBSERVED $0.00 / No cap
+configured` · `BUDGET Disabled / Soft alert at 80%` · `Remaining · Unlimited` — with a **full-width
+progress track** under it and a **`HEALTHY`** badge in the corner. Unconfigured is being rendered
+as fine, twice: once in the badge and once in a bar that reads as 100% remaining because there is
+no denominator at all. The live dashboard repeats it: `$0.00 Month Spend · Unlimited budget`.
+
+This is D1 with money attached. The third state class is missing, so the *absence* of a limit gets
+the same colour as a limit being respected.
+
+**ctower's fix.** No cap configured is `unknown`, not healthy, and it renders through
+`--state-unknown` (D1) with no progress track, because a bar without a denominator is a picture of
+a number nobody computed. Spend is metered the way `AC-HAD-12` requires: **provider-native credit
+units** from the versioned per-model per-direction weight table, attributed **by model × account**,
+so *which model on which account drained this plan* is answerable directly. A stale or missing
+weight table **refuses rather than silently mispricing**, and a dollar figure computed from a
+missing table is never shown at all.
+
+### 5.6 The keepers — three things paperclip gets right
+
+These are lifted, not re-litigated.
+
+1. **Secrets by alias, fetched on demand, never in env.** The Secrets tab, verbatim: *"Env-var
+   bindings are injected at run start; API-access bindings are fetched on demand via the run-bound
+   agent API and never written to the environment"*, under a heading that says the quiet part —
+   `API ACCESS (NO ENV VAR)` — and a footer naming the exact read: *"The agent reads them by alias
+   through `GET /agents/me/secrets`."* That matches ctower's credential law directly, including
+   `AC-HAD-10`'s *"the Interface exposes **no copy verb**"* and CT-I1-042's minted-never-copied.
+   Keep the pattern **and keep the copy** — it is better written than most of ctower's own.
+2. **"The prompt can narrow this list but cannot expand it."** That is the right allow-list
+   sentence, in the right direction, in one line, and ctower should use it verbatim. Paperclip's
+   failure in §5.2 is that its screen does not honour the sentence, not that the sentence is wrong.
+3. **Model pinning works when the surface demands it.** The live Configuration tab renders
+   `Primary model: Claude Fable 5` — a real pin — and the agents list renders `claude-fable-5` /
+   `claude-opus-5` in monospace under each agent, which is Principle 6 applied correctly. The
+   capability is present and right. It is simply not the *default*: the hire form ships
+   `model: ""` (`agent-config-defaults.ts:8`), which renders as `Default`. Pinning is a defaults
+   decision, and paperclip has already made it correctly once — on the page where an operator can
+   see it.
+
+### 5.7 The resulting tab strip
+
+Keep the IA — persistent identity header, breadcrumb, one horizontal tab strip, actions in the
+header — and rename the tabs to what ctower can actually prove:
+
+| ctower tab | Replaces | Carries |
+| --- | --- | --- |
+| **Readiness** | Dashboard | the eight composed cells of §5.1; no aggregate green without all eight |
+| **Authority** | Tools + trust preset + adapter toggles + permission grants | one derived allow-list: project scope, writeback fact classes (`capture` / `transition` / `evidence`), tool allow-list, guard decision |
+| **Composition** | Configuration | `harness_ref` **and** the runtime/profile reference carrying credential lineage (CT-I1-043: a model is not a harness), pinned model, `revision` + both digests |
+| **Credentials** | Secrets | pool entries by decoded identity, three axes, per-account reset clocks, aliases only, no copy verb |
+| **Instructions** | Instructions | revision-pinned, with the attempts that pinned each revision |
+| **Runs & evidence** | Runs + Audit | attempts with their pinned composition and their collected artifacts (committed refs only) |
+| **Spend** | Budget | credits by model × account in native units, raw tokens alongside, refusal on a stale weight table |
+
+Nine tabs to seven, and every one answers a question an operator actually has.
