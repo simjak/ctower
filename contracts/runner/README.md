@@ -37,3 +37,7 @@ revision-pinned evidence for the four CT-I1-044 candidates. Every unanswered fac
 `unverified`, so `configure`/`provide` remains undecidable and registration is refused. The
 `deepseek` entry is a model disposition, not a HarnessSpec: its adapter work is zero and its
 serving truth remains inherited from the Hermes profile route.
+
+The survey schema is closed over its revision-pinned source, question, and candidate IDs. It
+also rejects non-null values for `unverified` answers, unresolved evidence IDs, and candidate
+role/registration/liveness combinations that contradict the four declared dispositions.
