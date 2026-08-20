@@ -38,6 +38,7 @@ phase_order = [
   "CT-I2-005",
   "CT-I2-010",
   "CT-I1-035",
+  "CT-I1-041",
 ]
 
 [[suite]]
@@ -1242,4 +1243,24 @@ command = [
   "tests/acceptance/increment-1/test_routine_item_episodes.py",
   "-q",
 ]
+timeout_seconds = 900
+
+[[suite]]
+id = "harness-adapter-conformance"
+owner = "CT-I1-041"
+phase = "CT-I1-041"
+status = "deferred"
+path = "tests/conformance/harness-adapter"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/conformance/harness-adapter", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "harness-seam-acceptance"
+owner = "CT-I1-041"
+phase = "CT-I1-041"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_harness_seam.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_harness_seam.py", "-q"]
 timeout_seconds = 900

@@ -67,7 +67,7 @@ class PostgresProjections:
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         return _list_threads(self._dsn, actor, unread=unread)
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList | RecordProblem:
         return _list_correspondents(self._dsn, actor)
 
     def list_project_inbox_correspondents(

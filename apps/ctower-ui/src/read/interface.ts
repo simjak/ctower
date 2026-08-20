@@ -9,6 +9,7 @@ import type {
   ProjectionHealth,
 } from "@ctower/client";
 import type { ReadFailure } from "./bounded";
+import type { PoolLimits } from "./poolLimitsInterface";
 import type { RequestsSnapshot } from "./requestsInterface";
 import type { Known } from "./sources/maybe";
 
@@ -18,6 +19,20 @@ export type {
   RequestTriage,
   RequestsSnapshot,
 } from "./requestsInterface";
+
+/**
+ * The credential-pool family, re-exported the way the inbox family is: it lives
+ * in `poolLimitsInterface.ts`, one cohesive subject read by one screen, and
+ * `RecordAdapter` below still declares that read beside every other.
+ */
+export type {
+  PoolDrift,
+  PoolEntry,
+  PoolHarnessKey,
+  PoolLimits,
+  PoolProfile,
+  PoolWeight,
+} from "./poolLimitsInterface";
 
 /**
  * The record-read contract this surface renders.
@@ -890,6 +905,8 @@ export interface RecordAdapter {
   boardCards: (projectKey: string) => Promise<Reading<BoardCards>>;
   /** Accepted-only operator Requests, in the record's returned order. */
   requests: (projectKey: string | null) => Promise<Reading<RequestsSnapshot>>;
+  /** The latest harness credential-pool sweep, per entry and never aggregated. */
+  poolLimits: () => Promise<Reading<PoolLimits>>;
   /** Every configured project's work, escalations and unread comms, in one read. */
   portfolio: () => Promise<Reading<Portfolio>>;
   ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;

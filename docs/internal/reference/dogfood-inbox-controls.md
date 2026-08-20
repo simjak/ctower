@@ -13,9 +13,10 @@ the message and which seat it is for, and nothing else:
 
 - the seats on offer are the ones the server itself listed, read from `GET /v1/inbox/correspondents` — you
   pick one, you cannot type one, and a seat that is not on the list is refused before any command is made;
-- that list is what the command accepts, not every seat that exists: a seat key two seats share is
-  addressed to nobody and is offered by neither, your own seat is not on it, and a principal holding no
-  seat of its own is offered nothing at all, because it has no address to write from;
+- that list is what the command accepts inside your own project grants, not every seat that exists: a
+  seat key two seats share is addressed to nobody and is offered by neither, your own seat is not on it, a
+  principal holding no seat of its own is offered nothing at all because it has no address to write from,
+  and a project you hold no grant on is not enumerated for you at all (D73);
 - the sender is never sent — the API derives it from the bearer it validates;
 - the thread is not chosen by anyone. The server derives one per pair of seats, so writing to the same seat
   again continues that one conversation instead of opening another, and a compose to a seat the notify

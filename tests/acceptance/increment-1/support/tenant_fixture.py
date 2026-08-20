@@ -208,12 +208,15 @@ def provision_seat(
     seat_key: str,
     *,
     project_key: str = "ctower",
+    kind: str = "commander",
 ) -> tuple[UUID, str]:
     """Register one addressable project seat, the way the operator flow does.
 
     A seat is a persisted identity, not a name a test may assert: every inbox
     path resolves a recipient out of ``project_seats``, so a test that wants a
-    correspondent has to register one here first.
+    correspondent has to register one here first. ``kind`` is the principal kind
+    that seat belongs to, because a seated operator and a seated commander hold
+    different authority over the same registry and a test may need either.
     """
 
     principal_id, credential = uuid4(), secrets.token_urlsafe(32)
@@ -223,9 +226,9 @@ def provision_seat(
             """
             INSERT INTO principals (
                 principal_id, tenant_id, kind, display_name, disabled, created_at
-            ) VALUES (%s, %s, 'commander', %s, false, %s)
+            ) VALUES (%s, %s, %s, %s, false, %s)
             """,
-            (principal_id, tenant.tenant_id, f"Inbox {project_key} {seat_key}", now),
+            (principal_id, tenant.tenant_id, kind, f"Inbox {project_key} {seat_key}", now),
         )
         connection.execute(
             """

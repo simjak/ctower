@@ -358,7 +358,9 @@ def _discover_projection_inventory(
         analyzer.public_reads(
             interface,
             scope_names={"project_key", "project_keys", "ticket_id", "query"},
-            scoped_returns={"BoardView"},
+            scoped_returns=analyzer.project_bearing_returns(
+                projection_root, scope_names={"project_key", "project_keys"}
+            ),
         )
     )
     postgres = ast.parse(postgres_path.read_text(encoding="utf-8"), filename=str(postgres_path))

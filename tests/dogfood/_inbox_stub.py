@@ -24,11 +24,16 @@ import socket
 import subprocess
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager, suppress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
+
+if TYPE_CHECKING:
+    from dogfood import _pool_stub as pools
+else:
+    from tests.dogfood import _pool_stub as pools
 
 __all__ = (
     "ADDRESSABLE",
@@ -378,12 +383,15 @@ class _RecordStub(BaseHTTPRequestHandler):
 
     def _read(self, path: str) -> dict[str, Any] | None:
         """What one read path answers with, or `None` for a path holding nothing."""
-        if path == "/v1/inbox/threads":
-            return self.record.projection()
-        if path == "/v1/inbox/correspondents":
-            return self.record.correspondents()
-        if path == "/v1/board":
-            return _BOARD
+        unscoped: dict[str, Callable[[], dict[str, Any]]] = {
+            "/v1/inbox/threads": self.record.projection,
+            "/v1/inbox/correspondents": self.record.correspondents,
+            "/v1/board": lambda: _BOARD,
+            "/v1/pools": pools.limits,
+        }
+        answer = unscoped.get(path)
+        if answer is not None:
+            return answer()
         if path.endswith("/read-state") and path.startswith("/v1/inbox/threads/"):
             return self.record.read_state(path.split("/")[4])
         if path.startswith("/v1/inbox/threads/"):

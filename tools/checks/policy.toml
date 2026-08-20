@@ -5,9 +5,11 @@ extensions = [".py", ".ts", ".tsx"]
 module_roots = [
   "tests/type_overlays",
   "apps/ctower-api/src",
+  "apps/ctower-runner/src",
   "apps/ctowerctl/src",
   "generated/python",
   "packages/ctower-kernel/src",
+  "packages/ctower-runner-sdk/src",
   "tests/acceptance/increment-1",
   "tests/compatibility",
 ]
@@ -154,6 +156,21 @@ paths = ["tests/contracts/**"]
 allowed_dependencies = ["http-client-codegen", "repository-policy"]
 
 [[ownership]]
+name = "runner-sdk"
+paths = ["packages/ctower-runner-sdk/src/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "runner-hermes"
+paths = ["apps/ctower-runner/src/**"]
+allowed_dependencies = ["runner-sdk"]
+
+[[ownership]]
+name = "harness-conformance-tests"
+paths = ["tests/conformance/**"]
+allowed_dependencies = ["runner-hermes", "runner-sdk"]
+
+[[ownership]]
 name = "kernel-pools"
 paths = ["packages/ctower-kernel/src/ctower_kernel/pools/**"]
 allowed_dependencies = ["kernel-record"]
@@ -291,7 +308,7 @@ allowed_dependencies = ["runtime-manifest-tools"]
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports", "process-execution-tools"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports", "process-execution-tools", "runner-hermes", "runner-sdk"]
 
 [[ownership]]
 name = "kernel-module-tests"

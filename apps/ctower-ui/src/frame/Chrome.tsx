@@ -20,6 +20,7 @@ const RAIL_OF = {
   Workspace: "Workspace",
   Explorer: "Explorer",
   Metrics: "Metrics",
+  Limits: "Limits",
   Org: "Org",
   // one crew belongs under Org the way one ticket belongs under Tickets
   Crew: "Org",
