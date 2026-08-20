@@ -907,3 +907,122 @@ server-side. That works for `apps/ctower-ui` over a local development instance a
 generalise: a cockpit over a remote instance needs G5 as a real read, and until it has one, the
 rail must render `not reached` rather than a `+0 −0` for any workspace it cannot observe (§4.1).
 Naming this now avoids shipping a surface whose numbers are silently local-only.
+
+---
+
+## 9. Sequencing: smallest end-to-end slice first
+
+The principle from the constitution: *grow the system in layers; start from the smallest version
+that works end to end, and add each new capability on top of a product that already works; never
+trade a working product for unfinished complexity.*
+
+Applied here, the ordering is not the one the brief's pane list implies. The obvious first slice is
+"the chat pane, read-only", and it is the wrong one: §7.4's table says the chat pane's backend is
+the last phase in a 38-phase ladder while the terminal pane's backend is already active, and §8.1
+says the terminal pane needs zero new operations. **Build downward from what is already true.**
+
+### Slice 1 — the shell and the rail, over what exists
+
+Four resizable panes, the token migration of §3, and the left rail as project → seat → workspace
+over `listSpawnRecords` + `listProjectSessions`. No liveness (G1 does not exist): a lane shows its
+durable `SpawnRecord.status` and nothing more, and any workspace whose git read did not answer
+shows `not reached` (§8.3). No new API operations. Ends as a working product: an operator can see
+every registered lane in one place, which is more than any current surface offers.
+
+**Proves:** the geometry, the tokens, the `unknown` state class, D2's no-elevation rule.
+
+### Slice 2 — the terminal tab strip, whole
+
+The console pane end to end, on the seven already-active operations: discovery, grant with its
+five-minute clock, renewal, the bounded SSE stream, inline gap rows, typed close reasons, and the
+five never-dos of §4.4. Still no new operations.
+
+**Proves:** the highest-risk pane, first, while its authority model is fresh — and it proves it
+with a backend that already passed AC-CON-01..07. Doing this pane second rather than last is the
+single most important scheduling call in this document: a terminal pane bolted on at the end is
+the one that gets a keystroke handler "just for debugging."
+
+### Slice 3 — the change list and Create PR
+
+Right-top over G5, with committed and uncommitted separated and `Create PR` genuinely disabled on
+a dirty tree, naming the dirty paths on the control. First new operation. Ends with an operator
+able to see what a lane produced and open its PR without a shell.
+
+**Proves:** `AC-HAD-06`'s committed-only rule enforced in a read rather than a renderer.
+
+### Slice 4 — Credentials, Spend, Readiness — as far as they go without dispatch
+
+`GET /v1/pools` already answers most of it (§8.1). The Credentials tab renders three axes per
+entry with per-account reset clocks and no copy verb; Spend renders credits by model × account
+against `weights` + `topology_revision`, refusing on a stale table. Readiness (§5.1) renders every
+cell it can prove and marks the rest **unproven by name** — which, before the seam's phase
+activates, is most of them. That is the correct output, and it is the anti-`HEALTHY`.
+
+**Proves:** that a composed verdict is honest when it is mostly negative, which is the hardest
+thing about §5.1 and the thing paperclip never attempted.
+
+### Slice 5 — the transcript, read-only
+
+G2 + G3 land together, because the transcript is unrenderable without the spec that says how to
+classify its turns. Centre pane renders turns, thinking, tool rows, interrupt chips and elapsed —
+**with the composer present and its send control disabled**, carrying the capability's own words
+(§4.2a). G1 lands here too, so the rail finally shows `capped` outranking `working`.
+
+**Requires:** the seam's phase to be active. Before that, this slice can be built against the
+conformance fixtures but must not claim a live dispatch path.
+
+### Slice 6 — the composer sends
+
+G4. `unsent` → `durability pending` → accepted, one stable command ID across reload, refusal shown
+as refusal. Idle-lane input only, because that is what today's two bindings declare. The day a
+binding declares `INTERRUPT_AND_RESUME`, mid-turn steer lights up with no cockpit change (§4.2a) —
+which is the test of whether §4.2a was designed right.
+
+### Slice 7 — the hire wizard
+
+G6 + G7, blocked on CT-I1-044 and gated by CT-I1-043. Steps 1, 2, 5 and 6 are partially buildable
+earlier (the card grid, the pool step, the allow-list); steps 3, 4 and 7 are CT-I1-044's
+deliverable rendered, and building them before it exists would mean inventing the survey's
+semantics in a UI — which is how the classification ends up living in two places.
+
+### The dependency summary
+
+- **CT-I1-041** (seam + `hermes`) — merged (#533); phase 37 of 38, not active.
+- **CT-I1-042** (`claude-code`) — merged (#538); phase 38 of 38, not active.
+- **Phase activation** — the gate on slices 5 and 6.
+- **CT-I1-043** (`codex`), **CT-I1-044** (survey + classification) — not started, absent from the
+  ladder; the gate on slice 7.
+- **CT-I1-021** (console) — phase 26 of 38, **active**; slice 2 rides on it today.
+
+Slices 1–4 are buildable now. R3109 does not change the harness-adapter epic's finish line; it is
+what the finish line is for.
+
+---
+
+## 10. Open questions the seam design does not settle
+
+Per the brief's stop-and-report instruction, three questions this document could not answer from
+the seam contract, SPEC, or source. None blocks slices 1–4.
+
+1. **Does a console session exist for a lane the cockpit can otherwise see?** INV-91's visibility
+   join requires a live tmux `@project` and a session incarnation, and it excludes Commander
+   engagements. A cockpit lane row therefore has two independent existence facts — the lane, and a
+   viewable console session for it — and they can disagree. §4.4 says a Commander tab must not be
+   drawn even greyed, but for a *non*-Commander lane with no allowance, the design needs a ruling:
+   is "no console session" an absence (draw nothing) or a declared absence (draw `not reached`)?
+   The disclosure rules point at the first for Commander and the second for everything else;
+   that reading needs confirming by whoever owns INV-91.
+
+2. **What is the transcript's typed fact vocabulary?** `AC-HAD-08` forbids any kernel, reporter,
+   projection, CLI or Board path from parsing a harness-private transcript format, so the binding
+   must project typed facts across the seam. The five verbs name `collect` for *artifacts*; no
+   contract names the turn-level fact set (turn, thinking, tool call, interrupt, elapsed) that G3
+   would serve. Designing the centre pane's rows implies proposing that vocabulary, which is a
+   contract decision, not a design one.
+
+3. **Which principal drives the cockpit's writes?** `AC-HAD-05` requires every `writeback` fact to
+   attribute to one seat's own project-seat credential and refuses an operator or commander
+   credential presented to an adapter. G4's input command is an *operator* action against a lane.
+   Whether that is an operator-principal command that the runner then converts, or something else,
+   is a boundary question the seam design does not state, and getting it wrong is a credential-law
+   violation rather than a UI bug.
