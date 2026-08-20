@@ -347,9 +347,16 @@ def judgment_inputs(spec: HarnessSpec) -> DispatchInputs:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _HermesSubject(ConformanceSubject):
+    """Expose Hermes' refusal-free mint return type to its direct legacy cell."""
+
+    pool: HermesPool
+
+
 def build_hermes(
     *, guard: StubGuard | None = None, receipts: StubReceipts | None = None
-) -> ConformanceSubject:
+) -> _HermesSubject:
     """Compose the real binding over deterministic ports."""
 
     spec = _spec(hermes_document())
@@ -358,7 +365,7 @@ def build_hermes(
     engine = StubEngine(state, pool_records(BASE_TIME + timedelta(hours=6)), PROFILE_KEY)
     pool = HermesPool(spec, engine, PROFILE_KEY, clock, lease_ids)
     supervisor = StubSupervisor(state)
-    return ConformanceSubject(
+    return _HermesSubject(
         name="hermes",
         binding_class="real",
         binding=HermesBinding(

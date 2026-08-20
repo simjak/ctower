@@ -364,7 +364,6 @@ def test_a_flapping_entry_is_not_leased_until_it_holds_its_cycle() -> None:
 def test_a_mint_is_requested_and_never_performed() -> None:
     request = build_hermes().pool.request_mint("seat-four@example.test")
 
-    assert not isinstance(request, Refusal), request
     assert request.enactment == "operator-ceremony"
     assert request.subscription_identity == "seat-four@example.test"
 
