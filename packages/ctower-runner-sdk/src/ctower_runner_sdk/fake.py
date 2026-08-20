@@ -40,6 +40,7 @@ from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan
 from ctower_runner_sdk.policy import (
     classify_state,
     collect_refusal,
+    dispatch_pin_refusal,
     ladder_disposition,
     serving_observation,
     teardown_receipt,
@@ -144,6 +145,9 @@ class FaultInjectionBinding:
     ) -> DispatchReceipt | Refusal:
         """Clear the guard, then return only on an observed acknowledgement."""
 
+        mispinned = dispatch_pin_refusal(self._spec, attempt)
+        if mispinned is not None:
+            return mispinned
         plan = ExecutionPlan(
             harness_ref=attempt.harness_ref,
             profile_ref=attempt.profile_ref,

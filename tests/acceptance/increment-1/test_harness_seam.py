@@ -28,7 +28,6 @@ from ctower_kernel.record.pool_events import (
     REGISTRATION_STATES,
     PoolObservationEntryPayload,
 )
-from ctower_runner.codex.route import CodexRegistrationAuthority
 from ctower_runner.hermes.spec import HERMES_KEY, digest_of, harness_spec_document
 from ctower_runner_sdk.credentials import EntryState, project_entry
 from ctower_runner_sdk.credits import ModelWeight, TokenUsage, WeightTable
@@ -72,9 +71,8 @@ def _spec() -> HarnessSpec:
     return parsed
 
 
-def _registration_registry(spec: HarnessSpec | None = None) -> HarnessRegistry:
-    resolved = _spec() if spec is None else spec
-    return HarnessRegistry(authorities=(CodexRegistrationAuthority(resolved),))
+def _registration_registry(_spec: HarnessSpec | None = None) -> HarnessRegistry:
+    return HarnessRegistry()
 
 
 def _python_files(root: Path) -> Iterator[Path]:

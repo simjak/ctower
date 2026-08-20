@@ -32,6 +32,7 @@ __all__ = [
     "LadderDisposition",
     "classify_state",
     "collect_refusal",
+    "dispatch_pin_refusal",
     "input_refusal",
     "ladder_disposition",
     "serving_observation",
@@ -71,6 +72,45 @@ def classify_state(
     if working_marker or pane_changed:
         return "working"
     return "idle"
+
+
+def dispatch_pin_refusal(spec: HarnessSpec, attempt: AttemptPin) -> Refusal | None:
+    """Refuse a dispatch whose harness, revision, or composition is not this spec's.
+
+    This is the seam's shared pre-lease, pre-guard boundary. A binding-specific launcher may
+    have a different executable or serving source, but none may acquire a credential or ask a
+    guard about an attempt that was seated against another composition. The revision check is
+    deliberately independent of the digest: a stale revision must not become current merely
+    because a caller forged a matching composition string.
+    """
+
+    expected_digest = spec.composition_digest()
+    mismatches: list[str] = []
+    if attempt.harness_ref != spec.key:
+        mismatches.append("harness_ref")
+    if attempt.spec_revision != spec.revision:
+        mismatches.append("spec_revision")
+    if attempt.composition_digest != expected_digest:
+        mismatches.append("composition_digest")
+    if not mismatches:
+        return None
+    return Refusal(
+        name="harness-dispatch-pin-mismatch",
+        observed=f"the attempt has mismatched composition pins: {', '.join(mismatches)}",
+        meaning=(
+            "an attempt may dispatch only the harness, revision, and composition it was seated for"
+        ),
+        action="seat a new attempt against the registered spec; no lease or guard is consumed",
+        detail=(
+            ("mismatched_fields", ",".join(mismatches)),
+            ("attempt_harness_ref", attempt.harness_ref),
+            ("expected_harness_ref", spec.key),
+            ("attempt_spec_revision", str(attempt.spec_revision)),
+            ("expected_spec_revision", str(spec.revision)),
+            ("attempt_composition_digest", attempt.composition_digest),
+            ("expected_composition_digest", expected_digest),
+        ),
+    )
 
 
 def serving_observation(

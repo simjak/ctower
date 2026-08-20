@@ -9,9 +9,9 @@ earn it faster, and one real binding does not earn it at all.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Literal
 
 from ctower_runner_sdk.refusals import Refusal
 from ctower_runner_sdk.spec import HarnessSpec, parse_harness_spec
@@ -21,34 +21,45 @@ __all__ = [
     "REQUIRED_REAL_BINDINGS",
     "BindingClass",
     "HarnessRegistry",
-    "RegistrationAuthority",
-    "RegistrationRoute",
     "RoleRow",
 ]
 
 type BindingClass = Literal["real", "fault_injection_fake"]
 
 
-class RegistrationRoute(Protocol):
-    """One route derived from a trusted parent-harness registration authority."""
-
-    @property
-    def harness_ref(self) -> str: ...
-
-    @property
-    def authority_digest(self) -> str: ...
-
-    def refusal_for(self, proposed_key: str) -> Refusal | None: ...
-
-
-class RegistrationAuthority(Protocol):
-    """The trusted parent context that constructs a route for one proposed key."""
-
-    def route_for(self, proposed_key: str) -> RegistrationRoute: ...
-
-
 # D10's earning rule, unchanged: two real Adapters plus one deterministic fake.
 REQUIRED_REAL_BINDINGS = 2
+
+# This is deliberately closed. A model, profile, or runtime reference cannot become a new
+# harness merely by being proposed to the registry. Adding a first-party binding is an explicit
+# source change that names its own artifact and conformance rows; it is never caller data.
+_TRUSTED_HARNESS_REFS: frozenset[str] = frozenset(
+    {"claude-code", "codex", "fault-injection-fake", "hermes"}
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _ClosedRegistrationSource:
+    """The registry-owned admission source; no proposal can add an authority to it."""
+
+    harness_refs: frozenset[str] = _TRUSTED_HARNESS_REFS
+
+    def refusal_for(self, proposed_key: str) -> Refusal | None:
+        if proposed_key in self.harness_refs:
+            return None
+        return Refusal(
+            name="harness-runtime-not-a-harness",
+            observed=f"{proposed_key!r} was proposed as a harness but is outside the closed seam",
+            meaning=(
+                "a model or runtime cannot mint a harness category without a first-party "
+                "binding and its pinned conformance evidence"
+            ),
+            action=(
+                "pin one of the registered first-party harness references; "
+                "do not register a runtime"
+            ),
+            detail=(("proposed_harness_ref", proposed_key),),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,10 +85,8 @@ class RoleRow:
 class HarnessRegistry:
     """The closed set of registered bindings, and the publication verdict over them."""
 
-    def __init__(self, *, authorities: Sequence[RegistrationAuthority]) -> None:
-        if not authorities:
-            raise ValueError("HarnessRegistry requires trusted registration authorities")
-        self._authorities = tuple(authorities)
+    def __init__(self) -> None:
+        self._authority_source = _ClosedRegistrationSource()
         self._specs: dict[str, HarnessSpec] = {}
         self._classes: dict[str, BindingClass] = {}
 
@@ -105,29 +114,7 @@ class HarnessRegistry:
         return parsed
 
     def _authority_refusal(self, spec: HarnessSpec) -> Refusal | None:
-        first_route_refusal: Refusal | None = None
-        first_digest_refusal: Refusal | None = None
-        for authority in self._authorities:
-            route = authority.route_for(spec.key)
-            route_refusal = route.refusal_for(spec.key)
-            if route_refusal is not None:
-                first_route_refusal = first_route_refusal or route_refusal
-                continue
-            authority_refusal = _authority_refusal(spec, route)
-            if authority_refusal is None:
-                return None
-            first_digest_refusal = first_digest_refusal or authority_refusal
-        return (
-            first_digest_refusal
-            or first_route_refusal
-            or Refusal(
-                name="harness-registration-authority-unavailable",
-                observed=f"no trusted authority admits HarnessSpec {spec.key!r}",
-                meaning="registration requires a known parent-harness context before mutation",
-                action="register the parent harness authority before registering this binding",
-                detail=(("proposed_harness_ref", spec.key),),
-            )
-        )
+        return self._authority_source.refusal_for(spec.key)
 
     def resolve(self, harness_ref: str) -> HarnessSpec | Refusal:
         """Return the registered spec for an observed harness value, or refuse by name.
@@ -223,38 +210,5 @@ def _semantic_refusal(spec: HarnessSpec) -> Refusal | None:
             ("derived_pool", derived.pool),
             ("declared_fallback", spec.layers.fallback),
             ("derived_fallback", derived.fallback),
-        ),
-    )
-
-
-def _authority_refusal(spec: HarnessSpec, route: RegistrationRoute) -> Refusal | None:
-    if route.harness_ref != spec.key:
-        return Refusal(
-            name="harness-registration-route-mismatch",
-            observed=(
-                f"route authorizes harness_ref {route.harness_ref!r}, "
-                f"but the proposed document is {spec.key!r}"
-            ),
-            meaning="a proposed document cannot choose the harness context that admits it",
-            action="derive the route from the trusted parent-harness registration context",
-            detail=(
-                ("route_harness_ref", route.harness_ref),
-                ("proposed_harness_ref", spec.key),
-            ),
-        )
-    expected_digest = spec.composition_digest()
-    if route.authority_digest == expected_digest:
-        return None
-    return Refusal(
-        name="harness-registration-authority-mismatch",
-        observed=(
-            f"route authority digest {route.authority_digest!r} does not match "
-            f"the proposed spec digest {expected_digest!r}"
-        ),
-        meaning="registration must be bound to the exact trusted spec revision and composition",
-        action="derive the route from the same trusted parent-harness spec revision",
-        detail=(
-            ("route_authority_digest", route.authority_digest),
-            ("proposed_spec_digest", expected_digest),
         ),
     )

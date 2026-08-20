@@ -7,6 +7,7 @@ not publish, and it says so by name rather than by staying quiet.
 
 from __future__ import annotations
 
+import inspect
 import json
 from collections.abc import Mapping
 from pathlib import Path
@@ -53,9 +54,9 @@ def test_every_authored_vector_registers_or_refuses_exactly_as_declared(
     vector: Mapping[str, Any],
 ) -> None:
     base, _ = _vectors()
-    outcome = HarnessRegistry(authorities=(registration_authority(dict(base)),)).register(
-        _document(base, vector), "real"
-    )
+    active_base = dict(base)
+    active_base["key"] = "hermes"
+    outcome = HarnessRegistry().register(_document(active_base, vector), "real")
 
     if vector["outcome"] == "registered":
         assert isinstance(outcome, HarnessSpec), outcome
@@ -68,14 +69,35 @@ def test_every_authored_vector_registers_or_refuses_exactly_as_declared(
 def test_registration_rejects_a_route_derived_from_the_proposed_phantom_document() -> None:
     parent = hermes_document()
     proposed = dict(parent)
-    proposed["key"] = "gpt-5.6-sol"
+    proposed_key = "gpt-5.6-sol"
+    proposed["key"] = proposed_key
 
-    outcome = HarnessRegistry(authorities=(registration_authority(parent),)).register(
-        proposed, "real"
-    )
+    outcome = HarnessRegistry().register(proposed, "real")
 
     assert isinstance(outcome, Refusal), outcome
     assert outcome.name == "harness-runtime-not-a-harness"
+
+
+def test_a_self_derived_authority_cannot_enter_the_public_registry() -> None:
+    parent = hermes_document()
+    proposed = dict(parent)
+    proposed_key = "gpt-5.6-sol"
+    proposed["key"] = proposed_key
+    caller_authority = registration_authority(proposed)
+    caller_route = caller_authority.route_for(proposed_key)
+
+    assert caller_route.refusal_for(proposed_key) is None
+    assert "authorities" not in inspect.signature(HarnessRegistry).parameters
+
+    registry = HarnessRegistry()
+    outcome = registry.register(proposed, "real")
+
+    assert isinstance(outcome, Refusal), outcome
+    assert outcome.name == "harness-runtime-not-a-harness"
+    assert isinstance(registry.resolve("gpt-5.6-sol"), Refusal)
+    publication = registry.publication()
+    assert isinstance(publication, Refusal)
+    assert registry.real_bindings() == ()
 
 
 def test_the_role_table_is_derived_from_surveys_and_not_from_harness_names() -> None:
@@ -98,12 +120,7 @@ def test_the_survey_has_no_unanswered_question_in_either_binding() -> None:
 
 
 def test_one_real_binding_does_not_publish_the_seam() -> None:
-    registry = HarnessRegistry(
-        authorities=(
-            registration_authority(hermes_document()),
-            registration_authority(fake_document()),
-        )
-    )
+    registry = HarnessRegistry()
     registry.register(hermes_document(), "real")
     registry.register(fake_document(), "fault_injection_fake")
 
@@ -116,7 +133,7 @@ def test_one_real_binding_does_not_publish_the_seam() -> None:
 
 
 def test_a_duplicate_declaration_is_rejected_at_registration_not_at_runtime() -> None:
-    registry = HarnessRegistry(authorities=(registration_authority(hermes_document()),))
+    registry = HarnessRegistry()
     registry.register(hermes_document(), "real")
 
     again = registry.register(hermes_document(), "real")
