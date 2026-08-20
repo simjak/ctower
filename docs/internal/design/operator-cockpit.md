@@ -608,3 +608,144 @@ header — and rename the tabs to what ctower can actually prove:
 | **Spend** | Budget | credits by model × account in native units, raw tokens alongside, refusal on a stale weight table |
 
 Nine tabs to seven, and every one answers a question an operator actually has.
+
+---
+
+## 6. The harness setup wizard
+
+The operator asked to *"run harness setup wizard"* in the UI. Paperclip's three New Agent forms
+(`cmux-drop-57c873e0…` claude-code, `cmux-drop-3e674814…` hermes, `cmux-drop-3e2ae66c…` codex) are
+the shape to avoid, and the reason is precise: same page, three adapters, and in every one of them
+the operator is handed a **runtime configuration dump** — `Command`, `Execution engine (Auto (ACP
+preferred))`, `Max turns per run`, `Timeout seconds`, `Interrupt grace period`, `Toolsets`,
+`Prompt template`, `API URL`, `Extra args (comma-separated)`, `Environment variables`, plus
+toggles: `Persist session`, `Checkpoints`, `Quiet output`, `Verbose output`, `Hermes worktree
+mode`, `Enable Chrome`, `Enable search`, `Fast mode`, `Bypass sandbox`, `Skip permissions`.
+
+Four defects, each already named:
+
+1. **`Default` offered as a model.** An unpinned composition, shipped as the default
+   (`model: ""`). ctower cannot dispatch an unpinned composition at all: `AC-HAD-09` fails closed
+   on an unknown or digest-mismatched spec, and CT-I1-042's failover-as-new-attempt rule is
+   meaningless without a pin to diff against.
+2. **`Skip permissions` / `Bypass sandbox` defaulted ON under a `Standard` trust preset** (§5.3).
+3. **A runtime-config dump instead of questions.** The form asks *what flags shall I pass*. The
+   right question is *what is true about this harness*, and ctower already has that question set
+   as authored contract data.
+4. **No credential-pool concept anywhere.** The only credential surface on the hire form is
+   `Environment variables`, with the hint *"Set the KEY to the env var name the process expects,
+   for example GH_TOKEN"* — a per-seat env var, which is exactly the shape `API ACCESS (NO ENV
+   VAR)` elsewhere in the same product correctly rejects.
+
+A fifth, visible in the harness picker (`cmux-drop-282bb981…png`): nine cards — Claude Code,
+Codex, Cursor, Cursor Cloud, Gemini CLI, Grok Build, Hermes, OpenCode, Pi — all rendered as
+equally-real, equally-selectable harnesses, two of them badged `Recommended` and none of them
+carrying any registration state. Offering a harness with nothing behind it is how a stub becomes
+an Adapter by accident.
+
+**What is right and should be lifted:** the entry modal's three honest paths — *"Ask the CEO to
+create a new agent" / "Configure a runtime manually" / "Invite an external agent"* — and the
+harness picker's card grid with icon, name and one-line description. That is good form ergonomics.
+Drive it with ctower's questions instead of a flag dump.
+
+### 6.1 The steps
+
+**1 · Who.** Seat name, role, reports-to. Paperclip's `Agent name` / `Title (e.g. VP of
+Engineering)` / `Reports to…` — unchanged, it works.
+
+**2 · Harness.** The card grid, but every card carries its **registration state**, and a card that
+cannot register is shown **refused with its reason** rather than hidden. CT-I1-044 supplies the
+four classes and its own worked examples:
+
+| Card state | Meaning | CT-I1-044's example |
+| --- | --- | --- |
+| registered | survey answered, binding implemented, conformance suite passed | `hermes`, `claude-code` |
+| surveyed, not bound | answers exist, no Adapter yet | `openclaw` — gateway-routed, two approval planes, readiness proven by preflight assertions and *never inferred from a successful invite*; `qwen-code` — a legal baseline value with a weekly-plan quota and a known reset |
+| stub | *"a table row is not an Adapter"* | `zcode` |
+| not a harness | a model reached through a profile that already has both layers; the correct amount of adapter work is **zero** | `deepseek` |
+
+An unsurveyed candidate is refused here, by name, with the missing answers listed — *"an
+unanswered survey leaves that choice undecidable, which is a refusal rather than a gap."* Hiding
+it would be worse: the operator would ask for it again next week.
+
+**3 · The survey, if it is not already answered.** This is authored, revision-pinned contract data,
+not free text, and the exact field set is `contracts/runner/harness-spec.schema.json`, whose
+`survey` definition lists all eight as **required**:
+
+`native_pool` · `native_fallback` · `config_surface` · `identity_proof` · `reset_semantics` ·
+`rotation_cache` · `subagent_inheritance` · `egress_topology`
+
+Two further answers CT-I1-044 counts in the same set live elsewhere in the contract and the step
+must still collect them, because a spec without them cannot probe or price:
+
+- **probe target** — its own required block: `product` · `endpoint` · `model_ref` ·
+  `workload_shape` · `classified_on`. `AC-HAD-11`: a probe aimed at a different model reports
+  `unknown` for the seats' rung rather than that rung's state.
+- **per-model per-direction credit weights** — the registry's versioned weight table (`AC-HAD-12`),
+  not a `HarnessSpec` field; a stale or missing table refuses rather than mispricing.
+
+The answers, **never the harness's name**, decide whether ctower **configures** a layer or
+**provides** it, and the step renders that derived `layers` table (`pool` / `fallback`, each
+`configure` or `provide`) as it fills in. Two refusals fire live in this step, and both are already
+deterministic registration vectors in `contracts/runner/harness-spec-vectors.json`:
+
+- `harness-survey-incomplete` — remove one answer (the vector removes `survey.egress_topology`)
+  and the role becomes undecidable.
+- `harness-layer-conflict` — **never both**: declaring a native layer *and* enabling ctower's own
+  for that layer refuses (`AC-HAD-01`). The vectors prove it in both directions, for `pool` and
+  for `fallback`, and prove the mirror case too: an absent native layer declared as `configure`
+  has nothing to configure.
+
+Showing these refusals as the operator types is the whole point of the step. The wizard is not
+collecting preferences; it is filling in a document that the registry will accept or refuse, and
+it should refuse in the same words the registry will.
+
+**4 · Composition.** Model is **required**; there is no `Default`. Reasoning effort and the
+declared `context_window_percent` sit beside it. Where the survey answered `config_surface:
+authored_config_only` — `hermes` spawns through a profile directory whose own config owns model
+and reasoning effort — these fields render **read-only with their source named**, because an
+editable control over a value ctower does not own is a lie (§4.2c). The step ends by showing the
+`artifact_digest` and `config_digest` that will be pinned, in mono (D6).
+
+**5 · Credentials.** A pool, not an env var. Entries keyed by **decoded identity, never by label**,
+each showing its three orthogonal axes and its own reset clock:
+
+- `auth ∈ {healthy, lineage-dead, chain-burned}`
+- `quota ∈ {available, capped(reset_at), capped(reset_unknown), unfunded, unknown}`
+- `reach ∈ {ok, edge-challenged, unknown}`
+
+Selectable only when all three are clear, with **no path collapsing them** into one word. A
+`discovered` identity renders non-selectable pending an explicit operator keep-or-evict. There is
+**no copy control anywhere on this step**, because the Interface has no copy verb — this is the
+same law as the Secrets keeper in §5.6, and it is the reason ctower can adopt paperclip's copy
+without adopting its env-var habit. If no entry is selectable the wizard refuses here in the
+`credential-pool-exhausted` shape — `observed`, `meaning`, `action`, per-entry three-axis states,
+and the earliest known reset or an explicit `unknown` — rather than creating a seat that will fail
+at its first `spawn`.
+
+Note the axis that most UIs would collapse and `AC-HAD-10` forbids collapsing: an entry can be
+`auth: healthy`, `quota: available`, `reach: edge-challenged`. It is not dead and it is not out of
+credits; it cannot be reached. Routing it to a mint or a rotation because the badge said "problem"
+is precisely the failure the three axes exist to prevent, so the pane shows three marks, never one.
+
+**6 · Authority.** One screen, one allow-list: project scope, writeback fact classes
+(`capture` / `transition` / `evidence`), tool allow-list — in the direction paperclip states
+correctly, *the prompt can narrow this list but cannot expand it*. No permissions toggle exists
+(§5.3). Facts outside the three classes refuse by name with zero mutation (`AC-HAD-05`), so the
+list is closed, and the screen says so.
+
+**7 · Review and register.** The composition digests, the `HarnessSpec` key and revision, the
+survey answers and the `configure`-vs-`provide` roles they produced, the selected pool entry, and
+the allow-list. The register control is a real `disabled` control until every cell is proven, and
+it names the exact missing answers **on the control** (D5) — the treatment `New ticket` already
+gets in read-only v1.
+
+Paperclip's `Test Agent` button is a good idea and should be kept, with ctower's meaning: a
+**dry run through the guard**. It obtains a CommandGuard decision for the normalized plan and
+reports it, **dispatching nothing** — which is the honest version of "test", and is directly
+buildable because `AC-HAD-09` already requires that decision at the final pre-dispatch boundary
+for real dispatches.
+
+The result is paperclip's ergonomics — a card grid, a short form, a review step, an explicit test —
+carrying ctower's questions instead of a flag dump. Nothing in it is a new law, and every refusal
+it can show is one the seam already owes.
