@@ -1289,13 +1289,14 @@ owner = "CT-I1-043"
 phase = "CT-I1-043"
 status = "deferred"
 path = "tests/acceptance/increment-1"
-patterns = ["test_codex_route.py", "test_codex_pool.py"]
+patterns = ["test_codex_route.py", "test_codex_pool.py", "test_codex_sinks.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_codex_route.py",
   "tests/acceptance/increment-1/test_codex_pool.py",
+  "tests/acceptance/increment-1/test_codex_sinks.py",
   "-q",
 ]
 timeout_seconds = 900

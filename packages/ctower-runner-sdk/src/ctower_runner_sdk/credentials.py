@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Literal, Protocol, TypedDict
 from uuid import UUID
 
 from ctower_runner_sdk.refusals import Refusal
@@ -28,6 +28,7 @@ __all__ = [
     "CredentialPool",
     "EntryState",
     "Lease",
+    "MeterObservation",
     "MintRequest",
     "ProbeReading",
     "ProbeResponse",
@@ -55,6 +56,13 @@ ENTRY_ALLOWLIST: tuple[str, ...] = (
     "secret_fingerprint",
     "subscription_identity",
 )
+
+
+class MeterObservation(TypedDict):
+    """The only caller-supplied fields a pool usage sink may accept."""
+
+    event: Literal["spawn"]
+    model_ref: str
 
 _MEANINGS: dict[tuple[str, str], tuple[str, str]] = {
     ("auth", "lineage-dead"): (
