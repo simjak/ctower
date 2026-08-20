@@ -71,7 +71,7 @@ def _spec() -> HarnessSpec:
     return parsed
 
 
-def _registration_registry(_spec: HarnessSpec | None = None) -> HarnessRegistry:
+def _registration_registry() -> HarnessRegistry:
     return HarnessRegistry()
 
 

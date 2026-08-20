@@ -60,7 +60,7 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     return parsed
 
 
-def registration_registry(*_specs: HarnessSpec) -> HarnessRegistry:
+def registration_registry() -> HarnessRegistry:
     """Return the registry with its closed first-party admission source."""
 
     return HarnessRegistry()

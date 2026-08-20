@@ -54,9 +54,7 @@ def test_every_authored_vector_registers_or_refuses_exactly_as_declared(
     vector: Mapping[str, Any],
 ) -> None:
     base, _ = _vectors()
-    active_base = dict(base)
-    active_base["key"] = "hermes"
-    outcome = HarnessRegistry().register(_document(active_base, vector), "real")
+    outcome = HarnessRegistry().register(_document(base, vector), "real")
 
     if vector["outcome"] == "registered":
         assert isinstance(outcome, HarnessSpec), outcome

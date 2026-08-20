@@ -99,7 +99,7 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     return parsed
 
 
-def _registration_registry(*_documents: Mapping[str, object]) -> HarnessRegistry:
+def _registration_registry() -> HarnessRegistry:
     """Return the registry with its closed first-party admission source."""
 
     return HarnessRegistry()
@@ -175,7 +175,7 @@ def test_two_real_bindings_plus_one_fake_publish_the_seam() -> None:
     """The row's whole point: the second real binding is what earns publication."""
 
     hermes = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
-    registry = _registration_registry(hermes, _document(), _fake_document())
+    registry = _registration_registry()
 
     registry.register(
         hermes,
@@ -190,7 +190,7 @@ def test_two_real_bindings_plus_one_fake_publish_the_seam() -> None:
 
 
 def test_this_binding_alone_does_not_publish_the_seam() -> None:
-    registry = _registration_registry(_document(), _fake_document())
+    registry = _registration_registry()
     registry.register(_document(), "real")
     registry.register(_fake_document(), "fault_injection_fake")
 

@@ -65,7 +65,7 @@ def test_the_routed_runtime_derives_configure_from_the_survey_of_the_harness_run
 def test_declaring_configure_over_a_layer_the_direct_cli_lacks_is_refused(
     layers: dict[str, str],
 ) -> None:
-    refusal = registration_registry(_spec()).register(_document({"layers": layers}), "real")
+    refusal = registration_registry().register(_document({"layers": layers}), "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-layer-conflict"
@@ -81,7 +81,7 @@ def test_declaring_provide_over_the_routed_runtimes_hosted_pool_is_refused() -> 
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
     hosted["layers"] = {"pool": "provide", "fallback": "configure"}
 
-    refusal = registration_registry(_hermes_spec()).register(hosted, "real")
+    refusal = registration_registry().register(hosted, "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-layer-conflict"
@@ -92,7 +92,7 @@ def test_declaring_provide_over_the_routed_runtimes_hosted_pool_is_refused() -> 
 def test_an_unanswered_survey_question_refuses_rather_than_leaving_the_role_to_a_guess(
     question: str,
 ) -> None:
-    refusal = registration_registry(_spec()).register(_unanswered(_document(), question), "real")
+    refusal = registration_registry().register(_unanswered(_document(), question), "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-survey-incomplete"
@@ -101,7 +101,7 @@ def test_an_unanswered_survey_question_refuses_rather_than_leaving_the_role_to_a
 def test_an_unanswered_survey_on_the_hosting_harness_refuses_the_routed_class_too() -> None:
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
 
-    refusal = registration_registry(_hermes_spec()).register(
+    refusal = registration_registry().register(
         _unanswered(hosted, "native_fallback"), "real"
     )
 
@@ -149,7 +149,7 @@ def test_registration_chokepoint_refuses_model_and_vendor_keys_without_mutation(
     proposed_key: str,
 ) -> None:
     document = _document({"key": proposed_key})
-    registry = registration_registry(_spec())
+    registry = registration_registry()
 
     refusal = registry.register(document, "real")
 
@@ -162,7 +162,7 @@ def test_registration_chokepoint_refuses_model_and_vendor_keys_without_mutation(
 
 
 def test_a_refused_runtime_leaves_the_registry_with_the_bindings_it_already_had() -> None:
-    registry = registration_registry(_hermes_spec(), _spec())
+    registry = registration_registry()
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
     registry.register(hosted, "real")
     registry.register(_document(), "real")
