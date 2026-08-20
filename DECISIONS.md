@@ -2293,3 +2293,41 @@ Rejected alternatives:
   described; the exact current join plus short-lived grant is the authority boundary.
 - Adding typing to the same candidate. A read stream cannot mint or carry command authority, and Q3's
   final-admission, byte-vocabulary, custody, and containment controls remain separate work.
+
+## D57 — Decision 11 extends the one dogfood browser suite to terminal read evidence (engineering, 2026-08-11, issues #438 and #442)
+
+Operator Decision 11 requires every shipped feature to name unit, integration, and end-to-end coverage,
+where end-to-end drives a supported running tower and a page load or fixture echo does not qualify. The
+existing `ctower-ui` terminal reader is a shipped dogfood surface, but D55 clause 6 names the boundary's
+only browser suite after Inbox controls alone. This entry supersedes only that suite name and proof scope.
+D41 through D45 and D55's product, authority, credential, and command boundaries otherwise remain binding.
+
+1. **One required dogfood suite remains one.** `dogfood-inbox-controls` becomes
+   `dogfood-surface-e2e`, still owned by `CT-I1-007`. It retains every Inbox assertion and adds the existing
+   terminal reader's running-surface evidence. No second dogfood suite is registered and no other suite
+   changes status.
+2. **The terminal drive is live, isolated, and read-only from the product.** The suite creates only its own
+   tmux server under a temporary socket root, starts one named crew pane plus one sentinel, and serves the
+   real `ctower-ui` build on an ephemeral loopback port against temporary Mission Control source files. The
+   browser enters through the rendered Org navigation, opens that crew's profile, and reads the pane through
+   the production adapter and render path. It never addresses the shared shadow server, its API on `:8091`,
+   the shared tmux socket, or live Mission Control state.
+3. **Refresh and failure states are operator outcomes.** The browser observes distinctive pane output,
+   waits for `LivePoll` to render a later pane line, then distinguishes an exact ended crew session from an
+   unavailable tmux source. Screenshots and the served revision bind the evidence to the running surface;
+   a source/harness echo or route-existence assertion cannot satisfy it.
+4. **Product browser scope stays deferred.** `browser-e2e`, `tests/e2e`, `ctower-web`, browser product
+   routes, authentication, and every `CT-I1-005`/`CT-I2-005` claim remain deferred to `CT-I2-005`. A browser
+   used against the separate dogfood server earns no product evidence and grants no new product behavior,
+   command, authority, credential, ingress, egress, or deployment promise.
+
+Rejected alternatives:
+
+- Registering a second dogfood suite. D42's one-suite limit still gives the slow browser build one owner and
+  one release-gate entry.
+- Activating `browser-e2e` or placing this test under `tests/e2e`. Those names belong to the deferred product
+  browser, not this separate dogfood surface.
+- Reusing the shared shadow instance, live Mission Control files, or shared tmux socket. A coverage test must
+  not make another operator session its fixture or make concurrent work its cleanup target.
+- Counting a static page load, stubbed pane response, or source-text assertion. None proves that the running
+  production adapter captured and refreshed a real pane or preserved unavailable-state truth.
