@@ -287,7 +287,7 @@ class CredentialPool(Protocol):
     def acquire(self, model_ref: str, tier: str) -> Lease | Refusal:
         """Lease an entry whose window for that exact model is clear on all three axes."""
 
-    def meter(self, lease: Lease, observation: Mapping[str, object]) -> None:
+    def meter(self, lease: Lease, observation: MeterObservation) -> None:
         """Record usage, cost, and cache-reset events against the leased entry."""
 
     def limits(self, profile_key: str | None = None) -> tuple[EntryState, ...]:
@@ -299,5 +299,5 @@ class CredentialPool(Protocol):
     def probe(self, response: ProbeResponse) -> ProbeReading | Refusal:
         """Classify a response the pool's own entries produced, on its body."""
 
-    def request_mint(self, identity: str | None) -> MintRequest:
+    def request_mint(self, identity: str | None) -> MintRequest | Refusal:
         """Ask for credential material. The pool never mints, refills, or raises a plan."""

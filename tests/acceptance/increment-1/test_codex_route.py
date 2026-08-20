@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import cast
 
 import pytest
 from _codex_fixtures import (
@@ -163,7 +164,9 @@ def test_registration_chokepoint_refuses_model_and_vendor_keys_without_mutation(
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-runtime-not-a-harness"
     assert registry.real_bindings() == ()
-    assert registry.resolve(proposed_key).name == "harness-spec-unknown"
+    resolved = registry.resolve(proposed_key)
+    assert isinstance(resolved, Refusal), resolved
+    assert resolved.name == "harness-spec-unknown"
 
 
 def test_a_refused_runtime_leaves_the_registry_with_the_bindings_it_already_had() -> None:
@@ -240,7 +243,12 @@ def test_spawn_refuses_each_mismatched_composition_pin_before_lease_or_guard(
 ) -> None:
     supervisor = _Supervisor(_healthy_pane())
     guard = _Guard()
-    attempt = dataclasses.replace(_attempt(), **{pin_field: forged_value})
+    if pin_field == "harness_ref":
+        attempt = dataclasses.replace(_attempt(), harness_ref=cast(str, forged_value))
+    elif pin_field == "spec_revision":
+        attempt = dataclasses.replace(_attempt(), spec_revision=cast(int, forged_value))
+    else:
+        attempt = dataclasses.replace(_attempt(), composition_digest=cast(str, forged_value))
 
     refusal = _spawn_attempt(
         _binding(pane=_healthy_pane(), supervisor=supervisor, guard=guard), attempt
