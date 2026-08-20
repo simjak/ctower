@@ -90,7 +90,7 @@ One boundary fact that governs all of it: `apps/ctower-ui` is explicitly a non-p
 its README's first line is *"This is **not** `apps/ctower-web`"* — an operator surface over a
 running development instance, whose browser receives no API bearer, no session, and no credential
 of any kind, because every read happens server-side. The cockpit lands there. It does not land on
-`apps/ctower-web`, and §6.5 says why it may not arrive there by accretion.
+`apps/ctower-web`, and §7.6 says why it may not arrive there by accretion.
 
 ---
 
@@ -272,7 +272,7 @@ name rather than being delivered on the hope that the turn was between messages.
 `apps/ctower-runner/src/ctower_runner/claude_code/spec.py:45–47`: *"this TUI queues a mid-turn
 paste into its composer instead of refusing it, so input into a working lane would be silently
 swallowed rather than delivered."* The enforcement is
-`packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py:144–160` — `input_refusal` returns
+`packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py:144–159` — `input_refusal` returns
 `harness-capability-unsupported` unless the lane is not working or the spec declares the
 capability.
 
@@ -327,7 +327,7 @@ The ctower delta is the one that makes `Create PR` honest. `AC-HAD-06`: `collect
 artifacts from **committed refs and durable records only**; an uncommitted worktree returns
 `checkpoint-uncollectable` naming the dirty paths; no terminal capture, pane text, or session
 existence can fill an evidence slot. The SDK's `collect_refusal`
-(`policy.py:163+`) carries the reason: *"A fix that is not committed is not a fix, and an audit
+(`policy.py:162+`) carries the reason: *"A fix that is not committed is not a fix, and an audit
 that reads the working tree cannot tell the difference."* Therefore:
 
 - The change list separates **committed** from **uncommitted** rows visibly. They are different
@@ -346,7 +346,7 @@ it is "render the console foundation that already exists, and add nothing to it.
 
 The governing sentence is `docs/internal/SPEC.md:885`: *"Structured events and durable commands
 are authoritative. The raw terminal is a compatibility view."* The implementation reality note at
-`SPEC.md:14` is blunter: *"The console foundation has no browser UI and grants no typing
+`SPEC.md:15` is blunter: *"The console foundation has no browser UI and grants no typing
 authority."*
 
 What exists today, shipped under CT-I1-021 and already in the HTTP contract:
@@ -401,7 +401,7 @@ The laws the pane inherits, and what each forbids it from drawing:
 absent from AC-CON-07's evidence chain, which is to say each one would invalidate the console
 candidate if it appeared:
 
-1. **Never accept a keystroke.** No typing authority (`SPEC.md:14`), no pane write, no shell
+1. **Never accept a keystroke.** No typing authority (`SPEC.md:15`), no pane write, no shell
    execution, no generic process route (AC-CON-07). Steering goes through the composer as a
    durable input command with a client command ID — §4.2 — never through keystrokes into a pane.
    The pane has no input element at all; there is nothing to disable, because there is nothing.
@@ -1045,14 +1045,14 @@ rather than source, it says so in place.
 | Subject | Where |
 | --- | --- |
 | Acceptance criteria | `docs/internal/SPEC.md` — AC-HAD-01..12 at 4872–4883; AC-UX-01..09 at 4794–4802; AC-CON-01..07 at 4599–4605 |
-| Terminal authority | `SPEC.md:885` (*"Structured events and durable commands are authoritative. The raw terminal is a compatibility view."*) and `SPEC.md:14` (*"The console foundation has no browser UI and grants no typing authority."*) |
+| Terminal authority | `SPEC.md:885` (*"Structured events and durable commands are authoritative. The raw terminal is a compatibility view."*) and `SPEC.md:15` (*"The console foundation has no browser UI and grants no typing authority."*) |
 | Console invariants | `SPEC.md` INV-91 at 1570, INV-92 at 1571 |
 | Tickets | `SPEC.md` CT-I1-021 at 5309; CT-I1-041..044 at 5336–5342 |
 | Capability vocabulary | `contracts/runner/harness-capability.schema.json` — the closed nine-value list |
 | Spec shape, survey, probe, layers | `contracts/runner/harness-spec.schema.json` — `$defs.survey` (eight required), `$defs.probe` (five required), `$defs.layers` |
 | Registration refusals | `contracts/runner/harness-spec-vectors.json` — `harness-survey-incomplete`, `harness-layer-conflict`, `harness-spec-incompatible` |
-| Declared capabilities per binding | `apps/ctower-runner/src/ctower_runner/hermes/spec.py:38–49`; `apps/ctower-runner/src/ctower_runner/claude_code/spec.py:45–56` |
-| Steer and collect enforcement | `packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py` — `input_refusal` at 144–160, `collect_refusal` at 163+ |
+| Declared capabilities per binding | `apps/ctower-runner/src/ctower_runner/hermes/spec.py:38–49`; `apps/ctower-runner/src/ctower_runner/claude_code/spec.py:45–55` |
+| Steer and collect enforcement | `packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py` — `input_refusal` at 144–159, `collect_refusal` at 162+ |
 | HTTP surface | `contracts/http/openapi.yaml` — 104 operations; console operations under `/v1/console/…` and `/v1/admin/console/…` |
 | Pool read shape | `PoolLimitsView`, `PoolProfileLimits`, `PoolEntryState`, `PoolModelWeight` |
 | Closed-world inventories | `tools/codegen/_inventory.py`; `tests/contracts/http/{test_openapi,test_codegen,test_scalar_profile_codegen}.py` (`104` / `97`) |
