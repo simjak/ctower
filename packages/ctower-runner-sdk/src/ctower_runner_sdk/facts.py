@@ -17,6 +17,7 @@ __all__ = [
     "ArtifactSet",
     "DispatchReceipt",
     "Handoff",
+    "LadderDisposition",
     "LivenessFact",
     "LivenessState",
     "ModelObservation",
@@ -28,6 +29,7 @@ __all__ = [
 type LivenessState = Literal[
     "working", "idle", "queued_stuck", "saturated", "capped", "dead_auth", "unknown"
 ]
+LadderDisposition = Literal["as_intended", "ladder", "substitution", "unknown"]
 
 # Saturated and capped are not slow; they are not working. The floor exists to guarantee
 # trustworthy throughput rather than motion, and a lane past its window cannot be trusted
@@ -62,8 +64,8 @@ class LivenessFact:
     served_model: ModelObservation | None = None
     context_used_pct: int | None = None
     conflict: str | None = None
-    ladder: str = "as_intended"
-    """Whether a served model is the never-stall ladder or a real substitution."""
+    ladder: LadderDisposition = "as_intended"
+    """Whether serving matches intent, uses a rung, substitutes, or is not observed."""
 
     evidence: str = ""
 

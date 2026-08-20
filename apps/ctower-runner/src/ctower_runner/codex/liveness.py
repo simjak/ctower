@@ -69,6 +69,31 @@ _CONTEXT_USED = re.compile(r"context\s+(\d{1,3})\s*%\s*used", re.IGNORECASE)
 _CONTEXT_LEFT = re.compile(
     r"context\s+(\d{1,3})\s*%\s*left|(\d{1,3})\s*%\s*context\s+left", re.IGNORECASE
 )
+_CAP_LINE = re.compile(
+    r"^\s*(?:[■⚠•●]\s*)?(?:"
+    r"you(?:'ve| have) hit your usage limit"
+    r"|purchase more credits"
+    r"|quota exceeded"
+    r"|usage limited"
+    r"|limited by budget"
+    r"|(?:you(?:'re| are)|your account is|account is)\s+out of credits"
+    r"|out of credits"
+    r"|upgrade to plus)\b",
+    re.IGNORECASE,
+)
+_DEAD_AUTH_LINE = re.compile(
+    r'^\s*(?:[■⚠•●]\s*)?(?:(?:"?(?:message|error)"?\s*:\s*)?'
+    r"your access token could not be refreshed"
+    r'|(?:"?(?:message|error)"?\s*:\s*["\']?)?could not parse your authentication token'
+    r"|log out and sign in again"
+    r"|please try signing in again"
+    r"|refresh token was revoked)",
+    re.IGNORECASE,
+)
+_WORKING_LINE = re.compile(
+    r"^\s*(?:working\s*\(|thinking(?:\W|$))|(?:[·|│]\s*)esc to interrupt\b",
+    re.IGNORECASE,
+)
 
 _FULL = 100
 
@@ -77,18 +102,24 @@ def context_used_pct(pane: str) -> int | None:
     """Return the percentage of the window CONSUMED, or `None` when nothing states it.
 
     The consumed form is read first because it needs no arithmetic; the remaining form is
-    inverted. Anchoring on the word rather than on a bare percentage is what keeps a coverage
-    line out of this reading entirely.
+    inverted. The last valid item by pane position wins across both forms, because scrollback can
+    retain an older consumed item above the current remaining item. Anchoring on the word rather
+    than on a bare percentage keeps a coverage line out of this reading entirely.
     """
 
-    consumed = _CONTEXT_USED.findall(pane)
-    if consumed:
-        return int(consumed[-1])
-    remaining = _CONTEXT_LEFT.findall(pane)
-    if not remaining:
+    matches: list[tuple[int, int]] = [
+        (match.start(), int(match.group(1))) for match in _CONTEXT_USED.finditer(pane)
+    ]
+    matches.extend(
+        (
+            match.start(),
+            _FULL - int(match.group(1) or match.group(2)),
+        )
+        for match in _CONTEXT_LEFT.finditer(pane)
+    )
+    if not matches:
         return None
-    phrase, prefix = remaining[-1]
-    return _FULL - int(phrase or prefix)
+    return max(matches, key=lambda item: item[0])[1]
 
 
 def classify_pane(
@@ -102,12 +133,12 @@ def classify_pane(
     cannot see the credential.
     """
 
-    lowered = pane.lower()
+    lines = pane.splitlines()
     used = context_used_pct(pane)
     return classify_state(
-        dead_auth=any(marker in lowered for marker in DEAD_AUTH_MARKERS),
-        capped=any(marker in lowered for marker in CAP_MARKERS),
+        dead_auth=any(_DEAD_AUTH_LINE.search(line) for line in lines),
+        capped=any(_CAP_LINE.search(line) for line in lines),
         saturated=used is not None and used >= saturation_percent,
-        working_marker=any(marker in lowered for marker in WORKING_MARKERS),
+        working_marker=any(_WORKING_LINE.search(line) for line in lines),
         pane_changed=pane_changed,
     )

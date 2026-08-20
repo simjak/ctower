@@ -22,6 +22,7 @@ from _codex_fixtures import (
     _STALE_GENERATION,
     _TOKEN_FIELDS,
     _USED_AT_8_LEFT,
+    _USED_AT_71_LEFT,
     _attempt,
     _binding,
     _Ceremonies,
@@ -88,6 +89,30 @@ def test_the_status_line_ships_both_percentage_forms_and_only_one_is_a_direct_re
     assert context_used_pct(used) == _USED_AT_8_LEFT
     assert classify_pane(left, saturation_percent=CODEX_SATURATION_PERCENT) == "saturated"
     assert classify_pane(used, saturation_percent=CODEX_SATURATION_PERCENT) == "saturated"
+
+
+def test_context_uses_the_bottommost_status_item_across_both_percentage_forms() -> None:
+    pane = (
+        "old status · Context 94% used\n"
+        "\u203a keep the old line in scrollback\n"
+        "current status · Esc to interrupt · Context 71% left"
+    )
+
+    assert context_used_pct(pane) == _USED_AT_71_LEFT
+
+
+def test_prompt_prose_does_not_turn_a_real_thinking_marker_into_a_cap() -> None:
+    pane = "> explain the phrase out of credits\nThinking\u2026"
+
+    assert classify_pane(pane, saturation_percent=CODEX_SATURATION_PERCENT) == "working"
+
+
+def test_missing_rollout_serving_truth_is_unknown_not_as_intended() -> None:
+    fact = _binding(pane=_healthy_pane(), served_missing=True).liveness(_attempt(), 0)
+
+    assert fact.state == "working"
+    assert fact.served_model is None
+    assert fact.ladder == "unknown"
 
 
 def test_a_spent_window_is_never_read_as_a_dead_lineage() -> None:

@@ -41,6 +41,7 @@ _RESTING = "seat-two@example.test"
 _IDENTITIES = (_SPENT, _RESTING, _HEALTHY)
 
 _USED_AT_8_LEFT = 92
+_USED_AT_71_LEFT = 29
 _DISTINCT_CLOCKS = 3
 _MIN_CAPTURED_CASES = 4
 _STALE_GENERATION = 1
@@ -251,6 +252,7 @@ def _binding(
     *,
     pane: str | None,
     served: str | None = None,
+    served_missing: bool = False,
     pool: CodexPool | None = None,
     supervisor: _Supervisor | None = None,
     guard: _Guard | None = None,
@@ -258,7 +260,7 @@ def _binding(
     return CodexBinding(
         _spec(),
         supervisor=supervisor or _Supervisor(pane),
-        rollout=_Rollout(served or _spec().probe.model_ref),
+        rollout=_Rollout(None if served_missing else served or _spec().probe.model_ref),
         workspace=_Workspace(),
         writeback_port=_Writeback(),
         pool=pool or _pool(),

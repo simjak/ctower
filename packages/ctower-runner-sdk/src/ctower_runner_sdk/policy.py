@@ -11,12 +11,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Literal
 
 from ctower_runner_sdk.attempt import AttemptPin, SeatRef
 from ctower_runner_sdk.facts import (
     ArtifactSet,
     Handoff,
+    LadderDisposition,
     LivenessState,
     ModelObservation,
     TeardownReceipt,
@@ -39,8 +39,6 @@ __all__ = [
     "undeclared_source_refusal",
     "writeback_refusal",
 ]
-
-type LadderDisposition = Literal["as_intended", "ladder", "substitution"]
 
 # Exhaustive. A seat's authority ceiling is these three scopes and nothing wider.
 WRITEBACK_SCOPES: frozenset[str] = frozenset({"capture", "transition", "evidence"})
@@ -102,16 +100,19 @@ def serving_observation(
 
 
 def ladder_disposition(attempt: AttemptPin, served_model: str | None) -> LadderDisposition:
-    """Say whether a served model is the ladder doing its job or a real substitution.
+    """Say whether serving matches the ladder, substitutes, or remains unknown.
 
     A known fallback rung of the **durable spawn intent** is the never-stall ladder, not a
     substitution — anchoring "expected" to the latest ledger row instead reports the
     recovery as the violation. The exception is a judgment lane, where tolerance is zero:
     switching family under the same author assignment does not create reviewer
     independence, so any deviation there is a substitution however well the ladder worked.
+    Missing serving truth is explicitly unknown, never evidence that the requested model served.
     """
 
-    if served_model is None or served_model == attempt.intent_model:
+    if served_model is None:
+        return "unknown"
+    if served_model == attempt.intent_model:
         return "as_intended"
     if attempt.judgment_lane:
         return "substitution"
