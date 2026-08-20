@@ -18456,11 +18456,56 @@
       "$defs": {
         "answer": {
           "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "unverified"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "verified",
+                      "not_applicable"
+                    ]
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": [
+                      "boolean",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          ],
           "properties": {
             "evidence": {
               "items": {
-                "pattern": "^[a-z][a-z0-9-]{2,63}$",
-                "type": "string"
+                "$ref": "#/$defs/source-id"
               },
               "minItems": 1,
               "type": "array",
@@ -18496,6 +18541,176 @@
         },
         "candidate": {
           "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "key": {
+                    "const": "openclaw"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "adapter_work": {
+                    "const": "blocked_until_survey"
+                  },
+                  "capability_declaration": {
+                    "properties": {
+                      "liveness": {
+                        "const": "unknown"
+                      }
+                    }
+                  },
+                  "classification": {
+                    "const": "harness_gateway_routed"
+                  },
+                  "effective_route": {
+                    "const": "gateway"
+                  },
+                  "registration": {
+                    "properties": {
+                      "status": {
+                        "const": "refused"
+                      }
+                    }
+                  },
+                  "role_disposition": {
+                    "const": "undecidable"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "key": {
+                    "const": "qwen-code"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "adapter_work": {
+                    "const": "blocked_until_survey"
+                  },
+                  "capability_declaration": {
+                    "properties": {
+                      "liveness": {
+                        "const": "unknown"
+                      }
+                    }
+                  },
+                  "classification": {
+                    "const": "harness_baseline"
+                  },
+                  "effective_route": {
+                    "const": "qwen-cli"
+                  },
+                  "registration": {
+                    "properties": {
+                      "status": {
+                        "const": "refused"
+                      }
+                    }
+                  },
+                  "role_disposition": {
+                    "const": "undecidable"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "key": {
+                    "const": "zcode"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "adapter_work": {
+                    "const": "blocked_until_survey"
+                  },
+                  "capability_declaration": {
+                    "properties": {
+                      "liveness": {
+                        "const": "unknown"
+                      }
+                    }
+                  },
+                  "classification": {
+                    "const": "harness_stub"
+                  },
+                  "effective_route": {
+                    "const": "unbound-stub"
+                  },
+                  "registration": {
+                    "properties": {
+                      "status": {
+                        "const": "refused"
+                      }
+                    }
+                  },
+                  "role_disposition": {
+                    "const": "undecidable"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "key": {
+                    "const": "deepseek"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "adapter_work": {
+                    "const": "zero"
+                  },
+                  "capability_declaration": {
+                    "properties": {
+                      "liveness": {
+                        "const": "inherited:hermes.gateway_log"
+                      }
+                    }
+                  },
+                  "classification": {
+                    "const": "model"
+                  },
+                  "effective_route": {
+                    "const": "hermes-profile"
+                  },
+                  "registration": {
+                    "properties": {
+                      "status": {
+                        "const": "not_applicable"
+                      }
+                    }
+                  },
+                  "role_disposition": {
+                    "const": "not_applicable"
+                  }
+                }
+              }
+            }
+          ],
           "properties": {
             "adapter_work": {
               "enum": [
@@ -18605,8 +18820,7 @@
           "properties": {
             "evidence": {
               "items": {
-                "pattern": "^[a-z][a-z0-9-]{2,63}$",
-                "type": "string"
+                "$ref": "#/$defs/source-id"
               },
               "minItems": 1,
               "type": "array",
@@ -18683,8 +18897,7 @@
           "additionalProperties": false,
           "properties": {
             "id": {
-              "pattern": "^[a-z][a-z0-9-]{2,63}$",
-              "type": "string"
+              "$ref": "#/$defs/source-id"
             },
             "kind": {
               "enum": [
@@ -18714,6 +18927,20 @@
             "locator"
           ],
           "type": "object"
+        },
+        "source-id": {
+          "enum": [
+            "spec-ct-i1-044",
+            "design-seam-c07",
+            "auth-runbook-2026-08-17",
+            "hermes-binding-d724",
+            "claude-binding-d724",
+            "codex-candidate-ee197",
+            "qwen-cli-0215",
+            "qwen-docs-0215",
+            "local-command-absence",
+            "ctower-weight-registry-d724"
+          ]
         }
       },
       "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
@@ -18722,6 +18949,64 @@
       "description": "Revision-pinned CT-I1-044 survey data. Unknown evidence is explicit and cannot be used to choose a configure/provide role.",
       "properties": {
         "candidates": {
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "key": {
+                    "const": "openclaw"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "key": {
+                    "const": "qwen-code"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "key": {
+                    "const": "zcode"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "key": {
+                    "const": "deepseek"
+                  }
+                },
+                "required": [
+                  "key"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            }
+          ],
           "items": {
             "$ref": "#/$defs/candidate"
           },
@@ -18734,6 +19019,148 @@
           "type": "string"
         },
         "questions": {
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "native_pool"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "native_fallback"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "config_surface"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "identity_proof"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "reset_window_semantics"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "rotation_cache_semantics"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "subagent_credential_inheritance"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "egress_topology"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "probe_target"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "credit_weights"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            }
+          ],
           "items": {
             "$ref": "#/$defs/question"
           },
@@ -18748,10 +19175,153 @@
           "const": "ctower.later-wave-harness-survey/v1"
         },
         "sources": {
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "spec-ct-i1-044"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "design-seam-c07"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "auth-runbook-2026-08-17"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "hermes-binding-d724"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "claude-binding-d724"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "codex-candidate-ee197"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "qwen-cli-0215"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "qwen-docs-0215"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "local-command-absence"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "id": {
+                    "const": "ctower-weight-registry-d724"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              },
+              "maxContains": 1,
+              "minContains": 1
+            }
+          ],
           "items": {
             "$ref": "#/$defs/source"
           },
-          "minItems": 1,
+          "maxItems": 10,
+          "minItems": 10,
           "type": "array",
           "uniqueItems": true
         }
@@ -21472,7 +22042,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.schema.json",
-      "sha256": "sha256:a6b5d828cbfffce7dfdf7c7688903c4cd9f7229553e0c19403a37ef7800a7c1a"
+      "sha256": "sha256:4f04218d37f95cf72f5e4d7afabf9f7dccfac16aa0c83f9b61e7c465e4d21109"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",

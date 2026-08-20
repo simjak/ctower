@@ -3,6 +3,10 @@
 Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 1.
 Observed: 2026-08-20T14:24:08Z.
 
+Dependency truth: CT-I1-043 is not landed on `origin/main`. The Codex source below is the
+current open PR #539 head for provenance only; this survey does not claim three landed
+bindings and remains blocked on that dependency.
+
 This is an internal, fail-closed survey. It does not implement or register a later-wave
 Adapter. A state is `UNVERIFIED` whenever the reachable evidence does not answer the
 question; absence of a binary is evidence that the probe could not run, not proof that a
@@ -14,7 +18,7 @@ vendor capability does not exist.
 |---|---|---|---|---|
 | `openclaw` | Gateway-routed harness | No reachable binary; design-only gateway route | **REFUSED — undecidable** | No registration; liveness `unknown` |
 | `qwen-code` | Legal baseline harness value | Installed Qwen Code CLI, invoked as `qwen` | **REFUSED — undecidable** | No registration; liveness `unknown` |
-| `zcode` | Stub until a real binding exists | No reachable binary or docs | **REFUSED — undecidable** | No registration; liveness `unknown` |
+| `zcode` | Stub until a real binding exists | No `zcode` command found; documentation reachability is **UNVERIFIED** | **REFUSED — undecidable** | No registration; liveness `unknown` |
 | `deepseek` | **Model, not a harness** | Model through a Hermes profile | **ZERO adapter work** | No deepseek HarnessSpec; inherits `hermes.gateway_log` |
 
 The names and classification are not sufficient to choose `configure` versus `provide`.
@@ -32,7 +36,7 @@ so the correct adapter count is zero.
 | `auth-runbook-2026-08-17` | runbook update 2026-08-17 | `/srv/projects/mission-control/playbooks/codex-hermes-auth-runbook.md:77-159`; Hermes pool, provider routes, reset/error distinctions, and the no-copy law |
 | `hermes-binding-d724` | `d72408e7` | `apps/ctower-runner/src/ctower_runner/hermes/binding.py`; gateway log is serving truth and the binding observes the Hermes pool |
 | `claude-binding-d724` | `d72408e7` | `apps/ctower-runner/src/ctower_runner/claude_code/binding.py`; per-home, provided-pool pattern and checkpoint/respawn failover |
-| `codex-binding-1f48` | `1f48fb22` | `apps/ctower-runner/src/ctower_runner/codex/binding.py`; direct-CLI versus runtime-under-Hermes distinction and pool/substrate reconciliation |
+| `codex-candidate-ee197` | `ee197705` | `apps/ctower-runner/src/ctower_runner/codex/binding.py`; current PR #539 head (OPEN, not landed on `origin/main`); direct-CLI versus runtime-under-Hermes distinction and pool/substrate reconciliation |
 | `qwen-cli-0215` | installed `0.21.5` | `/home/agent/.local/bin/qwen`; `qwen --version` and `qwen --help` |
 | `qwen-docs-0215` | installed `0.21.5` | `/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md` |
 | `local-command-absence` | `2026-08-20T14:24:08Z` | `command -v openclaw qwen-code zcode deepseek` — all four names absent; the separate `qwen` binary is present |
@@ -123,16 +127,16 @@ conformance suite.
 
 | Question | Answer | Evidence / falsifiable boundary |
 |---|---|---|
-| Native pool | **UNVERIFIED** | No binary, docs, or real binding is reachable. |
-| Native fallback | **UNVERIFIED** | No binary, docs, or real binding is reachable. |
-| Config surface / authored-only | **UNVERIFIED** | No config surface is reachable. |
-| Identity proof | **UNVERIFIED** | No account artifact or claim is reachable. |
-| Reset/window semantics | **UNVERIFIED** | No quota or window facts are reachable. |
-| Rotation cache semantics | **UNVERIFIED** | No rotation or cache hook is reachable. |
-| Subagent inheritance | **UNVERIFIED** | No subagent or credential behavior is reachable. |
-| Egress topology | **UNVERIFIED** | No egress path is reachable. |
-| Probe target | **UNVERIFIED** | There is no reachable product/endpoint/model to probe. |
-| Credit weights | **UNVERIFIED** | No per-model, per-direction table is reachable. |
+| Native pool | **UNVERIFIED** | The design keeps zcode as a stub; the command probe found no executable, so a native pool is not established. |
+| Native fallback | **UNVERIFIED** | The design keeps zcode as a stub; the command probe found no executable, so a native fallback is not established. |
+| Config surface / authored-only | **UNVERIFIED** | The cited design and command probe do not establish a config surface. |
+| Identity proof | **UNVERIFIED** | The cited design and command probe do not establish an identity artifact or claim. |
+| Reset/window semantics | **UNVERIFIED** | The cited sources do not establish quota, reset, or window semantics. |
+| Rotation cache semantics | **UNVERIFIED** | The cited sources do not establish rotation or cache semantics. |
+| Subagent inheritance | **UNVERIFIED** | The cited sources do not establish subagent or credential inheritance behavior. |
+| Egress topology | **UNVERIFIED** | The cited sources do not establish an egress path or isolation boundary. |
+| Probe target | **UNVERIFIED** | The command probe found no executable, so no product, endpoint, or model probe was run; the target remains UNVERIFIED. |
+| Credit weights | **UNVERIFIED** | The cited sources do not establish a per-model, per-direction credit table. |
 
 Capability declaration: liveness is `unknown` by name. This remains a stub; a table row is
 not an Adapter and no capability declaration is minted.
@@ -170,9 +174,11 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 
 ## Battery command contract
 
-- Targeted (pinned verify environment): `.venv/bin/python -m pytest tests/conformance/harness-adapter/test_survey_registration.py -q`
+- Declarative contract: `.venv/bin/python -m ctower_contracts verify --all`
 - Warm (pinned verify environment): `PYTHON=.venv/bin/python just check`
-- No `just verify` is owed by this docs/contracts/test-only slice unless the repository gate
+- No executable conformance test is included because CT-I1-044 is survey-only; schema invariants
+  are authored in `later-wave-harness-survey.schema.json` and checked by the contract verifier.
+- No `just verify` is owed by this docs/contracts-only slice unless the repository gate
   reports that the changed generated contract surface requires it.
 
 ## SIGNED-OFF
@@ -181,5 +187,5 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - crew: engineer-044-survey
 - model: gpt-5.6-luna
 - claim: CT-I1-044 is surveyed for `openclaw`, `qwen-code`, `zcode`, and `deepseek` with revision-pinned evidence; unknowns refuse registration, `deepseek` receives zero adapter work, and no credential value or rotation policy was added.
-- stood-under: The full CT-I1-044 row at `d72408e7`, sealed design `c07c049c`, auth runbook, Hermes/Claude/Codex landed binding patterns, installed Qwen binary/docs, literal absence probes, strict contract/test data, and the targeted plus warm batteries.
+- stood-under: The full CT-I1-044 row at `d72408e7`, sealed design `c07c049c`, auth runbook, landed Hermes/Claude bindings, the explicitly unlanded PR #539 Codex candidate, installed Qwen binary/docs, literal absence probes, strict contract data, and the declarative plus warm batteries.
 - if-this-breaks: Re-run the exact source revisions and candidate command probes; do not convert any `UNVERIFIED` answer into a role without a newly reachable fact.
