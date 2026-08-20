@@ -49,6 +49,7 @@ from ctower_runner.codex.corpus import CODEX_CORPUS
 from ctower_runner.codex.liveness import classify_pane as classify_codex_pane
 from ctower_runner.codex.pool import CodexAccount, CodexPool
 from ctower_runner.codex.pool import ConfigHomeStore as CodexConfigHomeStore
+from ctower_runner.codex.route import CodexRoute, classify_route
 from ctower_runner.codex.spec import harness_spec_document as codex_spec_document
 from ctower_runner.hermes.binding import HermesBinding
 from ctower_runner.hermes.corpus import HERMES_CORPUS
@@ -85,6 +86,7 @@ __all__ = [
     "hermes_document",
     "judgment_inputs",
     "registered_registry",
+    "registration_route",
     "seat_credential",
     "subjects",
 ]
@@ -193,9 +195,18 @@ def registered_registry() -> HarnessRegistry:
     """A registry holding exactly the implementations that exist today."""
 
     registry = HarnessRegistry()
-    registry.register(hermes_document(), "real")
-    registry.register(fake_document(), "fault_injection_fake")
+    registry.register(hermes_document(), "real", route=registration_route(hermes_document()))
+    registry.register(
+        fake_document(), "fault_injection_fake", route=registration_route(fake_document())
+    )
     return registry
+
+
+def registration_route(document: dict[str, object]) -> CodexRoute:
+    """Resolve the route that must admit this authored registration."""
+
+    spec = _spec(document)
+    return classify_route(runtime_ref=spec.key, spec=spec)
 
 
 def _attempt_pin(spec: HarnessSpec, *, epoch: int = 1, judgment_lane: bool = False) -> AttemptPin:

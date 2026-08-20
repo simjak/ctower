@@ -16,6 +16,7 @@ import pytest
 from harness_subjects import (
     fake_document,
     hermes_document,
+    registration_route,
     registered_registry,
     subjects,
 )
@@ -52,7 +53,9 @@ def test_every_authored_vector_registers_or_refuses_exactly_as_declared(
     vector: Mapping[str, Any],
 ) -> None:
     base, _ = _vectors()
-    outcome = HarnessRegistry().register(_document(base, vector), "real")
+    outcome = HarnessRegistry().register(
+        _document(base, vector), "real", route=registration_route(dict(base))
+    )
 
     if vector["outcome"] == "registered":
         assert isinstance(outcome, HarnessSpec), outcome
@@ -83,8 +86,10 @@ def test_the_survey_has_no_unanswered_question_in_either_binding() -> None:
 
 def test_one_real_binding_does_not_publish_the_seam() -> None:
     registry = HarnessRegistry()
-    registry.register(hermes_document(), "real")
-    registry.register(fake_document(), "fault_injection_fake")
+    registry.register(hermes_document(), "real", route=registration_route(hermes_document()))
+    registry.register(
+        fake_document(), "fault_injection_fake", route=registration_route(fake_document())
+    )
 
     refusal = registry.publication()
 
@@ -96,9 +101,11 @@ def test_one_real_binding_does_not_publish_the_seam() -> None:
 
 def test_a_duplicate_declaration_is_rejected_at_registration_not_at_runtime() -> None:
     registry = HarnessRegistry()
-    registry.register(hermes_document(), "real")
+    registry.register(hermes_document(), "real", route=registration_route(hermes_document()))
 
-    again = registry.register(hermes_document(), "real")
+    again = registry.register(
+        hermes_document(), "real", route=registration_route(hermes_document())
+    )
 
     assert isinstance(again, Refusal)
     assert again.name == "harness-spec-incompatible"
