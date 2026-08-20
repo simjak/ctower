@@ -118,6 +118,7 @@ class CodexPool:
         self._clock = clock
         self._lease_ids = lease_ids
         self._flap: dict[str, FlapWindow] = {}
+        self._auto_flap: set[str] = set()
         self.metered: list[Mapping[str, object]] = []
 
     def acquire(self, model_ref: str, tier: str) -> Lease | Refusal:
@@ -143,6 +144,7 @@ class CodexPool:
         if stale is not None:
             return stale
         entries = self.limits()
+        self._ingest_availability(entries)
         entry = next((item for item in entries if self._is_ready(item)), None)
         if entry is None:
             return exhaustion_refusal(entries)
@@ -207,27 +209,68 @@ class CodexPool:
         if isinstance(asked, Refusal):
             return asked
         self._store.record(f"ask {asked.ceremony}")
-        outcome = self._ceremonies.run(asked)
+        try:
+            outcome = self._ceremonies.run(asked)
+        except BaseException as error:
+            if isinstance(error, (KeyboardInterrupt, SystemExit, GeneratorExit)):
+                raise
+            self._store.hook_completed = False
+            return _unknown_progress_refusal(hook)
         refused = _ceremony_refusal(outcome)
         if refused is not None:
             return refused
-        return record_rotation(
+        return self._commit_rotation(reason, hook, outcome)
+
+    def _commit_rotation(
+        self, reason: str, hook: str, outcome: CeremonyOutcome
+    ) -> RotationEvent | Refusal:
+        """Validate the candidate before adopting it into the live store."""
+
+        candidate = self._candidate_entry(outcome)
+        if isinstance(candidate, Refusal):
+            self._store.hook_completed = False
+            return candidate
+        event = record_rotation(
             reason=reason,
             layer="pool",
             hook=hook,
             hook_completed=outcome.hook_completed,
-            entry=self._adopt(outcome),
+            entry=candidate,
             completed_at=self._clock(),
         )
+        if isinstance(event, Refusal):
+            if not outcome.hook_completed:
+                self._store.hook_completed = False
+            return event
+        target_identity = outcome.installed_identity or self._store.live_identity
+        stale = _generation_refusal(
+            self._store.accounts[target_identity].refresh_generation,
+            outcome.installed_generation,
+        )
+        if stale is not None:
+            self._store.hook_completed = False
+            return stale
+        self._adopt(outcome)
+        return event
 
     def probe(self, response: ProbeResponse) -> ProbeReading | Refusal:
         """Classify a response the pool's own entries produced, on its body."""
 
         return classify_probe(self._spec.probe, response)
 
-    def request_mint(self, identity: str | None) -> MintRequest:
-        """Ask for a mint. The pool never performs one, and never copies an account file."""
+    def request_mint(self, identity: str | None) -> MintRequest | Refusal:
+        """Ask for a mint, unless the requested identity is blocked by the shared edge."""
 
+        if identity is not None and identity in self._store.accounts:
+            entry = project_entry(self._store.accounts[identity].entry)
+            if entry.reach_state == "edge-challenged":
+                return Refusal(
+                    name="credential-mint-refused-unreachable",
+                    observed="the requested identity is edge-challenged",
+                    meaning="an egress fault is shared by every entry and a mint cannot repair it",
+                    action="escalate the infra-plane challenge; do not mint or rotate",
+                    detail=(("identity", identity), ("reach", entry.reach_state)),
+                )
         return MintRequest(
             provider_key=self._spec.pool.providers[0],
             subscription_identity=identity,
@@ -253,6 +296,44 @@ class CodexPool:
         return self._store.hook_completed and not [
             entry for entry in self.limits() if self._is_ready(entry)
         ]
+
+    def _ingest_availability(self, entries: tuple[EntryState, ...]) -> None:
+        """Feed raw entry state through the recovery bar used by acquisition."""
+
+        for entry in entries:
+            identity = entry.subscription_identity
+            if identity is None:
+                continue
+            available = not entry.blocking_axes()
+            if identity in self._auto_flap:
+                self.observe_window(identity, available=available)
+            elif not available and identity not in self._flap:
+                self.observe_window(identity, available=False)
+                self._auto_flap.add(identity)
+
+    def _candidate_entry(self, outcome: CeremonyOutcome) -> EntryState | Refusal:
+        """Project the ceremony target without changing the live store."""
+
+        identity = outcome.installed_identity or self._store.live_identity
+        account = self._store.accounts.get(identity)
+        if account is None:
+            return Refusal(
+                name="rotation-refused-unknown-identity",
+                observed="the ceremony returned an identity absent from the registered pool",
+                meaning="an unknown target cannot receive a lease or replace the live identity",
+                action="invalidate the uncertain rotation and re-observe the registered pool",
+                detail=(("identity", identity),),
+            )
+        try:
+            return project_entry(account.entry)
+        except (KeyError, TypeError, ValueError):
+            return Refusal(
+                name="rotation-refused-unknown-identity",
+                observed="the ceremony target could not be projected to a registered entry",
+                meaning="a malformed target cannot receive a lease or replace the live identity",
+                action="invalidate the uncertain rotation and repair the pool record",
+                detail=(("identity", identity),),
+            )
 
     def _adopt(self, outcome: CeremonyOutcome) -> EntryState:
         """Believe what the ceremony reported, and record which hook it left outstanding."""
@@ -330,6 +411,37 @@ class CodexPool:
                     ),
                 )
         return None
+
+
+def _generation_refusal(current: int, installed_generation: int) -> Refusal | None:
+    if not isinstance(installed_generation, int) or installed_generation <= current:
+        return Refusal(
+            name="rotation-refused-stale-generation",
+            observed=(
+                f"the ceremony reported generation {installed_generation!r} "
+                f"below live {current}"
+            ),
+            meaning="a rotation may not move the refresh chain backward or leave it unchanged",
+            action="discard the stale outcome and re-observe the live generation",
+            detail=(
+                ("installed_generation", str(installed_generation)),
+                ("live_generation", str(current)),
+            ),
+        )
+    return None
+
+
+def _unknown_progress_refusal(hook: str) -> Refusal:
+    return Refusal(
+        name="rotation-incomplete",
+        observed="the rotation ceremony failed after its external progress became uncertain",
+        meaning=(
+            "the pool cannot trust entry state until cache invalidation "
+            "and re-observation complete"
+        ),
+        action=f"complete {hook}, then re-observe; no entry is selectable meanwhile",
+        detail=(("hook", hook), ("outcome", "unknown")),
+    )
 
 
 def _ceremony_refusal(outcome: CeremonyOutcome) -> Refusal | None:

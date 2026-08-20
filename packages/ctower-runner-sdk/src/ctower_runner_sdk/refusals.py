@@ -41,7 +41,9 @@ SPEC_OWNED: frozenset[str] = frozenset(
 SEAM_MINTED: frozenset[str] = frozenset(
     {
         "credential-verb-unknown-flag",
+        "credential-verb-grammar-invalid",
         "credential-identity-mismatch",
+        "credential-mint-refused-unreachable",
         "harness-capability-unsupported",
         "harness-credential-forbidden",
         "harness-credential-profile-mismatch",
@@ -68,6 +70,7 @@ SEAM_MINTED: frozenset[str] = frozenset(
         "pool-state-stale",
         "rotation-refused-concurrent-holder",
         "rotation-refused-stale-generation",
+        "rotation-refused-unknown-identity",
         "rotation-refused-unreachable",
         "teardown-refused-dead-auth",
         "teardown-would-destroy-sole-work",

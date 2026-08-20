@@ -159,6 +159,8 @@ def plan_ceremony(
     asked = tuple(argv)
     if any(argument in QUESTION_FLAGS for argument in asked):
         return UsageAnswer(ceremony=ceremony.name, usage=ceremony.usage)
+    if ceremony.accepts == "declared_subcommand" and len(asked) != 1:
+        return _grammar_refusal(ceremony, asked)
     unknown = _undeclared(ceremony, asked)
     if unknown:
         return _unknown_flag_refusal(ceremony, unknown)
@@ -182,4 +184,17 @@ def _unknown_flag_refusal(ceremony: Ceremony, unknown: Sequence[str]) -> Refusal
         meaning="a mutating verb that ignores what it cannot read acts on a question",
         action=f"ask only what it declares, or read its usage: {ceremony.usage}",
         detail=(("ceremony", ceremony.name), *(("unknown_argument", item) for item in unknown)),
+    )
+
+
+def _grammar_refusal(ceremony: Ceremony, asked: Sequence[str]) -> Refusal:
+    return Refusal(
+        name="credential-verb-grammar-invalid",
+        observed=f"{ceremony.name} received {len(asked)} subcommand arguments",
+        meaning=(
+            "a declared-subcommand ceremony accepts exactly one action, "
+            "never zero or a sequence"
+        ),
+        action=f"provide exactly one declared subcommand: {ceremony.usage}",
+        detail=(("expected_arity", "1"), ("actual_arity", str(len(asked)))),
     )
