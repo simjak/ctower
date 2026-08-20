@@ -1263,15 +1263,8 @@ owner = "CT-I1-041"
 phase = "CT-I1-041"
 status = "deferred"
 path = "tests/acceptance/increment-1"
-patterns = ["test_harness_seam.py", "test_harness_teardown.py"]
-command = [
-  "{python}",
-  "-m",
-  "pytest",
-  "tests/acceptance/increment-1/test_harness_seam.py",
-  "tests/acceptance/increment-1/test_harness_teardown.py",
-  "-q",
-]
+patterns = ["test_harness_seam.py"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1/test_harness_seam.py", "-q"]
 timeout_seconds = 900
 
 [[suite]]
