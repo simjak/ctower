@@ -120,6 +120,50 @@ def _returns_project_rows(
     return bool({part.strip() for part in ast.unparse(method.returns).split("|")} & scoped_returns)
 
 
+def project_bearing_returns(projection_root: Path, *, scope_names: set[str]) -> set[str]:
+    """Every projection type whose rows carry a Project scope.
+
+    Enrolment is by the shape of the answer, not by the shape of the request: a read
+    that names no scope but hands back Project-keyed rows is still answering a
+    Project-scoped question, so it cannot fall out of the inventory because a
+    parameter happens to be absent from its signature. A type qualifies by declaring
+    a scope field itself, or by carrying a type that does.
+    """
+
+    declared = _declared_fields(projection_root)
+    bearing = {name for name, fields in declared.items() if scope_names & set(fields)}
+    while True:
+        widened = bearing | {
+            name
+            for name, fields in declared.items()
+            if any(bearing & referenced for referenced in fields.values())
+        }
+        if widened == bearing:
+            return bearing
+        bearing = widened
+
+
+def _declared_fields(projection_root: Path) -> dict[str, dict[str, frozenset[str]]]:
+    """Each class in the projections package mapped to its annotated fields."""
+
+    fields: dict[str, dict[str, frozenset[str]]] = {}
+    for module_path in sorted(projection_root.glob("*.py")):
+        source = ast.parse(module_path.read_text(encoding="utf-8"), filename=str(module_path))
+        for node in source.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            fields.setdefault(node.name, {}).update(
+                (statement.target.id, _annotation_names(statement.annotation))
+                for statement in node.body
+                if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name)
+            )
+    return fields
+
+
+def _annotation_names(annotation: ast.expr) -> frozenset[str]:
+    return frozenset(node.id for node in ast.walk(annotation) if isinstance(node, ast.Name))
+
+
 def optional_scope_fields(tree: ast.Module, *, scope_names: set[str]) -> list[str]:
     """Every Interface field naming a Project scope that may be absent.
 
