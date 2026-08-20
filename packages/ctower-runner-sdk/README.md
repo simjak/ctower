@@ -2,9 +2,11 @@
 
 The harness-adapter seam (CT-I1-041, D72): one revision-pinned `HarnessSpec` parsed as data,
 five verbs composed over D10's existing Supervisor Interface, and the sibling `CredentialPool`
-Interface resolved at `spawn`. It owns framing, manifests, registry compatibility, seam policy,
-and the shared conformance contract; it has no database, ticket, workflow, gate, or effect
-authority, and it imports no kernel module.
+Interface resolved at `spawn`. The current public set has three real bindings — Hermes, Claude
+Code, and the direct Codex CLI — plus one deterministic fault-injection fake for conformance. It
+owns framing, manifests, registry compatibility, seam policy, and the shared conformance
+contract; it has no database, ticket, workflow, gate, or effect authority, and it imports no
+kernel module.
 
 D10 already owns process control — `probe`, `launch`, `observe`, `deliver_input`, `interrupt`,
 `terminate`, `snapshot`, `adopt` — and that vocabulary is not reopened here. This layer adds only
@@ -31,4 +33,12 @@ read. And **never both**: where the harness ships a resilience layer the adapter
 observes it, where it lacks one the adapter provides it, and two policies over one credential set
 are a race over single-use refresh chains rather than redundancy.
 
-With one real binding the public Seam does not publish. `registry.publication()` says so by name.
+Codex reached through Hermes is a runtime under the Hermes harness, not a fourth binding and not a
+second pool. The direct Codex CLI is the `codex` binding; its own configuration home and the
+attempt's model are separate pinned references. Registration rejects a model or runtime name when
+it is presented as a harness.
+
+Publication is earned, not implied by a single implementation: `registry.publication()` returns
+no refusal only when at least two real bindings and one deterministic fault-injection fake have
+passed the unchanged shared conformance suite. The current three-real-binding set is therefore
+published; a registry with only one real binding remains unpublished.
