@@ -357,11 +357,88 @@ def test_a_rotation_whose_hook_did_not_complete_is_incomplete_rather_than_done()
         hook_completed=False,
     )
 
-    refusal = _pool(_store(), _Ceremonies(incomplete)).rotate("observed a 401")
+    store = _store()
+    refusal = _pool(store, _Ceremonies(incomplete)).rotate("observed a 401")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "rotation-incomplete"
     assert dict(refusal.detail)["hook"] == "codex-home-respawn"
+    assert store.live_identity == _SPENT
+    assert store.accounts[_HEALTHY].refresh_generation == _LIVE_GENERATION
+    assert store.hook_completed
+    assert store.journal == ["ask codex-rotate-fallback"]
+
+
+class _ExplodingCeremonies(_Ceremonies):
+    def run(self, invocation: CeremonyInvocation) -> CeremonyOutcome:
+        self.asked.append(invocation)
+        raise RuntimeError("ceremony process failed after unknown progress")
+
+
+def test_a_ceremony_exception_returns_stale_refusal_and_blocks_reacquisition() -> None:
+    store = _store()
+    pool = _pool(store, _ExplodingCeremonies())
+
+    refusal = pool.rotate("observed a 401")
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "rotation-incomplete"
+    assert store.live_identity == _SPENT
+    assert store.accounts[_HEALTHY].refresh_generation == _LIVE_GENERATION
+    assert not store.hook_completed
+    blocked = pool.acquire(model_ref=_spec().probe.model_ref, tier=_PROFILE)
+    assert isinstance(blocked, Refusal), blocked
+    assert blocked.name == "pool-state-stale"
+
+
+def test_a_success_shaped_stale_generation_is_refused_before_state_commit() -> None:
+    stale = CeremonyOutcome(
+        ceremony="codex-rotate-fallback",
+        installed_identity=_HEALTHY,
+        installed_generation=_STALE_GENERATION,
+        hook_completed=True,
+    )
+    store = _store()
+
+    refusal = _pool(store, _Ceremonies(stale)).rotate("observed a 401")
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "rotation-refused-stale-generation"
+    assert store.live_identity == _SPENT
+    assert store.accounts[_HEALTHY].refresh_generation == _LIVE_GENERATION
+    assert store.hook_completed
+
+
+def test_acquire_ingests_raw_availability_and_holds_one_full_cycle_after_a_cap() -> None:
+    store = _store(quotas=("capped", "capped", "capped"))
+    pool = _pool(store)
+    exhausted = pool.acquire(model_ref=_spec().probe.model_ref, tier=_PROFILE)
+    assert isinstance(exhausted, Refusal), exhausted
+
+    healthy = store.accounts[_HEALTHY]
+    store.accounts[_HEALTHY] = dataclasses.replace(
+        healthy, entry={**healthy.entry, "quota_state": "available"}
+    )
+
+    first_available = pool.acquire(model_ref=_spec().probe.model_ref, tier=_PROFILE)
+    second_available = pool.acquire(model_ref=_spec().probe.model_ref, tier=_PROFILE)
+
+    assert isinstance(first_available, Refusal), first_available
+    assert first_available.name == "credential-pool-exhausted"
+    assert not isinstance(second_available, Refusal), second_available
+
+
+def test_mint_for_an_edge_challenged_identity_is_refused_before_a_request() -> None:
+    store = _store()
+    account = store.accounts[_HEALTHY]
+    store.accounts[_HEALTHY] = dataclasses.replace(
+        account, entry={**account.entry, "reach_state": "edge-challenged"}
+    )
+
+    refusal = _pool(store).request_mint(_HEALTHY)
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "credential-mint-refused-unreachable"
 
 
 def test_no_entry_state_is_believed_before_the_invalidation_hook_completes() -> None:
@@ -434,6 +511,8 @@ def test_the_rotation_ceremony_declares_no_arguments_at_all() -> None:
 
     assert isinstance(plan_ceremony(rotate, ()), CeremonyInvocation)
     assert isinstance(plan_ceremony(rotate, ("simasjak",)), Refusal)
+    assert isinstance(plan_ceremony(CEREMONIES["cooldown"], ()), Refusal)
+    assert isinstance(plan_ceremony(CEREMONIES["cooldown"], ("cap", "rotate")), Refusal)
     assert isinstance(plan_ceremony(CEREMONIES["cooldown"], ("cap",)), CeremonyInvocation)
     assert isinstance(plan_ceremony(CEREMONIES["cooldown"], ("nuke",)), Refusal)
 
