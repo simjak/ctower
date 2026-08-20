@@ -34,10 +34,10 @@
       "locator": "apps/ctower-runner/src/ctower_runner/claude_code/binding.py"
     },
     {
-      "id": "codex-binding-1f48",
+      "id": "codex-candidate-ee197",
       "kind": "repo",
-      "revision": "1f48fb22",
-      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py"
+      "revision": "ee197705",
+      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 head (OPEN, not landed on origin/main)"
     },
     {
       "id": "qwen-cli-0215",
@@ -271,7 +271,7 @@
       "role_disposition": "undecidable",
       "registration": {
         "status": "refused",
-        "reason": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; no binary or docs are reachable on this box."
+        "reason": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."
       },
       "capability_declaration": {
         "liveness": "unknown",
@@ -283,61 +283,61 @@
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No real binding, binary, or documentation establishes a native credential pool."
+          "note": "The sealed design keeps zcode as a stub and the command probe found no executable; a native credential pool remains UNVERIFIED."
         },
         "native_fallback": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No real binding, binary, or documentation establishes a native fallback."
+          "note": "The sealed design keeps zcode as a stub and the command probe found no executable; a native fallback remains UNVERIFIED."
         },
         "config_surface": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No config surface is reachable."
+          "note": "The cited design and command probe do not establish a config surface."
         },
         "identity_proof": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No identity artifact or claim is reachable."
+          "note": "The cited design and command probe do not establish an identity artifact or claim."
         },
         "reset_window_semantics": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No quota, reset, or window semantics are reachable."
+          "note": "The cited sources do not establish quota, reset, or window semantics."
         },
         "rotation_cache_semantics": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No rotation or cache hook is reachable."
+          "note": "The cited sources do not establish rotation or cache semantics."
         },
         "subagent_credential_inheritance": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No subagent or credential inheritance behavior is reachable."
+          "note": "The cited sources do not establish subagent or credential inheritance behavior."
         },
         "egress_topology": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No egress path or isolation boundary is reachable."
+          "note": "The cited sources do not establish an egress path or isolation boundary."
         },
         "probe_target": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "There is no product, endpoint, or model probe target to run."
+          "note": "The command probe found no executable, so no product, endpoint, or model probe was run; the target remains UNVERIFIED."
         },
         "credit_weights": {
           "state": "unverified",
           "value": null,
           "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No per-model, per-direction credit table is reachable."
+          "note": "The cited sources do not establish a per-model, per-direction credit table."
         }
       }
     },
