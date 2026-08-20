@@ -33,6 +33,7 @@ class RegistrationRoute(Protocol):
 
     def refusal_for(self, proposed_key: str) -> Refusal | None: ...
 
+
 # D10's earning rule, unchanged: two real Adapters plus one deterministic fake.
 REQUIRED_REAL_BINDINGS = 2
 

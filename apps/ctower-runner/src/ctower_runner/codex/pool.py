@@ -425,8 +425,7 @@ def _generation_refusal(current: int, installed_generation: int) -> Refusal | No
         return Refusal(
             name="rotation-refused-stale-generation",
             observed=(
-                f"the ceremony reported generation {installed_generation!r} "
-                f"below live {current}"
+                f"the ceremony reported generation {installed_generation!r} below live {current}"
             ),
             meaning="a rotation may not move the refresh chain backward or leave it unchanged",
             action="discard the stale outcome and re-observe the live generation",
@@ -443,8 +442,7 @@ def _unknown_progress_refusal(hook: str) -> Refusal:
         name="rotation-incomplete",
         observed="the rotation ceremony failed after its external progress became uncertain",
         meaning=(
-            "the pool cannot trust entry state until cache invalidation "
-            "and re-observation complete"
+            "the pool cannot trust entry state until cache invalidation and re-observation complete"
         ),
         action=f"complete {hook}, then re-observe; no entry is selectable meanwhile",
         detail=(("hook", hook), ("outcome", "unknown")),

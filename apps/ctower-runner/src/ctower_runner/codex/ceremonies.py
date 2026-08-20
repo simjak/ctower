@@ -192,8 +192,7 @@ def _grammar_refusal(ceremony: Ceremony, asked: Sequence[str]) -> Refusal:
         name="credential-verb-grammar-invalid",
         observed=f"{ceremony.name} received {len(asked)} subcommand arguments",
         meaning=(
-            "a declared-subcommand ceremony accepts exactly one action, "
-            "never zero or a sequence"
+            "a declared-subcommand ceremony accepts exactly one action, never zero or a sequence"
         ),
         action=f"provide exactly one declared subcommand: {ceremony.usage}",
         detail=(("expected_arity", "1"), ("actual_arity", str(len(asked)))),

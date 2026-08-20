@@ -64,6 +64,7 @@ class MeterObservation(TypedDict):
     event: Literal["spawn"]
     model_ref: str
 
+
 _MEANINGS: dict[tuple[str, str], tuple[str, str]] = {
     ("auth", "lineage-dead"): (
         "this profile's grant expired; the shell may still say logged in",

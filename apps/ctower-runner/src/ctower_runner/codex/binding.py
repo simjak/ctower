@@ -146,9 +146,7 @@ class CodexBinding:
         pane = self._supervisor.observe(pinned, 0)
         if command_id is None or pane is None or brief.text in pane:
             return _unacknowledged(brief, pane)
-        self._pool.meter(
-            lease, MeterObservation(event="spawn", model_ref=lease.model_ref)
-        )
+        self._pool.meter(lease, MeterObservation(event="spawn", model_ref=lease.model_ref))
         return DispatchReceipt(
             attempt_id=str(pinned.attempt_id),
             composition_digest=pinned.composition_digest,
@@ -371,8 +369,7 @@ def _composition_pin_refusal(spec: HarnessSpec, attempt: AttemptPin) -> Refusal 
         name="harness-dispatch-pin-mismatch",
         observed=f"the attempt has mismatched composition pins: {', '.join(mismatches)}",
         meaning=(
-            "an attempt may dispatch only the harness, revision, and composition "
-            "it was seated for"
+            "an attempt may dispatch only the harness, revision, and composition it was seated for"
         ),
         action="seat a new attempt against the registered spec; no lease or guard is consumed",
         detail=(

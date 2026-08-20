@@ -83,9 +83,7 @@ def test_declaring_provide_over_the_routed_runtimes_hosted_pool_is_refused() -> 
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
     hosted["layers"] = {"pool": "provide", "fallback": "configure"}
 
-    refusal = HarnessRegistry().register(
-        hosted, "real", route=_registration_route(_hermes_spec())
-    )
+    refusal = HarnessRegistry().register(hosted, "real", route=_registration_route(_hermes_spec()))
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-layer-conflict"
