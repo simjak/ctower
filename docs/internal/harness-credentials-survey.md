@@ -4,8 +4,9 @@ Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 1.
 Observed: 2026-08-20T14:24:08Z.
 
 Dependency truth: CT-I1-043 is not landed on `origin/main`. The Codex source below is the
-current open PR #539 head for provenance only; this survey does not claim three landed
-bindings and remains blocked on that dependency.
+immutable reviewed-at revision `ee197705b9503e4e8e86c2a39f83db0878bb986e` from open PR #539,
+retained for provenance only; it is not the current PR #539 head. This survey does not claim
+three landed bindings and remains blocked on that dependency.
 
 This is an internal, fail-closed survey. It does not implement or register a later-wave
 Adapter. A state is `UNVERIFIED` whenever the reachable evidence does not answer the
@@ -36,7 +37,7 @@ so the correct adapter count is zero.
 | `auth-runbook-2026-08-17` | runbook update 2026-08-17 | `/srv/projects/mission-control/playbooks/codex-hermes-auth-runbook.md:77-159`; Hermes pool, provider routes, reset/error distinctions, and the no-copy law |
 | `hermes-binding-d724` | `d72408e7` | `apps/ctower-runner/src/ctower_runner/hermes/binding.py`; gateway log is serving truth and the binding observes the Hermes pool |
 | `claude-binding-d724` | `d72408e7` | `apps/ctower-runner/src/ctower_runner/claude_code/binding.py`; per-home, provided-pool pattern and checkpoint/respawn failover |
-| `codex-candidate-ee197` | `ee197705` | `apps/ctower-runner/src/ctower_runner/codex/binding.py`; current PR #539 head (OPEN, not landed on `origin/main`); direct-CLI versus runtime-under-Hermes distinction and pool/substrate reconciliation |
+| `codex-candidate-ee197` | `ee197705b9503e4e8e86c2a39f83db0878bb986e` | `apps/ctower-runner/src/ctower_runner/codex/binding.py`; PR #539 reviewed-at revision (OPEN, not landed on `origin/main`; not the current PR head); direct-CLI versus runtime-under-Hermes distinction and pool/substrate reconciliation |
 | `qwen-cli-0215` | installed `0.21.5` | `/home/agent/.local/bin/qwen`; `qwen --version` and `qwen --help` |
 | `qwen-docs-0215` | installed `0.21.5` | `/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md` |
 | `local-command-absence` | `2026-08-20T14:24:08Z` | `command -v openclaw qwen-code zcode deepseek` — all four names absent; the separate `qwen` binary is present |
@@ -176,8 +177,9 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 
 - Declarative contract: `.venv/bin/python -m ctower_contracts verify --all`
 - Warm (pinned verify environment): `PYTHON=.venv/bin/python just check`
-- No executable conformance test is included because CT-I1-044 is survey-only; schema invariants
-  are authored in `later-wave-harness-survey.schema.json` and checked by the contract verifier.
+- No executable conformance test is included because CT-I1-044 is survey-only. The contract
+  verifier checks generated schema definitions and references; the authored survey and its
+  adversarial semantic mutations are validated against the closed schema in the review battery.
 - No `just verify` is owed by this docs/contracts-only slice unless the repository gate
   reports that the changed generated contract surface requires it.
 

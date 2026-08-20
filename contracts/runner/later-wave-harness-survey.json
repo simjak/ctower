@@ -36,8 +36,8 @@
     {
       "id": "codex-candidate-ee197",
       "kind": "repo",
-      "revision": "ee197705",
-      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 head (OPEN, not landed on origin/main)"
+      "revision": "ee197705b9503e4e8e86c2a39f83db0878bb986e",
+      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 reviewed-at revision (OPEN, not landed on origin/main; not the current PR head)"
     },
     {
       "id": "qwen-cli-0215",
