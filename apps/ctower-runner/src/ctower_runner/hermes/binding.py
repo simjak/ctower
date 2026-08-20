@@ -36,6 +36,7 @@ from ctower_runner_sdk.facts import (
 from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan
 from ctower_runner_sdk.policy import (
     collect_refusal,
+    dispatch_pin_refusal,
     ladder_disposition,
     serving_observation,
     teardown_receipt,
@@ -98,6 +99,9 @@ class HermesBinding:
         unread in a composer while the crew read as idle.
         """
 
+        mispinned = dispatch_pin_refusal(self._spec, attempt)
+        if mispinned is not None:
+            return mispinned
         lease = self._pool.acquire(model_ref=self._spec.probe.model_ref, tier=attempt.profile_ref)
         if isinstance(lease, Refusal):
             return lease

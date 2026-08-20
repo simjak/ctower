@@ -7,6 +7,7 @@ finished — and a dispatch that skipped its guard looks exactly like one that c
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 
 import pytest
@@ -297,3 +298,31 @@ def test_a_blocked_plan_is_still_asked_about_before_it_is_refused(
     assert isinstance(refusal, Refusal), refusal
     assert len(guard.asked) == 1
     assert not [item for item in subject.control.mutations() if item.startswith("launch:")]
+
+
+@pytest.mark.parametrize(
+    "subject",
+    tuple(subject for subject in subjects() if subject.binding_class == "real"),
+    ids=lambda item: item.name,
+)
+def test_every_real_binding_refuses_a_stale_spec_revision_before_any_mutation(
+    subject: ConformanceSubject,
+) -> None:
+    """A real binding may launch only the revision the attempt was seated against."""
+
+    stale = dataclasses.replace(
+        subject.inputs.attempt,
+        spec_revision=subject.inputs.attempt.spec_revision + 100,
+    )
+
+    refusal = subject.binding.spawn(
+        stale,
+        subject.inputs.seat,
+        subject.inputs.brief,
+        subject.inputs.context,
+    )
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-dispatch-pin-mismatch"
+    assert dict(refusal.detail)["mismatched_fields"] == "spec_revision"
+    assert subject.control.mutations() == ()

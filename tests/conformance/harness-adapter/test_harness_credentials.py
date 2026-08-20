@@ -430,7 +430,7 @@ def test_a_metered_observation_carries_no_credential_value_either() -> None:
     lease = pool.acquire(model_ref="gpt-5.6-sol", tier=PROFILE_KEY)
     assert isinstance(lease, Lease), lease
 
-    pool.meter(lease, MeterObservation(event="spawn", model_ref=lease.model_ref))
+    pool.meter(lease, {"event": "spawn", "model_ref": lease.model_ref})
 
     body = str(pool.metered)
     assert _ADJACENT not in body
