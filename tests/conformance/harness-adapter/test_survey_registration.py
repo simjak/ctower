@@ -34,6 +34,8 @@ _CANDIDATES = ("openclaw", "qwen-code", "zcode", "deepseek")
 _MATRIX_SHA256 = "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
 _MATRIX_PAIR_COUNT = 45
 Violation = tuple[str, str, str, str, str, str]
+_QWEN_PROBE_TARGETS = ("gateway_endpoint", "direct_cli_endpoint", "representative_endpoint")
+_QWEN_CREDIT_CLAIMS = ("published_directional", "unpublished")
 
 
 def _document() -> dict[str, Any]:
@@ -209,6 +211,42 @@ def test_deepseek_is_a_model_route_with_zero_adapter_work() -> None:
     assert deepseek["registration"]["status"] == "not_applicable"
     assert deepseek["adapter_work"] == "zero"
     assert deepseek["capability_declaration"]["liveness"] == "inherited:hermes.gateway_log"
+
+
+def test_route_referential_consistency_refuses_gateway_probe_for_qwen_cli() -> None:
+    document = copy.deepcopy(_document())
+    _set_token(document, "qwen-code", "probe_target", "gateway_endpoint")
+
+    assert _errors(document), "qwen-cli cannot claim a gateway representative probe"
+
+
+def test_verified_credit_claim_requires_candidate_supporting_evidence() -> None:
+    document = copy.deepcopy(_document())
+    _set_token(document, "qwen-code", "credit_weights", "published_directional")
+
+    assert _errors(document), "Qwen has no cited evidence type for published directional weights"
+
+
+@settings(max_examples=3, derandomize=True, deadline=None)
+@given(st.sampled_from(_QWEN_PROBE_TARGETS))
+def test_referential_consistency_search_rejects_nonmatching_qwen_probe(
+    probe_target: str,
+) -> None:
+    document = copy.deepcopy(_document())
+    _set_token(document, "qwen-code", "probe_target", probe_target)
+
+    assert bool(_errors(document)) is (probe_target != "direct_cli_endpoint")
+
+
+@settings(max_examples=2, derandomize=True, deadline=None)
+@given(st.sampled_from(_QWEN_CREDIT_CLAIMS))
+def test_evidence_support_search_rejects_unsupported_verified_credit_claim(
+    credit_claim: str,
+) -> None:
+    document = copy.deepcopy(_document())
+    _set_token(document, "qwen-code", "credit_weights", credit_claim)
+
+    assert bool(_errors(document)) is (credit_claim == "published_directional")
 
 
 @settings(max_examples=256, derandomize=True, deadline=None)
