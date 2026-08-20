@@ -228,6 +228,57 @@ def test_spawn_refuses_when_intent_model_differs_from_the_revision_pinned_probe(
     assert not supervisor.launched
 
 
+@pytest.mark.parametrize(
+    ("pin_field", "forged_value"),
+    (
+        ("harness_ref", "gpt-5.6-sol"),
+        ("spec_revision", 999),
+        ("composition_digest", "codex@999+sha256:forged"),
+    ),
+    ids=("harness", "revision", "composition"),
+)
+def test_spawn_refuses_each_mismatched_composition_pin_before_lease_or_guard(
+    pin_field: str, forged_value: object
+) -> None:
+    supervisor = _Supervisor(_healthy_pane())
+    guard = _Guard()
+    attempt = dataclasses.replace(_attempt(), **{pin_field: forged_value})
+
+    refusal = _spawn_attempt(
+        _binding(pane=_healthy_pane(), supervisor=supervisor, guard=guard), attempt
+    )
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-dispatch-pin-mismatch"
+    assert f"attempt_{pin_field}" in dict(refusal.detail)
+    assert not supervisor.launched
+    assert not guard.plans
+
+
+def test_spawn_refuses_a_combined_forged_composition_before_any_dispatch_side_effect() -> None:
+    supervisor = _Supervisor(_healthy_pane())
+    guard = _Guard()
+    attempt = dataclasses.replace(
+        _attempt(),
+        harness_ref="gpt-5.6-sol",
+        spec_revision=999,
+        composition_digest="codex@999+sha256:forged",
+    )
+
+    refusal = _spawn_attempt(
+        _binding(pane=_healthy_pane(), supervisor=supervisor, guard=guard), attempt
+    )
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-dispatch-pin-mismatch"
+    details = dict(refusal.detail)
+    assert details["attempt_harness_ref"] == "gpt-5.6-sol"
+    assert details["attempt_spec_revision"] == "999"
+    assert details["attempt_composition_digest"] == "codex@999+sha256:forged"
+    assert not supervisor.launched
+    assert not guard.plans
+
+
 def test_request_observation_reads_the_model_from_the_guarded_launch_argv() -> None:
     attempt = _attempt()
     plan = ExecutionPlan(

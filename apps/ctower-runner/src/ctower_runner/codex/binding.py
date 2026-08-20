@@ -121,8 +121,9 @@ class CodexBinding:
         block that one submit does not flush, and a brief sitting there reads as an idle lane.
         """
 
-        if attempt.intent_model != self._spec.probe.model_ref:
-            return _intent_model_mismatch(attempt.intent_model, self._spec.probe.model_ref)
+        preflight_refusal = _spawn_preflight_refusal(self._spec, attempt)
+        if preflight_refusal is not None:
+            return preflight_refusal
         lease = self._pool.acquire(model_ref=self._spec.probe.model_ref, tier=attempt.profile_ref)
         if isinstance(lease, Refusal):
             return lease
@@ -346,6 +347,50 @@ def _intent_model_mismatch(intent: str, expected: str) -> Refusal:
         action="seat a new attempt against the revision-pinned model before dispatch",
         detail=(("intent_model", intent), ("probe_model", expected)),
     )
+
+
+def _composition_pin_refusal(spec: HarnessSpec, attempt: AttemptPin) -> Refusal | None:
+    """Reject an attempt that is not pinned to this binding before acquiring anything."""
+
+    expected_digest = spec.composition_digest()
+    mismatches: list[str] = []
+    if attempt.harness_ref != spec.key:
+        mismatches.append("harness_ref")
+    if attempt.spec_revision != spec.revision:
+        mismatches.append("spec_revision")
+    if attempt.composition_digest != expected_digest:
+        mismatches.append("composition_digest")
+    if not mismatches:
+        return None
+    return Refusal(
+        name="harness-dispatch-pin-mismatch",
+        observed=f"the attempt has mismatched composition pins: {', '.join(mismatches)}",
+        meaning=(
+            "an attempt may dispatch only the harness, revision, and composition "
+            "it was seated for"
+        ),
+        action="seat a new attempt against the registered spec; no lease or guard is consumed",
+        detail=(
+            ("mismatched_fields", ",".join(mismatches)),
+            ("attempt_harness_ref", attempt.harness_ref),
+            ("expected_harness_ref", spec.key),
+            ("attempt_spec_revision", str(attempt.spec_revision)),
+            ("expected_spec_revision", str(spec.revision)),
+            ("attempt_composition_digest", attempt.composition_digest),
+            ("expected_composition_digest", expected_digest),
+        ),
+    )
+
+
+def _spawn_preflight_refusal(spec: HarnessSpec, attempt: AttemptPin) -> Refusal | None:
+    """Run all zero-side-effect composition checks before pool acquisition."""
+
+    pin_refusal = _composition_pin_refusal(spec, attempt)
+    if pin_refusal is not None:
+        return pin_refusal
+    if attempt.intent_model != spec.probe.model_ref:
+        return _intent_model_mismatch(attempt.intent_model, spec.probe.model_ref)
+    return None
 
 
 def _unacknowledged(brief: BriefBundle, pane: str | None) -> Refusal:
