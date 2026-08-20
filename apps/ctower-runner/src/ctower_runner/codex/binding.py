@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
+from uuid import UUID
 
 from ctower_runner.codex.liveness import classify_pane, context_used_pct
 from ctower_runner.codex.pool import CodexPool
@@ -97,6 +98,7 @@ class CodexBinding:
         self._pool = pool
         self._boundary = boundary
         self._clock = clock
+        self._launched_plans: dict[tuple[UUID, int], ExecutionPlan] = {}
 
     @property
     def spec(self) -> HarnessSpec:
@@ -119,6 +121,8 @@ class CodexBinding:
         block that one submit does not flush, and a brief sitting there reads as an idle lane.
         """
 
+        if attempt.intent_model != self._spec.probe.model_ref:
+            return _intent_model_mismatch(attempt.intent_model, self._spec.probe.model_ref)
         lease = self._pool.acquire(model_ref=self._spec.probe.model_ref, tier=attempt.profile_ref)
         if isinstance(lease, Refusal):
             return lease
@@ -134,6 +138,7 @@ class CodexBinding:
         if isinstance(decision, Refusal):
             return decision
         self._supervisor.launch(plan, pinned)
+        self._launched_plans[(pinned.attempt_id, pinned.epoch)] = plan
         command_id = self._supervisor.deliver_input(pinned, brief.text)
         pane = self._supervisor.observe(pinned, 0)
         if command_id is None or pane is None or brief.text in pane:
@@ -159,7 +164,8 @@ class CodexBinding:
                 observed_at=self._clock(),
                 evidence=f"epoch {attempt.epoch}",
             )
-        served, conflict = serving_observation(self._spec, self._readings(attempt))
+        plan = self._launched_plans.get((attempt.attempt_id, attempt.epoch))
+        served, conflict = serving_observation(self._spec, self._readings(attempt, plan))
         substrate = classify_pane(pane, saturation_percent=self._spec.context_window_percent)
         state, probe, basis = self._reconcile(substrate)
         return LivenessFact(
@@ -278,21 +284,38 @@ class CodexBinding:
             base_ref="origin/main",
         )
 
-    def _readings(self, attempt: AttemptPin) -> tuple[ModelObservation, ...]:
+    def _readings(
+        self, attempt: AttemptPin, plan: ExecutionPlan | None = None
+    ) -> tuple[ModelObservation, ...]:
         """Serving truth from the rollout, and the request from the launched argv.
 
-        The requested model is read off the attempt's own pin because that is what the
-        wrapper's `--model` was composed from, and it outranks the status-bar text that prints
-        the same value back. Recording it as a second observation rather than as agreement is
-        what makes a silent downgrade visible: this pane looks identical either way.
+        A request observation is only called `launch_argv` when the exact plan that cleared the
+        guard is available. Before a dispatch exists, the durable intent remains useful as a
+        request-only observation, but it is explicitly not launch provenance.
         """
 
         at = self._clock()
-        readings = [
-            ModelObservation(
-                value=attempt.intent_model, source="launch_argv", proves="request", observed_at=at
+        readings: list[ModelObservation] = []
+        if plan is not None:
+            requested = _model_from_argv(plan.argv)
+            if requested is not None:
+                readings.append(
+                    ModelObservation(
+                        value=requested,
+                        source="launch_argv",
+                        proves="request",
+                        observed_at=at,
+                    )
+                )
+        elif attempt.intent_model:
+            readings.append(
+                ModelObservation(
+                    value=attempt.intent_model,
+                    source="spawn_intent",
+                    proves="request",
+                    observed_at=at,
+                )
             )
-        ]
         served = self._rollout.served_model(attempt)
         if served is not None:
             readings.append(
@@ -301,6 +324,28 @@ class CodexBinding:
                 )
             )
         return tuple(readings)
+
+
+def _model_from_argv(argv: tuple[str, ...]) -> str | None:
+    """Read one model request from the exact argv that crossed the guard."""
+
+    positions = [index for index, value in enumerate(argv) if value == "--model"]
+    if len(positions) != 1:
+        return None
+    position = positions[0] + 1
+    if position >= len(argv) or not argv[position]:
+        return None
+    return argv[position]
+
+
+def _intent_model_mismatch(intent: str, expected: str) -> Refusal:
+    return Refusal(
+        name="harness-dispatch-model-mismatch",
+        observed=f"the attempt requests {intent!r}, but the pinned probe measures {expected!r}",
+        meaning="the guarded launch and the durable spawn intent would describe different models",
+        action="seat a new attempt against the revision-pinned model before dispatch",
+        detail=(("intent_model", intent), ("probe_model", expected)),
+    )
 
 
 def _unacknowledged(brief: BriefBundle, pane: str | None) -> Refusal:

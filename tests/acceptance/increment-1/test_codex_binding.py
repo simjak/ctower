@@ -298,8 +298,14 @@ def _binding(
 
 
 def _spawn(binding: CodexBinding, text: str = "build the row") -> DispatchReceipt | Refusal:
+    return _spawn_attempt(binding, _attempt(), text=text)
+
+
+def _spawn_attempt(
+    binding: CodexBinding, attempt: AttemptPin, *, text: str = "build the row"
+) -> DispatchReceipt | Refusal:
     return binding.spawn(
-        _attempt(),
+        attempt,
         SeatRef(seat_key=_SEAT, engagement_label=_PROFILE, project_key=_PROJECT),
         BriefBundle(text=text, digest="sha256:" + "f" * 64, ack_detail="cleared"),
         WorkspaceContext(worktree_path="/srv/attempt", branch="feat/x", base_ref="origin/main"),
@@ -472,6 +478,40 @@ def test_spawn_refuses_when_the_pane_still_contains_delivered_text_without_its_d
     assert refusal.name == "harness-dispatch-unacknowledged"
 
 
+def test_spawn_refuses_when_intent_model_differs_from_the_revision_pinned_probe() -> None:
+    supervisor = _Supervisor(_healthy_pane())
+    attempt = dataclasses.replace(_attempt(), intent_model="gpt-5.6-terra")
+
+    refusal = _spawn_attempt(_binding(pane=_healthy_pane(), supervisor=supervisor), attempt)
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-dispatch-model-mismatch"
+    assert not supervisor.launched
+
+
+def test_request_observation_reads_the_model_from_the_guarded_launch_argv() -> None:
+    attempt = _attempt()
+    plan = ExecutionPlan(
+        harness_ref=CODEX_KEY,
+        profile_ref=_PROFILE,
+        composition_digest=attempt.composition_digest,
+        program=CODEX_WRAPPER,
+        argv=(_SEAT, "--config-home", "/srv/codex-homes/seat-three", "--model", "gpt-5.6-terra"),
+        worktree_path="/srv/attempt",
+        credential_identity=_HEALTHY,
+        credential_home="/srv/codex-homes/seat-three",
+    )
+
+    request = next(
+        reading
+        for reading in _binding(pane=_healthy_pane())._readings(attempt, plan)
+        if reading.proves == "request"
+    )
+
+    assert request.source == "launch_argv"
+    assert request.value == "gpt-5.6-terra"
+
+
 # --- AC-HAD-03: the launch-argv column ----------------------------------------------------
 
 
@@ -492,7 +532,11 @@ def test_the_launch_argv_proves_the_request_and_the_rollout_proves_serving() -> 
 
 
 def test_a_downgrade_under_an_agreeing_status_bar_is_recorded_as_a_conflict() -> None:
-    fact = _binding(pane=_healthy_pane(), served="gpt-5.6-luna").liveness(_attempt(), 0)
+    binding = _binding(pane=_healthy_pane(), served="gpt-5.6-luna")
+    receipt = _spawn(binding)
+    assert not isinstance(receipt, Refusal), receipt
+
+    fact = binding.liveness(_attempt(), 0)
 
     assert isinstance(fact, LivenessFact)
     assert fact.served_model is not None

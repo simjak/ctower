@@ -47,6 +47,7 @@ SEAM_MINTED: frozenset[str] = frozenset(
         "harness-credential-profile-mismatch",
         "harness-credential-seat-mismatch",
         "harness-dispatch-blocked",
+        "harness-dispatch-model-mismatch",
         "harness-dispatch-needs-operator",
         "harness-guard-decision-invalid",
         "harness-layer-conflict",
