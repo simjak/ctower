@@ -1,14 +1,15 @@
-"""CT-I1-044 — later-wave survey completeness and refusal proof."""
+"""CT-I1-044 — later-wave survey completeness and derived refusal proof."""
 
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from hypothesis import given, settings, strategies as st
 from jsonschema import Draft202012Validator
 
 __all__: tuple[str, ...] = ()
@@ -16,6 +17,7 @@ __all__: tuple[str, ...] = ()
 _ROOT = Path(__file__).resolve().parents[3]
 _SCHEMA = _ROOT / "contracts/runner/later-wave-harness-survey.schema.json"
 _SURVEY = _ROOT / "contracts/runner/later-wave-harness-survey.json"
+_MATRIX = _ROOT / "contracts/runner/later-wave-harness-survey.matrix.json"
 _QUESTIONS = (
     "native_pool",
     "native_fallback",
@@ -29,6 +31,8 @@ _QUESTIONS = (
     "credit_weights",
 )
 _CANDIDATES = ("openclaw", "qwen-code", "zcode", "deepseek")
+_MATRIX_SHA256 = "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+Violation = tuple[str, str, str, str, str, str]
 
 
 def _document() -> dict[str, Any]:
@@ -39,6 +43,11 @@ def _document() -> dict[str, Any]:
 def _schema() -> dict[str, Any]:
     assert _SCHEMA.is_file(), f"missing survey schema: {_SCHEMA}"
     return cast(dict[str, Any], json.loads(_SCHEMA.read_text(encoding="utf-8")))
+
+
+def _matrix() -> dict[str, Any]:
+    assert _MATRIX.is_file(), f"missing dependency matrix: {_MATRIX}"
+    return cast(dict[str, Any], json.loads(_MATRIX.read_text(encoding="utf-8")))
 
 
 def _candidates(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -55,6 +64,82 @@ def _errors(document: dict[str, Any]) -> list[str]:
     return [f"{error.json_path}: {error.message}" for error in errors]
 
 
+def _token_values(matrix: dict[str, Any], question: str) -> list[str]:
+    return cast(dict[str, list[str]], matrix["domains"])[question]
+
+
+def _derived_violation_set() -> tuple[Violation, ...]:
+    """Derive cases from matrix rules; no hand-picked survey is the mechanism."""
+    matrix = _matrix()
+    pairs = cast(list[dict[str, Any]], matrix["pairs"])
+    rules = cast(dict[str, dict[str, Any]], matrix["rules"])
+    cases: list[Violation] = []
+    for pair in pairs:
+        left = cast(str, pair["left"])
+        right = cast(str, pair["right"])
+        for rule_id in cast(list[str], pair["rules"]):
+            rule = rules[rule_id]
+            if rule_id == "model-route-coherence":
+                for token in _token_values(matrix, right):
+                    if token not in {"unknown", "model_route"}:
+                        cases.append(("qwen-code", left, "model_route", right, token, rule_id))
+                for token in _token_values(matrix, left):
+                    if token not in {"unknown", "model_route"}:
+                        cases.append(("qwen-code", left, token, right, "model_route", rule_id))
+            else:
+                for values in cast(list[list[str]], rule["forbidden"]):
+                    cases.append(("qwen-code", left, values[0], right, values[1], rule_id))
+
+    # Route context is also derived from the matrix, not copied from a judge example.
+    context = cast(dict[str, dict[str, Any]], matrix["candidate_context"])["openclaw"]
+    for forbidden in cast(list[dict[str, str]], context["forbidden"]):
+        other = next(question for question in _QUESTIONS if question != forbidden["question"])
+        cases.append(("openclaw", forbidden["question"], forbidden["value"], other, "unknown", "candidate-context"))
+    return tuple(cases)
+
+
+_VIOLATION_CASES = _derived_violation_set()
+
+
+def _set_token(document: dict[str, Any], candidate: str, question: str, token: str) -> None:
+    answer = _candidates(document)[candidate]["answers"][question]
+    if token == "unknown":
+        answer["state"] = "unverified"
+        answer["value"] = None
+    elif token == "model_route":
+        answer["state"] = "not_applicable"
+        answer["value"] = "model"
+    else:
+        answer["state"] = "verified"
+        answer["value"] = token
+    answer.pop("note", None)
+
+
+def _matrix_note_claim(document: dict[str, Any], rule_id: str) -> None:
+    matrix = _matrix()
+    rule = cast(dict[str, Any], matrix["rules"])[rule_id]
+    left, right = cast(list[str], rule["pair"])
+    values = cast(list[str], rule["forbidden"])[0]
+    answers = _candidates(document)["qwen-code"]["answers"]
+    answers[left]["note"] = f"claim:{values[0]}"
+    answers[right]["note"] = f"claim:{values[1]}"
+
+
+def test_matrix_is_complete_and_revision_pinned() -> None:
+    matrix = _matrix()
+    assert tuple(matrix["question_order"]) == _QUESTIONS
+    assert len(matrix["pairs"]) == 45
+    assert {
+        frozenset((pair["left"], pair["right"])) for pair in matrix["pairs"]
+    } == {
+        frozenset((left, right))
+        for index, left in enumerate(_QUESTIONS)
+        for right in _QUESTIONS[index + 1 :]
+    }
+    raw = _MATRIX.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == _MATRIX_SHA256
+
+
 def test_authored_survey_is_strict_and_revision_pinned() -> None:
     document = _document()
     errors = _errors(document)
@@ -62,6 +147,7 @@ def test_authored_survey_is_strict_and_revision_pinned() -> None:
     assert not errors
     assert document["schema"] == "ctower.later-wave-harness-survey/v1"
     assert document["revision"] == 1
+    assert document["matrix"]["sha256"] == _MATRIX_SHA256
     assert tuple(candidate["key"] for candidate in document["candidates"]) == _CANDIDATES
 
 
@@ -75,6 +161,7 @@ def test_each_candidate_answers_all_ten_questions_with_explicit_state() -> None:
         for question in _QUESTIONS:
             answer = answers[question]
             assert answer["state"] in {"verified", "not_applicable", "unverified"}
+            assert "note" not in answer
             if answer["state"] == "unverified":
                 assert answer["value"] is None
                 assert answer["evidence"]
@@ -101,61 +188,27 @@ def test_deepseek_is_a_model_route_with_zero_adapter_work() -> None:
     assert deepseek["capability_declaration"]["liveness"] == "inherited:hermes.gateway_log"
 
 
-def _temporal_paradox(document: dict[str, Any]) -> None:
-    document["observed_at"] = "1970-01-01T00:00:00Z"
-
-
-def _weekly_plan_with_absence_only_evidence(document: dict[str, Any]) -> None:
-    _candidates(document)["qwen-code"]["answers"]["reset_window_semantics"]["evidence"] = [
-        "local-command-absence"
-    ]
-
-
-def _config_surface_with_absence_only_evidence(document: dict[str, Any]) -> None:
-    _candidates(document)["qwen-code"]["answers"]["config_surface"]["evidence"] = [
-        "local-command-absence"
-    ]
-
-
-def _refused_registration_with_active_reason(document: dict[str, Any]) -> None:
-    _candidates(document)["openclaw"]["registration"]["reason"] = "registered and active"
-
-
-def _unknown_liveness_with_positive_reason(document: dict[str, Any]) -> None:
-    _candidates(document)["qwen-code"]["capability_declaration"]["reason"] = (
-        "Serving was observed and the candidate is healthy."
-    )
-
-
 @pytest.mark.parametrize(
-    "mutation",
+    "rule_id",
     [
-        pytest.param(
-            _temporal_paradox,
-            id="judge-temporal-paradox-observed-before-source",
-        ),
-        pytest.param(
-            _weekly_plan_with_absence_only_evidence,
-            id="judge-verified-weekly-plan-with-absence-only-evidence",
-        ),
-        pytest.param(
-            _config_surface_with_absence_only_evidence,
-            id="own-verified-config-with-absence-only-evidence",
-        ),
-        pytest.param(
-            _refused_registration_with_active_reason,
-            id="own-refused-registration-with-active-reason",
-        ),
-        pytest.param(
-            _unknown_liveness_with_positive_reason,
-            id="own-unknown-liveness-with-positive-reason",
-        ),
+        "no-native-pool-native-cache",
+        "native-pool-no-provided-cache",
+        "authored-config-account-file-never-both",
     ],
 )
-def test_semantically_impossible_surveys_are_refused(
-    mutation: Callable[[dict[str, Any]], None],
-) -> None:
+def test_legacy_free_form_claims_are_refused(rule_id: str) -> None:
     document = copy.deepcopy(_document())
-    mutation(document)
+    _matrix_note_claim(document, rule_id)
 
-    assert _errors(document), "semantically impossible survey was accepted"
+    assert _errors(document), f"untyped matrix claim accepted: {rule_id}"
+
+
+@settings(max_examples=256, derandomize=True, deadline=None)
+@given(st.sampled_from(_VIOLATION_CASES))
+def test_derived_matrix_violation_set_is_refused(case: Violation) -> None:
+    candidate, left, left_token, right, right_token, rule_id = case
+    document = copy.deepcopy(_document())
+    _set_token(document, candidate, left, left_token)
+    _set_token(document, candidate, right, right_token)
+
+    assert _errors(document), f"derived violation accepted: {rule_id} {case}"
