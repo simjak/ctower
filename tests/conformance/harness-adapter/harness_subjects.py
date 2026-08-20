@@ -438,7 +438,9 @@ def build_codex(
     spec = _spec(codex_document())
     state = SubstrateState(
         pane=_CODEX_HEALTHY_PANE,
-        brief_digest=_BRIEF_DIGEST,
+        # The double returns the text actually delivered, not a hidden digest. This keeps the
+        # binding-specific ACK proof on the real non-secret marker.
+        brief_digest="read the row, build exactly its scope",
         gateway_model=spec.probe.model_ref,
     )
     clock = StepClock()

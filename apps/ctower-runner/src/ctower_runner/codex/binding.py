@@ -136,7 +136,7 @@ class CodexBinding:
         self._supervisor.launch(plan, pinned)
         command_id = self._supervisor.deliver_input(pinned, brief.text)
         pane = self._supervisor.observe(pinned, 0)
-        if command_id is None or pane is None or brief.digest in pane:
+        if command_id is None or pane is None or brief.text in pane:
             return _unacknowledged(brief, pane)
         self._pool.meter(lease, {"event": "spawn", "model_ref": lease.model_ref})
         return DispatchReceipt(

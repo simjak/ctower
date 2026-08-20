@@ -46,7 +46,7 @@ from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_docum
 from ctower_runner_sdk.attempt import AttemptPin, BriefBundle, SeatRef, WorkspaceContext
 from ctower_runner_sdk.conformance import CorpusCase
 from ctower_runner_sdk.credentials import ProbeResponse, project_entry
-from ctower_runner_sdk.facts import LivenessFact
+from ctower_runner_sdk.facts import DispatchReceipt, LivenessFact
 from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan, GuardDecision
 from ctower_runner_sdk.refusals import SEAM_MINTED, SPEC_OWNED, Refusal
 from ctower_runner_sdk.registry import HarnessRegistry
@@ -297,7 +297,7 @@ def _binding(
     )
 
 
-def _spawn(binding: CodexBinding, text: str = "build the row") -> object:
+def _spawn(binding: CodexBinding, text: str = "build the row") -> DispatchReceipt | Refusal:
     return binding.spawn(
         _attempt(),
         SeatRef(seat_key=_SEAT, engagement_label=_PROFILE, project_key=_PROJECT),
@@ -461,6 +461,15 @@ def test_the_plan_carries_the_runtime_reference_and_the_model_as_separate_argume
         _spec().probe.model_ref,
     )
     assert _spec().probe.model_ref not in (plan.harness_ref, plan.profile_ref)
+
+
+def test_spawn_refuses_when_the_pane_still_contains_delivered_text_without_its_digest() -> None:
+    supervisor = _Supervisor("build the row")
+
+    refusal = _spawn(_binding(pane="build the row", supervisor=supervisor))
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-dispatch-unacknowledged"
 
 
 # --- AC-HAD-03: the launch-argv column ----------------------------------------------------
