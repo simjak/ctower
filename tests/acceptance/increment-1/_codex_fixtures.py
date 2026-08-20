@@ -10,7 +10,7 @@ from ctower_runner.codex.binding import CodexBinding
 from ctower_runner.codex.ceremonies import CeremonyInvocation, CeremonyOutcome
 from ctower_runner.codex.corpus import CODEX_CORPUS
 from ctower_runner.codex.pool import CodexAccount, CodexPool, ConfigHomeStore
-from ctower_runner.codex.route import CodexRoute, classify_route
+from ctower_runner.codex.route import CodexRegistrationAuthority, CodexRoute, classify_route
 from ctower_runner.codex.spec import CODEX_KEY, digest_of, harness_spec_document
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.attempt import AttemptPin, BriefBundle, SeatRef, WorkspaceContext
@@ -60,9 +60,9 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     return parsed
 
 
-def _registration_route(spec: HarnessSpec | None = None) -> CodexRoute:
+def _registration_route(spec: HarnessSpec | None = None) -> CodexRegistrationAuthority:
     resolved = _spec() if spec is None else spec
-    return classify_route(runtime_ref=resolved.key, spec=resolved)
+    return CodexRegistrationAuthority(resolved)
 
 
 def _hermes_spec() -> HarnessSpec:

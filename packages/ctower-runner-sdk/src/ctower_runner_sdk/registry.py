@@ -21,6 +21,7 @@ __all__ = [
     "REQUIRED_REAL_BINDINGS",
     "BindingClass",
     "HarnessRegistry",
+    "RegistrationAuthority",
     "RegistrationRoute",
     "RoleRow",
 ]
@@ -29,9 +30,21 @@ type BindingClass = Literal["real", "fault_injection_fake"]
 
 
 class RegistrationRoute(Protocol):
-    """The route authority a composition root must consult before registry mutation."""
+    """One route derived from a trusted parent-harness registration authority."""
+
+    @property
+    def harness_ref(self) -> str: ...
+
+    @property
+    def authority_digest(self) -> str: ...
 
     def refusal_for(self, proposed_key: str) -> Refusal | None: ...
+
+
+class RegistrationAuthority(Protocol):
+    """The trusted parent context that constructs a route for one proposed key."""
+
+    def route_for(self, proposed_key: str) -> RegistrationRoute: ...
 
 
 # D10's earning rule, unchanged: two real Adapters plus one deterministic fake.
@@ -70,16 +83,20 @@ class HarnessRegistry:
         document: Mapping[str, object],
         binding_class: BindingClass,
         *,
-        route: RegistrationRoute,
+        authority: RegistrationAuthority,
     ) -> HarnessSpec | Refusal:
         """Parse, resolve the survey, and admit — or refuse by exact name."""
 
         parsed = parse_harness_spec(document)
         if isinstance(parsed, Refusal):
             return parsed
+        route = authority.route_for(parsed.key)
         route_refusal = route.refusal_for(parsed.key)
         if route_refusal is not None:
             return route_refusal
+        authority_refusal = _authority_refusal(parsed, route)
+        if authority_refusal is not None:
+            return authority_refusal
         conflict = _semantic_refusal(parsed)
         if conflict is not None:
             return conflict
@@ -184,5 +201,38 @@ def _semantic_refusal(spec: HarnessSpec) -> Refusal | None:
             ("derived_pool", derived.pool),
             ("declared_fallback", spec.layers.fallback),
             ("derived_fallback", derived.fallback),
+        ),
+    )
+
+
+def _authority_refusal(spec: HarnessSpec, route: RegistrationRoute) -> Refusal | None:
+    if route.harness_ref != spec.key:
+        return Refusal(
+            name="harness-registration-route-mismatch",
+            observed=(
+                f"route authorizes harness_ref {route.harness_ref!r}, "
+                f"but the proposed document is {spec.key!r}"
+            ),
+            meaning="a proposed document cannot choose the harness context that admits it",
+            action="derive the route from the trusted parent-harness registration context",
+            detail=(
+                ("route_harness_ref", route.harness_ref),
+                ("proposed_harness_ref", spec.key),
+            ),
+        )
+    expected_digest = spec.composition_digest()
+    if route.authority_digest == expected_digest:
+        return None
+    return Refusal(
+        name="harness-registration-authority-mismatch",
+        observed=(
+            f"route authority digest {route.authority_digest!r} does not match "
+            f"the proposed spec digest {expected_digest!r}"
+        ),
+        meaning="registration must be bound to the exact trusted spec revision and composition",
+        action="derive the route from the same trusted parent-harness spec revision",
+        detail=(
+            ("route_authority_digest", route.authority_digest),
+            ("proposed_spec_digest", expected_digest),
         ),
     )

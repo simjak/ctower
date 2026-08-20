@@ -39,7 +39,7 @@ from ctower_runner.claude_code.transcript import (
     served_model,
     transcript_slug,
 )
-from ctower_runner.codex.route import CodexRoute, classify_route
+from ctower_runner.codex.route import CodexRegistrationAuthority
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.attempt import AttemptPin
 from ctower_runner_sdk.conformance import CorpusCase
@@ -99,11 +99,13 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     return parsed
 
 
-def _registration_route(document: Mapping[str, object] | None = None) -> CodexRoute:
+def _registration_route(
+    document: Mapping[str, object] | None = None,
+) -> CodexRegistrationAuthority:
     source = _document() if document is None else document
     parsed = parse_harness_spec(source)
     assert isinstance(parsed, HarnessSpec), parsed
-    return classify_route(runtime_ref=parsed.key, spec=parsed)
+    return CodexRegistrationAuthority(parsed)
 
 
 def _record(identity: str, quota_state: str, reset_at: datetime, seed: str) -> dict[str, object]:
@@ -180,13 +182,15 @@ def test_two_real_bindings_plus_one_fake_publish_the_seam() -> None:
     registry.register(
         hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG),
         "real",
-        route=_registration_route(
+        authority=_registration_route(
             hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
         ),
     )
-    registry.register(_document(), "real", route=_registration_route())
+    registry.register(_document(), "real", authority=_registration_route())
     registry.register(
-        _fake_document(), "fault_injection_fake", route=_registration_route(_fake_document())
+        _fake_document(),
+        "fault_injection_fake",
+        authority=_registration_route(_fake_document()),
     )
 
     assert registry.publication() is None
@@ -196,9 +200,11 @@ def test_two_real_bindings_plus_one_fake_publish_the_seam() -> None:
 
 def test_this_binding_alone_does_not_publish_the_seam() -> None:
     registry = HarnessRegistry()
-    registry.register(_document(), "real", route=_registration_route())
+    registry.register(_document(), "real", authority=_registration_route())
     registry.register(
-        _fake_document(), "fault_injection_fake", route=_registration_route(_fake_document())
+        _fake_document(),
+        "fault_injection_fake",
+        authority=_registration_route(_fake_document()),
     )
 
     refusal = registry.publication()
@@ -222,7 +228,7 @@ def test_declaring_configure_over_a_layer_this_harness_lacks_is_refused() -> Non
     refusal = HarnessRegistry().register(
         _document({"layers": {"pool": "configure", "fallback": "provide"}}),
         "real",
-        route=_registration_route(),
+        authority=_registration_route(),
     )
 
     assert isinstance(refusal, Refusal), refusal
@@ -235,7 +241,7 @@ def test_an_unanswered_survey_question_refuses_rather_than_leaving_the_role_to_a
     survey.pop("rotation_cache")
 
     refusal = HarnessRegistry().register(
-        _document({"survey": survey}), "real", route=_registration_route()
+        _document({"survey": survey}), "real", authority=_registration_route()
     )
 
     assert isinstance(refusal, Refusal), refusal

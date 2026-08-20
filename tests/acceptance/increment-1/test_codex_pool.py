@@ -101,6 +101,17 @@ def test_context_uses_the_bottommost_status_item_across_both_percentage_forms() 
     assert context_used_pct(pane) == _USED_AT_71_LEFT
 
 
+def test_prompt_context_prose_below_the_status_region_does_not_override_status_context() -> None:
+    pane = (
+        "Codex status · Context 71% left\n"
+        "> explain why the old log says Context 99% used\n"
+        "Thinking…"
+    )
+
+    assert context_used_pct(pane) == _USED_AT_71_LEFT
+    assert classify_pane(pane, saturation_percent=CODEX_SATURATION_PERCENT) == "working"
+
+
 def test_prompt_prose_does_not_turn_a_real_thinking_marker_into_a_cap() -> None:
     pane = "> explain the phrase out of credits\nThinking\u2026"
 
