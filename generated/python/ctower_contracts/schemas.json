@@ -18456,48 +18456,34 @@
       "$defs": {
         "answer": {
           "additionalProperties": false,
-          "allOf": [
+          "oneOf": [
             {
-              "if": {
-                "properties": {
-                  "state": {
-                    "const": "unverified"
-                  }
+              "properties": {
+                "state": {
+                  "const": "unverified"
                 },
-                "required": [
-                  "state"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "value": {
-                    "type": "null"
-                  }
+                "value": {
+                  "const": null
                 }
               }
             },
             {
-              "if": {
-                "properties": {
-                  "state": {
-                    "enum": [
-                      "verified",
-                      "not_applicable"
-                    ]
-                  }
+              "properties": {
+                "state": {
+                  "const": "not_applicable"
                 },
-                "required": [
-                  "state"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "value": {
-                    "type": [
-                      "boolean",
-                      "string"
-                    ]
-                  }
+                "value": {
+                  "const": "model"
+                }
+              }
+            },
+            {
+              "properties": {
+                "state": {
+                  "const": "verified"
+                },
+                "value": {
+                  "type": "string"
                 }
               }
             }
@@ -18510,11 +18496,6 @@
               "minItems": 1,
               "type": "array",
               "uniqueItems": true
-            },
-            "note": {
-              "maxLength": 1024,
-              "minLength": 1,
-              "type": "string"
             },
             "state": {
               "enum": [
@@ -18534,8 +18515,7 @@
           "required": [
             "state",
             "value",
-            "evidence",
-            "note"
+            "evidence"
           ],
           "type": "object"
         },
@@ -18559,36 +18539,80 @@
                     "const": "blocked_until_survey"
                   },
                   "answers": {
-                    "properties": {
-                      "config_surface": {
-                        "$ref": "#/$defs/unverified-answer"
+                    "allOf": [
+                      {
+                        "not": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_account"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "x-ctower-matrix-context-rule": {
+                          "forbidden_value": "direct_cli_account",
+                          "question": "identity_proof"
+                        }
                       },
-                      "credit_weights": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "egress_topology": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "identity_proof": {
-                        "$ref": "#/$defs/persisted-device-key-answer"
-                      },
-                      "native_fallback": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "native_pool": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "probe_target": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "reset_window_semantics": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "rotation_cache_semantics": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "subagent_credential_inheritance": {
-                        "$ref": "#/$defs/unverified-answer"
+                      {
+                        "not": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "x-ctower-matrix-context-rule": {
+                          "forbidden_value": "direct_cli_endpoint",
+                          "question": "probe_target"
+                        }
+                      }
+                    ],
+                    "patternProperties": {
+                      "^.+$": {
+                        "allOf": [
+                          {
+                            "not": {
+                              "$ref": "#/$defs/model-answer"
+                            }
+                          },
+                          {
+                            "properties": {
+                              "evidence": {
+                                "contains": {
+                                  "const": "design-seam-c07"
+                                }
+                              }
+                            }
+                          }
+                        ]
                       }
                     }
                   },
@@ -18641,36 +18665,24 @@
                     "const": "blocked_until_survey"
                   },
                   "answers": {
-                    "properties": {
-                      "config_surface": {
-                        "$ref": "#/$defs/env-overridable-answer"
-                      },
-                      "credit_weights": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "egress_topology": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "identity_proof": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "native_fallback": {
-                        "$ref": "#/$defs/model-fallback-only-answer"
-                      },
-                      "native_pool": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "probe_target": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "reset_window_semantics": {
-                        "$ref": "#/$defs/weekly-plan-answer"
-                      },
-                      "rotation_cache_semantics": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "subagent_credential_inheritance": {
-                        "$ref": "#/$defs/unverified-answer"
+                    "patternProperties": {
+                      "^.+$": {
+                        "allOf": [
+                          {
+                            "not": {
+                              "$ref": "#/$defs/model-answer"
+                            }
+                          },
+                          {
+                            "properties": {
+                              "evidence": {
+                                "contains": {
+                                  "const": "qwen-docs-0215"
+                                }
+                              }
+                            }
+                          }
+                        ]
                       }
                     }
                   },
@@ -18723,36 +18735,31 @@
                     "const": "blocked_until_survey"
                   },
                   "answers": {
-                    "properties": {
-                      "config_surface": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "credit_weights": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "egress_topology": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "identity_proof": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "native_fallback": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "native_pool": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "probe_target": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "reset_window_semantics": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "rotation_cache_semantics": {
-                        "$ref": "#/$defs/unverified-answer"
-                      },
-                      "subagent_credential_inheritance": {
-                        "$ref": "#/$defs/unverified-answer"
+                    "patternProperties": {
+                      "^.+$": {
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/unverified-answer"
+                          },
+                          {
+                            "properties": {
+                              "evidence": {
+                                "allOf": [
+                                  {
+                                    "contains": {
+                                      "const": "design-seam-c07"
+                                    }
+                                  },
+                                  {
+                                    "contains": {
+                                      "const": "local-command-absence"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
                       }
                     }
                   },
@@ -18805,6 +18812,24 @@
                     "const": "zero"
                   },
                   "answers": {
+                    "patternProperties": {
+                      "^.+$": {
+                        "properties": {
+                          "evidence": {
+                            "contains": {
+                              "anyOf": [
+                                {
+                                  "const": "design-seam-c07"
+                                },
+                                {
+                                  "const": "auth-runbook-2026-08-17"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
                     "properties": {
                       "config_surface": {
                         "$ref": "#/$defs/model-answer"
@@ -18869,221 +18894,6 @@
                   }
                 }
               }
-            },
-            {
-              "if": {
-                "properties": {
-                  "key": {
-                    "const": "openclaw"
-                  }
-                },
-                "required": [
-                  "key"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "key": {
-                    "const": "qwen-code"
-                  }
-                },
-                "required": [
-                  "key"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "qwen-docs-0215"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "key": {
-                    "const": "zcode"
-                  }
-                },
-                "required": [
-                  "key"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "properties": {
-                          "evidence": {
-                            "allOf": [
-                              {
-                                "contains": {
-                                  "const": "design-seam-c07"
-                                }
-                              },
-                              {
-                                "contains": {
-                                  "const": "local-command-absence"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "key": {
-                    "const": "deepseek"
-                  }
-                },
-                "required": [
-                  "key"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "answers": {
-                    "properties": {
-                      "config_surface": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "credit_weights": {
-                        "properties": {
-                          "evidence": {
-                            "allOf": [
-                              {
-                                "contains": {
-                                  "const": "auth-runbook-2026-08-17"
-                                }
-                              },
-                              {
-                                "contains": {
-                                  "const": "ctower-weight-registry-d724"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      },
-                      "egress_topology": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "identity_proof": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "native_fallback": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "native_pool": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "probe_target": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "reset_window_semantics": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "rotation_cache_semantics": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      },
-                      "subagent_credential_inheritance": {
-                        "properties": {
-                          "evidence": {
-                            "contains": {
-                              "const": "design-seam-c07"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
             }
           ],
           "properties": {
@@ -19095,36 +18905,272 @@
             },
             "answers": {
               "additionalProperties": false,
+              "allOf": [
+                {
+                  "not": {
+                    "properties": {
+                      "native_pool": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "no_native_pool"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      },
+                      "rotation_cache_semantics": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "native_pool_cache"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "native_pool",
+                      "rotation_cache_semantics"
+                    ]
+                  },
+                  "x-ctower-matrix-rule-id": "no-native-pool-native-cache"
+                },
+                {
+                  "not": {
+                    "properties": {
+                      "native_pool": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "native_pool"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      },
+                      "rotation_cache_semantics": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "provided_pool_cache"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "native_pool",
+                      "rotation_cache_semantics"
+                    ]
+                  },
+                  "x-ctower-matrix-rule-id": "native-pool-no-provided-cache"
+                },
+                {
+                  "not": {
+                    "properties": {
+                      "native_pool": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "no_native_pool"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      },
+                      "subagent_credential_inheritance": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "per_task_lease"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "native_pool",
+                      "subagent_credential_inheritance"
+                    ]
+                  },
+                  "x-ctower-matrix-rule-id": "no-native-pool-no-native-subagent-lease"
+                },
+                {
+                  "not": {
+                    "properties": {
+                      "config_surface": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "authored_config_only"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      },
+                      "identity_proof": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "account_file"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "config_surface",
+                      "identity_proof"
+                    ]
+                  },
+                  "x-ctower-matrix-rule-id": "authored-config-account-file-never-both"
+                },
+                {
+                  "not": {
+                    "properties": {
+                      "identity_proof": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "direct_cli_account"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      },
+                      "probe_target": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "gateway_endpoint"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "identity_proof",
+                      "probe_target"
+                    ]
+                  },
+                  "x-ctower-matrix-rule-id": "direct-cli-identity-gateway-probe-never-both"
+                },
+                {
+                  "not": {
+                    "properties": {
+                      "identity_proof": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "persisted_device_key"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      },
+                      "probe_target": {
+                        "properties": {
+                          "state": {
+                            "const": "verified"
+                          },
+                          "value": {
+                            "const": "direct_cli_endpoint"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "value"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "identity_proof",
+                      "probe_target"
+                    ]
+                  },
+                  "x-ctower-matrix-rule-id": "gateway-device-identity-direct-probe-never-both"
+                }
+              ],
               "properties": {
                 "config_surface": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/config-surface-answer"
                 },
                 "credit_weights": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/credit-weights-answer"
                 },
                 "egress_topology": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/egress-topology-answer"
                 },
                 "identity_proof": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/identity-proof-answer"
                 },
                 "native_fallback": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/native-fallback-answer"
                 },
                 "native_pool": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/native-pool-answer"
                 },
                 "probe_target": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/probe-target-answer"
                 },
                 "reset_window_semantics": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/reset-window-semantics-answer"
                 },
                 "rotation_cache_semantics": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/rotation-cache-semantics-answer"
                 },
                 "subagent_credential_inheritance": {
-                  "$ref": "#/$defs/answer"
+                  "$ref": "#/$defs/subagent-credential-inheritance-answer"
                 }
               },
               "required": [
@@ -19218,65 +19264,213 @@
           ],
           "type": "object"
         },
-        "env-overridable-answer": {
-          "properties": {
-            "state": {
-              "const": "verified"
+        "config-surface-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
             },
-            "value": {
-              "const": "env_overridable"
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "authored_config_only",
+                      "env_overridable",
+                      "account_file"
+                    ]
+                  }
+                }
+              }
             }
-          },
-          "required": [
-            "state",
-            "value"
-          ],
-          "type": "object"
+          ]
+        },
+        "credit-weights-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "published_directional",
+                      "unpublished"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "egress-topology-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "shared",
+                      "isolated"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "identity-proof-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "decoded_claim",
+                      "account_file",
+                      "persisted_device_key",
+                      "direct_cli_account"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         },
         "model-answer": {
-          "properties": {
-            "state": {
-              "const": "not_applicable"
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
             },
-            "value": {
-              "const": "model"
+            {
+              "properties": {
+                "state": {
+                  "const": "not_applicable"
+                },
+                "value": {
+                  "const": "model"
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
             }
-          },
-          "required": [
-            "state",
-            "value"
-          ],
-          "type": "object"
+          ]
         },
-        "model-fallback-only-answer": {
-          "properties": {
-            "state": {
-              "const": "verified"
+        "native-fallback-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
             },
-            "value": {
-              "const": "model_fallback_only"
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "native_credential_fallback",
+                      "no_native_fallback",
+                      "model_fallback_only"
+                    ]
+                  }
+                }
+              }
             }
-          },
-          "required": [
-            "state",
-            "value"
-          ],
-          "type": "object"
+          ]
         },
-        "persisted-device-key-answer": {
-          "properties": {
-            "state": {
-              "const": "verified"
+        "native-pool-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
             },
-            "value": {
-              "const": "persisted_device_key"
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "native_pool",
+                      "no_native_pool"
+                    ]
+                  }
+                }
+              }
             }
-          },
-          "required": [
-            "state",
-            "value"
-          ],
-          "type": "object"
+          ]
+        },
+        "probe-target-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "gateway_endpoint",
+                      "direct_cli_endpoint",
+                      "representative_endpoint"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         },
         "question": {
           "additionalProperties": false,
@@ -19328,6 +19522,61 @@
           ],
           "type": "object"
         },
+        "reset-window-semantics-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "provider_reset_at",
+                      "rolling_block",
+                      "weekly_plan"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "rotation-cache-semantics-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "native_pool_cache",
+                      "provided_pool_cache",
+                      "config_home_respawn",
+                      "no_rotation_cache"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
         "source": {
           "additionalProperties": false,
           "properties": {
@@ -19377,41 +19626,60 @@
             "ctower-weight-registry-d724"
           ]
         },
-        "unverified-answer": {
-          "properties": {
-            "state": {
-              "const": "unverified"
+        "subagent-credential-inheritance-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
             },
-            "value": {
-              "const": null
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "per_task_lease",
+                      "parent_credential",
+                      "separate_acquisition",
+                      "no_credential_inheritance"
+                    ]
+                  }
+                }
+              }
             }
-          },
-          "required": [
-            "state",
-            "value"
-          ],
-          "type": "object"
+          ]
         },
-        "weekly-plan-answer": {
-          "properties": {
-            "state": {
-              "const": "verified"
+        "unverified-answer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/answer"
             },
-            "value": {
-              "const": "weekly_plan"
+            {
+              "properties": {
+                "state": {
+                  "const": "unverified"
+                },
+                "value": {
+                  "const": null
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
             }
-          },
-          "required": [
-            "state",
-            "value"
-          ],
-          "type": "object"
+          ]
         }
       },
       "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Revision-pinned CT-I1-044 survey data. Unknown evidence is explicit and cannot be used to choose a configure/provide role.",
+      "description": "Revision-pinned CT-I1-044 survey data. The ten-question dependency matrix is closed over finite semantic domains; its default and pair rules derive refusals rather than enumerating judge examples.",
       "properties": {
         "candidates": {
           "allOf": [
@@ -19478,6 +19746,26 @@
           "maxItems": 4,
           "minItems": 4,
           "type": "array"
+        },
+        "matrix": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "const": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json"
+            },
+            "revision": {
+              "const": 1
+            },
+            "sha256": {
+              "const": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+            }
+          },
+          "required": [
+            "id",
+            "revision",
+            "sha256"
+          ],
+          "type": "object"
         },
         "observed_at": {
           "const": "2026-08-20T14:24:08Z"
@@ -19614,12 +19902,22 @@
         "schema",
         "revision",
         "observed_at",
+        "matrix",
         "sources",
         "questions",
         "candidates"
       ],
       "title": "LaterWaveHarnessSurvey",
-      "type": "object"
+      "type": "object",
+      "x-ctower-dependency-matrix": {
+        "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
+        "law": "default rules plus pair rules; violation cases are derived",
+        "revision": 1,
+        "sha256": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+      },
+      "x-ctower-matrix-default-rules": [
+        "model-route-coherence"
+      ]
     },
     "contracts/runtime/dream-dispatch-effect.schema.json": {
       "$defs": {
@@ -22326,7 +22624,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.schema.json",
-      "sha256": "sha256:fe40f4860daccb5726d581c73963a67d81656570cd6b29f61ec159b1637f770a"
+      "sha256": "sha256:25e0ad83b5a93a669d312aed6f318b543f0fa1c58c077c40b39084ab80cf06d0"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",

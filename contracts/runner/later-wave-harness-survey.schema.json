@@ -2,14 +2,28 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
   "title": "LaterWaveHarnessSurvey",
-  "description": "Revision-pinned CT-I1-044 survey data. Unknown evidence is explicit and cannot be used to choose a configure/provide role.",
+  "description": "Revision-pinned CT-I1-044 survey data. The ten-question dependency matrix is closed over finite semantic domains; its default and pair rules derive refusals rather than enumerating judge examples.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "revision", "observed_at", "sources", "questions", "candidates"],
+  "required": [
+    "schema",
+    "revision",
+    "observed_at",
+    "matrix",
+    "sources",
+    "questions",
+    "candidates"
+  ],
   "properties": {
-    "schema": { "const": "ctower.later-wave-harness-survey/v1" },
-    "revision": { "const": 1 },
-    "observed_at": { "const": "2026-08-20T14:24:08Z" },
+    "schema": {
+      "const": "ctower.later-wave-harness-survey/v1"
+    },
+    "revision": {
+      "const": 1
+    },
+    "observed_at": {
+      "const": "2026-08-20T14:24:08Z"
+    },
     "sources": {
       "type": "array",
       "const": [
@@ -77,12 +91,17 @@
       "minItems": 10,
       "maxItems": 10,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/source" }
+      "items": {
+        "$ref": "#/$defs/source"
+      }
     },
     "questions": {
       "type": "array",
       "const": [
-        { "id": "native_pool", "prompt": "Does the candidate ship a native credential pool?" },
+        {
+          "id": "native_pool",
+          "prompt": "Does the candidate ship a native credential pool?"
+        },
         {
           "id": "native_fallback",
           "prompt": "Does the candidate ship a native credential/provider fallback?"
@@ -122,533 +141,125 @@
       ],
       "minItems": 10,
       "maxItems": 10,
-      "items": { "$ref": "#/$defs/question" }
+      "items": {
+        "$ref": "#/$defs/question"
+      }
     },
     "candidates": {
       "type": "array",
       "minItems": 4,
       "maxItems": 4,
-      "items": { "$ref": "#/$defs/candidate" },
-      "allOf": [
-        {
-          "contains": { "required": ["key"], "properties": { "key": { "const": "openclaw" } } },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": { "required": ["key"], "properties": { "key": { "const": "qwen-code" } } },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": { "required": ["key"], "properties": { "key": { "const": "zcode" } } },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": { "required": ["key"], "properties": { "key": { "const": "deepseek" } } },
-          "minContains": 1,
-          "maxContains": 1
-        }
-      ]
-    }
-  },
-  "$defs": {
-    "unverified-answer": {
-      "type": "object",
-      "required": ["state", "value"],
-      "properties": { "state": { "const": "unverified" }, "value": { "const": null } }
-    },
-    "persisted-device-key-answer": {
-      "type": "object",
-      "required": ["state", "value"],
-      "properties": {
-        "state": { "const": "verified" },
-        "value": { "const": "persisted_device_key" }
-      }
-    },
-    "model-fallback-only-answer": {
-      "type": "object",
-      "required": ["state", "value"],
-      "properties": {
-        "state": { "const": "verified" },
-        "value": { "const": "model_fallback_only" }
-      }
-    },
-    "env-overridable-answer": {
-      "type": "object",
-      "required": ["state", "value"],
-      "properties": {
-        "state": { "const": "verified" },
-        "value": { "const": "env_overridable" }
-      }
-    },
-    "weekly-plan-answer": {
-      "type": "object",
-      "required": ["state", "value"],
-      "properties": {
-        "state": { "const": "verified" },
-        "value": { "const": "weekly_plan" }
-      }
-    },
-    "model-answer": {
-      "type": "object",
-      "required": ["state", "value"],
-      "properties": { "state": { "const": "not_applicable" }, "value": { "const": "model" } }
-    },
-    "source-id": {
-      "enum": [
-        "spec-ct-i1-044",
-        "design-seam-c07",
-        "auth-runbook-2026-08-17",
-        "hermes-binding-d724",
-        "claude-binding-d724",
-        "codex-candidate-ee197",
-        "qwen-cli-0215",
-        "qwen-docs-0215",
-        "local-command-absence",
-        "ctower-weight-registry-d724"
-      ]
-    },
-    "source": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "kind", "revision", "locator"],
-      "properties": {
-        "id": {
-          "$ref": "#/$defs/source-id"
-        },
-        "kind": {
-          "enum": ["repo", "design", "runbook", "binary", "installed-doc", "absence-probe"]
-        },
-        "revision": { "type": "string", "minLength": 1, "maxLength": 128 },
-        "locator": { "type": "string", "minLength": 1, "maxLength": 256 }
-      }
-    },
-    "question": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "prompt"],
-      "properties": {
-        "id": {
-          "enum": [
-            "native_pool",
-            "native_fallback",
-            "config_surface",
-            "identity_proof",
-            "reset_window_semantics",
-            "rotation_cache_semantics",
-            "subagent_credential_inheritance",
-            "egress_topology",
-            "probe_target",
-            "credit_weights"
-          ]
-        },
-        "prompt": { "type": "string", "minLength": 1, "maxLength": 512 }
-      }
-    },
-    "answer": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["state", "value", "evidence", "note"],
-      "properties": {
-        "state": { "enum": ["verified", "not_applicable", "unverified"] },
-        "value": { "type": ["boolean", "string", "null"] },
-        "evidence": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/source-id" }
-        },
-        "note": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      "items": {
+        "$ref": "#/$defs/candidate"
       },
       "allOf": [
         {
-          "if": {
-            "required": ["state"],
-            "properties": { "state": { "const": "unverified" } }
+          "contains": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "openclaw"
+              }
+            }
           },
-          "then": { "properties": { "value": { "type": "null" } } }
+          "minContains": 1,
+          "maxContains": 1
         },
         {
-          "if": {
-            "required": ["state"],
-            "properties": { "state": { "enum": ["verified", "not_applicable"] } }
+          "contains": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "qwen-code"
+              }
+            }
           },
-          "then": { "properties": { "value": { "type": ["boolean", "string"] } } }
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "zcode"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "const": "deepseek"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
         }
       ]
     },
-    "registration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["status", "reason"],
-      "properties": {
-        "status": { "enum": ["refused", "not_applicable"] },
-        "reason": { "type": "string", "minLength": 1, "maxLength": 512 }
-      }
-    },
-    "capability_declaration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["liveness", "evidence", "reason"],
-      "properties": {
-        "liveness": {
-          "type": "string",
-          "pattern": "^(unknown|inherited:[a-z][a-z0-9_.-]{2,127})$"
-        },
-        "evidence": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/source-id" }
-        },
-        "reason": { "type": "string", "minLength": 1, "maxLength": 512 }
-      }
-    },
-    "candidate": {
+    "matrix": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "key",
-        "classification",
-        "effective_route",
-        "adapter_work",
-        "role_disposition",
-        "registration",
-        "capability_declaration",
-        "answers"
+        "id",
+        "revision",
+        "sha256"
       ],
       "properties": {
-        "key": { "enum": ["openclaw", "qwen-code", "zcode", "deepseek"] },
-        "classification": {
-          "enum": ["harness_gateway_routed", "harness_baseline", "harness_stub", "model"]
+        "id": {
+          "const": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json"
         },
-        "effective_route": {
-          "enum": ["gateway", "qwen-cli", "unbound-stub", "hermes-profile"]
+        "revision": {
+          "const": 1
         },
-        "adapter_work": { "enum": ["blocked_until_survey", "zero"] },
-        "role_disposition": { "enum": ["undecidable", "not_applicable"] },
-        "registration": { "$ref": "#/$defs/registration" },
-        "capability_declaration": { "$ref": "#/$defs/capability_declaration" },
-        "answers": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "native_pool",
-            "native_fallback",
-            "config_surface",
-            "identity_proof",
-            "reset_window_semantics",
-            "rotation_cache_semantics",
-            "subagent_credential_inheritance",
-            "egress_topology",
-            "probe_target",
-            "credit_weights"
-          ],
-          "properties": {
-            "native_pool": { "$ref": "#/$defs/answer" },
-            "native_fallback": { "$ref": "#/$defs/answer" },
-            "config_surface": { "$ref": "#/$defs/answer" },
-            "identity_proof": { "$ref": "#/$defs/answer" },
-            "reset_window_semantics": { "$ref": "#/$defs/answer" },
-            "rotation_cache_semantics": { "$ref": "#/$defs/answer" },
-            "subagent_credential_inheritance": { "$ref": "#/$defs/answer" },
-            "egress_topology": { "$ref": "#/$defs/answer" },
-            "probe_target": { "$ref": "#/$defs/answer" },
-            "credit_weights": { "$ref": "#/$defs/answer" }
-          }
+        "sha256": {
+          "const": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
         }
-      },
-      "allOf": [
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "openclaw" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "properties": {
-                  "native_pool": { "$ref": "#/$defs/unverified-answer" },
-                  "native_fallback": { "$ref": "#/$defs/unverified-answer" },
-                  "config_surface": { "$ref": "#/$defs/unverified-answer" },
-                  "identity_proof": { "$ref": "#/$defs/persisted-device-key-answer" },
-                  "reset_window_semantics": { "$ref": "#/$defs/unverified-answer" },
-                  "rotation_cache_semantics": { "$ref": "#/$defs/unverified-answer" },
-                  "subagent_credential_inheritance": { "$ref": "#/$defs/unverified-answer" },
-                  "egress_topology": { "$ref": "#/$defs/unverified-answer" },
-                  "probe_target": { "$ref": "#/$defs/unverified-answer" },
-                  "credit_weights": { "$ref": "#/$defs/unverified-answer" }
-                }
-              },
-              "classification": { "const": "harness_gateway_routed" },
-              "effective_route": { "const": "gateway" },
-              "adapter_work": { "const": "blocked_until_survey" },
-              "role_disposition": { "const": "undecidable" },
-              "registration": {
-                "properties": {
-                  "status": { "const": "refused" },
-                  "reason": {
-                    "const": "The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."
-                  }
-                }
-              },
-              "capability_declaration": {
-                "properties": {
-                  "liveness": { "const": "unknown" },
-                  "reason": {
-                    "const": "Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "qwen-code" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "properties": {
-                  "native_pool": { "$ref": "#/$defs/unverified-answer" },
-                  "native_fallback": { "$ref": "#/$defs/model-fallback-only-answer" },
-                  "config_surface": { "$ref": "#/$defs/env-overridable-answer" },
-                  "identity_proof": { "$ref": "#/$defs/unverified-answer" },
-                  "reset_window_semantics": { "$ref": "#/$defs/weekly-plan-answer" },
-                  "rotation_cache_semantics": { "$ref": "#/$defs/unverified-answer" },
-                  "subagent_credential_inheritance": { "$ref": "#/$defs/unverified-answer" },
-                  "egress_topology": { "$ref": "#/$defs/unverified-answer" },
-                  "probe_target": { "$ref": "#/$defs/unverified-answer" },
-                  "credit_weights": { "$ref": "#/$defs/unverified-answer" }
-                }
-              },
-              "classification": { "const": "harness_baseline" },
-              "effective_route": { "const": "qwen-cli" },
-              "adapter_work": { "const": "blocked_until_survey" },
-              "role_disposition": { "const": "undecidable" },
-              "registration": {
-                "properties": {
-                  "status": { "const": "refused" },
-                  "reason": {
-                    "const": "The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."
-                  }
-                }
-              },
-              "capability_declaration": {
-                "properties": {
-                  "liveness": { "const": "unknown" },
-                  "reason": {
-                    "const": "The binary is installed, but no representative authenticated serving observation was run."
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "zcode" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "properties": {
-                  "native_pool": { "$ref": "#/$defs/unverified-answer" },
-                  "native_fallback": { "$ref": "#/$defs/unverified-answer" },
-                  "config_surface": { "$ref": "#/$defs/unverified-answer" },
-                  "identity_proof": { "$ref": "#/$defs/unverified-answer" },
-                  "reset_window_semantics": { "$ref": "#/$defs/unverified-answer" },
-                  "rotation_cache_semantics": { "$ref": "#/$defs/unverified-answer" },
-                  "subagent_credential_inheritance": { "$ref": "#/$defs/unverified-answer" },
-                  "egress_topology": { "$ref": "#/$defs/unverified-answer" },
-                  "probe_target": { "$ref": "#/$defs/unverified-answer" },
-                  "credit_weights": { "$ref": "#/$defs/unverified-answer" }
-                }
-              },
-              "classification": { "const": "harness_stub" },
-              "effective_route": { "const": "unbound-stub" },
-              "adapter_work": { "const": "blocked_until_survey" },
-              "role_disposition": { "const": "undecidable" },
-              "registration": {
-                "properties": {
-                  "status": { "const": "refused" },
-                  "reason": {
-                    "const": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."
-                  }
-                }
-              },
-              "capability_declaration": {
-                "properties": {
-                  "liveness": { "const": "unknown" },
-                  "reason": {
-                    "const": "A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "deepseek" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "properties": {
-                  "native_pool": { "$ref": "#/$defs/model-answer" },
-                  "native_fallback": { "$ref": "#/$defs/model-answer" },
-                  "config_surface": { "$ref": "#/$defs/model-answer" },
-                  "identity_proof": { "$ref": "#/$defs/model-answer" },
-                  "reset_window_semantics": { "$ref": "#/$defs/model-answer" },
-                  "rotation_cache_semantics": { "$ref": "#/$defs/model-answer" },
-                  "subagent_credential_inheritance": { "$ref": "#/$defs/model-answer" },
-                  "egress_topology": { "$ref": "#/$defs/model-answer" },
-                  "probe_target": { "$ref": "#/$defs/model-answer" },
-                  "credit_weights": { "$ref": "#/$defs/unverified-answer" }
-                }
-              },
-              "classification": { "const": "model" },
-              "effective_route": { "const": "hermes-profile" },
-              "adapter_work": { "const": "zero" },
-              "role_disposition": { "const": "not_applicable" },
-              "registration": {
-                "properties": {
-                  "status": { "const": "not_applicable" },
-                  "reason": {
-                    "const": "DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."
-                  }
-                }
-              },
-              "capability_declaration": {
-                "properties": {
-                  "liveness": { "const": "inherited:hermes.gateway_log" },
-                  "reason": {
-                    "const": "The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "openclaw" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "patternProperties": {
-                  "^.+$": {
-                    "properties": {
-                      "evidence": {
-                        "contains": { "const": "design-seam-c07" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "qwen-code" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "patternProperties": {
-                  "^.+$": {
-                    "properties": {
-                      "evidence": {
-                        "contains": { "const": "qwen-docs-0215" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "zcode" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "patternProperties": {
-                  "^.+$": {
-                    "properties": {
-                      "evidence": {
-                        "allOf": [
-                          { "contains": { "const": "design-seam-c07" } },
-                          { "contains": { "const": "local-command-absence" } }
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["key"], "properties": { "key": { "const": "deepseek" } } },
-          "then": {
-            "properties": {
-              "answers": {
-                "properties": {
-                  "native_pool": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "native_fallback": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "config_surface": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "identity_proof": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "reset_window_semantics": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "rotation_cache_semantics": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "subagent_credential_inheritance": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "egress_topology": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "probe_target": {
-                    "properties": {
-                      "evidence": { "contains": { "const": "design-seam-c07" } }
-                    }
-                  },
-                  "credit_weights": {
-                    "properties": {
-                      "evidence": {
-                        "allOf": [
-                          { "contains": { "const": "auth-runbook-2026-08-17" } },
-                          { "contains": { "const": "ctower-weight-registry-d724" } }
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      ]
+      }
     }
+  },
+  "x-ctower-dependency-matrix": {
+    "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
+    "revision": 1,
+    "sha256": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066",
+    "law": "default rules plus pair rules; violation cases are derived"
+  },
+  "x-ctower-matrix-default-rules": [
+    "model-route-coherence"
+  ],
+  "$defs": {
+    "unverified-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"required":["state","value"],"properties":{"state":{"const":"unverified"},"value":{"const":null}}}]},
+    "model-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"required":["state","value"],"properties":{"state":{"const":"not_applicable"},"value":{"const":"model"}}}]},
+    "source-id": {"enum":["spec-ct-i1-044","design-seam-c07","auth-runbook-2026-08-17","hermes-binding-d724","claude-binding-d724","codex-candidate-ee197","qwen-cli-0215","qwen-docs-0215","local-command-absence","ctower-weight-registry-d724"]},
+    "source": {"type":"object","additionalProperties":false,"required":["id","kind","revision","locator"],"properties":{"id":{"$ref":"#/$defs/source-id"},"kind":{"enum":["repo","design","runbook","binary","installed-doc","absence-probe"]},"revision":{"type":"string","minLength":1,"maxLength":128},"locator":{"type":"string","minLength":1,"maxLength":256}}},
+    "question": {"type":"object","additionalProperties":false,"required":["id","prompt"],"properties":{"id":{"enum":["native_pool","native_fallback","config_surface","identity_proof","reset_window_semantics","rotation_cache_semantics","subagent_credential_inheritance","egress_topology","probe_target","credit_weights"]},"prompt":{"type":"string","minLength":1,"maxLength":512}}},
+    "answer": {"type":"object","additionalProperties":false,"required":["state","value","evidence"],"properties":{"state":{"enum":["verified","not_applicable","unverified"]},"value":{"type":["boolean","string","null"]},"evidence":{"type":"array","minItems":1,"uniqueItems":true,"items":{"$ref":"#/$defs/source-id"}}},"oneOf":[{"properties":{"state":{"const":"unverified"},"value":{"const":null}}},{"properties":{"state":{"const":"not_applicable"},"value":{"const":"model"}}},{"properties":{"state":{"const":"verified"},"value":{"type":"string"}}}]},
+    "registration": {"type":"object","additionalProperties":false,"required":["status","reason"],"properties":{"status":{"enum":["refused","not_applicable"]},"reason":{"type":"string","minLength":1,"maxLength":512}}},
+    "capability_declaration": {"type":"object","additionalProperties":false,"required":["liveness","evidence","reason"],"properties":{"liveness":{"type":"string","pattern":"^(unknown|inherited:[a-z][a-z0-9_.-]{2,127})$"},"evidence":{"type":"array","minItems":1,"uniqueItems":true,"items":{"$ref":"#/$defs/source-id"}},"reason":{"type":"string","minLength":1,"maxLength":512}}},
+    "candidate": {"type":"object","additionalProperties":false,"required":["key","classification","effective_route","adapter_work","role_disposition","registration","capability_declaration","answers"],"properties":{"key":{"enum":["openclaw","qwen-code","zcode","deepseek"]},"classification":{"enum":["harness_gateway_routed","harness_baseline","harness_stub","model"]},"effective_route":{"enum":["gateway","qwen-cli","unbound-stub","hermes-profile"]},"adapter_work":{"enum":["blocked_until_survey","zero"]},"role_disposition":{"enum":["undecidable","not_applicable"]},"registration":{"$ref":"#/$defs/registration"},"capability_declaration":{"$ref":"#/$defs/capability_declaration"},"answers":{"type":"object","additionalProperties":false,"required":["native_pool","native_fallback","config_surface","identity_proof","reset_window_semantics","rotation_cache_semantics","subagent_credential_inheritance","egress_topology","probe_target","credit_weights"],"properties":{"native_pool":{"$ref":"#/$defs/native-pool-answer"},"native_fallback":{"$ref":"#/$defs/native-fallback-answer"},"config_surface":{"$ref":"#/$defs/config-surface-answer"},"identity_proof":{"$ref":"#/$defs/identity-proof-answer"},"reset_window_semantics":{"$ref":"#/$defs/reset-window-semantics-answer"},"rotation_cache_semantics":{"$ref":"#/$defs/rotation-cache-semantics-answer"},"subagent_credential_inheritance":{"$ref":"#/$defs/subagent-credential-inheritance-answer"},"egress_topology":{"$ref":"#/$defs/egress-topology-answer"},"probe_target":{"$ref":"#/$defs/probe-target-answer"},"credit_weights":{"$ref":"#/$defs/credit-weights-answer"}},"allOf":[{"not":{"required":["native_pool","rotation_cache_semantics"],"properties":{"native_pool":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"no_native_pool"}}},"rotation_cache_semantics":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"native_pool_cache"}}}}},"x-ctower-matrix-rule-id":"no-native-pool-native-cache"},{"not":{"required":["native_pool","rotation_cache_semantics"],"properties":{"native_pool":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"native_pool"}}},"rotation_cache_semantics":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"provided_pool_cache"}}}}},"x-ctower-matrix-rule-id":"native-pool-no-provided-cache"},{"not":{"required":["native_pool","subagent_credential_inheritance"],"properties":{"native_pool":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"no_native_pool"}}},"subagent_credential_inheritance":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"per_task_lease"}}}}},"x-ctower-matrix-rule-id":"no-native-pool-no-native-subagent-lease"},{"not":{"required":["config_surface","identity_proof"],"properties":{"config_surface":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"authored_config_only"}}},"identity_proof":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"account_file"}}}}},"x-ctower-matrix-rule-id":"authored-config-account-file-never-both"},{"not":{"required":["identity_proof","probe_target"],"properties":{"identity_proof":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"direct_cli_account"}}},"probe_target":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"gateway_endpoint"}}}}},"x-ctower-matrix-rule-id":"direct-cli-identity-gateway-probe-never-both"},{"not":{"required":["identity_proof","probe_target"],"properties":{"identity_proof":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"persisted_device_key"}}},"probe_target":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"direct_cli_endpoint"}}}}},"x-ctower-matrix-rule-id":"gateway-device-identity-direct-probe-never-both"}]}},"allOf":[{"if":{"required":["key"],"properties":{"key":{"const":"openclaw"}}},"then":{"properties":{"answers":{"patternProperties":{"^.+$":{"allOf":[{"not":{"$ref":"#/$defs/model-answer"}},{"properties":{"evidence":{"contains":{"const":"design-seam-c07"}}}}]}},"allOf":[{"not":{"required":["identity_proof"],"properties":{"identity_proof":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"direct_cli_account"}}}}},"x-ctower-matrix-context-rule":{"question":"identity_proof","forbidden_value":"direct_cli_account"}},{"not":{"required":["probe_target"],"properties":{"probe_target":{"required":["state","value"],"properties":{"state":{"const":"verified"},"value":{"const":"direct_cli_endpoint"}}}}},"x-ctower-matrix-context-rule":{"question":"probe_target","forbidden_value":"direct_cli_endpoint"}}]},"classification":{"const":"harness_gateway_routed"},"effective_route":{"const":"gateway"},"adapter_work":{"const":"blocked_until_survey"},"role_disposition":{"const":"undecidable"},"registration":{"properties":{"status":{"const":"refused"},"reason":{"const":"The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."}}},"capability_declaration":{"properties":{"liveness":{"const":"unknown"},"reason":{"const":"Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."}}}}}},{"if":{"required":["key"],"properties":{"key":{"const":"qwen-code"}}},"then":{"properties":{"answers":{"patternProperties":{"^.+$":{"allOf":[{"not":{"$ref":"#/$defs/model-answer"}},{"properties":{"evidence":{"contains":{"const":"qwen-docs-0215"}}}}]}}},"classification":{"const":"harness_baseline"},"effective_route":{"const":"qwen-cli"},"adapter_work":{"const":"blocked_until_survey"},"role_disposition":{"const":"undecidable"},"registration":{"properties":{"status":{"const":"refused"},"reason":{"const":"The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."}}},"capability_declaration":{"properties":{"liveness":{"const":"unknown"},"reason":{"const":"The binary is installed, but no representative authenticated serving observation was run."}}}}}},{"if":{"required":["key"],"properties":{"key":{"const":"zcode"}}},"then":{"properties":{"answers":{"patternProperties":{"^.+$":{"allOf":[{"$ref":"#/$defs/unverified-answer"},{"properties":{"evidence":{"allOf":[{"contains":{"const":"design-seam-c07"}},{"contains":{"const":"local-command-absence"}}]}}}]}}},"classification":{"const":"harness_stub"},"effective_route":{"const":"unbound-stub"},"adapter_work":{"const":"blocked_until_survey"},"role_disposition":{"const":"undecidable"},"registration":{"properties":{"status":{"const":"refused"},"reason":{"const":"The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."}}},"capability_declaration":{"properties":{"liveness":{"const":"unknown"},"reason":{"const":"A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."}}}}}},{"if":{"required":["key"],"properties":{"key":{"const":"deepseek"}}},"then":{"properties":{"answers":{"properties":{"native_pool":{"$ref":"#/$defs/model-answer"},"native_fallback":{"$ref":"#/$defs/model-answer"},"config_surface":{"$ref":"#/$defs/model-answer"},"identity_proof":{"$ref":"#/$defs/model-answer"},"reset_window_semantics":{"$ref":"#/$defs/model-answer"},"rotation_cache_semantics":{"$ref":"#/$defs/model-answer"},"subagent_credential_inheritance":{"$ref":"#/$defs/model-answer"},"egress_topology":{"$ref":"#/$defs/model-answer"},"probe_target":{"$ref":"#/$defs/model-answer"},"credit_weights":{"$ref":"#/$defs/unverified-answer"}},"patternProperties":{"^.+$":{"properties":{"evidence":{"contains":{"anyOf":[{"const":"design-seam-c07"},{"const":"auth-runbook-2026-08-17"}]}}}}}},"classification":{"const":"model"},"effective_route":{"const":"hermes-profile"},"adapter_work":{"const":"zero"},"role_disposition":{"const":"not_applicable"},"registration":{"properties":{"status":{"const":"not_applicable"},"reason":{"const":"DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."}}},"capability_declaration":{"properties":{"liveness":{"const":"inherited:hermes.gateway_log"},"reason":{"const":"The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."}}}}}}]},
+    "native-pool-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["native_pool","no_native_pool"]}}}}]},
+    "native-fallback-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["native_credential_fallback","no_native_fallback","model_fallback_only"]}}}}]},
+    "config-surface-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["authored_config_only","env_overridable","account_file"]}}}}]},
+    "identity-proof-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["decoded_claim","account_file","persisted_device_key","direct_cli_account"]}}}}]},
+    "reset-window-semantics-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["provider_reset_at","rolling_block","weekly_plan"]}}}}]},
+    "rotation-cache-semantics-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["native_pool_cache","provided_pool_cache","config_home_respawn","no_rotation_cache"]}}}}]},
+    "subagent-credential-inheritance-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["per_task_lease","parent_credential","separate_acquisition","no_credential_inheritance"]}}}}]},
+    "egress-topology-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["shared","isolated"]}}}}]},
+    "probe-target-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["gateway_endpoint","direct_cli_endpoint","representative_endpoint"]}}}}]},
+    "credit-weights-answer": {"allOf":[{"$ref":"#/$defs/answer"},{"if":{"properties":{"state":{"const":"verified"}}},"then":{"properties":{"value":{"enum":["published_directional","unpublished"]}}}}]}
   }
 }

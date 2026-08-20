@@ -119,69 +119,91 @@
       },
       "capability_declaration": {
         "liveness": "unknown",
-        "evidence": ["design-seam-c07", "local-command-absence"],
+        "evidence": [
+          "design-seam-c07",
+          "local-command-absence"
+        ],
         "reason": "Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."
       },
       "answers": {
         "native_pool": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The design names a gateway auth token and persisted device key, but does not establish a native credential pool."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "native_fallback": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No reachable source proves an in-session credential/provider fallback."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "config_surface": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The design names two approval planes but does not provide an authored config surface or override law."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "identity_proof": {
           "state": "verified",
           "value": "persisted_device_key",
-          "evidence": ["design-seam-c07"],
-          "note": "A persisted device key is a device-pairing proof; an account identity claim is not established."
+          "evidence": [
+            "design-seam-c07"
+          ]
         },
         "reset_window_semantics": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No reset, rolling window, quota, or prepaid semantics are documented for this route."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "rotation_cache_semantics": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No credential rotation or gateway cache invalidation hook is reachable."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "subagent_credential_inheritance": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No source proves whether gateway runs or delegated work inherit either approval plane."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "egress_topology": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "ws/wss gateway transport is named, but sharing or isolation across credential entries is not."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "probe_target": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "Gateway run events are named as serving truth, but product, endpoint, and model for a representative probe are not available."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "credit_weights": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "No per-model, per-direction credit table is reachable."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         }
       }
     },
@@ -197,69 +219,89 @@
       },
       "capability_declaration": {
         "liveness": "unknown",
-        "evidence": ["qwen-cli-0215", "qwen-docs-0215"],
+        "evidence": [
+          "qwen-cli-0215",
+          "qwen-docs-0215"
+        ],
         "reason": "The binary is installed, but no representative authenticated serving observation was run."
       },
       "answers": {
         "native_pool": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-cli-0215", "qwen-docs-0215"],
-          "note": "Qwen Code exposes multiple model providers, but the reachable CLI/docs do not prove a native credential pool or account rotation."
+          "evidence": [
+            "qwen-cli-0215",
+            "qwen-docs-0215"
+          ]
         },
         "native_fallback": {
           "state": "verified",
           "value": "model_fallback_only",
-          "evidence": ["qwen-cli-0215", "qwen-docs-0215"],
-          "note": "--fallback-model and modelFallbacks are ordered model fallbacks for capacity errors; that is not proof of a credential/provider ladder."
+          "evidence": [
+            "qwen-cli-0215",
+            "qwen-docs-0215"
+          ]
         },
         "config_surface": {
           "state": "verified",
           "value": "env_overridable",
-          "evidence": ["qwen-cli-0215", "qwen-docs-0215"],
-          "note": "The docs specify settings.json, environment variables, .env files, and CLI overrides; this is not authored-config-only."
+          "evidence": [
+            "qwen-cli-0215",
+            "qwen-docs-0215"
+          ]
         },
         "identity_proof": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-docs-0215"],
-          "note": "The reachable docs describe API-key references through envKey; they do not establish a decodable account identity claim."
+          "evidence": [
+            "qwen-docs-0215"
+          ]
         },
         "reset_window_semantics": {
           "state": "verified",
           "value": "weekly_plan",
-          "evidence": ["design-seam-c07", "qwen-docs-0215"],
-          "note": "The candidate row and Qwen Coding Plan docs name an included weekly quota; the exact reset clock is not available on this box."
+          "evidence": [
+            "design-seam-c07",
+            "qwen-docs-0215"
+          ]
         },
         "rotation_cache_semantics": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-cli-0215", "qwen-docs-0215"],
-          "note": "Settings and fallback changes require restart in the docs, but credential rotation cache invalidation is not specified."
+          "evidence": [
+            "qwen-cli-0215",
+            "qwen-docs-0215"
+          ]
         },
         "subagent_credential_inheritance": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-docs-0215"],
-          "note": "Subagents are documented, but the credential inherited by a subagent is not."
+          "evidence": [
+            "qwen-docs-0215"
+          ]
         },
         "egress_topology": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-docs-0215"],
-          "note": "Per-model baseUrl configuration is documented; sharing or isolation of the actual network egress is not."
+          "evidence": [
+            "qwen-docs-0215"
+          ]
         },
         "probe_target": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-cli-0215", "qwen-docs-0215"],
-          "note": "The qwen executable is reachable, but its current provider, endpoint, and model cannot be established without an authenticated representative call."
+          "evidence": [
+            "qwen-cli-0215",
+            "qwen-docs-0215"
+          ]
         },
         "credit_weights": {
           "state": "unverified",
           "value": null,
-          "evidence": ["qwen-docs-0215", "ctower-weight-registry-d724"],
-          "note": "Qwen Code permits optional modelPricing, but no authoritative per-model input/output weights are present in the installed docs or ctower registry."
+          "evidence": [
+            "qwen-docs-0215",
+            "ctower-weight-registry-d724"
+          ]
         }
       }
     },
@@ -275,69 +317,92 @@
       },
       "capability_declaration": {
         "liveness": "unknown",
-        "evidence": ["design-seam-c07", "local-command-absence"],
+        "evidence": [
+          "design-seam-c07",
+          "local-command-absence"
+        ],
         "reason": "A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."
       },
       "answers": {
         "native_pool": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The sealed design keeps zcode as a stub and the command probe found no executable; a native credential pool remains UNVERIFIED."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "native_fallback": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The sealed design keeps zcode as a stub and the command probe found no executable; a native fallback remains UNVERIFIED."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "config_surface": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited design and command probe do not establish a config surface."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "identity_proof": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited design and command probe do not establish an identity artifact or claim."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "reset_window_semantics": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited sources do not establish quota, reset, or window semantics."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "rotation_cache_semantics": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited sources do not establish rotation or cache semantics."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "subagent_credential_inheritance": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited sources do not establish subagent or credential inheritance behavior."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "egress_topology": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited sources do not establish an egress path or isolation boundary."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "probe_target": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The command probe found no executable, so no product, endpoint, or model probe was run; the target remains UNVERIFIED."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         },
         "credit_weights": {
           "state": "unverified",
           "value": null,
-          "evidence": ["design-seam-c07", "local-command-absence"],
-          "note": "The cited sources do not establish a per-model, per-direction credit table."
+          "evidence": [
+            "design-seam-c07",
+            "local-command-absence"
+          ]
         }
       }
     },
@@ -353,71 +418,98 @@
       },
       "capability_declaration": {
         "liveness": "inherited:hermes.gateway_log",
-        "evidence": ["design-seam-c07", "hermes-binding-d724"],
+        "evidence": [
+          "design-seam-c07",
+          "hermes-binding-d724"
+        ],
         "reason": "The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."
       },
       "answers": {
         "native_pool": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["spec-ct-i1-044", "design-seam-c07"],
-          "note": "A model does not own a credential pool; the effective Hermes profile owns the pool."
+          "evidence": [
+            "spec-ct-i1-044",
+            "design-seam-c07"
+          ]
         },
         "native_fallback": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["spec-ct-i1-044", "design-seam-c07"],
-          "note": "A model does not own a fallback ladder; the effective Hermes profile owns the declared ladder."
+          "evidence": [
+            "spec-ct-i1-044",
+            "design-seam-c07"
+          ]
         },
         "config_surface": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["spec-ct-i1-044", "design-seam-c07"],
-          "note": "The profile and provider configuration, not the model name, are the authored route."
+          "evidence": [
+            "spec-ct-i1-044",
+            "design-seam-c07"
+          ]
         },
         "identity_proof": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["spec-ct-i1-044", "design-seam-c07"],
-          "note": "Identity belongs to the effective credential entry; the model name carries none."
+          "evidence": [
+            "spec-ct-i1-044",
+            "design-seam-c07"
+          ]
         },
         "reset_window_semantics": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["design-seam-c07", "auth-runbook-2026-08-17"],
-          "note": "The effective provider's quota or credit semantics apply; the deepseek name alone has no reset clock."
+          "evidence": [
+            "design-seam-c07",
+            "auth-runbook-2026-08-17"
+          ]
         },
         "rotation_cache_semantics": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["design-seam-c07", "auth-runbook-2026-08-17"],
-          "note": "Hermes profile and gateway restart semantics apply; there is no model-specific rotation cache."
+          "evidence": [
+            "design-seam-c07",
+            "auth-runbook-2026-08-17"
+          ]
         },
         "subagent_credential_inheritance": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["design-seam-c07"],
-          "note": "Hermes owns per-task credential leasing; the model name owns no subagent credential."
+          "evidence": [
+            "design-seam-c07"
+          ]
         },
         "egress_topology": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["design-seam-c07", "auth-runbook-2026-08-17"],
-          "note": "The effective Hermes/provider egress applies; a model name does not define an egress topology."
+          "evidence": [
+            "design-seam-c07",
+            "auth-runbook-2026-08-17"
+          ]
         },
         "probe_target": {
           "state": "not_applicable",
           "value": "model",
-          "evidence": ["design-seam-c07", "auth-runbook-2026-08-17"],
-          "note": "Probe the real Hermes gateway/provider route and deepseek model when exercising it; no separate Adapter probe exists."
+          "evidence": [
+            "design-seam-c07",
+            "auth-runbook-2026-08-17"
+          ]
         },
         "credit_weights": {
           "state": "unverified",
           "value": null,
-          "evidence": ["auth-runbook-2026-08-17", "ctower-weight-registry-d724"],
-          "note": "The runbook names provider credits, 402 exhaustion, and discount windows, but no exact deepseek per-direction weight table is authored."
+          "evidence": [
+            "auth-runbook-2026-08-17",
+            "ctower-weight-registry-d724"
+          ]
         }
       }
     }
-  ]
+  ],
+  "matrix": {
+    "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
+    "revision": 1,
+    "sha256": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+  }
 }

@@ -177,9 +177,10 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 
 - Declarative contract: `.venv/bin/python -m ctower_contracts verify --all`
 - Warm (pinned verify environment): `PYTHON=.venv/bin/python just check`
-- No executable conformance test is included because CT-I1-044 is survey-only. The contract
-  verifier checks generated schema definitions and references; the authored survey and its
-  adversarial semantic mutations are validated against the closed schema in the review battery.
+- Validation-only conformance proof: the contract verifier checks generated schema definitions
+  and references; `tests/conformance/harness-adapter/test_survey_registration.py` generates
+  dependency-matrix violations with a bounded Hypothesis search and validates them against the
+  closed schema. It does not execute a harness, bind a provider, or add runtime behavior.
 - No `just verify` is owed by this docs/contracts-only slice unless the repository gate
   reports that the changed generated contract surface requires it.
 
@@ -191,3 +192,12 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - claim: CT-I1-044 is surveyed for `openclaw`, `qwen-code`, `zcode`, and `deepseek` with revision-pinned evidence; unknowns refuse registration, `deepseek` receives zero adapter work, and no credential value or rotation policy was added.
 - stood-under: The full CT-I1-044 row at `d72408e7`, sealed design `c07c049c`, auth runbook, landed Hermes/Claude bindings, the explicitly unlanded PR #539 Codex candidate, installed Qwen binary/docs, literal absence probes, strict contract data, and the declarative plus warm batteries.
 - if-this-breaks: Re-run the exact source revisions and candidate command probes; do not convert any `UNVERIFIED` answer into a role without a newly reachable fact.
+
+## SIGNED-OFF — 2026-08-20T21:33:29Z
+
+- seat: engineer
+- crew: engineer-044-r5
+- model: gpt-5.6-luna
+- claim: The survey paperwork distinguishes the validation-only schema proof from runtime or binding implementation; the complete dependency matrix and bounded violation search do not activate a harness.
+- stood-under: `contracts/runner/later-wave-harness-survey.matrix.json`, the strict survey schema/data pair, and the focused conformance test at the pushed repair head.
+- if-this-breaks: Re-run the focused schema test and inspect the matrix-derived violation set; do not describe this proof as a harness execution or binding.
