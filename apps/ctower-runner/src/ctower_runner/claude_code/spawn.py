@@ -25,32 +25,7 @@ from ctower_runner_sdk.credentials import Lease
 from ctower_runner_sdk.refusals import Refusal
 from ctower_runner_sdk.spec import HarnessSpec
 
-__all__ = ["failover", "wrapper_pin_refusal"]
-
-
-def wrapper_pin_refusal(spec: HarnessSpec, attempt: AttemptPin) -> Refusal | None:
-    """Refuse an attempt whose pin is not this spec's own, before any guard is asked.
-
-    The observed harness value is carried into the refusal byte-for-byte. An unknown harness
-    is displayed as observed rather than normalized down to something this binding
-    recognizes, because the honest report of a value nobody registered is the value itself.
-    """
-
-    if attempt.harness_ref == spec.key and attempt.composition_digest == spec.composition_digest():
-        return None
-    return Refusal(
-        name="harness-spec-digest-mismatch",
-        observed=(
-            f"the attempt pins {attempt.harness_ref!r} at {attempt.composition_digest!r} "
-            f"against {spec.key!r} at {spec.composition_digest()!r}"
-        ),
-        meaning="a wrapper hides the program's own name, so an unverified pin identifies nothing",
-        action="re-pin the attempt against the registered spec; nothing dispatches meanwhile",
-        detail=(
-            ("observed_harness_ref", attempt.harness_ref),
-            ("observed_composition_digest", attempt.composition_digest),
-        ),
-    )
+__all__ = ["failover"]
 
 
 def failover(

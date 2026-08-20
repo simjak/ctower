@@ -7,6 +7,7 @@ finished — and a dispatch that skipped its guard looks exactly like one that c
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 
 import pytest
@@ -297,3 +298,35 @@ def test_a_blocked_plan_is_still_asked_about_before_it_is_refused(
     assert isinstance(refusal, Refusal), refusal
     assert len(guard.asked) == 1
     assert not [item for item in subject.control.mutations() if item.startswith("launch:")]
+
+
+@pytest.mark.parametrize("pin_field", ("harness_ref", "spec_revision", "composition_digest"))
+@pytest.mark.parametrize(
+    "subject",
+    tuple(subject for subject in subjects() if subject.binding_class == "real"),
+    ids=lambda item: item.name,
+)
+def test_every_real_binding_refuses_each_stale_composition_pin_before_any_mutation(
+    subject: ConformanceSubject, pin_field: str
+) -> None:
+    """Every real binding rejects every stale pin before acquiring or launching."""
+
+    current = subject.inputs.attempt
+    stale_values: dict[str, object] = {
+        "harness_ref": f"{current.harness_ref}-stale",
+        "spec_revision": current.spec_revision + 100,
+        "composition_digest": "forged-composition-digest",
+    }
+    stale = dataclasses.replace(current, **{pin_field: stale_values[pin_field]})
+
+    refusal = subject.binding.spawn(
+        stale,
+        subject.inputs.seat,
+        subject.inputs.brief,
+        subject.inputs.context,
+    )
+
+    assert isinstance(refusal, Refusal), refusal
+    assert refusal.name == "harness-dispatch-pin-mismatch"
+    assert dict(refusal.detail)["mismatched_fields"] == pin_field
+    assert subject.control.mutations() == ()

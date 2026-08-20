@@ -25,7 +25,7 @@ from ctower_runner.claude_code.binding import CLAUDE_CODE_PROBE, CLAUDE_CODE_WRA
 from ctower_runner.claude_code.corpus import CLAUDE_CODE_CORPUS, captured_cases
 from ctower_runner.claude_code.liveness import classify_pane, context_used_pct, pane_digest
 from ctower_runner.claude_code.pool import ClaudeCodePool, ConfigHome, ConfigHomeStore
-from ctower_runner.claude_code.spawn import failover, wrapper_pin_refusal
+from ctower_runner.claude_code.spawn import failover
 from ctower_runner.claude_code.spec import (
     CLAUDE_CODE_KEY,
     CLAUDE_CODE_SATURATION_PERCENT,
@@ -39,11 +39,11 @@ from ctower_runner.claude_code.transcript import (
     served_model,
     transcript_slug,
 )
-from ctower_runner.codex.route import CodexRegistrationAuthority
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.attempt import AttemptPin
 from ctower_runner_sdk.conformance import CorpusCase
 from ctower_runner_sdk.credentials import Lease, MeterObservation
+from ctower_runner_sdk.policy import dispatch_pin_refusal
 from ctower_runner_sdk.refusals import SEAM_MINTED, SPEC_OWNED, Refusal
 from ctower_runner_sdk.registry import REQUIRED_REAL_BINDINGS, HarnessRegistry
 from ctower_runner_sdk.rotation import RotationEvent
@@ -99,20 +99,10 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
     return parsed
 
 
-def _registration_route(
-    document: Mapping[str, object] | None = None,
-) -> CodexRegistrationAuthority:
-    source = _document() if document is None else document
-    parsed = parse_harness_spec(source)
-    assert isinstance(parsed, HarnessSpec), parsed
-    return CodexRegistrationAuthority(parsed)
-
-
 def _registration_registry(*documents: Mapping[str, object]) -> HarnessRegistry:
-    """Compose a registry with fixed authorities for its authored parent documents."""
+    """Return the registry with its closed first-party admission source."""
 
-    sources = documents or (_document(),)
-    return HarnessRegistry(authorities=tuple(_registration_route(document) for document in sources))
+    return HarnessRegistry()
 
 
 def _record(identity: str, quota_state: str, reset_at: datetime, seed: str) -> dict[str, object]:
@@ -553,19 +543,20 @@ def test_an_attempt_pinned_to_another_composition_dispatches_nothing() -> None:
     spec = _spec()
     observed = "  Claude-Code/FORK v2  "
 
-    refusal = wrapper_pin_refusal(
+    refusal = dispatch_pin_refusal(
         spec, _attempt(spec, harness_ref=observed, composition_digest="claude-code@1+sha256:x")
     )
 
     assert isinstance(refusal, Refusal), refusal
-    assert refusal.name == "harness-spec-digest-mismatch"
-    assert dict(refusal.detail)["observed_harness_ref"] == observed
+    assert refusal.name == "harness-dispatch-pin-mismatch"
+    assert dict(refusal.detail)["mismatched_fields"] == "harness_ref,composition_digest"
+    assert dict(refusal.detail)["attempt_harness_ref"] == observed
 
 
 def test_an_attempt_pinned_to_this_spec_is_not_refused() -> None:
     spec = _spec()
 
-    assert wrapper_pin_refusal(spec, _attempt(spec)) is None
+    assert dispatch_pin_refusal(spec, _attempt(spec)) is None
 
 
 def test_failover_after_a_checkpoint_is_a_new_attempt_and_never_a_later_epoch() -> None:

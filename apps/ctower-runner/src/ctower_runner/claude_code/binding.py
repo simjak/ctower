@@ -17,7 +17,6 @@ from datetime import datetime
 
 from ctower_runner.claude_code.liveness import classify_pane, context_used_pct, pane_digest
 from ctower_runner.claude_code.pool import ClaudeCodePool
-from ctower_runner.claude_code.spawn import wrapper_pin_refusal
 from ctower_runner.claude_code.substrate import (
     SupervisorPort,
     TranscriptPort,
@@ -39,6 +38,7 @@ from ctower_runner_sdk.facts import (
 from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan
 from ctower_runner_sdk.policy import (
     collect_refusal,
+    dispatch_pin_refusal,
     ladder_disposition,
     serving_observation,
     teardown_receipt,
@@ -106,7 +106,7 @@ class ClaudeCodeBinding:
         read as idle.
         """
 
-        mispinned = wrapper_pin_refusal(self._spec, attempt)
+        mispinned = dispatch_pin_refusal(self._spec, attempt)
         if mispinned is not None:
             return mispinned
         lease = self._pool.acquire(model_ref=self._spec.probe.model_ref, tier=attempt.profile_ref)

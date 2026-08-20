@@ -10,7 +10,6 @@ from ctower_runner.codex.binding import CodexBinding
 from ctower_runner.codex.ceremonies import CeremonyInvocation, CeremonyOutcome
 from ctower_runner.codex.corpus import CODEX_CORPUS
 from ctower_runner.codex.pool import CodexAccount, CodexPool, ConfigHomeStore
-from ctower_runner.codex.route import CodexRegistrationAuthority
 from ctower_runner.codex.spec import CODEX_KEY, digest_of, harness_spec_document
 from ctower_runner.hermes.spec import harness_spec_document as hermes_spec_document
 from ctower_runner_sdk.attempt import AttemptPin, BriefBundle, SeatRef, WorkspaceContext
@@ -62,9 +61,9 @@ def _spec(overrides: Mapping[str, object] | None = None) -> HarnessSpec:
 
 
 def registration_registry(*specs: HarnessSpec) -> HarnessRegistry:
-    """Compose a registry with its fixed trusted parent-harness authorities."""
+    """Return the registry with its closed first-party admission source."""
 
-    return HarnessRegistry(authorities=tuple(CodexRegistrationAuthority(spec) for spec in specs))
+    return HarnessRegistry()
 
 
 def _hermes_spec() -> HarnessSpec:

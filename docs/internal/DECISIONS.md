@@ -3303,3 +3303,36 @@ Rejected alternatives:
   `pytest.mark.xfail` is rejected by the required-suite gate in both affected suites, `exceptions.yaml`
   cannot reach a suite result and has never carried an entry, and both prior remedy waves (#507, #520)
   shipped the guard extension in the same candidate as the fix. Guard and fix land together here too.
+
+## D74 — Earned Adapter conformance freezes existing cells and admits only reviewed append-only rows (architecture + authority, 2026-08-20, Commander F14 disposition)
+
+D72's public-Seam earning rule is a rule about proof, not a license to rewrite the
+proof while adding a binding. The `claude-code` candidate and the later `codex`
+candidate therefore share this sharper form. The requested label `D73` was already
+occupied by the preceding correspondent-discovery decision above; this entry uses
+the next available identifier so the append-only ledger has no duplicate authority.
+
+1. **Existing cells are frozen at the candidate's entry head.** Every pre-existing
+   conformance test function is compared by a scripted per-function digest against
+   that head. Its assertions cannot be weakened, specialized, or rewritten merely
+   to admit another subject. Any mechanical change forced by a reviewed shared
+   contract must be named as an exception with its exact hunk and the row law that
+   demands it; a whole-file or whole-suite byte-identity claim is not a substitute
+   for that inventory.
+2. **Registration is the append-only entry.** `harness_subjects.py` is the one
+   registration surface for a later real binding. Row-named cells for that binding
+   append to the shared parametrization; the suite does not grow per-binding
+   branches inside existing cells and does not silently change the existing
+   assertion denominator.
+3. **Shared-surface growth is legal only when enumerated and reviewed.** Changes
+   to the registry Interface, doubles, fixtures, or other shared substrate may be
+   required by a row law, but the PR body must list each file and hunk and state
+   the exact law (for example, a trusted-parent registration authority or a typed
+   teardown acknowledgement). Such growth is not byte identity and must never be
+   described as if it were.
+4. **The claim follows the bytes.** The PR body publishes the entry-head digest
+   script, the unchanged-function results, the exception list, and the appended
+   row table. A later binding earns nothing by changing a frozen cell and calling
+   the resulting suite unchanged. This decision sharpens D72 and supersedes
+   nothing; it adds no route, principal, credential, environment variable, flag,
+   migration, or gate waiver.

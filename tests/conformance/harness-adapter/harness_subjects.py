@@ -194,12 +194,7 @@ def fake_document() -> dict[str, object]:
 def registered_registry() -> HarnessRegistry:
     """A registry holding exactly the implementations that exist today."""
 
-    registry = HarnessRegistry(
-        authorities=(
-            registration_authority(hermes_document()),
-            registration_authority(fake_document()),
-        )
-    )
+    registry = HarnessRegistry()
     registry.register(hermes_document(), "real")
     registry.register(fake_document(), "fault_injection_fake")
     return registry
