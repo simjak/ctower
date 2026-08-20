@@ -101,9 +101,7 @@ def test_an_unanswered_survey_question_refuses_rather_than_leaving_the_role_to_a
 def test_an_unanswered_survey_on_the_hosting_harness_refuses_the_routed_class_too() -> None:
     hosted = hermes_spec_document(artifact_digest=_ARTIFACT, config_digest=_CONFIG)
 
-    refusal = registration_registry().register(
-        _unanswered(hosted, "native_fallback"), "real"
-    )
+    refusal = registration_registry().register(_unanswered(hosted, "native_fallback"), "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-survey-incomplete"
