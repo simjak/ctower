@@ -100,6 +100,7 @@ jobs:
               return 124
             fi
 
+            local attempt_started_seconds="$SECONDS"
             printf 'secret-service setup attempt=%d/%d timeout_seconds=%d\n' \
               "$attempt" "$max_attempts" "$attempt_timeout_seconds"
             if timeout --signal=TERM --kill-after=5s "${attempt_timeout_seconds}s" \
@@ -110,12 +111,22 @@ jobs:
               last_exit_code=$?
             fi
 
+            local attempt_elapsed_seconds=$((SECONDS - attempt_started_seconds))
             if (( last_exit_code == 124 )); then
               last_failure_reason="runner-timeout"
-              printf 'secret-service setup attempt=%d classification=retryable reason=%s exit_code=%d\n' \
-                "$attempt" "$last_failure_reason" "$last_exit_code" >&2
+              timeout_variant="cooperative"
+            elif (( last_exit_code == 137 && attempt_elapsed_seconds >= attempt_timeout_seconds )); then
+              last_failure_reason="runner-timeout"
+              timeout_variant="kill-after"
             else
               last_failure_reason="package-or-dependency-error"
+            fi
+
+            if [[ "$last_failure_reason" == "runner-timeout" ]]; then
+              printf 'secret-service setup attempt=%d classification=retryable reason=%s timeout_variant=%s exit_code=%d elapsed_seconds=%d wall_timeout_seconds=%d\n' \
+                "$attempt" "$last_failure_reason" "$timeout_variant" "$last_exit_code" \
+                "$attempt_elapsed_seconds" "$attempt_timeout_seconds" >&2
+            else
               printf 'secret-service setup attempt=%d classification=terminal reason=%s exit_code=%d\n' \
                 "$attempt" "$last_failure_reason" "$last_exit_code" >&2
             fi
