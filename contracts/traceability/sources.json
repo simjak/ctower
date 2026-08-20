@@ -2794,6 +2794,16 @@
         "INV-69",
         "AC-HAD-10"
       ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-48",
+        "INV-77",
+        "AC-HAD-01",
+        "AC-HAD-03"
+      ]
     }
   ]
 }

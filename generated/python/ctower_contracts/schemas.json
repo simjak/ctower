@@ -50,6 +50,7 @@
     "ctower.integration/v3": "contracts/components/integration-v3.schema.json",
     "ctower.knowledge-document/v1": "contracts/domain/knowledge/knowledge.schema.json",
     "ctower.label-vocabulary/v1": "contracts/components/label-vocabulary.schema.json",
+    "ctower.later-wave-harness-survey/v1": "contracts/runner/later-wave-harness-survey.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
     "ctower.persona/v1": "contracts/components/persona.schema.json",
     "ctower.project-delivery/v1": "contracts/domain/project-delivery/project-delivery.schema.json",
@@ -182,6 +183,7 @@
     "https://ctower.local/contracts/runner/credential-lease.schema.json": "contracts/runner/credential-lease.schema.json",
     "https://ctower.local/contracts/runner/harness-capability.schema.json": "contracts/runner/harness-capability.schema.json",
     "https://ctower.local/contracts/runner/harness-spec.schema.json": "contracts/runner/harness-spec.schema.json",
+    "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json": "contracts/runner/later-wave-harness-survey.schema.json",
     "https://ctower.local/contracts/workflow/workflow-definition.schema.json": "contracts/workflow/workflow-definition.schema.json"
   },
   "resources": {
@@ -18450,6 +18452,321 @@
       "title": "HarnessSpec",
       "type": "object"
     },
+    "contracts/runner/later-wave-harness-survey.schema.json": {
+      "$defs": {
+        "answer": {
+          "additionalProperties": false,
+          "properties": {
+            "evidence": {
+              "items": {
+                "pattern": "^[a-z][a-z0-9-]{2,63}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "note": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "verified",
+                "not_applicable",
+                "unverified"
+              ]
+            },
+            "value": {
+              "type": [
+                "boolean",
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "state",
+            "value",
+            "evidence",
+            "note"
+          ],
+          "type": "object"
+        },
+        "candidate": {
+          "additionalProperties": false,
+          "properties": {
+            "adapter_work": {
+              "enum": [
+                "blocked_until_survey",
+                "zero"
+              ]
+            },
+            "answers": {
+              "additionalProperties": false,
+              "properties": {
+                "config_surface": {
+                  "$ref": "#/$defs/answer"
+                },
+                "credit_weights": {
+                  "$ref": "#/$defs/answer"
+                },
+                "egress_topology": {
+                  "$ref": "#/$defs/answer"
+                },
+                "identity_proof": {
+                  "$ref": "#/$defs/answer"
+                },
+                "native_fallback": {
+                  "$ref": "#/$defs/answer"
+                },
+                "native_pool": {
+                  "$ref": "#/$defs/answer"
+                },
+                "probe_target": {
+                  "$ref": "#/$defs/answer"
+                },
+                "reset_window_semantics": {
+                  "$ref": "#/$defs/answer"
+                },
+                "rotation_cache_semantics": {
+                  "$ref": "#/$defs/answer"
+                },
+                "subagent_credential_inheritance": {
+                  "$ref": "#/$defs/answer"
+                }
+              },
+              "required": [
+                "native_pool",
+                "native_fallback",
+                "config_surface",
+                "identity_proof",
+                "reset_window_semantics",
+                "rotation_cache_semantics",
+                "subagent_credential_inheritance",
+                "egress_topology",
+                "probe_target",
+                "credit_weights"
+              ],
+              "type": "object"
+            },
+            "capability_declaration": {
+              "$ref": "#/$defs/capability_declaration"
+            },
+            "classification": {
+              "enum": [
+                "harness_gateway_routed",
+                "harness_baseline",
+                "harness_stub",
+                "model"
+              ]
+            },
+            "effective_route": {
+              "enum": [
+                "gateway",
+                "qwen-cli",
+                "unbound-stub",
+                "hermes-profile"
+              ]
+            },
+            "key": {
+              "enum": [
+                "openclaw",
+                "qwen-code",
+                "zcode",
+                "deepseek"
+              ]
+            },
+            "registration": {
+              "$ref": "#/$defs/registration"
+            },
+            "role_disposition": {
+              "enum": [
+                "undecidable",
+                "not_applicable"
+              ]
+            }
+          },
+          "required": [
+            "key",
+            "classification",
+            "effective_route",
+            "adapter_work",
+            "role_disposition",
+            "registration",
+            "capability_declaration",
+            "answers"
+          ],
+          "type": "object"
+        },
+        "capability_declaration": {
+          "additionalProperties": false,
+          "properties": {
+            "evidence": {
+              "items": {
+                "pattern": "^[a-z][a-z0-9-]{2,63}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "liveness": {
+              "pattern": "^(unknown|inherited:[a-z][a-z0-9_.-]{2,127})$",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "liveness",
+            "evidence",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "question": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "enum": [
+                "native_pool",
+                "native_fallback",
+                "config_surface",
+                "identity_proof",
+                "reset_window_semantics",
+                "rotation_cache_semantics",
+                "subagent_credential_inheritance",
+                "egress_topology",
+                "probe_target",
+                "credit_weights"
+              ]
+            },
+            "prompt": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "prompt"
+          ],
+          "type": "object"
+        },
+        "registration": {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "refused",
+                "not_applicable"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "repo",
+                "design",
+                "runbook",
+                "binary",
+                "installed-doc",
+                "absence-probe"
+              ]
+            },
+            "locator": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "revision": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "revision",
+            "locator"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Revision-pinned CT-I1-044 survey data. Unknown evidence is explicit and cannot be used to choose a configure/provide role.",
+      "properties": {
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/candidate"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/question"
+          },
+          "maxItems": 10,
+          "minItems": 10,
+          "type": "array"
+        },
+        "revision": {
+          "const": 1
+        },
+        "schema": {
+          "const": "ctower.later-wave-harness-survey/v1"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema",
+        "revision",
+        "observed_at",
+        "sources",
+        "questions",
+        "candidates"
+      ],
+      "title": "LaterWaveHarnessSurvey",
+      "type": "object"
+    },
     "contracts/runtime/dream-dispatch-effect.schema.json": {
       "$defs": {
         "consumption": {
@@ -21151,6 +21468,11 @@
       "id": "https://ctower.local/contracts/runner/harness-spec.schema.json",
       "path": "contracts/runner/harness-spec.schema.json",
       "sha256": "sha256:183b8879e3e93a0fe15edfa712c6ad0ebee7586e850159c41574bec0ef58cfa0"
+    },
+    {
+      "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
+      "path": "contracts/runner/later-wave-harness-survey.schema.json",
+      "sha256": "sha256:a6b5d828cbfffce7dfdf7c7688903c4cd9f7229553e0c19403a37ef7800a7c1a"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",

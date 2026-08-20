@@ -312,10 +312,14 @@
       "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql"
     ],
     "AC-HAD-01": [
-      "contracts/runner/harness-spec.schema.json"
+      "contracts/runner/harness-spec.schema.json",
+      "contracts/runner/later-wave-harness-survey.schema.json"
     ],
     "AC-HAD-02": [
       "contracts/runner/harness-capability.schema.json"
+    ],
+    "AC-HAD-03": [
+      "contracts/runner/later-wave-harness-survey.schema.json"
     ],
     "AC-HAD-09": [
       "contracts/runner/harness-spec.schema.json"
@@ -1262,6 +1266,7 @@
       "contracts/components/workspace.schema.json",
       "contracts/runner/harness-capability.schema.json",
       "contracts/runner/harness-spec.schema.json",
+      "contracts/runner/later-wave-harness-survey.schema.json",
       "packs/components/environments/local.linux/v1.yaml",
       "packs/components/harnesses/local.generated-client/v1.yaml",
       "packs/components/images/local.control/v1.yaml",
@@ -1395,7 +1400,8 @@
       "packs/routines/mc-cron.worktree-janitor-apply/v1.yaml"
     ],
     "INV-77": [
-      "contracts/runner/harness-spec.schema.json"
+      "contracts/runner/harness-spec.schema.json",
+      "contracts/runner/later-wave-harness-survey.schema.json"
     ],
     "INV-79": [
       "contracts/domain/events/canonical-vectors.json",
@@ -1620,7 +1626,8 @@
     "SPEC#harness-adapter-seam": [
       "contracts/runner/credential-lease.schema.json",
       "contracts/runner/harness-capability.schema.json",
-      "contracts/runner/harness-spec.schema.json"
+      "contracts/runner/harness-spec.schema.json",
+      "contracts/runner/later-wave-harness-survey.schema.json"
     ],
     "SPEC#human-gate-needs-you-and-resume": [
       "packages/ctower-kernel/migrations/0045_attention_findings.sql"
