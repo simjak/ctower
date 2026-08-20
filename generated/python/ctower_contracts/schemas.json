@@ -18558,6 +18558,40 @@
                   "adapter_work": {
                     "const": "blocked_until_survey"
                   },
+                  "answers": {
+                    "properties": {
+                      "config_surface": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "credit_weights": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "egress_topology": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "identity_proof": {
+                        "$ref": "#/$defs/persisted-device-key-answer"
+                      },
+                      "native_fallback": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "native_pool": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "probe_target": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "reset_window_semantics": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "rotation_cache_semantics": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "subagent_credential_inheritance": {
+                        "$ref": "#/$defs/unverified-answer"
+                      }
+                    }
+                  },
                   "capability_declaration": {
                     "properties": {
                       "liveness": {
@@ -18599,6 +18633,40 @@
                 "properties": {
                   "adapter_work": {
                     "const": "blocked_until_survey"
+                  },
+                  "answers": {
+                    "properties": {
+                      "config_surface": {
+                        "$ref": "#/$defs/env-overridable-answer"
+                      },
+                      "credit_weights": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "egress_topology": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "identity_proof": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "native_fallback": {
+                        "$ref": "#/$defs/model-fallback-only-answer"
+                      },
+                      "native_pool": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "probe_target": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "reset_window_semantics": {
+                        "$ref": "#/$defs/weekly-plan-answer"
+                      },
+                      "rotation_cache_semantics": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "subagent_credential_inheritance": {
+                        "$ref": "#/$defs/unverified-answer"
+                      }
+                    }
                   },
                   "capability_declaration": {
                     "properties": {
@@ -18642,6 +18710,40 @@
                   "adapter_work": {
                     "const": "blocked_until_survey"
                   },
+                  "answers": {
+                    "properties": {
+                      "config_surface": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "credit_weights": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "egress_topology": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "identity_proof": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "native_fallback": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "native_pool": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "probe_target": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "reset_window_semantics": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "rotation_cache_semantics": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "subagent_credential_inheritance": {
+                        "$ref": "#/$defs/unverified-answer"
+                      }
+                    }
+                  },
                   "capability_declaration": {
                     "properties": {
                       "liveness": {
@@ -18683,6 +18785,40 @@
                 "properties": {
                   "adapter_work": {
                     "const": "zero"
+                  },
+                  "answers": {
+                    "properties": {
+                      "config_surface": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "credit_weights": {
+                        "$ref": "#/$defs/unverified-answer"
+                      },
+                      "egress_topology": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "identity_proof": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "native_fallback": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "native_pool": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "probe_target": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "reset_window_semantics": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "rotation_cache_semantics": {
+                        "$ref": "#/$defs/model-answer"
+                      },
+                      "subagent_credential_inheritance": {
+                        "$ref": "#/$defs/model-answer"
+                      }
+                    }
                   },
                   "capability_declaration": {
                     "properties": {
@@ -18843,6 +18979,66 @@
           ],
           "type": "object"
         },
+        "env-overridable-answer": {
+          "properties": {
+            "state": {
+              "const": "verified"
+            },
+            "value": {
+              "const": "env_overridable"
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ],
+          "type": "object"
+        },
+        "model-answer": {
+          "properties": {
+            "state": {
+              "const": "not_applicable"
+            },
+            "value": {
+              "const": "model"
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ],
+          "type": "object"
+        },
+        "model-fallback-only-answer": {
+          "properties": {
+            "state": {
+              "const": "verified"
+            },
+            "value": {
+              "const": "model_fallback_only"
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ],
+          "type": "object"
+        },
+        "persisted-device-key-answer": {
+          "properties": {
+            "state": {
+              "const": "verified"
+            },
+            "value": {
+              "const": "persisted_device_key"
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ],
+          "type": "object"
+        },
         "question": {
           "additionalProperties": false,
           "properties": {
@@ -18941,6 +19137,36 @@
             "local-command-absence",
             "ctower-weight-registry-d724"
           ]
+        },
+        "unverified-answer": {
+          "properties": {
+            "state": {
+              "const": "unverified"
+            },
+            "value": {
+              "const": null
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ],
+          "type": "object"
+        },
+        "weekly-plan-answer": {
+          "properties": {
+            "state": {
+              "const": "verified"
+            },
+            "value": {
+              "const": "weekly_plan"
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ],
+          "type": "object"
         }
       },
       "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
@@ -19161,6 +19387,48 @@
               "minContains": 1
             }
           ],
+          "const": [
+            {
+              "id": "native_pool",
+              "prompt": "Does the candidate ship a native credential pool?"
+            },
+            {
+              "id": "native_fallback",
+              "prompt": "Does the candidate ship a native credential/provider fallback?"
+            },
+            {
+              "id": "config_surface",
+              "prompt": "What is the config surface, and is it authored-config-only?"
+            },
+            {
+              "id": "identity_proof",
+              "prompt": "What proves credential identity: a decodable claim, account file, or nothing?"
+            },
+            {
+              "id": "reset_window_semantics",
+              "prompt": "What are the reset or window semantics?"
+            },
+            {
+              "id": "rotation_cache_semantics",
+              "prompt": "What cache or restart semantics apply after rotation?"
+            },
+            {
+              "id": "subagent_credential_inheritance",
+              "prompt": "How do subagents inherit or acquire credentials?"
+            },
+            {
+              "id": "egress_topology",
+              "prompt": "Is egress shared across entries or isolated per entry?"
+            },
+            {
+              "id": "probe_target",
+              "prompt": "Which product, endpoint, and model does a representative probe measure?"
+            },
+            {
+              "id": "credit_weights",
+              "prompt": "Where are per-model, per-direction credit weights published?"
+            }
+          ],
           "items": {
             "$ref": "#/$defs/question"
           },
@@ -19315,6 +19583,68 @@
               },
               "maxContains": 1,
               "minContains": 1
+            }
+          ],
+          "const": [
+            {
+              "id": "spec-ct-i1-044",
+              "kind": "repo",
+              "locator": "docs/internal/SPEC.md:5342 (CT-I1-044)",
+              "revision": "d72408e7"
+            },
+            {
+              "id": "design-seam-c07",
+              "kind": "design",
+              "locator": "docs/internal/design/harness-adapter-seam.md:303-449",
+              "revision": "c07c049c"
+            },
+            {
+              "id": "auth-runbook-2026-08-17",
+              "kind": "runbook",
+              "locator": "mission-control/playbooks/codex-hermes-auth-runbook.md:77-159",
+              "revision": "2026-08-17"
+            },
+            {
+              "id": "hermes-binding-d724",
+              "kind": "repo",
+              "locator": "apps/ctower-runner/src/ctower_runner/hermes/binding.py",
+              "revision": "d72408e7"
+            },
+            {
+              "id": "claude-binding-d724",
+              "kind": "repo",
+              "locator": "apps/ctower-runner/src/ctower_runner/claude_code/binding.py",
+              "revision": "d72408e7"
+            },
+            {
+              "id": "codex-candidate-ee197",
+              "kind": "repo",
+              "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 reviewed-at revision (OPEN, not landed on origin/main; not the current PR head)",
+              "revision": "ee197705b9503e4e8e86c2a39f83db0878bb986e"
+            },
+            {
+              "id": "qwen-cli-0215",
+              "kind": "binary",
+              "locator": "/home/agent/.local/bin/qwen; qwen --version and qwen --help",
+              "revision": "0.21.5"
+            },
+            {
+              "id": "qwen-docs-0215",
+              "kind": "installed-doc",
+              "locator": "/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md",
+              "revision": "0.21.5"
+            },
+            {
+              "id": "local-command-absence",
+              "kind": "absence-probe",
+              "locator": "command -v openclaw qwen-code zcode deepseek",
+              "revision": "2026-08-20T14:24:08Z"
+            },
+            {
+              "id": "ctower-weight-registry-d724",
+              "kind": "repo",
+              "locator": "packages/ctower-kernel/src/ctower_kernel/pools/topology.py:89-95",
+              "revision": "d72408e7"
             }
           ],
           "items": {
@@ -22042,7 +22372,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.schema.json",
-      "sha256": "sha256:4f04218d37f95cf72f5e4d7afabf9f7dccfac16aa0c83f9b61e7c465e4d21109"
+      "sha256": "sha256:324734bbb8cc5723e37c3346eed611a90cee8c18effaa9e32d48a7618abf244e"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",
