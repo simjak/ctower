@@ -20,6 +20,7 @@ from typing import Protocol
 
 from ctower_runner_sdk.attempt import AttemptPin, WorkspaceContext
 from ctower_runner_sdk.guard import ExecutionPlan
+from ctower_runner_sdk.refusals import Refusal
 
 __all__ = [
     "SupervisorPort",
@@ -41,8 +42,8 @@ class SupervisorPort(Protocol):
     def deliver_input(self, attempt: AttemptPin, text: str) -> str | None:
         """Deliver text and return the durable command record the delivery produced."""
 
-    def terminate(self, attempt: AttemptPin) -> None:
-        """Stop the pane. Disappearance is never read as success."""
+    def terminate(self, attempt: AttemptPin) -> bool | Refusal:
+        """Stop the pane and confirm it stopped. Disappearance is never read as success."""
 
 
 class TranscriptPort(Protocol):

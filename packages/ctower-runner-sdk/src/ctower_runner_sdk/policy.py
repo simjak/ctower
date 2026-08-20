@@ -9,7 +9,7 @@ binding and never crosses the seam.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 
 from ctower_runner_sdk.attempt import AttemptPin, SeatRef
@@ -36,6 +36,7 @@ __all__ = [
     "ladder_disposition",
     "serving_observation",
     "teardown_receipt",
+    "terminate_after_receipt",
     "undeclared_source_refusal",
     "writeback_refusal",
 ]
@@ -245,6 +246,38 @@ def teardown_receipt(
     if order == "reap":
         return _reap(state, artifacts, sole_work_unpushed=sole_work_unpushed, nudged=nudge_offered)
     return _checkpoint(artifacts)
+
+
+def terminate_after_receipt(
+    receipt: TeardownReceipt | Refusal,
+    attempt: AttemptPin,
+    terminate: Callable[[AttemptPin], bool | Refusal],
+) -> TeardownReceipt | Refusal:
+    """Stop exactly once after a successful receipt, and type every stop failure."""
+
+    if isinstance(receipt, Refusal):
+        return receipt
+    try:
+        stopped = terminate(attempt)
+    except BaseException as error:
+        if isinstance(error, (KeyboardInterrupt, SystemExit, GeneratorExit)):
+            raise
+        return _termination_refusal(attempt)
+    if isinstance(stopped, Refusal):
+        return stopped
+    if stopped is not True:
+        return _termination_refusal(attempt)
+    return receipt
+
+
+def _termination_refusal(attempt: AttemptPin) -> Refusal:
+    return Refusal(
+        name="harness-termination-failed",
+        observed="the supervisor did not confirm termination",
+        meaning="a receipt without a stopped lane permits concurrent work under stale ownership",
+        action="repair the supervisor termination path; do not report the lane as stopped",
+        detail=(("attempt_id", str(attempt.attempt_id)),),
+    )
 
 
 def _checkpoint(artifacts: ArtifactSet | None) -> TeardownReceipt | Refusal:

@@ -168,8 +168,9 @@ class _Supervisor:
     def deliver_input(self, attempt: AttemptPin, text: str) -> str | None:
         return f"cmd-{attempt.attempt_id}-{len(text)}"
 
-    def terminate(self, attempt: AttemptPin) -> None:
+    def terminate(self, attempt: AttemptPin) -> bool:
         del attempt
+        return True
 
 
 class _Rollout:

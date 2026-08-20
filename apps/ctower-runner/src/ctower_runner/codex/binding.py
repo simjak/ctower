@@ -56,6 +56,7 @@ from ctower_runner_sdk.policy import (
     ladder_disposition,
     serving_observation,
     teardown_receipt,
+    terminate_after_receipt,
     writeback_refusal,
 )
 from ctower_runner_sdk.refusals import Refusal, substrate_unobservable
@@ -230,7 +231,7 @@ class CodexBinding:
         collected = self.collect(attempt, "checkpoint")
         artifacts = None if isinstance(collected, Refusal) else collected
         head_sha, pushed = self._workspace.head(self._context(attempt))
-        return teardown_receipt(
+        receipt = teardown_receipt(
             order,
             artifacts=artifacts,
             state=self.liveness(attempt, 0).state,
@@ -239,6 +240,7 @@ class CodexBinding:
             expires_at=self._clock(),
             nudge_offered=True,
         )
+        return terminate_after_receipt(receipt, attempt, self._supervisor.terminate)
 
     def _reconcile(self, substrate: LivenessState) -> tuple[LivenessState, str, str]:
         """Report the pool's fact over the substrate's when the two disagree.

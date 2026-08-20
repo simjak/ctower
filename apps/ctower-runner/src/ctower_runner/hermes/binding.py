@@ -39,6 +39,7 @@ from ctower_runner_sdk.policy import (
     ladder_disposition,
     serving_observation,
     teardown_receipt,
+    terminate_after_receipt,
     writeback_refusal,
 )
 from ctower_runner_sdk.refusals import Refusal, substrate_unobservable
@@ -189,7 +190,7 @@ class HermesBinding:
         collected = self.collect(attempt, "checkpoint")
         artifacts = None if isinstance(collected, Refusal) else collected
         head_sha, pushed = self._workspace.head(self._context(attempt))
-        return teardown_receipt(
+        receipt = teardown_receipt(
             order,
             artifacts=artifacts,
             state=self.liveness(attempt, 0).state,
@@ -198,6 +199,7 @@ class HermesBinding:
             expires_at=self._clock(),
             nudge_offered=True,
         )
+        return terminate_after_receipt(receipt, attempt, self._supervisor.terminate)
 
     def lease_for(self, attempt: AttemptPin) -> Lease | Refusal:
         """Resolve the credential this attempt would ride, without dispatching anything."""

@@ -63,6 +63,7 @@ SEAM_MINTED: frozenset[str] = frozenset(
         "harness-spec-revoked",
         "harness-spec-unknown",
         "harness-survey-incomplete",
+        "harness-termination-failed",
         "harness-writeback-scope-refused",
         "park-basis-broken",
         "park-expired",
