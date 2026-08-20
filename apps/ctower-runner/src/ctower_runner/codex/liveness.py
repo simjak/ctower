@@ -69,6 +69,10 @@ _CONTEXT_USED = re.compile(r"context\s+(\d{1,3})\s*%\s*used", re.IGNORECASE)
 _CONTEXT_LEFT = re.compile(
     r"context\s+(\d{1,3})\s*%\s*left|(\d{1,3})\s*%\s*context\s+left", re.IGNORECASE
 )
+_STATUS_LINE = re.compile(
+    r"^\s*(?![>\u203a])(?:[^\n]*\bstatus\b|[^\n]*\bmax\b)[^\n]*[·|│]",
+    re.IGNORECASE,
+)
 _CAP_LINE = re.compile(
     r"^\s*(?:[■⚠•●]\s*)?(?:"
     r"you(?:'ve| have) hit your usage limit"
@@ -107,19 +111,25 @@ def context_used_pct(pane: str) -> int | None:
     than on a bare percentage keeps a coverage line out of this reading entirely.
     """
 
-    matches: list[tuple[int, int]] = [
-        (match.start(), int(match.group(1))) for match in _CONTEXT_USED.finditer(pane)
-    ]
-    matches.extend(
-        (
-            match.start(),
-            _FULL - int(match.group(1) or match.group(2)),
+    matches: list[tuple[int, int, int]] = []
+    for line_number, line in enumerate(pane.splitlines()):
+        if _STATUS_LINE.search(line) is None:
+            continue
+        matches.extend(
+            (line_number, match.start(), int(match.group(1)))
+            for match in _CONTEXT_USED.finditer(line)
         )
-        for match in _CONTEXT_LEFT.finditer(pane)
-    )
+        matches.extend(
+            (
+                line_number,
+                match.start(),
+                _FULL - int(match.group(1) or match.group(2)),
+            )
+            for match in _CONTEXT_LEFT.finditer(line)
+        )
     if not matches:
         return None
-    return max(matches, key=lambda item: item[0])[1]
+    return max(matches, key=lambda item: (item[0], item[1]))[2]
 
 
 def classify_pane(
