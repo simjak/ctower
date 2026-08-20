@@ -288,9 +288,11 @@ missing or participant-inaccessible messages and threads are `tenant-scope-denie
 Inbox state unchanged.
 
 All three reads consume accepted projection state and append no acknowledgement or cursor fact.
-`listInboxCorrespondents` accepts an optional `project_key` query parameter that narrows the listed
-correspondents to one project; `sendInboxMessage` and `ingestInboxNotification` require the same project
-key for recipient resolution. Only a `P0` delivery may use the push/wake path; `P1` and `info` are
+`listInboxCorrespondents` answers only inside the caller's persisted project grants, an operator
+reaching every project the tenant registered a seat in, and accepts an optional `project_key` query
+parameter that narrows the listed correspondents to one project — a project the caller holds no grant on is
+absent when none is named and refused as `project-scope-denied` when one is; `sendInboxMessage` and
+`ingestInboxNotification` require the same project key for recipient resolution. Only a `P0` delivery may use the push/wake path; `P1` and `info` are
 durable rows consumed by the existing n-minute beat-Routine pull, and `readInboxMessageState` reports
 the transported `severity` beside each message's state. Read state is independent of the interrupt
 class: one `P0` still unacknowledged when its declared 15-minute acknowledgement window closes

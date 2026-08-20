@@ -432,7 +432,7 @@ class _ProjectionStore(Protocol):
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList: ...
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList | RecordProblem: ...
 
     def list_project_inbox_correspondents(
         self, actor: Actor, project_key: str
@@ -481,8 +481,8 @@ class Projections:
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)
 
-    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList:
-        """Read the registered seats this principal may address, never invent one."""
+    def list_inbox_correspondents(self, actor: Actor) -> InboxCorrespondentList | RecordProblem:
+        """Read the registered seats this principal may address inside its own grants."""
 
         return self._store.list_inbox_correspondents(actor)
 
