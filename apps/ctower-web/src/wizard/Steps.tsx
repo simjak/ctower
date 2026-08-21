@@ -5,6 +5,7 @@ import { ApplyStep } from "./apply/ApplyStep";
 import { CheckStep } from "./check/CheckStep";
 import { ComposeStep } from "./compose/ComposeStep";
 import { Frame } from "./Frame";
+import { modeTitle } from "./mode";
 import { ReviewStep } from "./review/ReviewStep";
 import { movedCount } from "./review/actions";
 import type { Seed } from "./useSeed";
@@ -25,7 +26,12 @@ export function Steps({ seed }: { readonly seed: Seed }): ReactElement {
   return (
     <Frame current={wizard.step} reached={wizard.reached} footer={footerFor(wizard, plan)}>
       {wizard.step === "company" ? (
-        <ComposeStep seed={seed} draft={wizard.draft} onDraft={wizard.setDraft} />
+        <ComposeStep
+          seed={seed}
+          draft={wizard.draft}
+          onDraft={wizard.setDraft}
+          title={modeTitle({ kind: "answered", value: seed })}
+        />
       ) : null}
       {wizard.step === "check" ? <CheckStep answer={wizard.check} /> : null}
       {wizard.step === "review" ? <ReviewStep answer={wizard.plan} /> : null}
