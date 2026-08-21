@@ -12,14 +12,14 @@ import type { Seed } from "./useSeed";
 import { useWizard } from "./useWizard";
 
 /**
- * The four steps and the one control that leaves each of them.
+ * The Company page: the full bundle editor, four steps, inside the shell.
  *
  * Every forward control is disabled until the step behind it has an answer that
  * permits it: a bundle that did not check does not plan, a plan that moves
  * nothing does not apply, and apply does not arm until the operator says on
  * screen that it is theirs.
  */
-export function Steps({ seed }: { readonly seed: Seed }): ReactElement {
+export function CompanyPage({ seed }: { readonly seed: Seed }): ReactElement {
   const wizard = useWizard(seed);
   const plan = wizard.plan.kind === "answered" ? wizard.plan.value : null;
 
@@ -53,7 +53,7 @@ function footerFor(wizard: ReturnType<typeof useWizard>, plan: Plan): ReactNode 
       return (
         <>
           <span className="flex-1" />
-          <Button variant="cta" onClick={wizard.runCheck}>
+          <Button variant="primary" onClick={wizard.runCheck}>
             Check the bundle <ArrowRight />
           </Button>
         </>
@@ -68,7 +68,7 @@ function footerFor(wizard: ReturnType<typeof useWizard>, plan: Plan): ReactNode 
           />
           <span className="flex-1" />
           <Button
-            variant="cta"
+            variant="primary"
             onClick={wizard.runPlan}
             disabled={!(wizard.check.kind === "answered" && wizard.check.value.valid)}
             title={
@@ -91,7 +91,7 @@ function footerFor(wizard: ReturnType<typeof useWizard>, plan: Plan): ReactNode 
           />
           <span className="flex-1" />
           <Button
-            variant="cta"
+            variant="primary"
             onClick={(): void => {
               wizard.go("apply");
             }}
@@ -116,7 +116,7 @@ function footerFor(wizard: ReturnType<typeof useWizard>, plan: Plan): ReactNode 
           />
           <span className="flex-1" />
           <Button
-            variant="cta"
+            variant="primary"
             disabled={!wizard.armed || plan === null}
             onClick={(): void => {
               if (plan !== null) {

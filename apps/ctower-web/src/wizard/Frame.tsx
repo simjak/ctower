@@ -3,7 +3,13 @@ import { StepRail } from "./StepRail";
 import { STEPS } from "./steps";
 import type { StepKey } from "./steps";
 
-/** The rail, the content column, and nothing else. */
+/**
+ * The page's own body: the four steps across the top, the step under them, and
+ * the one control that leaves it.
+ *
+ * The steps run horizontally now because the shell already owns a vertical rail
+ * and a screen with two of them tells the operator neither is the way out.
+ */
 export function Frame({
   current,
   reached,
@@ -16,7 +22,7 @@ export function Frame({
   readonly footer?: ReactNode;
 }): ReactElement {
   return (
-    <div className="mx-auto grid max-w-[1000px] gap-8 px-6 py-8 md:grid-cols-[180px_minmax(0,1fr)]">
+    <>
       <StepRail steps={STEPS} current={current} reached={reached} />
       <div className="min-w-0" aria-live="polite">
         {children}
@@ -26,6 +32,6 @@ export function Frame({
           </footer>
         )}
       </div>
-    </div>
+    </>
   );
 }

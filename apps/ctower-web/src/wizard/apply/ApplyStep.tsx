@@ -1,8 +1,8 @@
-import { ShieldAlert } from "lucide-react";
 import type { ReactElement } from "react";
 import type { CompanyBundleCommandResult, CompanyBundlePlan } from "@ctower/client";
 import type { Answer } from "../../api/client";
-import { Badge, Card, CardBody, CardHeader, CardTitle, Mono, PageHead } from "../../ui/primitives";
+import { Card, CardBody, CardHeader, CardTitle, Chip, Mono, PageHead } from "../../ui/primitives";
+import { Mark } from "../../ui/marks";
 import { Checkbox } from "../../ui/form";
 import { cn } from "../../ui/cn";
 import { shortDigest } from "../bundle";
@@ -39,9 +39,9 @@ export function ApplyStep({
         title="Apply"
         subtitle={
           <>
-            <Badge tone="accent">
+            <Chip tone="amber">
               {moved} {moved === 1 ? "change" : "changes"}
-            </Badge>
+            </Chip>
             <span>
               version <Mono>{plan.base_version}</Mono> → <Mono>{plan.base_version + 1}</Mono>
             </span>
@@ -51,19 +51,19 @@ export function ApplyStep({
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <ShieldAlert className="size-4 shrink-0 text-warn" />
+            <Mark name="warn" />
             <CardTitle>Apply runs with operator authority</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
-            <p className="m-0 text-sm text-ink-2">
+            <p className="m-0 text-sm text-muted">
               This writes the company record. It is the operator&apos;s command, and ctower will
               refuse it from anyone else.
             </p>
             <label
               className={cn(
                 "flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3",
-                "transition-colors duration-(--motion-duration-fast)",
-                armed ? "border-warn bg-warn-bg" : "border-line-2 hover:bg-raised/50"
+                "",
+                armed ? "border-amber bg-amber/10" : "border-line hover:bg-raised"
               )}
             >
               <Checkbox
@@ -71,7 +71,7 @@ export function ApplyStep({
                 onCheckedChange={onArm}
                 label="Confirm this runs with operator authority"
               />
-              <span className="text-sm font-medium text-ink">
+              <span className="text-sm font-medium text-fg">
                 I am applying this as the operator.
               </span>
             </label>
@@ -102,14 +102,14 @@ function Outcome({
     case "asking":
       return (
         <>
-          <PageHead title="Apply" subtitle={<Badge tone="warn">sending</Badge>} />
+          <PageHead title="Apply" subtitle={<Chip tone="amber">sending</Chip>} />
           <Asking what="Applying, and waiting for ctower to accept it" />
         </>
       );
     case "refused":
       return (
         <>
-          <PageHead title="Apply" subtitle={<Badge tone="refuse">refused</Badge>} />
+          <PageHead title="Apply" subtitle={<Chip tone="danger">refused</Chip>} />
           <Refused
             problem={answer.problem}
             action="Nothing was written. Go back, review the changes, and apply again."
@@ -119,7 +119,7 @@ function Outcome({
     case "unreachable":
       return (
         <>
-          <PageHead title="Apply" subtitle={<Badge tone="unknown">unknown</Badge>} />
+          <PageHead title="Apply" subtitle={<Chip tone="neutral">unknown</Chip>} />
           <Unreachable
             detail={answer.detail}
             action="Whether this was written is not known. Applying again reuses the same command, so it cannot write twice."
@@ -129,7 +129,7 @@ function Outcome({
     case "malformed":
       return (
         <>
-          <PageHead title="Apply" subtitle={<Badge tone="warn">contract</Badge>} />
+          <PageHead title="Apply" subtitle={<Chip tone="amber">contract</Chip>} />
           <Malformed detail={answer.detail} />
         </>
       );
@@ -151,13 +151,13 @@ function Receipt({ receipt }: { readonly receipt: CompanyBundleCommandResult }):
         subtitle={
           accepted ? (
             <>
-              <Badge tone="proven">applied</Badge>
+              <Chip tone="ok">applied</Chip>
               <span>
                 now at version <Mono>{receipt.active_version}</Mono>
               </span>
             </>
           ) : (
-            <Badge tone="warn">not yet durable</Badge>
+            <Chip tone="amber">not yet durable</Chip>
           )
         }
       />
@@ -165,13 +165,13 @@ function Receipt({ receipt }: { readonly receipt: CompanyBundleCommandResult }):
         <CardHeader>
           <CardTitle>{accepted ? "Receipt" : "Sent, and not yet accepted"}</CardTitle>
           <span className="flex-1" />
-          <Badge tone="neutral">
+          <Chip tone="neutral">
             {receipt.event_ids.length} {receipt.event_ids.length === 1 ? "event" : "events"}
-          </Badge>
+          </Chip>
         </CardHeader>
         <CardBody className="space-y-1.5">
           {accepted ? null : (
-            <p className="m-0 mb-2 text-sm text-ink-2">
+            <p className="m-0 mb-2 text-sm text-muted">
               ctower took the command and has not confirmed it is durable. It is not applied until
               it says so.
             </p>
@@ -196,8 +196,8 @@ function Line({
 }): ReactElement {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="w-32 shrink-0 text-xs text-ink-3">{label}</span>
-      <Mono className="min-w-0 truncate text-ink-2" title={value}>
+      <span className="w-32 shrink-0 text-xs text-muted">{label}</span>
+      <Mono className="min-w-0 truncate text-muted" title={value}>
         {plain === true ? value : shortDigest(value)}
       </Mono>
     </div>

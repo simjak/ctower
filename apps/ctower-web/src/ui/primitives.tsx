@@ -4,66 +4,64 @@ import type { ComponentProps, ReactElement } from "react";
 import { cn } from "./cn";
 
 /**
- * The component vocabulary, ported from paperclip's shadcn `new-york` set and
- * rewired to ctower's own token names (D3: port the mechanism, keep the marks).
- * One component per job, variants as props — paperclip's Principle 1.
+ * The component vocabulary, bound to `DESIGN.md`.
  *
- * Nothing here names a colour or a type size directly: colours are tokens from
- * `styles/app.css` and sizes come from the type scale, never from an arbitrary
- * pixel value (paperclip Principle 2).
+ * Nothing here names a colour, a size or a radius directly — they come from the
+ * token layer and from the closed seven-step scale. Two of that file's rules
+ * show up here as absences rather than as code: there is no transition on a
+ * hover, because stillness is the brand and hover choreography is not real work
+ * moving; and there is no blue variant, because blue does not exist here.
  */
 
-const FOCUS =
-  "outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent";
-
 export function Card({ className, ...props }: ComponentProps<"section">): ReactElement {
-  return (
-    <section className={cn("rounded-lg border border-line bg-surface-2", className)} {...props} />
-  );
+  return <section className={cn("rounded-md border border-line bg-card", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<"header">): ReactElement {
   return (
     <header
-      className={cn("flex items-center gap-3 border-b border-line px-5 py-3.5", className)}
+      className={cn("flex items-center gap-3 border-b border-line px-4 py-3", className)}
       {...props}
     />
   );
 }
 
 export function CardTitle({ className, ...props }: ComponentProps<"h2">): ReactElement {
-  return (
-    <h2 className={cn("m-0 text-sm leading-none font-semibold text-ink", className)} {...props} />
-  );
+  return <h2 className={cn("m-0 text-md leading-none font-semibold", className)} {...props} />;
 }
 
 export function CardBody({ className, ...props }: ComponentProps<"div">): ReactElement {
-  return <div className={cn("p-5", className)} {...props} />;
+  return <div className={cn("p-4", className)} {...props} />;
 }
 
+/**
+ * One primary per screen. The primary is the amber fill carrying `--on-amber`;
+ * a destructive action is an outline that names its consequence, rather than a
+ * red block shouting before the operator has read anything.
+ */
 const buttonVariants = cva(
   cn(
-    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md",
-    "text-sm font-medium transition-colors duration-(--motion-duration-fast)",
-    "disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0",
-    FOCUS
+    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap",
+    "rounded-sm border border-transparent text-sm font-semibold",
+    "disabled:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+    // A control that is not yet armed says so by going quiet, not by wearing a
+    // dimmed version of its own fill.
+    "disabled:border-line disabled:bg-transparent disabled:text-muted"
   ),
   {
     variants: {
       variant: {
-        /** The one commit on a screen: paperclip's own `cta` weight. */
-        cta: "bg-ink text-bg hover:bg-ink/90",
-        primary: "bg-accent text-accent-ink hover:bg-accent-deep",
-        outline: "border border-line-2 bg-surface-2 text-ink hover:bg-raised",
-        ghost: "text-ink-2 hover:bg-raised hover:text-ink",
-        danger: "bg-refuse text-white hover:bg-refuse-deep",
+        primary: "bg-amber text-on-amber hover:bg-amber-strong hover:text-white",
+        ghost: "border-line bg-transparent text-fg hover:bg-raised",
+        quiet: "text-muted hover:bg-raised hover:text-fg",
+        danger: "border-danger bg-transparent text-danger",
       },
       size: {
         base: "h-9 px-4",
-        sm: "h-8 px-3 text-xs",
+        sm: "h-7 px-2.5 text-xs",
       },
     },
-    defaultVariants: { variant: "outline", size: "base" },
+    defaultVariants: { variant: "ghost", size: "base" },
   }
 );
 
@@ -80,10 +78,9 @@ export function Input({ className, ...props }: ComponentProps<"input">): ReactEl
   return (
     <input
       className={cn(
-        "h-9 w-full min-w-0 rounded-md border border-line-2 bg-bg px-3 text-sm text-ink",
-        "placeholder:text-ink-4 transition-colors duration-(--motion-duration-fast)",
-        "disabled:cursor-not-allowed disabled:opacity-55",
-        FOCUS,
+        "h-9 w-full min-w-0 rounded-sm border border-line bg-bg px-3 text-sm text-fg",
+        "placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-50",
+        "focus:border-transparent focus:outline-2 focus:outline-offset-0 focus:outline-amber",
         className
       )}
       {...props}
@@ -91,43 +88,31 @@ export function Input({ className, ...props }: ComponentProps<"input">): ReactEl
   );
 }
 
-const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium",
-  {
-    variants: {
-      tone: {
-        neutral: "border-line-2 bg-raised text-ink-2",
-        proven: "chip chip-proven",
-        refuse: "chip chip-refuse",
-        warn: "chip chip-warn",
-        info: "chip chip-info",
-        accent: "chip chip-accent",
-        unknown: "chip chip-unknown",
-      },
-    },
-    defaultVariants: { tone: "neutral" },
-  }
-);
+const chipVariants = cva("chip", {
+  variants: {
+    tone: { neutral: "", amber: "chip-amber", ok: "chip-ok", danger: "chip-danger" },
+  },
+  defaultVariants: { tone: "neutral" },
+});
 
 /** A state, never a sentence: two words is the budget. */
-export function Badge({
+export function Chip({
   className,
   tone,
   ...props
-}: ComponentProps<"span"> & VariantProps<typeof badgeVariants>): ReactElement {
-  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+}: ComponentProps<"span"> & VariantProps<typeof chipVariants>): ReactElement {
+  return <span className={cn(chipVariants({ tone }), className)} {...props} />;
 }
 
-/** Machine values look machine-made: ids, digests, keys, counts, timestamps. */
+/** Machine-owned text: keys, digests, ports, refs, counts. */
 export function Mono({ className, ...props }: ComponentProps<"span">): ReactElement {
   return <span className={cn("mono", className)} {...props} />;
 }
 
 /**
- * The screen's own head: what this is, what state it is in, and the one action
- * that leaves it. Paperclip puts the title, the subtitle and the action cluster
- * on one line at the top of the content column, and a screen without one reads
- * as a fragment rather than a page.
+ * A page's own head: what this is, one line of what it is for, and the state it
+ * is in. No hero, no marketing voice — the title is 22px and the screen gets on
+ * with it.
  */
 export function PageHead({
   title,
@@ -135,16 +120,18 @@ export function PageHead({
   children,
 }: {
   readonly title: string;
-  readonly subtitle: ComponentProps<"span">["children"];
+  readonly subtitle?: ComponentProps<"span">["children"];
   readonly children?: ComponentProps<"div">["children"];
 }): ReactElement {
   return (
-    <div className="mb-5 flex flex-wrap items-start gap-3">
+    <div className="mb-4 flex flex-wrap items-start gap-3">
       <div className="min-w-0 flex-1">
-        <h1 className="m-0 text-2xl leading-tight font-semibold tracking-[-0.01em] text-ink">
-          {title}
-        </h1>
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-3">{subtitle}</div>
+        <h1 className="m-0 text-xl leading-tight font-bold tracking-[-0.02em]">{title}</h1>
+        {subtitle === undefined ? null : (
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
+            {subtitle}
+          </div>
+        )}
       </div>
       {children === undefined ? null : <div className="flex items-center gap-2">{children}</div>}
     </div>
