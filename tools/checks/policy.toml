@@ -280,8 +280,8 @@ paths = ["apps/ctower-api/src/**"]
 allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "process-execution-tools"]
 
 [[ownership]]
-name = "ui-shell"
-paths = ["apps/ctower-ui/**"]
+name = "ui-design-reference"
+paths = ["apps/ctower-ui/design-reference/**"]
 allowed_dependencies = []
 
 [[ownership]]

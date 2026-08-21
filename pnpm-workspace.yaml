@@ -1,5 +1,5 @@
 packages:
+  - apps/ctower-web
   - generated/typescript/*
-  - apps/ctower-ui
 
 sharedWorkspaceLockfile: true
