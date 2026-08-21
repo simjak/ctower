@@ -687,7 +687,7 @@ header — and rename the tabs to what ctower can actually prove:
 | **Readiness** | Dashboard | the eight composed cells of §5.1; no aggregate green without all eight |
 | **Authority** | Tools + trust preset + adapter toggles + permission grants | one derived allow-list: project scope, writeback fact classes (`capture` / `transition` / `evidence`), tool allow-list, guard decision |
 | **Composition** | Configuration | `harness_ref` **and** the runtime/profile reference carrying credential lineage (CT-I1-043: a model is not a harness), pinned model, `revision` + both digests |
-| **Credentials** | Secrets | pool entries by decoded identity, three axes, per-account reset clocks, aliases only, no copy verb |
+| **Credentials** | Secrets | pool entries by decoded identity, three axes, per-account reset clocks, aliases only, no copy verb; the drift list with each `missing` row's enactment path, and the mint request and keep-or-evict decision that close it (§6.1.1) |
 | **Instructions** | Instructions | revision-pinned, with the attempts that pinned each revision |
 | **Runs & evidence** | Runs + Audit | attempts with their pinned composition and their collected artifacts (committed refs only) |
 | **Spend** | Budget | credits by model × account in native units, raw tokens alongside, refusal on a stale weight table |
@@ -807,6 +807,72 @@ without adopting its env-var habit. If no entry is selectable the wizard refuses
 `credential-pool-exhausted` shape — `observed`, `meaning`, `action`, per-entry three-axis states,
 and the earliest known reset or an explicit `unknown` — rather than creating a seat that will fail
 at its first `spawn`.
+
+#### 6.1.1 · Step 5b — the mint, which is the wizard's most safety-critical screen
+
+Selecting from a pool that already has an entry is the easy half. A setup wizard whose job is to
+stand up a *new* seat will routinely meet a pool that has nothing selectable for the model this
+seat needs, and the brief asks for **credential-reference mints** by name. That screen is where
+the credential law is either kept or lost, so it is designed explicitly rather than left to the
+refusal above.
+
+**The seam already fixes almost all of it, and the constraint is unusual: ctower asks, and never
+performs.** `CredentialPool` exposes `request_mint(identity) -> MintRequest` and no copy verb
+(`packages/ctower-runner-sdk/src/ctower_runner_sdk/credentials.py:1–7`, `193–199`, `293–294`), and D72 states the
+rule twice: new credential material enters *"only through `request_mint`, which the pool may ask
+for and never perform"*, and *"Pool membership stays operator-owned in every class: ctower
+acquires, meters, and reports, and never mints an entry, refills credits, or raises a plan;
+reaching a credential is not entitlement to it."* So this screen is not a form that creates a
+credential. It is a screen that states a request, hands the ceremony to the operator, and then
+waits for an observation to prove it happened.
+
+**What the screen reads.** The work-list is already served: `readPoolLimits` returns
+`PoolProfileLimits.drift`, and each `PoolDriftFinding` carries `finding ∈ {missing, unregistered}`,
+`provider_key`, `subscription_identity`, `enactment` and `detail`. `AC-HAD-12` fixes the meaning —
+a desired-but-absent subscription is `missing` and *"routed to its declared enactment path
+(`operator-ceremony` for OAuth grants, `secret-reference` for API keys), never reported as
+ordinary unavailability or silently dropped from the chain"*. The wizard therefore does not invent
+a mint list; it renders the reconciliation the registry already computed, in the registry's own two
+classes.
+
+**Two ceremonies, drawn differently, because their custody differs.**
+
+| `enactment` | What the operator does | What ctower's browser ever holds |
+| --- | --- | --- |
+| `operator-ceremony` | performs that profile's **own** device flow, in the harness's own tooling, on the host | nothing. No code, no token, no file path carrying material. The screen shows which provider and which decoded identity is wanted, and a *done* control that starts a re-observation |
+| `secret-reference` | supplies a **reference** — the alias the secret already has in the secret store | the alias string only. The field is typed as a reference and rejects a value-shaped input by name rather than accepting and storing it |
+
+The `secret-reference` field is the single most dangerous input in the whole cockpit, and it gets
+the wizard's only typing-time refusal: a value that parses as credential material is refused with
+*"secrets are references, never values"* rather than saved. §5.6's keeper is the same rule in
+paperclip's better words — bindings are *"fetched on demand via the run-bound agent API and never
+written to the environment"*, read *"by alias"*.
+
+**Four things this screen must never draw**, each absent because a verb is absent:
+
+1. **No paste-an-`auth.json`, no upload, no "copy from another entry".** There is no copy verb, and
+   the reason is in the Interface's own docstring: *"OAuth refresh tokens here are single-use
+   chains, so installing a copied auth file replays a consumed token and the provider revokes the
+   whole chain — every grant derived from that login dies at once."* A copy control is not a
+   convenience here; it is the `chain-burned` state with a button on it.
+2. **No mint control on an `edge-challenged` entry.** `AC-HAD-10`: a mint moves **only the `auth`
+   axis**, *"so an `edge-challenged` entry is never routed to a mint, rotation, or restart"*. The
+   control is absent with its reason, not present-and-failing.
+3. **No claim that the mint fixed quota or reach.** Same rule, drawn: after a mint the screen
+   re-renders all three axes and only `auth` may have moved. An entry that is now `auth: healthy`
+   and still `quota: capped` is not ready, and the screen says which axis is still blocking.
+4. **No "minted" success state.** The ceremony completing is the operator's claim, not an
+   observation. The entry enters as `registration_state: discovered`, which `AC-HAD-10` makes
+   **non-selectable pending an explicit operator keep-or-evict**, and it is keyed by *decoded
+   identity, never by label*. So the screen's terminal state is `awaiting first observation`, and
+   the seat cannot be registered on it — which is the same discipline as §7.1's `durability
+   pending`, applied to a credential.
+
+**Two operations do not exist for this, and §8.2 counts them.** The read half is served; both
+writes are missing, and both are operator-owned: requesting the mint (G8) and recording the
+keep-or-evict decision that turns a `discovered` identity into an `enrolled` one or removes it
+(G9). Until they exist, this step renders the drift list and the ceremony instructions and takes
+no action — which is a usable screen, and an honest one, but it is not "no new operation needed".
 
 Note the axis that most UIs would collapse and `AC-HAD-10` forbids collapsing: an entry can be
 `auth: healthy`, `quota: available`, `reach: edge-challenged`. It is not dead and it is not out of
@@ -943,18 +1009,22 @@ scopes a build without knowing which half they are in.
 | Lane state transitions | `appendSpawnTransition` (`POST /v1/spawn-records/{spawn_id}/transitions`) | |
 | Crew session registry | `listProjectSessions`, `listTicketSessions`, `startTicketSession`, `recordTicketSessionFact` | `TicketSession` carries `crew_name`, `harness_ref`, `model_ref`, `branch_ref`, `state`, `outcome`, token counts |
 | Durability rendering (§7.1) | `SessionReceipt.durability_state` + `command_id` | the field exists; the UI has to respect it |
-| **Credentials tab and wizard step 5, whole** | `readPoolLimits` (`GET /v1/pools`) | `PoolEntryState` already carries `auth_state`, `quota_state`, `quota_reset_at`, `reach_state`, `selectable`, `registration_state`, `subscription_identity`, `credit_state`, `metered_millicredits`. `PoolProfileLimits` adds `selectable_entry_count`, `earliest_known_reset_at`, `drift`. The schema's own description states the no-aggregate rule: *"a pool holding two exhausted entries and one near-full entry is not one word."* **No new operation needed.** |
+| **Credentials tab and wizard step 5 — the whole *read* half** | `readPoolLimits` (`GET /v1/pools`) | `PoolEntryState` already carries `auth_state`, `quota_state`, `quota_reset_at`, `reach_state`, `selectable`, `registration_state`, `subscription_identity`, `credit_state`, `metered_millicredits`. `PoolProfileLimits` adds `selectable_entry_count`, `earliest_known_reset_at`, and `drift`, whose `PoolDriftFinding` rows already carry `finding` and `enactment` — so even the *mint work-list* is served. The schema's own description states the no-aggregate rule: *"a pool holding two exhausted entries and one near-full entry is not one word."* **No new operation needed to read.** The two writes the wizard needs are G8 and G9 (§6.1.1). |
 | **Spend tab** | the same `readPoolLimits` — `weights` (`PoolModelWeight`) + `topology_revision` | the versioned weight table `AC-HAD-12` requires is already in the read |
 | Pool observation write | `recordPoolObservation` | |
 | Chat plane, correspondents, threads | `listInboxThreads`, `readInboxThread`, `sendInboxMessage`, `ingestInboxNotification`, `listInboxCorrespondents`, `readInboxMessageState`, `acknowledgeInboxMessage`, `promoteInboxThread` | the existing composer/thread surfaces in `surfaces/chat/` bind to these today |
 | Board, tickets, timeline, evidence | `getBoard`, `getTicket`, `getTicketTimeline`, `listTicketAuditEvents`, proof and workflow operations | the right-hand pane's ticket context |
 | Shell, tokens, marks, tree badges | `apps/ctower-ui` (§2) | |
 
-The honest headline: **the terminal pane, the credentials surface and the spend surface need zero
-new API operations.** That is not a small finding — it is most of the wizard's hardest step and
-the whole of the highest-risk pane.
+The honest headline: **the terminal pane, the spend surface and every *read* the credentials
+surface needs already exist as operations.** That is not a small finding — it is most of the
+wizard's hardest step and the whole of the highest-risk pane. Two qualifications keep it honest,
+and both are elsewhere in this document rather than buried here: the credentials surface still
+needs two operator-owned **writes** (G8, G9 — §6.1.1), and the terminal pane's seven operations
+are unreachable from this cockpit's *current* browser boundary, which is a boundary problem rather
+than an operation problem (§9, slice ordering).
 
-### 8.2 What does not exist — seven operations, and what each one costs
+### 8.2 What does not exist — nine operations, and what each one costs
 
 Each row is real work, because the contract is a **closed world**. Adding one operation to
 `contracts/http/openapi.yaml` is not the single edit point it looks like; it requires:
@@ -981,9 +1051,13 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 | G5 | **Read a workspace change set** — per-file `+N −N`, committed vs uncommitted separated, dirty paths named, plus the `ArtifactSet` triple `branch` / `head_sha` / `pushed` and the repository's own web origin | right-top (§4.3) | `recordTicketChangeReference` is a write. The `+N −N` badges in `apps/ctower-ui` today come from server-side git reads in `src/read/sources/`, which is fine for an operator surface over a local checkout and is not an API. `AC-HAD-06`'s committed-only rule needs to be enforced *in the read*, not in the renderer. The push state and the web origin are what gate and address the `Create PR` handoff below; without them the control cannot tell a clean-unpushed branch from a clean-pushed one, which are different failures. |
 | G6 | **Register a harness / submit a survey** — the wizard's write, returning `harness-survey-incomplete` / `harness-layer-conflict` / `harness-spec-incompatible` verbatim | wizard step 3 and 7 (§6) | The refusal vectors exist as test data (`harness-spec-vectors.json`); no operation performs the registration. Blocked on CT-I1-044 regardless. |
 | G7 | **Dry-run the guard** — obtain a CommandGuard decision for a normalized plan and return it, dispatching nothing | wizard step 7's `Test Agent` (§6.1) | The guard is invoked at the pre-dispatch boundary inside `spawn`. Exposing a decision-only path is a deliberate new operation, and it is the one place a "test" button can be honest. |
+| G8 | **Request a credential mint** — return the `MintRequest` triple (`provider_key`, `subscription_identity`, `enactment`) for a `missing` drift row, and record that the operator was asked | wizard step 5b (§6.1.1), Credentials tab (§5.7) | `request_mint` is an Interface method on `CredentialPool` (`credentials.py:293`) with **no HTTP surface**: all 104 authored operations contain no pool-mint path, and `recordPoolObservation` is a sweep of observed entries, not a request. D72 constrains its shape hard — ctower asks and never performs — so this is an operator-principal write whose result is a *stated request*, never material. It carries no secret in either direction, which is what makes it addable at all. |
+| G9 | **Keep or evict a `discovered` identity** — the operator decision that turns an observed identity into an `enrolled` entry or removes it | wizard step 5b, Credentials tab | `AC-HAD-10` makes a `discovered` identity *"non-selectable pending operator keep-or-evict"* and `AC-HAD-12` says the same of a present-but-undesired `unregistered` entry. No operation records that decision, so today the state is reachable and its exit is not. Operator-only, keyed by **decoded identity** rather than label — a keep-or-evict routed by label is the mislabelled-entry fixture that criterion exists to catch. |
 
-Two of the seven (G6, G7) are blocked on tickets that have not started. Five (G1–G5) are
-implementable against merged seam code once its phase activates.
+Two of the nine (G6, G7) are blocked on tickets that have not started. Two (G8, G9) are
+operator-owned credential writes that carry no secret in either direction and depend on no
+unstarted ticket — they are gated only by the pool's own phase. Five (G1–G5) are implementable
+against merged seam code once its phase activates.
 
 **The mutation this list deliberately does not add: creating the pull request.** A reader
 counting Conductor's panes against this table will look for a create-PR operation and not find
@@ -1064,11 +1138,17 @@ a handoff can be drawn without the surface claiming the outcome.
 
 ### Slice 4 — Credentials, Spend, Readiness — as far as they go without dispatch
 
-`GET /v1/pools` already answers most of it (§8.1). The Credentials tab renders three axes per
-entry with per-account reset clocks and no copy verb; Spend renders credits by model × account
-against `weights` + `topology_revision`, refusing on a stale table. Readiness (§5.1) renders every
-cell it can prove and marks the rest **unproven by name** — which, before the seam's phase
-activates, is most of them. That is the correct output, and it is the anti-`HEALTHY`.
+`GET /v1/pools` already answers every read (§8.1). The Credentials tab renders three axes per
+entry with per-account reset clocks and no copy verb, plus the `drift` list with each `missing`
+row's enactment path; Spend renders credits by model × account against `weights` +
+`topology_revision`, refusing on a stale table. Readiness (§5.1) renders every cell it can prove
+and marks the rest **unproven by name** — which, before the seam's phase activates, is most of
+them. That is the correct output, and it is the anti-`HEALTHY`.
+
+This slice is **read-only on purpose**: G8 and G9 (§6.1.1) are the mint request and the
+keep-or-evict, and both are wizard-side writes. So a `discovered` identity renders here with its
+pending decision *named and not takeable* — which is honest, and is also the cheapest possible
+argument for landing G9 next.
 
 **Proves:** that a composed verdict is honest when it is mostly negative, which is the hardest
 thing about §5.1 and the thing paperclip never attempted.
@@ -1096,6 +1176,12 @@ G6 + G7, blocked on CT-I1-044 and gated by CT-I1-043. Steps 1, 2, 5 and 6 are pa
 earlier (the card grid, the pool step, the allow-list); steps 3, 4 and 7 are CT-I1-044's
 deliverable rendered, and building them before it exists would mean inventing the survey's
 semantics in a UI — which is how the classification ends up living in two places.
+
+**Step 5b — the mint (§6.1.1) — is the part of this slice that does *not* wait for CT-I1-044.**
+G8 and G9 are operator-owned pool writes over a read that already exists and a reconciliation the
+registry already computes; neither needs the survey. They can land with slice 4, and they should,
+because until they do, the Credentials tab can show an operator a `discovered` identity and offer
+no way to resolve it.
 
 ### The dependency summary
 
@@ -1161,7 +1247,8 @@ rather than source, it says so in place.
 | Declared capabilities per binding | `apps/ctower-runner/src/ctower_runner/hermes/spec.py:38–49`; `apps/ctower-runner/src/ctower_runner/claude_code/spec.py:45–55` |
 | Steer and collect enforcement | `packages/ctower-runner-sdk/src/ctower_runner_sdk/policy.py` — `input_refusal` at 144–159, `collect_refusal` at 162+ |
 | HTTP surface | `contracts/http/openapi.yaml` — 104 operations; console operations under `/v1/console/…` and `/v1/admin/console/…` |
-| Pool read shape | `PoolLimitsView`, `PoolProfileLimits`, `PoolEntryState`, `PoolModelWeight` |
+| Pool read shape | `PoolLimitsView`, `PoolProfileLimits`, `PoolEntryState`, `PoolModelWeight`, `PoolDriftFinding` (`finding` + `enactment`) |
+| Mint and its custody | `credentials.py:1–7` (no copy verb, and why), `59–88` the meanings table, `193–199` `MintRequest`, `293–294` `request_mint`; `DECISIONS.md` D72 §2 (*"which the pool may ask for and never perform"*, *"Pool membership stays operator-owned in every class"*) |
 | Closed-world inventories | `tools/codegen/_inventory.py`; `tests/contracts/http/{test_openapi,test_codegen,test_scalar_profile_codegen}.py` (`104` / `97`) |
 | Phase ladder | `tools/checks/expected-suites.toml` — `active_phase`, `phase_order` |
 | UI boundary and shell | `apps/ctower-ui/README.md`; `apps/ctower-ui/src/app/conductor.css:1–14, 55–58`; `apps/ctower-ui/design-reference/app.css:5, 10, 51–56`; `apps/ctower-ui/src/surfaces/**` |
