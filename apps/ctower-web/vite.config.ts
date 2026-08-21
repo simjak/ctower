@@ -8,7 +8,7 @@ import { defineConfig } from "vite";
  * `docs/internal/SPEC.md` states it twice — the browser receives no API bearer,
  * and no API token reaches browser JavaScript. So the credential lives in this
  * Node process for the life of the server and nowhere else: the browser asks
- * its own origin for `/api/...`, this proxy attaches the operator credential,
+ * its own origin for `/v1/...`, this proxy attaches the operator credential,
  * and the API remains the one authorization authority. There is no code path
  * that hands the token to the client bundle, and `import.meta.env` carries none.
  *
@@ -34,11 +34,17 @@ export default defineConfig({
     host: process.env.CTOWER_WEB_HOST ?? "127.0.0.1",
     port: Number(process.env.CTOWER_WEB_PORT ?? "3141"),
     strictPort: true,
+    // Tailnet-only exposure: the dev server binds the Tailscale interface and the
+    // operator reaches it by MagicDNS name, so those names must pass Vite's host check.
+    allowedHosts: ["agents-engineering-02.tail615f37.ts.net", "agents-engineering-02"],
     proxy: {
-      "/api": {
+      // The generated client builds absolute paths from the authored contract,
+      // so the proxy key is the contract's own prefix and nothing is rewritten.
+      // The app's base URL is its own origin; the operation table stays the one
+      // source of truth for every path.
+      "/v1": {
         target: apiOrigin,
         changeOrigin: false,
-        rewrite: (path: string): string => path.replace(/^\/api/, ""),
         headers: { Authorization: `Bearer ${credential}` },
       },
     },
