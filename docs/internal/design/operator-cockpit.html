@@ -320,6 +320,20 @@
         .pane[data-collapse] { display: none; }
         .mobile-note { display: block; }
       }
+      /* FINDING-004 — at 375px the top bar overflowed by 9px: .killsw is
+         nowrap/flex:none (correct — a safety control must not wrap mid-label)
+         and the instance identity has no business competing with it for width.
+         The KILL SWITCH IS NEVER HIDDEN: it is the one control an operator
+         reaches for when they cannot see what is happening. What gives way is
+         the identity text and the switch's own word label — the chip still
+         states off/on, and the button still says what it does. */
+      @media (max-width: 700px) {
+        .topbar .dim.mono { display: none; }
+        .killsw .dim { display: none; }
+        /* the lane tab strip scrolls rather than pushing the page wider */
+        .tabs { overflow-x: auto; scrollbar-width: none; }
+        .tabs::-webkit-scrollbar { display: none; }
+      }
       .mobile-note {
         display: none;
         padding: 10px 12px;
