@@ -53,7 +53,7 @@ const buttonVariants = cva(
       variant: {
         /** The one commit on a screen: paperclip's own `cta` weight. */
         cta: "bg-ink text-bg hover:bg-ink/90",
-        primary: "bg-accent text-white hover:bg-accent-deep",
+        primary: "bg-accent text-accent-ink hover:bg-accent-deep",
         outline: "border border-line-2 bg-surface-2 text-ink hover:bg-raised",
         ghost: "text-ink-2 hover:bg-raised hover:text-ink",
         danger: "bg-refuse text-white hover:bg-refuse-deep",
@@ -101,6 +101,7 @@ const badgeVariants = cva(
         refuse: "chip chip-refuse",
         warn: "chip chip-warn",
         info: "chip chip-info",
+        accent: "chip chip-accent",
         unknown: "chip chip-unknown",
       },
     },
