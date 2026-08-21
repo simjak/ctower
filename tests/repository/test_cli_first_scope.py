@@ -50,7 +50,7 @@ class CliFirstScopeTests(unittest.TestCase):
         normalized_guidance = " ".join(current_guidance.split())
         self.assertIn(canonical_order, normalized_guidance)
         self.assertIn(browser_activation, normalized_guidance)
-        self.assertIn("D41", normalized_guidance)
+        self.assertIn("D75", normalized_guidance)
 
         self.assertNotIn("CLI + thin UI -> source-of-truth cutover", current_guidance)
 
