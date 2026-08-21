@@ -118,8 +118,15 @@ Its product stance is already ctower's, verbatim:
 | Colour | OKLCH neutral semantic core — `--background: oklch(1 0 0)`, `--foreground: oklch(0.145 0 0)`, `--muted-foreground: oklch(0.556 0 0)`, `--border: oklch(0.922 0 0)` — with a complete `.dark` override block and a `--sidebar-*` family. | `index.css:74–91`, `.dark` at `289+` |
 | Radius | **One knob.** `--radius: 0.5rem` and a multiplicative ladder — `--radius-sm: calc(var(--radius) * 0.6)` through `--radius-4xl: calc(var(--radius) * 2.6)` — so the whole app's corner language retunes from a single value. | `index.css:59–74` |
 | Status | One seed hue per state, consumed through a `color-mix` recipe that derives both modes from that one seed: `.status-chip { background-color: color-mix(in srgb, var(--sc) 15%, white); color: color-mix(in srgb, var(--sc) 82%, black); border-color: var(--sc) }`, with a `.dark` counterpart at 22%/80%/48%. | `index.css:1951–1959` |
-| Motion | Two tiers. Primitives `--motion-duration-{instant,fast,base,slow,deliberate}` = 80/160/240/360/520ms plus two house curves (`--motion-ease-out-expo: cubic-bezier(0.16,1,0.3,1)`, `--motion-ease-standard: cubic-bezier(0.4,0,0.2,1)`); every scoped token (`--motion-tool-enter`, `--motion-cot-collapse`, `--motion-diff-reveal`…) references a primitive. `prefers-reduced-motion` zeroes the **primitives**, and the comment states the reason: *"Zeroing the primitives cascades to every scoped token that references them."* | `index.css:221–253`, `544–560` |
+| Motion | Two tiers, and the rule is about **components**, not about tokens: *"Any new motion in the redesigned thread MUST reference one of these tokens — no hardcoded ms / cubic-bezier in components (enforced by a check script)."* Tier one is the primitives — `--motion-duration-{instant,fast,base,slow,deliberate}` = 80/160/240/360/520ms plus two house curves (`--motion-ease-out-expo: cubic-bezier(0.16,1,0.3,1)`, `--motion-ease-standard: cubic-bezier(0.4,0,0.2,1)`). Tier two is scoped tokens, most of which reference a primitive (`--motion-tool-enter`, `--motion-cot-collapse`, `--motion-diff-reveal`) while a minority carry a literal because no primitive fits — staggers (`40ms`), loops (`1.6s`, `1.1s`) and one-off timings (`380ms`, `320ms`, `4000ms`). The reduced-motion block is where the two tiers show: it zeroes the **primitives**, *"Zeroing the primitives cascades to every scoped token that references them; the literal-valued scoped tokens (staggers, loops) are zeroed explicitly."* | `index.css:216–219` (the component rule), `223–231` (primitives), `233–254` (scoped), `551–573` (reduced motion) |
 | Components | shadcn `new-york`, `baseColor: neutral`, `cssVariables: true`, lucide icons. | `ui/components.json` |
+
+One motion detail is worth carrying verbatim because the cockpit will hit it: paperclip's
+reduced-motion block deliberately does **not** zero `--motion-interstitial-dwell`, and says why —
+*"it is a pacing hold, not a movement — zeroing it would make the interstitial line churn faster
+under reduced motion"* (`index.css:567–569`). The cockpit's own holds — how long a `durability
+pending` chip sits before it resolves, how long a gap row stays legible before the stream scrolls
+past it — are pacing, not animation, and a reduced-motion reader needs them *more*, not less.
 
 Adopt all of the above. Two of paperclip's own principles are worth restating because they are
 the ones that decide the cockpit's hard cases: **Principle 4**, *hierarchy through structure, not
@@ -1120,8 +1127,10 @@ rather than source, it says so in place.
 
 `/srv/projects/paperclip-eval/DESIGN.md` (product stance, eight principles, enforcement);
 `ui/src/index.css` (tokens: `23–24` type, `59–74` radius ladder and semantic core, `155–165`
-status hues, `221–253` motion, `544–560` reduced-motion collapse, `1951–1959` the `.status-chip`
-recipe, `289+` the `.dark` block); `ui/components.json`;
+status hues, `216–219` the no-hardcoded-ms component rule, `223–231` motion primitives, `233–254`
+scoped motion tokens, `551–573` the reduced-motion collapse and its deliberate dwell exception at
+`567–569`, `1951–1959` the `.status-chip` recipe, `289+` the `.dark` block);
+`ui/components.json`;
 `ui/src/components/agent-config-defaults.ts:8, 11`;
 `ui/src/adapters/claude-local/config-fields.tsx:239`;
 `ui/src/adapters/codex-local/config-fields.tsx:40`;
