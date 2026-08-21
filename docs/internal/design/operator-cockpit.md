@@ -295,7 +295,32 @@ the seam refuses a destructive delivery, not a futile one.
 
 ### 4.2 Centre — the transcript, and the steer question the brief asked
 
-**Backend:** `writeback` for outgoing turns, the `collect` transcript path for incoming ones.
+**Backend: neither of the two verbs a first reading reaches for.** This is the pane whose backend
+mapping is easiest to get wrong, so it is stated before anything is drawn.
+
+- **Not `writeback` for outgoing turns.** `writeback(attempt, seat, seat_credential, facts)` files
+  `capture` / `transition` / `evidence` facts **as the seat**, and `AC-HAD-05` refuses an adapter
+  presented with an operator or commander credential. An operator message routed through it would
+  invert the credential boundary and forge a seat's own filing. `input_refusal` is a **policy
+  predicate**, not a transport.
+- **Not `collect` for incoming ones.** `collect` returns an `ArtifactSet` — `branch`, `head_sha`,
+  `pushed`, gate-output paths, an optional status path, a `Handoff`
+  (`packages/ctower-runner-sdk/src/ctower_runner_sdk/facts.py:113–127`). No turns, no text, no
+  thinking, no tool rows, no interrupts. There is no "`collect` transcript path"; that phrase was
+  wrong in an earlier draft of this document.
+
+What *does* exist, one layer below the seam: D10's Supervisor Interface already owns process
+control — *"`probe`, `launch`, `observe`, `deliver_input`, `interrupt`, `terminate`, `snapshot`,
+`adopt` — and that vocabulary is not reopened here"* (`seam.py:1–9`). `spawn` already delivers the
+initial brief through `deliver_input` and keeps the durable command ID it answers with
+(`apps/ctower-runner/src/ctower_runner/hermes/binding.py:108`), and `observe` already returns
+captured pane text — *harness-private* text that `AC-HAD-08` forbids any kernel, projection, CLI
+or Board path from parsing.
+
+So the centre pane's two backends are both **real work at the seam layer, not routes over merged
+verbs**, and §8.2's G3 and G4 say what each one costs. The design below is written against what
+those two would have to provide, which is the useful thing a design can do before the contract
+exists: it constrains the vocabulary rather than inventing it.
 
 Turn rows as Conductor draws them: agent turn, collapsible `Thinking`, inline tool rows
 (*icon · label · truncated monospace command*), `INTERRUPTED` chip, elapsed stamp, per-turn
@@ -1078,8 +1103,8 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 | --- | --- | --- | --- |
 | G1 | **Read a lane's liveness** — `served_model`, `working` / `capped` / `saturated` / `unknown`, context percentage, the classified failure, and its evidence source | left rail (§4.1), composer gating (§4.2a) | `SpawnRecord.status` is a durable lifecycle status, not an observation of the substrate. `AC-HAD-03`/`AC-HAD-04` semantics — precedence, `substrate-unobservable:<probe>`, conflict-not-truth — have no HTTP surface at all. This is the single most load-bearing gap: without it the rail cannot honour "capped outranks working." |
 | G2 | **Read the harness registry** — registered `HarnessSpec` key, revision, digests, declared `capabilities`, `context_window_percent`, `liveness_sources`, survey answers and derived `layers` | composer gating (§4.2a), Readiness (§5.1), Composition tab, wizard steps 2–4 | The specs exist as Python constants and contract JSON. Nothing serves them over HTTP, so the browser cannot derive the composer's enabled state from declared capability — and a UI-local guess is exactly what §4.2a forbids. |
-| G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state | centre (§4.2) | No transcript operation exists. `listTicketAuditEvents` is a typed audit stream, not a harness transcript, and `AC-HAD-08` forbids any kernel/projection/CLI/board path from parsing a harness-private transcript format — so the binding must project typed facts and *those* need a read. |
-| G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME` | composer (§4.2) | `sendInboxMessage` is the tenant-wide comms plane; it never evaluates a project grant and is not a lane input. Steering a crew through the inbox would bypass the capability check entirely. |
+| G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state. **Two layers, not one: a seam-side typed turn fact set, then the HTTP read over it.** | centre (§4.2) | No transcript operation exists, and no *seam* path exists either. `collect` returns an `ArtifactSet` (`facts.py:113–127`) — branch, head, pushed, gate outputs, handoff — with no turn in it, and `observe` returns harness-private pane text that `AC-HAD-08` forbids any kernel/projection/CLI/Board path from parsing. `listTicketAuditEvents` is a typed audit stream, not a harness transcript. So the binding must first project typed turn facts across the seam — which is open question 2's vocabulary and a **contract decision** — and only then does a route have anything to serve. Costing this as a route alone is the mistake this row exists to prevent. |
+| G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME`. **Two layers again: a seam-level post-spawn input path composed over D10's `deliver_input`, then the HTTP route.** | composer (§4.2) | The five merged verbs have no lane-input method: `spawn` launches *and* delivers the initial brief, `writeback` files seat-authored facts (`AC-HAD-05` refuses an operator credential at an adapter), and `input_refusal` is a policy predicate rather than a transport. What already exists is one layer down — `SupervisorPort.deliver_input(attempt, text) -> durable command id` (`hermes/substrate.py:39`), which `spawn` already uses. The new path must **compose over it, never duplicate it**: `seam.py:1–9` names a second process-control vocabulary at the harness layer as the two-authorities-for-one-fact mistake. It also needs the ACK rule (`AC-HAD-02`: steer counts as acknowledged only on the returned durable command ID) and the principal decision of open question 3. `sendInboxMessage` is not a substitute: it is the tenant-wide comms plane, never evaluates a project grant, and would bypass the capability check entirely. |
 | G5 | **Read a workspace change set** — per-file `+N −N`, committed vs uncommitted separated, dirty paths named, plus the `ArtifactSet` triple `branch` / `head_sha` / `pushed` and the repository's own web origin | right-top (§4.3) | `recordTicketChangeReference` is a write. The `+N −N` badges in `apps/ctower-ui` today come from server-side git reads in `src/read/sources/`, which is fine for an operator surface over a local checkout and is not an API. `AC-HAD-06`'s committed-only rule needs to be enforced *in the read*, not in the renderer. The push state and the web origin are what gate and address the `Create PR` handoff below; without them the control cannot tell a clean-unpushed branch from a clean-pushed one, which are different failures. |
 | G6 | **Register a harness / submit a survey** — the wizard's write, returning `harness-survey-incomplete` / `harness-layer-conflict` / `harness-spec-incompatible` verbatim | wizard step 3 and 7 (§6) | The refusal vectors exist as test data (`harness-spec-vectors.json`); no operation performs the registration. Blocked on CT-I1-044 regardless. |
 | G7 | **Dry-run the guard** — obtain a CommandGuard decision for a normalized plan and return it, dispatching nothing | wizard step 7's `Test Agent` (§6.1) | The guard is invoked at the pre-dispatch boundary inside `spawn`. Exposing a decision-only path is a deliberate new operation, and it is the one place a "test" button can be honest. |
@@ -1088,8 +1113,21 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 
 Two of the nine (G6, G7) are blocked on tickets that have not started. Two (G8, G9) are
 operator-owned credential writes that carry no secret in either direction and depend on no
-unstarted ticket — they are gated only by the pool's own phase. Five (G1–G5) are implementable
-against merged seam code once its phase activates.
+unstarted ticket — they are gated only by the pool's own phase.
+
+The remaining five split, and the split matters more than the count. **G1, G2 and G5 are routes
+over facts the merged seam already produces** — `LivenessFact`, `HarnessSpec`, `ArtifactSet` — so
+for them, phase activation genuinely is the only gate. **G3 and G4 are not.** Each needs a seam-
+layer capability that does not exist yet, and each carries an unresolved decision underneath it:
+
+| Gap | What the merged seam supplies today | What must exist first |
+| --- | --- | --- |
+| G3 transcript | nothing at turn level — `collect` returns artifacts, `observe` returns harness-private text `AC-HAD-08` forbids anyone else parsing | a typed turn/thinking/tool/interrupt fact vocabulary crossing the seam — **open question 2**, a contract decision |
+| G4 lane input | `deliver_input` at D10's Supervisor layer, already used by `spawn`; `input_refusal` as a predicate; `STEER_DURABLE_COMMAND_ID` as a declared capability | a seam-level post-spawn input path composing over `deliver_input` (never a second process-control vocabulary), its ACK-on-durable-command-ID behaviour, and the driving-principal ruling — **open question 3**, an authority decision |
+
+Both also need their conformance behaviour in the shared suite that `AC-HAD-01` requires of every
+binding, since a fake that cannot fail-inject an input refusal or a missing turn proves nothing
+about either.
 
 **The mutation this list deliberately does not add: creating the pull request.** A reader
 counting Conductor's panes against this table will look for a create-PR operation and not find
