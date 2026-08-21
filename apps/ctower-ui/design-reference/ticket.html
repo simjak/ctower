@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>gh#192 · A project seat can obtain its own scoped, revocable credential · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b>
+    </span>
+    <a class="back" href="board.html">← Board</a>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html" class="on" aria-current="page">Ticket</a>
+  <a href="workflow.html">Workflow</a>
+  <a href="heartbeats.html">Heartbeats</a>
+  <a href="metrics.html">Metrics</a>
+  <a href="inbox.html">Inbox</a>
+  <a href="feed.html">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+
+  <div class="thead">
+    <div class="crumbs">
+      <span>ctower</span><span>/</span><span>identities</span>
+      <span class="id">019fbdc3-8e21-7a4c-b3d2-9c41ef0a77b5</span>
+    </div>
+
+    <h1><span class="g g-held">⛔</span>A project seat can obtain its own scoped, revocable credential</h1>
+
+    <div class="tmeta">
+      <span class="chip proj ctower">ctower</span>
+      <span class="pri p1">P1</span>
+      <span class="chip">G1 · gap story</span>
+      <span class="chip">identity</span>
+      <span class="chip">deliverable 2 · machine-commander identities</span>
+    </div>
+
+    <div class="custody">
+      <span class="k">custody</span>
+      <span class="mono">ctower-commander</span><span class="arrow">→</span><span class="mono">engineer-192-identities</span>
+      <span class="k">held since</span><span class="mono">21:52</span>
+      <span class="k">authority</span><span class="mono">existing · D24</span>
+      <span class="k">grants</span><span class="mono">operator-only · D29 §4</span>
+    </div>
+  </div>
+
+  <!-- stage strip: the same seven stages the board renders as columns -->
+  <nav class="strip" aria-label="Stage">
+    <div class="st done"><div class="nm"><span class="g g-done">●</span>intake</div><div class="sub">17:10 · 6m</div></div>
+    <div class="st done"><div class="nm"><span class="g g-done">●</span>triage</div><div class="sub">17:35 · 1h 12m</div></div>
+    <div class="st now"><div class="nm"><span class="g g-held">⛔</span>build</div><div class="sub">held 1h 13m</div></div>
+    <div class="st"><div class="nm"><span class="g g-open">○</span>review</div><div class="sub">not started</div></div>
+    <div class="st"><div class="nm"><span class="g g-open">○</span>qa</div><div class="sub">not started</div></div>
+    <div class="st"><div class="nm"><span class="g g-open">○</span>staging</div><div class="sub">no infrastructure</div></div>
+    <div class="st"><div class="nm"><span class="g g-open">○</span>released</div><div class="sub">not started</div></div>
+  </nav>
+
+  <div class="banner">
+    <span class="g g-held">⛔</span>
+    <div>
+      <h3>held · file-disjointness</h3>
+      <p>The engineer stopped itself rather than edit a contested file: the custody surface this
+         credential needs is being rewritten by <b>#191 — carry the seat facts</b>, already on the main
+         track. It resequences by rebasing onto #191; the scope model is disjoint from it, so no work
+         is thrown away.</p>
+      <div class="meta">
+        <span>raised by <b>engineer-192-identities</b></span>
+        <span>at <b>21:52</b></span>
+        <span>clears when <b>#191 merges</b></span>
+        <span>needs the operator: <b>no</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <!-- ── main column ──────────────────────────────────────────────── -->
+    <div class="main">
+
+      <section class="panel">
+        <header><h2>Brief</h2></header>
+        <div class="body">
+          <p>manibo drove the shadow instance end to end and hit the wall first: a project seat has no
+             way to obtain its own credential, so every write still borrows the ctower commander's
+             authority. Until a seat can hold a scoped, revocable credential of its own, no other
+             project can file against its own board, and the 115-item manibo ledger cannot start
+             moving.</p>
+          <p>This issues per-<span class="mono">(project, seat)</span> credentials with named scopes,
+             revocable by the operator, and refuses every issuance path that does not name its
+             authority. Cross-project mutation refuses by name — that is the isolation D29 sold to the
+             operator, and it is the clause that has to be proven, not asserted.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header>
+          <h2>Acceptance criteria</h2>
+          <span class="sub">2 of 5 proven</span>
+        </header>
+        <ul class="crit">
+          <li>
+            <span class="g g-done">●</span>
+            <div>
+              <div class="t">The issuance path names its authority, and an unauthorised issuer is refused by name.</div>
+              <div class="proof"><span class="ok">proven</span><span>refuses_unauthorised_issuer_by_name</span><span>sha 9f2a41c</span><span>19:41</span></div>
+            </div>
+          </li>
+          <li>
+            <span class="g g-done">●</span>
+            <div>
+              <div class="t">A credential carries its (project, seat) pair and its named scopes, and nothing wider.</div>
+              <div class="proof"><span class="ok">proven</span><span>credential_scope_shape</span><span>sha 9f2a41c</span><span>19:41</span></div>
+            </div>
+          </li>
+          <li class="unmet">
+            <span class="g g-open">○</span>
+            <div>
+              <div class="t">A revoked credential's next call refuses by name (D29 §6).</div>
+              <div class="proof"><span class="no">no verdict recorded</span><span>raised by cso-192-grants · 21:26</span></div>
+            </div>
+          </li>
+          <li class="unmet">
+            <span class="g g-open">○</span>
+            <div>
+              <div class="t">A principal of one project cannot mutate another project's tickets — one named refusal test per project pair.</div>
+              <div class="proof"><span class="no">blocked</span><span>custody has no project-grant input until #191 lands</span></div>
+            </div>
+          </li>
+          <li class="unmet">
+            <span class="g g-open">○</span>
+            <div>
+              <div class="t">manibo's commander seat obtains a credential and files one real ticket against its own board.</div>
+              <div class="proof"><span class="no">no verdict recorded</span><span>adoption proof · runs after merge</span></div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ── the work timeline ──────────────────────────────────────── -->
+      <section class="panel">
+        <header>
+          <h2>Work timeline</h2>
+          <span class="sub">6 sessions · 5 seats</span>
+        </header>
+
+        <div class="totals">
+          <div class="tgrid">
+            <div><div class="k">Sessions</div><div class="v">6</div></div>
+            <div><div class="k">Work time</div><div class="v">4h 34m</div></div>
+            <div><div class="k">Tokens</div><div class="v">1.73<small>M</small></div></div>
+            <div><div class="k">Seats</div><div class="v">5</div></div>
+          </div>
+          <div class="split">
+            <div class="lbl"><span>tokens by model</span><span>2 families</span></div>
+            <div class="bar-split">
+              <span class="s-xhigh" style="width:53.7%"></span>
+              <span class="s-max"   style="width:29.5%"></span>
+              <span class="s-opus"  style="width:16.8%"></span>
+            </div>
+            <div class="legend">
+              <span><i class="s-xhigh"></i>sol-xhigh 930k</span>
+              <span><i class="s-max"></i>sol-max 510k</span>
+              <span><i class="s-opus"></i>opus-5 291k</span>
+            </div>
+          </div>
+        </div>
+
+        <ul class="tl">
+
+          <li>
+            <span class="who"><i class="av av-cm">CM</i></span>
+            <div class="e">
+              <div class="hdr">
+                <span class="seat">commander</span>
+                <span class="crew">commander-ctower</span>
+                <span class="when">17:10 · 6m</span>
+              </div>
+              <div class="did">Filed G1 out of manibo's live dogfooding: authority issuance is the adoption
+                blocker — no project seat can write anything without borrowing ctower's own principal.</div>
+              <div class="row">
+                <span class="cost"><span class="m">sol-max</span><i class="dot"></i>24k tok</span>
+                <span class="verdict v-filed">filed</span>
+              </div>
+              <div class="arts">
+                <span class="art">ticket 019fbdc3…</span>
+                <a class="art link" href="https://github.com/simjak/ctower/issues/192">gh#192 ↗</a>
+                <span class="art">gap story G1</span>
+              </div>
+            </div>
+          </li>
+
+          <li>
+            <span class="who"><i class="av av-em">EM</i></span>
+            <div class="e">
+              <div class="hdr">
+                <span class="seat">engineering-manager</span>
+                <span class="crew">em-185-multiproject</span>
+                <span class="when">17:35 · 1h 12m</span>
+              </div>
+              <div class="did">Sequenced identities ahead of scopes in the three-project readiness plan,
+                and found scopes unchained from the #152 role race — that gate binds multi-database
+                deployments only, not two projects in one database.</div>
+              <div class="row">
+                <span class="cost"><span class="m">sol-max</span><i class="dot"></i>486k tok</span>
+                <span class="verdict v-pass">pass</span>
+              </div>
+              <div class="arts">
+                <a class="art link" href="https://github.com/simjak/ctower/pull/189">PR #189 ↗</a>
+                <span class="art">plan §3</span>
+                <span class="art">counters 1/5</span>
+              </div>
+            </div>
+          </li>
+
+          <li>
+            <span class="who"><i class="av av-op">OP</i></span>
+            <div class="e">
+              <div class="hdr">
+                <span class="seat">operator</span>
+                <span class="crew">human seat · CEO</span>
+                <span class="when">18:48 · 4m</span>
+              </div>
+              <div class="did">Approved the tenancy scope: one database, N project checkpoints, the
+                prohibited-data classes including the BH.Loop HIPAA line, and grants issued by the
+                operator only.</div>
+              <div class="row">
+                <span class="cost"><span class="m">human</span><i class="dot"></i>no tokens</span>
+                <span class="verdict v-pass">approved</span>
+              </div>
+              <div class="arts">
+                <span class="art">decision D29</span>
+                <span class="art">relay note · 18:48</span>
+              </div>
+            </div>
+          </li>
+
+          <li>
+            <span class="who"><i class="av av-en">EN</i></span>
+            <div class="e">
+              <div class="hdr">
+                <span class="seat">engineer</span>
+                <span class="crew">engineer-192-identities</span>
+                <span class="when">19:12 · 2h 08m</span>
+              </div>
+              <div class="did">Built principals, the per-(project, seat) scope model, the issuance and
+                revocation paths, and 14 tests that each assert a refusal by its name.</div>
+              <div class="row">
+                <span class="cost"><span class="m">sol-xhigh</span><i class="dot"></i>812k tok</span>
+                <span class="verdict v-flight">evidence attached</span>
+              </div>
+              <div class="arts">
+                <span class="art">branch feat/192-identities</span>
+                <span class="art">14 tests · sha 9f2a41c</span>
+                <span class="art">criteria 2/5</span>
+              </div>
+            </div>
+          </li>
+
+          <li>
+            <span class="who"><i class="av av-cs">CS</i></span>
+            <div class="e">
+              <div class="hdr">
+                <span class="seat">cso</span>
+                <span class="crew">cso-192-grants</span>
+                <span class="when">21:26 · 38m</span>
+              </div>
+              <div class="did">Revocation has no named-refusal test. A revoked credential's next call must
+                refuse by name, and D29 §6 requires that proof before this can merge — a credential that
+                revokes silently is worse than one that never existed.</div>
+              <div class="row">
+                <span class="cost"><span class="m">opus-5 · max</span><i class="dot"></i>291k tok</span>
+                <span class="verdict v-changes">changes_requested</span>
+              </div>
+              <div class="arts">
+                <span class="art">verdict sha 7c11e08</span>
+                <span class="art">criterion 3</span>
+                <span class="art">cross-family · author ran on sol</span>
+              </div>
+            </div>
+          </li>
+
+          <li>
+            <span class="who"><i class="av av-en">EN</i></span>
+            <div class="e">
+              <div class="hdr">
+                <span class="seat">engineer</span>
+                <span class="crew">engineer-192-identities</span>
+                <span class="when">21:52 · 26m</span>
+              </div>
+              <div class="did">Stopped rather than edit a contested file: the custody surface this needs is
+                being rewritten by #191, already on the main track. Resequencing by rebase once #191
+                lands.</div>
+              <div class="row">
+                <span class="cost"><span class="m">sol-xhigh</span><i class="dot"></i>118k tok</span>
+                <span class="verdict v-held">held · file-disjointness</span>
+              </div>
+              <div class="arts">
+                <span class="art">stop note sha e304b91</span>
+                <a class="art link" href="https://github.com/simjak/ctower/pull/191">blocked by #191 ↗</a>
+              </div>
+            </div>
+          </li>
+
+        </ul>
+      </section>
+
+      <!-- ── evidence ───────────────────────────────────────────────── -->
+      <section class="panel">
+        <header>
+          <h2>Evidence</h2>
+          <span class="sub">5 of 8 slots · 3 required unfilled</span>
+        </header>
+        <div class="slots">
+
+          <div class="shot">
+            <div class="frame">
+<span class="dim">$</span> <span class="cmd">ctowerctl credential issue --project manibo --seat commander</span>
+<span class="ref">refused: authority.issuer_not_operator</span>
+<span class="dim">        grants are issued by the operator only (D29 §4)</span>
+<span class="dim">        this principal holds: ticket.write, evidence.append</span>
+
+<span class="dim">$</span> <span class="cmd">ctowerctl credential issue --project manibo --seat commander --as operator</span>
+<span class="pr">issued  cred_01JZ4K7QW3XB2N…</span>
+<span class="dim">        project=manibo  seat=commander</span>
+<span class="dim">        scopes: ticket.read, ticket.write, evidence.append</span>
+<span class="dim">        expires 2026-08-08T19:41:07Z · revocable</span>
+            </div>
+            <div class="cap">
+              <span class="g g-done">●</span>
+              <span class="k">cli-refusal-transcript</span>
+              <span class="f">engineer-192-identities · sha b8d2f14 · 19:58</span>
+            </div>
+          </div>
+
+          <div class="slot">
+            <span class="g g-done">●</span>
+            <div class="e">
+              <div class="k">plan-section</div>
+              <div class="d">Identities sequenced first, with the #152 unchaining finding.</div>
+              <div class="f"><span>PR #189 §3</span><span>em-185-multiproject</span><span>sha 4b17c0d</span></div>
+            </div>
+          </div>
+
+          <div class="slot">
+            <span class="g g-done">●</span>
+            <div class="e">
+              <div class="k">named-refusal-tests</div>
+              <div class="d">14 refusals, each asserted by its own name.</div>
+              <div class="f"><span>tests/identity/test_refusals.py</span><span>sha 9f2a41c</span></div>
+            </div>
+          </div>
+
+          <div class="slot">
+            <span class="g g-done">●</span>
+            <div class="e">
+              <div class="k">cso-verdict</div>
+              <div class="d">CHANGES_REQUESTED — revocation refusal unproven.</div>
+              <div class="f"><span>cso-192-grants · opus-5</span><span>sha 7c11e08</span></div>
+            </div>
+          </div>
+
+          <div class="slot">
+            <span class="g g-done">●</span>
+            <div class="e">
+              <div class="k">stop-note</div>
+              <div class="d">File-disjointness against #191, named and dated.</div>
+              <div class="f"><span>engineer-192-identities</span><span>sha e304b91</span></div>
+            </div>
+          </div>
+
+          <div class="slot open">
+            <span class="g g-open">○</span>
+            <div class="e">
+              <div class="k">revocation-refusal-test</div>
+              <div class="d">Criterion 3 cannot be proven without it.</div>
+              <div class="f"><span class="req">required</span><span>D29 §6</span></div>
+            </div>
+          </div>
+
+          <div class="slot open">
+            <span class="g g-open">○</span>
+            <div class="e">
+              <div class="k">code-review-verdict</div>
+              <div class="d">Review cannot open until build closes.</div>
+              <div class="f"><span class="req">required</span><span>cross-family reviewer</span></div>
+            </div>
+          </div>
+
+          <div class="slot open">
+            <span class="g g-open">○</span>
+            <div class="e">
+              <div class="k">merge-receipt</div>
+              <div class="d">The build stage cannot close without it.</div>
+              <div class="f"><span class="req">required</span></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── comments ───────────────────────────────────────────────── -->
+      <section class="panel">
+        <header>
+          <h2>Comments</h2>
+          <span class="sub">append-only · 4 entries</span>
+        </header>
+        <ul class="cmt">
+
+          <li>
+            <i class="av av-cm">CM</i>
+            <div class="e">
+              <div class="hdr"><span class="seat">commander</span><span class="when">17:56</span></div>
+              <p>G1 through G4 are live ctower tickets on ctower's own board now — the gap pipeline
+                 dogfoods itself. If this one does not close, nothing else in the migration moves.</p>
+              <div class="sig"><span>seat commander</span><span>crew commander-ctower</span><span>sol-max</span></div>
+            </div>
+          </li>
+
+          <li>
+            <i class="av av-op">OP</i>
+            <div class="e">
+              <div class="hdr"><span class="seat">operator</span><span class="when">18:48</span></div>
+              <p>Yes to the summarised scope. Any material addition beyond it comes back for a fresh yes.</p>
+              <div class="sig"><span>seat CEO</span><span>human</span><span>authenticated relay</span></div>
+            </div>
+          </li>
+
+          <li>
+            <i class="av av-en">EN</i>
+            <div class="e">
+              <div class="hdr"><span class="seat">engineer</span><span class="when">21:52</span></div>
+              <p>Stopping instead of editing custody underneath #191. I rebase when it lands; the scope
+                 model is disjoint from it, so nothing here is thrown away.</p>
+              <div class="sig"><span>seat engineer</span><span>crew engineer-192-identities</span><span>sol-xhigh</span></div>
+            </div>
+          </li>
+
+          <li>
+            <i class="av av-dr">DR</i>
+            <div class="e">
+              <div class="hdr"><span class="seat">director</span><span class="when">22:12</span></div>
+              <p>Identities restacking, #191 review queued. manibo holds its 115-item ledger until this
+                 credential exists — that is the whole cost of the hold, stated plainly.</p>
+              <div class="sig"><span>seat director</span><span>crew director-portfolio</span><span>sol-max</span></div>
+            </div>
+          </li>
+
+        </ul>
+      </section>
+
+    </div>
+
+    <!-- ── right rail ───────────────────────────────────────────────── -->
+    <aside class="rail-r">
+
+      <section class="panel">
+        <header><h2>Links</h2></header>
+        <ul class="links">
+          <li><span class="k">issue</span><a class="v" href="https://github.com/simjak/ctower/issues/192">gh#192 ↗</a></li>
+          <li><span class="k">blocked by</span><a class="v" href="https://github.com/simjak/ctower/pull/191">PR #191 ↗</a></li>
+          <li><span class="k">plan</span><a class="v" href="https://github.com/simjak/ctower/pull/189">PR #189 ↗</a></li>
+          <li><span class="k">pull request</span><span class="v">not opened yet</span></li>
+          <li><span class="k">decision</span><span class="v">D29 · portfolio onboarding</span></li>
+          <li><span class="k">deliverable</span><span class="v">2 · identities</span></li>
+          <li><span class="k">custodian</span><span class="v">engineer-192-identities</span></li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <header><h2>Labels</h2></header>
+        <div class="labels">
+          <span class="chip">identity</span>
+          <span class="chip">authority</span>
+          <span class="chip">adoption-blocker</span>
+          <span class="chip">API</span>
+          <span class="chip proj ctower">ctower</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header><h2>Depends on</h2></header>
+        <ul class="links">
+          <li><span class="k">#191</span><span class="v">carry the seat facts · in review</span></li>
+          <li><span class="k">#185</span><span class="v">scopes · waits on this</span></li>
+          <li><span class="k">import</span><span class="v">manibo 115 items · waits on this</span></li>
+        </ul>
+      </section>
+
+    </aside>
+
+  </div>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>ctower is not sole authority until CP3-D closes</span>
+    <span>2026-08-01 23:05 Europe/Vilnius</span>
+  </div>
+
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+</body>
+</html>

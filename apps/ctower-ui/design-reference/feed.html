@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>Live feed · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b><span class="sep">/</span><span class="where">Feed</span>
+    </span>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html">Ticket</a>
+  <a href="workflow.html">Workflow</a>
+  <a href="heartbeats.html">Heartbeats</a>
+  <a href="metrics.html">Metrics</a>
+  <a href="inbox.html">Inbox</a>
+  <a href="feed.html" class="on" aria-current="page">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+  <div class="lede">
+    <h1>Live feed</h1>
+    <p>The session as a conversation: what it decided, what it ran, and every turn an operator or
+       commander put into it. Tool calls collapse into the flow so the reasoning stays readable, and
+       the raw terminal is one switch away when something needs debugging.</p>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <div class="sess">
+      <span class="av" style="width:27px;height:27px;font-size:10.5px">EN</span>
+      <span>
+        <span class="who">engineer</span>
+        <span class="crew">engineer-192-identities</span>
+      </span>
+      <span class="chip proj ctower">ctower</span>
+      <span class="chip">gh#192</span>
+      <span class="verdict v-flight">restacking</span>
+      <span class="spacer"></span>
+      <span class="cost"><span class="m">sol-xhigh</span><i class="dot"></i>118k tok</span>
+      <span class="live"><span class="pulse"></span>live &middot; 26m</span>
+      <span class="seg">
+        <label><input type="radio" name="fview" id="v-chat" checked>Chat</label>
+        <label><input type="radio" name="fview" id="v-raw">Raw terminal</label>
+      </span>
+    </div>
+
+    <div class="chat" data-fview="chat" data-chat>
+      <div class="turn">
+        <span class="who"><i class="av">EN</i></span>
+        <div class="e">
+          <div class="hdr"><span class="seat">engineer</span><span class="crew">engineer-192-identities</span><span class="when">08:31:02</span></div>
+          <div class="bub">Picking up gh#192 again. The custody surface is the whole question here, so I read #191 before touching anything.</div>
+        <div class="tools">
+          <details class="toolchip">
+            <summary><span class="kind">Read</span><span class="arg">src/identity/custody.py</span></summary>
+            <div class="out">class Custody:
+    3 functions · last touched on feat/157-seat-carriage (#191)
+    grant_for(project, seat)  ← does not exist yet</div>
+          </details>
+          <details class="toolchip">
+            <summary><span class="kind">Read</span><span class="arg">coordination/2026-08-02_0812--engineer-192-identities--restack.task.md</span></summary>
+            <div class="out">acceptance criteria: 5
+verification named per criterion: yes
+stop condition: write the paired .status.md</div>
+          </details>
+        </div>
+        </div>
+      </div>
+      <div class="turn">
+        <span class="who"><i class="av">EN</i></span>
+        <div class="e">
+          <div class="hdr"><span class="seat">engineer</span><span class="crew">engineer-192-identities</span><span class="when">08:31:26</span></div>
+          <div class="bub">#191 rewrites the same three functions I need. Editing them here would make the two branches unmergeable, and the ticket would look like progress while it created a conflict.</div>
+        <div class="tools">
+          <details class="toolchip">
+            <summary><span class="kind">Bash</span><span class="arg">git -C /srv/projects/.worktrees/feat-192-identities log --oneline origin/main..HEAD</span></summary>
+            <div class="out">6b1f0ac  feat(identity): scope model + 14 named refusals
+(1 commit · no custody.py edits)</div>
+          </details>
+        </div>
+        </div>
+      </div>
+      <div class="sysline">
+        <span class="rule"></span>
+        <span class="txt">08:31:44 &middot; file-disjointness — custody.py is claimed by #191, refusing to edit a contested file</span>
+        <span class="rule"></span>
+      </div>
+      <div class="turn">
+        <span class="who"><i class="av">EN</i></span>
+        <div class="e">
+          <div class="hdr"><span class="seat">engineer</span><span class="crew">engineer-192-identities</span><span class="when">08:31:47</span></div>
+          <div class="bub">The scope model itself is disjoint from #191, so I can rebase rather than restart. No work is lost — writing the stop note now so the reason survives me.</div>
+        <div class="tools">
+          <details class="toolchip">
+            <summary><span class="kind">Write</span><span class="arg">coordination/2026-08-02_0812--engineer-192-identities--restack.status.md</span></summary>
+            <div class="out">HELD · file-disjointness
+clears when: #191 merges
+needs the operator: no</div>
+          </details>
+        </div>
+        </div>
+      </div>
+      <div class="turn op">
+        <span class="who"><i class="av av-op">OP</i></span>
+        <div class="e">
+          <div class="hdr"><span class="seat">operator</span><span class="crew">human seat &middot; CEO</span><span class="when">08:32:04</span></div>
+          <div class="bub">Rebase onto #191 now rather than waiting for it to merge — the scope model is disjoint, and manibo's ledger is parked on this credential.</div>
+          <div class="audit">audited on gh#192 &middot; the session sees an operator turn, not its own reasoning</div>
+        </div>
+      </div>
+      <div class="turn">
+        <span class="who"><i class="av">EN</i></span>
+        <div class="e">
+          <div class="hdr"><span class="seat">engineer</span><span class="crew">engineer-192-identities</span><span class="when">08:32:09</span></div>
+          <div class="bub">Acknowledged. Rebasing onto feat/157-seat-carriage and re-running the identity suite.</div>
+        <div class="tools">
+          <details class="toolchip">
+            <summary><span class="kind">Bash</span><span class="arg">git fetch origin &amp;&amp; git rebase origin/feat/157-seat-carriage</span></summary>
+            <div class="out">Successfully rebased and updated refs/heads/feat/192-identities.</div>
+          </details>
+          <details class="toolchip">
+            <summary><span class="kind">Bash</span><span class="arg">just test tests/identity/</span></summary>
+            <div class="out">14 passed in 3.41s
+1 required test absent: revocation refuses by name (D29 §6)</div>
+          </details>
+        </div>
+        </div>
+      </div>
+      <div class="turn">
+        <span class="who"><i class="av">EN</i></span>
+        <div class="e">
+          <div class="hdr"><span class="seat">engineer</span><span class="crew">engineer-192-identities</span><span class="when">08:32:58</span></div>
+          <div class="bub">Rebase is clean and the 14 refusal tests are green. The revocation refusal test the CSO asked for is still absent, so criterion 3 stays unmet — I am not calling this ready.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stream" data-fview="raw" data-stream style="display:none">
+      <div class="fl think"><span class="t">08:31:02</span><span class="k">think</span><span class="m">picking up gh#192 again — the custody surface is the whole question, so read #191 first</span></div>
+      <div class="fl tool"><span class="t">08:31:04</span><span class="k">tool</span><span class="m">Read  src/identity/custody.py  (main @ 423212c)</span></div>
+      <div class="fl tool"><span class="t">08:31:11</span><span class="k">tool</span><span class="m">Read  coordination/2026-08-02_0812--engineer-192-identities--restack.task.md</span></div>
+      <div class="fl think"><span class="t">08:31:26</span><span class="k">think</span><span class="m">#191 rewrites the same three functions I need. Editing them here would make the two branches unmergeable</span></div>
+      <div class="fl tool"><span class="t">08:31:31</span><span class="k">tool</span><span class="m">Bash  git -C /srv/projects/.worktrees/feat-192-identities log --oneline origin/main..HEAD</span></div>
+      <div class="fl gate"><span class="t">08:31:44</span><span class="k">gate</span><span class="m">file-disjointness: custody.py is claimed by #191 — refusing to edit a contested file</span></div>
+      <div class="fl think"><span class="t">08:31:47</span><span class="k">think</span><span class="m">the scope model itself is disjoint. Rebase onto #191 rather than restart: no work is lost</span></div>
+      <div class="fl tool"><span class="t">08:31:52</span><span class="k">tool</span><span class="m">Write coordination/2026-08-02_0812--engineer-192-identities--restack.status.md</span></div>
+      <div class="fl tool"><span class="t">08:32:09</span><span class="k">tool</span><span class="m">Bash  git fetch origin && git rebase origin/feat/157-seat-carriage</span></div>
+      <div class="fl think"><span class="t">08:32:41</span><span class="k">think</span><span class="m">rebase clean. 14 refusal tests still green; revocation test still missing per the CSO verdict</span></div>
+      <div class="fl tool"><span class="t">08:32:58</span><span class="k">tool</span><span class="m">Bash  just test tests/identity/  ->  14 passed, 1 required test absent</span></div>
+    </div>
+
+    <div class="composer">
+      <div class="hd">
+        <span class="k">Send to this session</span>
+        <span class="verdict v-changes">operator + commander only</span>
+        <span class="note">Sending is an audited injection: recorded on gh#192 as a ticket event
+          attributed to your seat, and delivered to the session as an operator turn.</span>
+      </div>
+      <div class="steer-row">
+        <textarea class="field" data-steer rows="2"
+          placeholder="e.g. rebase onto #191 rather than waiting for it to merge &mdash; the scope model is disjoint"></textarea>
+        <button class="btn" type="button" data-inject>Send</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>2026-08-02 08:34 Europe/Vilnius</span>
+  </div>
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+<script>
+  /* two real controls: the Chat / Raw switch, and the composer, which posts an
+     audited operator turn into BOTH views so they cannot disagree */
+  (function () {
+    var views = [].slice.call(document.querySelectorAll('[data-fview]'));
+    function view() {
+      var raw = document.getElementById('v-raw').checked;
+      views.forEach(function (v) {
+        v.style.display = v.dataset.fview === (raw ? 'raw' : 'chat') ? '' : 'none';
+      });
+    }
+    [].slice.call(document.querySelectorAll('input[name="fview"]'))
+      .forEach(function (r) { r.addEventListener('change', view); });
+    view();
+
+    var box = document.querySelector('[data-steer]');
+    var chat = document.querySelector('[data-chat]');
+    var stream = document.querySelector('[data-stream]');
+    document.querySelector('[data-inject]').addEventListener('click', function () {
+      var text = box.value.trim();
+      if (!text) { box.focus(); return; }
+      var d = new Date(Date.parse('2026-08-02T08:33:00Z') + chat.children.length * 1000);
+      var t = [d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()]
+        .map(function (n) { return String(n).padStart(2, '0'); }).join(':');
+
+      var turn = document.createElement('div');
+      turn.className = 'turn op';
+      turn.innerHTML = '<span class="who"><i class="av av-op">OP</i></span>'
+        + '<div class="e"><div class="hdr"><span class="seat">operator</span>'
+        + '<span class="crew">human seat \u00b7 CEO</span><span class="when"></span></div>'
+        + '<div class="bub"></div>'
+        + '<div class="audit">audited on gh#192 \u00b7 queued for the next turn</div></div>';
+      turn.querySelector('.when').textContent = t;
+      turn.querySelector('.bub').textContent = text;
+      chat.appendChild(turn);
+      chat.scrollTop = chat.scrollHeight;
+
+      var row = document.createElement('div');
+      row.className = 'fl steer';
+      row.innerHTML = '<span class="t"></span><span class="k">steer</span><span class="m"></span>';
+      row.children[0].textContent = t;
+      row.children[2].textContent = text + '  \u2014 queued \u00b7 operator \u00b7 audited on gh#192';
+      stream.appendChild(row);
+      box.value = '';
+    });
+  })();
+</script>
+</body>
+</html>
