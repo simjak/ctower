@@ -11,15 +11,11 @@ const SURFACE = "ctower-ui-compose";
 /** `InboxNotificationRequest.text`'s authored ceiling; the server refuses past it. */
 const LONGEST_MESSAGE = 65536;
 
-const UNCONFIRMED =
-  "The server has not confirmed this message, so the thread is not started yet. " +
-  "Press send again to send the same message.";
-const LOST_REPLAY =
-  "This retry lost track of the message waiting for confirmation. " +
-  "Reload the page and send it again.";
-const UNLISTED =
-  "That seat is not one the record lists, so nothing was sent. " +
-  "Pick a seat from the list and try again.";
+// The same D9 error budget the send path is held to: fact, next action, and no
+// sentence about why durability works the way it does.
+const UNCONFIRMED = "Not started yet. Press send again.";
+const LOST_REPLAY = "Lost track of this retry. Reload and send again.";
+const UNLISTED = "The record does not list that seat. Pick one listed.";
 
 /** One attempt at opening one thread: to whom, with what, under which identity. */
 interface Attempt {
@@ -138,7 +134,7 @@ export async function composeInboxThread(
   }
   const credential = process.env.CTOWER_UI_API_TOKEN;
   if (credential === undefined || credential === "") {
-    return refused("Sending is not available because this server has no API credential.", text, to);
+    return refused("This server holds no API credential.", text, to);
   }
   // The browser's copy of the last answer is an outside payload, so the one
   // value read out of it is read strictly. Only an unconfirmed send carries an
@@ -156,7 +152,7 @@ export async function composeInboxThread(
   try {
     listed = (await loadInboxCorrespondents()).choices.map((choice) => choice.seatKey);
   } catch {
-    return refused("The seats you can write to could not be read, so nothing was sent.", text, to);
+    return refused("The seat list could not be read. Nothing was sent.", text, to);
   }
   if (!listed.includes(to)) {
     return refused(UNLISTED, text, to);

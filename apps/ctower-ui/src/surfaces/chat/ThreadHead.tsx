@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { recordAdapter } from "@/read/adapter";
 import { shortId } from "@/read/elapsed";
 import { DeliveryLegend } from "./Delivery";
 import { TicketGlyph } from "./glyphs";
@@ -14,12 +13,14 @@ import type { InboxThread } from "@/read/interface";
  * and the ticket chip when the record links one — because a reader does not
  * need to be told that a thread has participants.
  *
- * The provenance the frame's foot used to carry lives here instead: the origin
- * this conversation was read from, on the head of the one screen that has no
- * page foot. A capture from one instance must never be mistakable for a capture
- * from another.
+ * It does *not* carry the instance any more. Provenance was drawn three times on
+ * one screen — the frame's top bar, the conversation column's foot, and here —
+ * and the third copy was what pushed this row into two lines at desk width and
+ * three on a phone. D9's rule for a small closed vocabulary applies to a fact as
+ * much as to a mark: it is drawn once. The column foot keeps the full origin,
+ * posture and read stamp, which is the copy a capture is judged by.
  *
- * It also carries the delivery legend, once, where the approved chat surface
+ * It carries the delivery legend, once, where the approved chat surface
  * puts it: three dot groups teaching the marks under every message below. The
  * legend is drawn only when there are messages to mark, so an empty
  * conversation does not explain a vocabulary nothing on screen is using.
@@ -43,12 +44,6 @@ export function ThreadHead({ thread }: { readonly thread: InboxThread }): ReactE
       )}
       <span className="grow" />
       {thread.messages.length === 0 ? null : <DeliveryLegend />}
-      <span
-        className="cw-as"
-        title={`read from ${recordAdapter.instance.baseUrl} · ${recordAdapter.instance.posture}`}
-      >
-        {recordAdapter.instance.label}
-      </span>
     </div>
   );
 }

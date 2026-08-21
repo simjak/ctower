@@ -4,6 +4,7 @@ import { recordAdapter } from "@/read/adapter";
 import { elapsedSince, stampText } from "@/read/elapsed";
 import { Count } from "@/surfaces/Count";
 import { NothingGlyph, PlusGlyph } from "./glyphs";
+import { PLANE_HINT, PLANE_WHY } from "./plane";
 import type { InboxProjection, InboxThreadSummary } from "@/read/interface";
 
 /**
@@ -104,6 +105,13 @@ export function ThreadList({
           </span>
         )}
       </div>
+      {/* the one thing about this surface that catches a reader out, in the one
+          line D9 allows for it: the inbox is transport, and neither send nor
+          notify evaluates a project grant. The picker files its seats under
+          their projects, which is the same fact drawn rather than said. */}
+      <p className="cw-hint" title={PLANE_WHY}>
+        {PLANE_HINT}
+      </p>
       {inbox.threads.length === 0 ? (
         <div className="cw-nil">
           <NothingGlyph />

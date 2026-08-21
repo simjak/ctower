@@ -19,14 +19,8 @@ _EXPECTED_BODY = (
     '{"project_key":"ctower","severity":"info","text":"ready for the taste gate",'
     f'"thread_id":"{_THREAD_ID}","to":"engineer"}}'
 )
-_UNCONFIRMED_SENTENCE = (
-    "The server has not confirmed this message, so it is not sent yet. "
-    "Press send again to send the same message."
-)
-_LOST_REPLAY_SENTENCE = (
-    "This retry lost track of the message waiting for confirmation. "
-    "Reload the thread and send it again."
-)
+_UNCONFIRMED_SENTENCE = "Not sent yet. Press send again."
+_LOST_REPLAY_SENTENCE = "Lost track of this retry. Reload and send again."
 
 
 class InboxSendTransportTests(unittest.TestCase):
@@ -93,7 +87,7 @@ class InboxSendTransportTests(unittest.TestCase):
         self.assertEqual(stranger["kind"], "refused")
         self.assertEqual(
             stranger["message"],
-            "This thread's other participant could not be read, so nothing was sent.",
+            "The recipient could not be read. Nothing was sent.",
         )
         self.assertEqual(
             [attempt["method"] for attempt in cast("list[Any]", outcomes["strangerAttempts"])],

@@ -11,12 +11,11 @@ const SURFACE = "ctower-ui-send";
 /** `InboxSendRequest.text`'s authored ceiling; the server refuses past it. */
 const LONGEST_MESSAGE = 65536;
 
-const UNCONFIRMED =
-  "The server has not confirmed this message, so it is not sent yet. " +
-  "Press send again to send the same message.";
-const LOST_REPLAY =
-  "This retry lost track of the message waiting for confirmation. " +
-  "Reload the thread and send it again.";
+// D9's error budget is fact + next action and nothing else, counted at 60
+// characters: the sentences these replace explained the durability model on
+// screen, which is this document's job rather than the box's.
+const UNCONFIRMED = "Not sent yet. Press send again.";
+const LOST_REPLAY = "Lost track of this retry. Reload and send again.";
 
 /** One attempt at one message: what was sent, what was typed, and under which identity. */
 interface Attempt {
@@ -127,7 +126,7 @@ export async function sendInboxMessage(
   }
   const credential = process.env.CTOWER_UI_API_TOKEN;
   if (credential === undefined || credential === "") {
-    return refused("Sending is not available because this server has no API credential.", text);
+    return refused("This server holds no API credential.", text);
   }
   // The browser's copy of the last answer is an outside payload, so the one
   // value read out of it is read strictly. Only an unconfirmed send carries an
@@ -142,7 +141,7 @@ export async function sendInboxMessage(
   try {
     recipient = (await loadInboxCorrespondent(threadId)).recipient;
   } catch {
-    return refused("This thread's other participant could not be read, so nothing was sent.", text);
+    return refused("The recipient could not be read. Nothing was sent.", text);
   }
   const commandId = replay === null ? randomUUID() : replay.commandId;
   try {
