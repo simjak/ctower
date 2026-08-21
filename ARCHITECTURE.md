@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.24 |
+| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.26 |
 | Decision history | [`docs/internal/DECISIONS.md`](docs/internal/DECISIONS.md) |
-| Last reviewed | 2026-08-14 |
+| Last reviewed | 2026-08-21 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -344,8 +344,8 @@ Service-per-noun units such as a separate reconciler are not implied.
   |                                                      |         |
   | Postgres + objects + vault refs + off-host durability |         |
   |                                                      |         |
-  | ctower-runner -- local process Adapter                |         |
-  |               \- local tmux Adapter                  |         |
+  | ctower-runner.service -- registry owner/reconciler    |
+  |               \- local process/tmux Adapters         |
   |                                                               |
   | ctower-release-supervisor.service  [root-owned, separate]      |
   |              | allowlisted install/switch/restart/rollback     |
@@ -354,13 +354,23 @@ Service-per-noun units such as a separate reconciler are not implied.
   +---------------------------------------------------------------+
 ```
 
-`ctower-runner` is a protocol client with no record-tier credential. The root release supervisor stays
+`ctower-runner` is one long-running, registry-driven protocol client with no record-tier credential. Its
+systemd delivery owns desired-to-observed reconciliation, independent liveness cycles, typed collection,
+generated-client writeback, and checkpoint/park/reap teardown for the local process and tmux Adapters; it
+never connects to Record/Postgres or authors protected control-plane truth. The root release supervisor stays
 alive while ctower upgrades itself, independently verifies artifact bytes, signatures/attestations,
 subjects, and trusted builder/workflow identity, and writes a hash-chained receipt journal. The one live
 `systemd-vps/v1` integration plus its fault-injection implementation is an internal Effects boundary, not
 a generalized provider Seam. Before any local Harness or Supervisor Adapter launches, invokes, or submits
 an arbitrary harness command, it must enforce Runtime's current CommandGuard decision over the normalized
 plan and targets.
+
+The target chat/steer HTTP contract is a bounded client surface, not a second control plane: crew/liveness/spec
+reads, typed transcript read/stream, composer input, and steer/ACK are the only operation families named by the
+proposal-stage cockpit gap list. Authored OpenAPI, generated clients, contract counters, and reference
+documentation close together; responses carry command identity, cursor/gap/refusal facts, source watermarks,
+and pending-versus-folded durability without credential values. No public product page, browser route, or
+browser credential authority is implied until the owning I2 implementation and browser gate are active.
 
 ## Deep Modules and dependency direction
 
