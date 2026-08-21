@@ -656,7 +656,12 @@
       .board2 { border-top: 4px solid var(--border); background: var(--background); }
       .crumb { padding: 12px 20px 0; font-size: 11.5px; color: var(--muted-foreground); }
       .idhead { display: flex; align-items: center; gap: 12px; padding: 8px 20px 12px; flex-wrap: wrap; }
-      .idhead h2 { margin: 0; font-size: 19px; font-weight: 640; letter-spacing: -0.015em; }
+      .idhead h2, .board-title { margin: 0; font-size: 19px; font-weight: 640; letter-spacing: -0.015em; }
+      /* FINDING-002 — board three's title was an unstyled <h3>, rendering at the
+         user-agent default (15.21px/700) in a document whose section labels are
+         11px/600. It is a BOARD title, the same rank as the crew page's, so it
+         shares that rule rather than getting a third size. */
+      .board-title { padding: 0 0 10px; }
       .idhead .role { color: var(--muted-foreground); font-size: 12px; }
       .idhead .spacer { flex: 1; }
       .crewtabs { padding: 0 20px; border-bottom: 1px solid var(--border); display: flex; gap: 0; flex-wrap: wrap; }
@@ -775,8 +780,6 @@
   </head>
 
   <body>
-    <div class="app">
-      <!-- ── top bar ─────────────────────────────────────────────────── -->
       <!-- ── THE MARK VOCABULARY ────────────────────────────────────────
            Every state is SHAPE-CODED first and hue-coded second, so the screen
            survives greyscale and a red-green reader. The shapes are chosen so
@@ -812,6 +815,12 @@
           <symbol id="a-reach" viewBox="0 0 16 16"><rect x="3" y="10" width="2" height="3.2" rx=".6" fill="currentColor"/><rect x="7" y="7.4" width="2" height="5.8" rx=".6" fill="currentColor"/><rect x="11" y="4.6" width="2" height="8.6" rx=".6" fill="currentColor"/></symbol>
         </defs>
       </svg>
+
+    <h1 class="sr">ctower operator cockpit — R3109 design mockup</h1>
+
+    <div class="app">
+      <h2 class="sr">Board one — the four-pane cockpit</h2>
+      <!-- ── top bar ─────────────────────────────────────────────────── -->
 
       <header class="topbar">
         <span class="mark" style="background: var(--p-ctower)" aria-hidden="true"></span>
@@ -1323,7 +1332,7 @@
              label; §6.1.1 states it and the DOM check proves it. The state
              numbers stay: they are the sheet's scaffolding, without which a
              state sheet cannot be read at all. -->
-        <h3 style="margin: 10px 0 8px">Mint · every state</h3>
+        <h2 class="board-title">Mint · every state</h2>
       </div>
       <div class="states">
         <!-- D9 — every card here carried a two-sentence note explaining why the
