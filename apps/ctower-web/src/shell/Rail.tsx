@@ -67,14 +67,20 @@ function RailLink({
   return (
     <button
       type="button"
-      disabled={!reachable}
+      // Inert, not `disabled`. A disabled button cannot take hover or focus, so
+      // its native `title` had nothing to anchor to and Chromium drew it at the
+      // corner of the viewport — and a keyboard could never reach the reason at
+      // all, which the law asks for by name. `aria-disabled` keeps the control
+      // in the tab order and says it does not act.
+      aria-disabled={reachable ? undefined : true}
       aria-current={here ? "page" : undefined}
-      title={reachable ? undefined : reason}
       onClick={(): void => {
-        onGo(destination.key);
+        if (reachable) {
+          onGo(destination.key);
+        }
       }}
       className={cn(
-        "flex w-full items-center gap-2 px-4 py-1.5 text-left text-sm",
+        "group flex w-full items-center gap-2 px-4 py-1.5 text-left text-sm",
         here
           ? "border-r-2 border-amber bg-amber/14 font-semibold"
           : "border-r-2 border-transparent",
@@ -86,7 +92,19 @@ function RailLink({
         className={cn("size-[5px] shrink-0 rounded-full", here ? "bg-amber" : "bg-muted/50")}
       />
       <span className="truncate">{destination.label}</span>
-      {reachable ? null : <span className="sr-only"> — {reason}</span>}
+      {reachable ? null : (
+        <>
+          {/* The reason, in the row the eye is already on, on hover and on
+              focus. Not a floating tooltip: there is nothing to mis-position. */}
+          <span
+            aria-hidden
+            className="ml-auto hidden truncate text-2xs text-muted group-hover:inline group-focus-visible:inline"
+          >
+            {reason}
+          </span>
+          <span className="sr-only"> — {reason}</span>
+        </>
+      )}
     </button>
   );
 }

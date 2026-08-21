@@ -1,152 +1,60 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import type { ReactElement, ReactNode } from "react";
-import { Button } from "../ui/primitives";
-import { ApplyStep } from "./apply/ApplyStep";
-import { CheckStep } from "./check/CheckStep";
-import { ComposeStep } from "./compose/ComposeStep";
-import { Frame } from "./Frame";
-import { modeTitle } from "./mode";
-import { ReviewStep } from "./review/ReviewStep";
-import { movedCount } from "./review/actions";
+import type { ReactElement } from "react";
+import { Button, PageHead } from "../ui/primitives";
+import { DefinitionForm } from "./compose/DefinitionForm";
+import { modeTitle, PURPOSE } from "./mode";
+import { ReviewPanel } from "./review/ReviewPanel";
+import { StandingLine } from "./StandingLine";
+import { useCompany } from "./useCompany";
 import type { Seed } from "./useSeed";
-import { useWizard } from "./useWizard";
 
 /**
- * The Company page: the full bundle editor, four steps, inside the shell.
+ * The Company page. One page.
  *
- * Every forward control is disabled until the step behind it has an answer that
- * permits it: a bundle that did not check does not plan, a plan that moves
- * nothing does not apply, and apply does not arm until the operator says on
- * screen that it is theirs.
+ * There is no stepper, because there is nothing to step through until the
+ * operator changes something. The definition and what the registry says about
+ * it are the page; review and apply are what edits produce, and they exist for
+ * exactly as long as the edits do.
  */
 export function CompanyPage({ seed }: { readonly seed: Seed }): ReactElement {
-  const wizard = useWizard(seed);
-  const plan = wizard.plan.kind === "answered" ? wizard.plan.value : null;
+  const company = useCompany(seed);
+  const digest = seed.kind === "exported" ? seed.result.bundle_digest : null;
 
-  return (
-    <Frame current={wizard.step} reached={wizard.reached} footer={footerFor(wizard, plan)}>
-      {wizard.step === "company" ? (
-        <ComposeStep
-          seed={seed}
-          draft={wizard.draft}
-          onDraft={wizard.setDraft}
-          title={modeTitle({ kind: "answered", value: seed })}
-        />
-      ) : null}
-      {wizard.step === "check" ? <CheckStep answer={wizard.check} /> : null}
-      {wizard.step === "review" ? <ReviewStep answer={wizard.plan} /> : null}
-      {wizard.step === "apply" && plan !== null ? (
-        <ApplyStep
-          plan={plan}
-          answer={wizard.applied}
-          armed={wizard.armed}
-          onArm={wizard.setArmed}
-        />
-      ) : null}
-    </Frame>
-  );
-}
-
-function footerFor(wizard: ReturnType<typeof useWizard>, plan: Plan): ReactNode {
-  switch (wizard.step) {
-    case "company":
-      return (
-        <>
-          <span className="flex-1" />
-          <Button variant="primary" onClick={wizard.runCheck}>
-            Check the bundle <ArrowRight />
-          </Button>
-        </>
-      );
-    case "check":
-      return (
-        <>
-          <Back
-            onBack={(): void => {
-              wizard.go("company");
-            }}
-          />
-          <span className="flex-1" />
-          <Button
-            variant="primary"
-            onClick={wizard.runPlan}
-            disabled={!(wizard.check.kind === "answered" && wizard.check.value.valid)}
-            title={
-              wizard.check.kind === "answered" && wizard.check.value.valid
-                ? undefined
-                : "The bundle has to check out first."
-            }
-          >
-            Review changes <ArrowRight />
-          </Button>
-        </>
-      );
-    case "review":
-      return (
-        <>
-          <Back
-            onBack={(): void => {
-              wizard.go("check");
-            }}
-          />
-          <span className="flex-1" />
-          <Button
-            variant="primary"
-            onClick={(): void => {
-              wizard.go("apply");
-            }}
-            disabled={plan === null || movedCount(plan.actions) === 0}
-            title={
-              plan !== null && movedCount(plan.actions) === 0
-                ? "There is nothing to apply."
-                : undefined
-            }
-          >
-            Apply <ArrowRight />
-          </Button>
-        </>
-      );
-    case "apply":
-      return wizard.applied === null ? (
-        <>
-          <Back
-            onBack={(): void => {
-              wizard.go("review");
-            }}
-          />
-          <span className="flex-1" />
-          <Button
-            variant="primary"
-            disabled={!wizard.armed || plan === null}
-            onClick={(): void => {
-              if (plan !== null) {
-                wizard.runApply(plan);
-              }
-            }}
-            title={wizard.armed ? undefined : "Confirm the authority above first."}
-          >
-            Apply as operator
-          </Button>
-        </>
-      ) : (
-        <>
-          <Back
-            onBack={(): void => {
-              wizard.go("review");
-            }}
-          />
-          <span className="flex-1" />
-        </>
-      );
+  if (company.mode === "review") {
+    return (
+      <ReviewPanel
+        review={company.review}
+        applied={company.applied}
+        armed={company.armed}
+        onArm={company.setArmed}
+        onApply={company.apply}
+        onBack={company.closeReview}
+      />
+    );
   }
-}
 
-type Plan = Parameters<ReturnType<typeof useWizard>["runApply"]>[0] | null;
-
-function Back({ onBack }: { readonly onBack: () => void }): ReactElement {
   return (
-    <Button variant="ghost" onClick={onBack}>
-      <ArrowLeft /> Back
-    </Button>
+    <>
+      <PageHead
+        title={modeTitle({ kind: "answered", value: seed })}
+        subtitle={
+          <>
+            <span>{PURPOSE}</span>
+          </>
+        }
+      >
+        <StandingLine standing={company.standing} edits={company.edits} digest={digest} />
+      </PageHead>
+
+      <DefinitionForm draft={company.draft} onDraft={company.setDraft} />
+
+      {company.edits === 0 ? null : (
+        <footer className="mt-6 flex items-center gap-2 border-t border-line pt-4">
+          <span className="flex-1" />
+          <Button variant="primary" onClick={company.openReview}>
+            Review changes ({company.edits}) →
+          </Button>
+        </footer>
+      )}
+    </>
   );
 }

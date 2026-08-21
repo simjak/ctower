@@ -8,6 +8,7 @@ import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
+import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
  * One app, one shell, and one decision made here: whether this tower has a
@@ -20,7 +21,10 @@ import { useSeed } from "../wizard/useSeed";
  */
 export function App(): ReactElement {
   const [reloadKey, setReloadKey] = useState(0);
-  const seed = useSeed(reloadKey);
+  const real = useSeed(reloadKey);
+  const preview = previewFromLocation(window.location.search);
+  const previewing = preview !== null;
+  const seed = seedForPreview(preview, real);
   const [here, setHere] = useState<DestinationKey>("company");
 
   const created = useCallback((): void => {
@@ -32,7 +36,12 @@ export function App(): ReactElement {
 
   return (
     <TooltipScope>
-      <Shell here={here} lockReason={lockReason} onGo={setHere} status={statusFor(seed.kind)}>
+      <Shell
+        here={here}
+        lockReason={lockReason}
+        onGo={setHere}
+        status={statusFor(seed.kind, firstRun, previewing)}
+      >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
         {seed.kind === "refused" ? (
           <Refused problem={seed.problem} action="Nothing was read. Reload to ask again." />
@@ -63,6 +72,19 @@ function lockReasonFor(kind: string, firstRun: boolean): string | null {
   return kind === "answered" ? null : "Still reading this company";
 }
 
-function statusFor(kind: string): ReactElement | null {
-  return kind === "answered" ? null : <Chip>reading</Chip>;
+/**
+ * What the header says about the tower, and only what is known.
+ *
+ * A page snapshot caught this claiming "first run" while the read was still
+ * out: locked and first-run are different facts, and one of them was being
+ * inferred from the other.
+ */
+function statusFor(kind: string, firstRun: boolean, previewing: boolean): ReactElement | null {
+  return (
+    <>
+      {previewing ? <Chip tone="amber">preview</Chip> : null}
+      {kind === "answered" ? null : <Chip>reading</Chip>}
+      {firstRun ? <Chip>first run</Chip> : null}
+    </>
+  );
 }
