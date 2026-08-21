@@ -93,6 +93,17 @@ running development instance, whose browser receives no API bearer, no session, 
 of any kind, because every read happens server-side. The cockpit lands there. It does not land on
 `apps/ctower-web`, and §7.6 says why it may not arrive there by accretion.
 
+**Three of the four panes land on that boundary unchanged. The console pane does not, and this is
+the one structural constraint in this document that changes the build order.** Every read the
+other three panes need authenticates with `bearerAuth` and can therefore be made server-side by a
+browser holding nothing — `readPoolLimits`, `listSpawnRecords`, `listProjectSessions` and the
+inbox operations are all in that class. Every console operation instead carries
+`"security": [{"browserSession": []}]` plus the `ConsoleCsrf` header parameter in the authored
+OpenAPI, and `AC-CON-02` binds each grant to *"one exact Actor, human role binding, browser
+session, policy revision, Project, and console session"*, consumed by **at most one stream**. A
+browser that holds no session cannot be the browser a grant is bound to. §9's slice 4 is where
+that lands, and §7.2 is why the earlier reading of `AC-CON-03` was wrong.
+
 ---
 
 ## 3. Aesthetic: paperclip's system is the base
@@ -504,6 +515,13 @@ credential shape redacted out of it and one that never contained one are differe
 The tab strip mirrors Conductor's `Setup · Run · ● Terminal · +`, but every tab is a *reading*, so
 all of them stay live in read-only v1 — the same reason the Chat/Raw and File/Diff switches are
 live today.
+
+One scheduling fact belongs with this pane rather than only in §9: everything above is
+implementable today as *operations* and not today as a *pane*, because all seven console
+operations require a browser holding a human session and a CSRF token, which this cockpit's
+boundary withholds (§2, §7.2). Until that decision lands, the `Terminal` tab is drawn present and
+declared-absent with the reason on it — §9's slice 4 states the options and their cost. Nothing
+in the pane's design changes either way; only when it can run.
 
 ---
 
@@ -931,10 +949,17 @@ record-tier persistence."* `apps/ctower-ui` goes further than required, and shou
 further: its browser *"receives no API bearer, no session and no credential of any kind; every
 read happens server-side."*
 
-That is what makes the console pane's same-origin, cookie-and-CSRF-bound, credential-free SSE URL
-(`AC-CON-03`) implementable without handing the browser anything. It is also why D8 stops the
-paperclip port at the token layer: paperclip's client-fetching data layer assumes a browser that
-holds a credential, and this one does not.
+It is why D8 stops the paperclip port at the token layer: paperclip's client-fetching data layer
+assumes a browser that holds a credential, and this one does not.
+
+**And it is the constraint that decides the console pane's schedule, which an earlier draft of
+this document got wrong.** `AC-CON-03` says the *"SSE URL contains no credential"* — that is a
+rule about the **URL**, not about the browser. The same criterion requires, in the same sentence,
+*"the configured exact private Origin, secure human-session cookie, and CSRF proof matching its
+cookie and persisted digest."* A cookie and a CSRF token are credentials the browser holds. So
+"credential-free URL" and "credential-free browser" are two different claims, and only the first
+one is true of the console contract. §9's slice ordering is derived from this, not from the
+console pane's risk profile alone.
 
 ### 7.3 TypeScript is browser-only
 
@@ -950,16 +975,23 @@ plane; the cockpit renders their answers.
 
 | Phase | Position in `phase_order` | Status |
 | --- | --- | --- |
+| `CT-I1-013` (shared authentication foundation) | 18 of 38 | **before** the active phase — active |
 | `CT-I1-021` (console foundation) | 26 of 38 | **before** the active phase — active |
 | `CT-I1-027` | 28 of 38 | `active_phase` |
 | `CT-I1-041` (seam + `hermes`) | 37 of 38 | merged, phase not active |
 | `CT-I1-042` (`claude-code`) | 38 of 38 | merged, phase not active |
 | `CT-I1-043`, `CT-I1-044` | absent from the ladder | not started |
 
-Read that column again, because it is the sequencing argument in §9 in one table: **the terminal
-pane's backend is already activated, and the chat pane's backend is nine phases out.** Suite
-status is derived from the ladder rather than chosen, so the seam's conformance suites are
+Read that column again, because it is half the sequencing argument in §9 in one table: **the
+terminal pane's backend is already activated, and the chat pane's backend is nine phases out.**
+Suite status is derived from the ladder rather than chosen, so the seam's conformance suites are
 deferred today; they prove the adapter *code*, not a live dispatch path.
+
+The other half is not in this table, and reading only this table is what put the console pane
+second in an earlier draft. `CT-I1-013` is active too, so the *human session* the console routes
+require is a solved and shipped foundation — but it is shipped for a browser that holds a session,
+and this cockpit's browser holds nothing (§2, §7.2). A phase being active makes an operation
+callable; it does not make it callable *from here*.
 
 The design consequence: the cockpit is designed against the **seam contract** — the five verbs,
 the capability vocabulary, the refusal names — and never against the mission-control tmux
@@ -1004,7 +1036,7 @@ scopes a build without knowing which half they are in.
 
 | Cockpit need | Existing operation / schema | Notes |
 | --- | --- | --- |
-| Terminal pane, end to end | `listVisibleConsoleSessions`, `mintConsoleViewGrant`, `renewConsoleViewGrant`, `streamConsoleEvents`, `allowConsoleSession`, `revokeConsoleSession`, `setConsoleKillSwitch` | Seven operations, already active (§7.4). The pane is **pure UI work.** |
+| Terminal pane, end to end | `listVisibleConsoleSessions`, `mintConsoleViewGrant`, `renewConsoleViewGrant`, `streamConsoleEvents`, `allowConsoleSession`, `revokeConsoleSession`, `setConsoleKillSwitch` | Seven operations, already active (§7.4), and **no new operation is needed**. It is *not* pure UI work: all seven carry `"security": [{"browserSession": []}]` and the `ConsoleCsrf` parameter, so the pane needs a browser that holds a human session — which this cockpit's boundary deliberately does not give it (§2, §7.2). The missing piece is a boundary, not a route. |
 | Left-rail lane rows | `listSpawnRecords` / `getSpawnRecord` (`GET /v1/spawn-records`, filterable by `project_key`, `status`) | `SpawnRecord` already carries `project_key`, `seat_key`, `crew_name`, `worktree_path`, `harness`, `model`, `effort`, `workspace_id`, `status` — the row shape the rail needs |
 | Lane state transitions | `appendSpawnTransition` (`POST /v1/spawn-records/{spawn_id}/transitions`) | |
 | Crew session registry | `listProjectSessions`, `listTicketSessions`, `startTicketSession`, `recordTicketSessionFact` | `TicketSession` carries `crew_name`, `harness_ref`, `model_ref`, `branch_ref`, `state`, `outcome`, token counts |
@@ -1099,8 +1131,21 @@ trade a working product for unfinished complexity.*
 
 Applied here, the ordering is not the one the brief's pane list implies. The obvious first slice is
 "the chat pane, read-only", and it is the wrong one: §7.4's table says the chat pane's backend is
-the last phase in a 38-phase ladder while the terminal pane's backend is already active, and §8.1
-says the terminal pane needs zero new operations. **Build downward from what is already true.**
+the last phase in a 38-phase ladder. **Build downward from what is already true.**
+
+But "already true" has two axes, and an earlier draft of this document counted only one of them.
+A slice is cheap when its **operations** exist *and* when its **boundary** exists. The console
+pane scores full marks on the first and zero on the second: seven active operations, all of them
+requiring a browser that holds a human session and a CSRF token (§2, §7.2, `AC-CON-02/03`), which
+this cockpit's boundary deliberately withholds. The credentials/spend surface scores full marks on
+both: `readPoolLimits` is `bearerAuth`, so a browser holding nothing reads it server-side, exactly
+as `apps/ctower-ui` reads everything today. So the console pane moves from second to fourth, and
+the surface that needs neither a new operation nor a new boundary moves up to second.
+
+The console pane does **not** move to last, and the original reason still stands: a terminal pane
+bolted on at the end is the one that gets a keystroke handler "just for debugging." It moves to
+exactly as early as its boundary allows, and its tab is drawn from slice 1 onward as a declared
+absence so nothing can quietly grow into the hole.
 
 ### Slice 1 — the shell and the rail, over what exists
 
@@ -1110,18 +1155,33 @@ durable `SpawnRecord.status` and nothing more, and any workspace whose git read 
 shows `not reached` (§8.3). No new API operations. Ends as a working product: an operator can see
 every registered lane in one place, which is more than any current surface offers.
 
-**Proves:** the geometry, the tokens, the `unknown` state class, D2's no-elevation rule.
+The fourth pane's tab strip is drawn in this slice with **`Terminal` present and unreachable**,
+carrying the reason: this boundary's browser holds no human session, and the console contract
+binds a grant to one. That is `AC-UX-03`'s rule applied to a whole pane rather than to a value,
+and it is deliberate scheduling insurance — an empty hole where a terminal belongs is the thing
+somebody fills with a tmux read.
 
-### Slice 2 — the terminal tab strip, whole
+**Proves:** the geometry, the tokens, the `unknown` state class, D2's no-elevation rule, and that
+a declared-absent pane is drawable.
 
-The console pane end to end, on the seven already-active operations: discovery, grant with its
-five-minute clock, renewal, the bounded SSE stream, inline gap rows, typed close reasons, and the
-five never-dos of §4.4. Still no new operations.
+### Slice 2 — Credentials, Spend, Readiness — as far as they go without dispatch
 
-**Proves:** the highest-risk pane, first, while its authority model is fresh — and it proves it
-with a backend that already passed AC-CON-01..07. Doing this pane second rather than last is the
-single most important scheduling call in this document: a terminal pane bolted on at the end is
-the one that gets a keystroke handler "just for debugging."
+The largest working surface reachable with **no new operation and no new boundary**.
+`GET /v1/pools` answers every read it needs and authenticates with `bearerAuth`, so it is read
+server-side by a browser that holds nothing — the boundary this cockpit already has. The
+Credentials tab renders three axes per entry with per-account reset clocks and no copy verb, plus
+the `drift` list with each `missing` row's enactment path; Spend renders credits by model ×
+account against `weights` + `topology_revision`, refusing on a stale table. Readiness (§5.1)
+renders every cell it can prove and marks the rest **unproven by name** — which, before the
+seam's phase activates, is most of them. That is the correct output, and it is the anti-`HEALTHY`.
+
+This slice is **read-only on purpose**: G8 and G9 (§6.1.1) are the mint request and the
+keep-or-evict, and both are wizard-side writes. So a `discovered` identity renders here with its
+pending decision *named and not takeable* — which is honest, and is also the cheapest possible
+argument for landing G9 next.
+
+**Proves:** that a composed verdict is honest when it is mostly negative, which is the hardest
+thing about §5.1 and the thing paperclip never attempted.
 
 ### Slice 3 — the change list and the PR handoff
 
@@ -1136,22 +1196,54 @@ pending until the projection folds.
 **Proves:** `AC-HAD-06`'s committed-only rule enforced in a read rather than a renderer, and that
 a handoff can be drawn without the surface claiming the outcome.
 
-### Slice 4 — Credentials, Spend, Readiness — as far as they go without dispatch
+### Slice 4 — the terminal tab strip, whole — and the boundary it costs
 
-`GET /v1/pools` already answers every read (§8.1). The Credentials tab renders three axes per
-entry with per-account reset clocks and no copy verb, plus the `drift` list with each `missing`
-row's enactment path; Spend renders credits by model × account against `weights` +
-`topology_revision`, refusing on a stale table. Readiness (§5.1) renders every cell it can prove
-and marks the rest **unproven by name** — which, before the seam's phase activates, is most of
-them. That is the correct output, and it is the anti-`HEALTHY`.
+The console pane end to end, on the seven already-active operations: discovery, grant with its
+five-minute clock, renewal, the bounded SSE stream, inline gap rows, typed close reasons, and the
+five never-dos of §4.4. **Still no new operations, and one new boundary** — which is the whole
+content of this slice and the reason it is not slice 2.
 
-This slice is **read-only on purpose**: G8 and G9 (§6.1.1) are the mint request and the
-keep-or-evict, and both are wizard-side writes. So a `discovered` identity renders here with its
-pending decision *named and not takeable* — which is honest, and is also the cheapest possible
-argument for landing G9 next.
+**What the boundary is.** Every console operation authenticates with the `browserSession` scheme
+and carries the `ConsoleCsrf` parameter; `AC-CON-03` requires *"the configured exact private
+Origin, secure human-session cookie, and CSRF proof matching its cookie and persisted digest"*;
+`AC-CON-02` binds one grant to *"one exact Actor, human role binding, browser session, policy
+revision, Project, and console session"* and lets **at most one stream** consume it. That session
+foundation exists and is active — `CT-I1-013` sits at position 18 of 38 in `phase_order`, before
+the active phase, and `AC-SEC-12` states its browser rule outright: *"UI uses only an opaque
+session cookie while direct APIs use Bearer credentials."* What does not exist is that session
+**on this surface**: `apps/ctower-ui`'s defining property is a browser holding nothing.
 
-**Proves:** that a composed verdict is honest when it is mostly negative, which is the hardest
-thing about §5.1 and the thing paperclip never attempted.
+**Why the obvious shortcut is not available.** Proxying — the Next server holds a session, opens
+the SSE, and re-broadcasts to a browser that holds nothing — fails the contract in three separate
+places, not one:
+
+1. The grant binds to a **browser session** and is consumed by **one stream** (`AC-CON-02`). Two
+   readers behind one server share one grant, so the binding that is supposed to name a viewer
+   names a process instead.
+2. Console output is RESTRICTED, recoverable only through the NOLOGIN `console_output_reader`
+   role, *"with every recovery appending an access fact"* (`AC-CON-05`). A fan-out hop appends its
+   access facts in the server's name; the human who read the bytes appears nowhere.
+3. `AC-CON-06` requires revocation, expiry, fencing and the kill switch to close **every affected
+   stream with a typed reason within five seconds**. A proxy is a second stream that must
+   propagate a typed close inside the same budget — new failure surface on the exact path whose
+   job is to fail safely.
+
+So the choice is a real one and it belongs to whoever owns the boundary:
+
+| Option | What it costs | What it gives |
+| --- | --- | --- |
+| **A — land the cockpit's console pane on the authenticated boundary** (the CT-I1-013 human session, same-origin with the console routes) | a recorded decision that this operator surface gains a human session, reversing `apps/ctower-ui`'s stated *"no credential of any kind"* posture; login/session handling on the surface; the exact-Origin configuration | the pane, exactly as §4.4 designs it, on a backend that already passed AC-CON-01..07 |
+| **B — keep the boundary and keep the pane declared-absent** | nothing | three honest panes and a fourth that says why it is empty (slice 1's treatment, kept) |
+
+The recommendation is **A, scheduled here rather than deferred**, precisely because option B is
+stable enough to be tempting: a permanently empty terminal tab is how a "temporary" pane-text read
+gets proposed. But A is a boundary decision with a security posture attached, not a designer's
+call, so it is stated as an option with its cost rather than assumed. **Open question 4 (§10)
+carries it.**
+
+**Proves:** the highest-risk pane, on a backend that already passed AC-CON-01..07, with its
+authority model still fresh — and, before any of that, that the cockpit knows the difference
+between an operation it lacks and a boundary it lacks.
 
 ### Slice 5 — the transcript, read-only
 
@@ -1179,28 +1271,37 @@ semantics in a UI — which is how the classification ends up living in two plac
 
 **Step 5b — the mint (§6.1.1) — is the part of this slice that does *not* wait for CT-I1-044.**
 G8 and G9 are operator-owned pool writes over a read that already exists and a reconciliation the
-registry already computes; neither needs the survey. They can land with slice 4, and they should,
+registry already computes; neither needs the survey. They can land with slice 2, and they should,
 because until they do, the Credentials tab can show an operator a `discovered` identity and offer
 no way to resolve it.
 
 ### The dependency summary
 
+Two kinds of gate, kept apart on purpose — a missing operation and a missing boundary are not the
+same blocker and do not clear the same way.
+
 - **CT-I1-041** (seam + `hermes`) — merged (#533); phase 37 of 38, not active.
 - **CT-I1-042** (`claude-code`) — merged (#538); phase 38 of 38, not active.
 - **Phase activation** — the gate on slices 5 and 6.
 - **CT-I1-043** (`codex`), **CT-I1-044** (survey + classification) — not started, absent from the
-  ladder; the gate on slice 7.
-- **CT-I1-021** (console) — phase 26 of 38, **active**; slice 2 rides on it today.
+  ladder; the gate on slice 7 — but *not* on step 5b's G8/G9, which need neither.
+- **CT-I1-021** (console) — phase 26 of 38, **active**. Its seven operations are ready today;
+  slice 4 does not ride on them until the boundary below exists.
+- **The authenticated-browser boundary** — the gate on slice 4, and the only gate in this list
+  that is a *decision* rather than a phase. `CT-I1-013` (position 18 of 38, active) already
+  supplies the human-session foundation; what is undecided is whether this operator surface takes
+  a session at all (§9 slice 4, options A and B; open question 4).
 
-Slices 1–4 are buildable now. R3109 does not change the harness-adapter epic's finish line; it is
-what the finish line is for.
+Slices 1–3 are buildable now, with no new boundary and one new operation between them. Slice 4 is
+buildable the moment its boundary decision lands, and needs no new operation at all. R3109 does not
+change the harness-adapter epic's finish line; it is what the finish line is for.
 
 ---
 
 ## 10. Open questions the seam design does not settle
 
-Per the brief's stop-and-report instruction, three questions this document could not answer from
-the seam contract, SPEC, or source. None blocks slices 1–4.
+Per the brief's stop-and-report instruction, four questions this document could not answer from
+the seam contract, SPEC, or source. None blocks slices 1–3; question 4 is the gate on slice 4.
 
 1. **Does a console session exist for a lane the cockpit can otherwise see?** INV-91's visibility
    join requires a live tmux `@project` and a session incarnation, and it excludes Commander
@@ -1224,6 +1325,16 @@ the seam contract, SPEC, or source. None blocks slices 1–4.
    Whether that is an operator-principal command that the runner then converts, or something else,
    is a boundary question the seam design does not state, and getting it wrong is a credential-law
    violation rather than a UI bug.
+
+4. **Does this operator surface take a human session?** This is the one question with a slice
+   behind it. `apps/ctower-ui`'s defining property is a browser holding no credential of any kind;
+   every console operation requires a browser holding a human-session cookie and a CSRF token
+   (`AC-CON-02/03`), and §9's slice 4 shows why proxying is not a legal substitute. The foundation
+   exists and is active (`CT-I1-013`, position 18 of 38; `AC-SEC-12`'s *"UI uses only an opaque
+   session cookie"*), so this is not a build question — it is whether this boundary's stated
+   posture changes, which is a recorded decision belonging to whoever owns that README and
+   `AC-CON-03`'s Origin configuration. Until it is answered, the terminal tab is drawn present and
+   declared-absent (slice 1), and the answer changes no other pane.
 
 ---
 
@@ -1250,7 +1361,8 @@ rather than source, it says so in place.
 | Pool read shape | `PoolLimitsView`, `PoolProfileLimits`, `PoolEntryState`, `PoolModelWeight`, `PoolDriftFinding` (`finding` + `enactment`) |
 | Mint and its custody | `credentials.py:1–7` (no copy verb, and why), `59–88` the meanings table, `193–199` `MintRequest`, `293–294` `request_mint`; `DECISIONS.md` D72 §2 (*"which the pool may ask for and never perform"*, *"Pool membership stays operator-owned in every class"*) |
 | Closed-world inventories | `tools/codegen/_inventory.py`; `tests/contracts/http/{test_openapi,test_codegen,test_scalar_profile_codegen}.py` (`104` / `97`) |
-| Phase ladder | `tools/checks/expected-suites.toml` — `active_phase`, `phase_order` |
+| Phase ladder | `tools/checks/expected-suites.toml` — `active_phase`, `phase_order` (`CT-I1-013` at 18, `CT-I1-021` at 26, `CT-I1-027` active at 28) |
+| Browser authentication boundary | `contracts/http/openapi.yaml` — every `/v1/console/…` operation carries `"security": [{"browserSession": []}]` plus the `ConsoleCsrf` parameter, against `bearerAuth` on `readPoolLimits` and the rest; `SPEC.md:4600` (AC-CON-02's one-Actor/one-browser-session/one-stream grant), `SPEC.md:4601` (AC-CON-03's Origin + cookie + CSRF), `SPEC.md:4776` (AC-SEC-12, *"UI uses only an opaque session cookie while direct APIs use Bearer credentials"*), `SPEC.md:4037–4039` (CT-I1-013's scope) |
 | UI boundary and shell | `apps/ctower-ui/README.md`; `apps/ctower-ui/src/app/conductor.css:1–14, 55–58`; `apps/ctower-ui/design-reference/app.css:5, 10, 51–56`; `apps/ctower-ui/src/surfaces/**` |
 
 ### paperclip source

@@ -833,7 +833,16 @@
           <!-- ── the console pane ─────────────────────────────────────────
                Read-only by law, not by choice: the console foundation grants no
                typing authority. There is no input element in this pane at all,
-               so there is nothing to disable. -->
+               so there is nothing to disable.
+
+               Drawn here in its END state (slice 4). It is the one pane that
+               cannot run on this cockpit's current boundary: every console
+               operation authenticates with `browserSession` + the ConsoleCsrf
+               header, and AC-CON-02 binds a grant to one exact browser session
+               and one stream. Until that boundary decision lands (§9 slice 4,
+               open question 4), the tab is drawn PRESENT and declared-absent —
+               an empty hole where a terminal belongs is what somebody fills
+               with a tmux read. -->
           <section class="console-wrap" aria-label="Console">
             <div class="tabs" role="tablist">
               <button class="tab" role="tab" aria-selected="false">Setup</button>
