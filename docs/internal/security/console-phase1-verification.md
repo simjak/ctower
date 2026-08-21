@@ -9,7 +9,7 @@ An authenticated non-Commander human can view output from one exact operator-all
 through a private, bounded, revocable stream. Runtime identity replacement fails closed. Exact output remains
 RESTRICTED, envelope-encrypted, and recoverable only through the dedicated audited reader.
 
-The pre-existing `apps/ctower-ui` terminal reader is outside this claim and cannot supply evidence for it.
+The retired terminal-reader path is outside this claim and cannot supply evidence for it.
 
 ## Trust boundaries
 
