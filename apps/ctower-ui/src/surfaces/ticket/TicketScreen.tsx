@@ -29,6 +29,7 @@ import { isComment, isRelation, stagesFrom, workflowRefOf } from "@/surfaces/rec
 import { CommentsPanel, EvidencePanel, RecordStreamPanel } from "./RecordPanels";
 import type { EventsReading } from "./RecordPanels";
 import { StageStrip } from "./StageStrip";
+import { TicketBar } from "./TicketBar";
 import { WorkTimeline } from "./WorkTimeline";
 
 /**
@@ -65,16 +66,12 @@ function TicketHead({
       </h1>
       <div className="tmeta">
         <span className={`pri ${ticket.priority.toLowerCase()}`}>{ticket.priority}</span>
+        {/* the stage was a second chip here until the ticket bar took it: one
+            fact, one place on the page, and the bar is where this page answers
+            "where is this work" */}
         <InlineReading
           reading={card}
-          present={(row) => (
-            <>
-              <span className="chip">lane {row.lane}</span>
-              {row.stageLabel === null ? null : (
-                <span className="chip">stage {row.stageLabel}</span>
-              )}
-            </>
-          )}
+          present={(row) => <span className="chip">lane {row.lane}</span>}
           missing={(label, detail, tone) => (
             <span className="chip" style={tone} title={detail}>
               board context {label}
@@ -360,7 +357,11 @@ function TicketBody({
 }): ReactElement {
   return (
     <>
-      <Chrome section="Ticket" back={{ href: "/board", label: "Board" }} />
+      <Chrome
+        section="Ticket"
+        back={{ href: "/board", label: "Board" }}
+        headerExtra={<TicketBar ticket={ticket} card={card} sessions={sessions} />}
+      />
       <main className="page">
         <div className="wrap">
           {note}

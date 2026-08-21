@@ -8,6 +8,7 @@ import {
   asStringOrNull,
   PayloadRefusal,
 } from "./json";
+import { NO_SESSIONS_HERE } from "./futureSources";
 import { reading } from "./outcome";
 import type { Reading, WorkSession } from "./interface";
 
@@ -158,4 +159,42 @@ export async function readWorkSessions(
   projectKey: string
 ): Promise<Reading<readonly WorkSession[]>> {
   return await reading(async () => await loadWorkSessions(ticketId, projectKey));
+}
+
+/** The session a summary line stands for, and how many it stands in front of. */
+export interface NewestSession {
+  readonly session: WorkSession;
+  readonly total: number;
+}
+
+/**
+ * The most recently started of a ticket's sessions.
+ *
+ * A ticket can hold several, and a one-line summary answers *where is this
+ * now*, which is the newest one's question. The rest belong to the work
+ * timeline, and the caller is told how many there are rather than letting one
+ * row quietly stand for all of them.
+ *
+ * Rows whose start stamp does not parse take no part in the ordering — an
+ * unparseable timestamp is not an early one — and if that leaves nothing to
+ * order by, the record's own first row is used rather than an invented winner.
+ * A ticket with no session at all is an answered absence, not a failure.
+ */
+export function newestSession(sessions: readonly WorkSession[]): Reading<NewestSession> {
+  let newest: WorkSession | null = null;
+  let newestAt = Number.NEGATIVE_INFINITY;
+  for (const session of sessions) {
+    const startedAt = Date.parse(session.startedAt);
+    if (Number.isNaN(startedAt)) {
+      continue;
+    }
+    if (newest === null || startedAt >= newestAt) {
+      newest = session;
+      newestAt = startedAt;
+    }
+  }
+  const chosen = newest ?? sessions[0] ?? null;
+  return chosen === null
+    ? { state: "absent", source: NO_SESSIONS_HERE }
+    : { state: "present", value: { session: chosen, total: sessions.length } };
 }

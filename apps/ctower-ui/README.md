@@ -207,6 +207,39 @@ The project scope control is the mockup's own CSS-only mechanism — four radios
 one `.mtscope` block per project — so switching a tab swaps every card, bar and legend at once and
 a number can never belong to a project the tab does not name.
 
+### The ticket bar, and the difference between a name and a position
+
+The approved operator cockpit puts one line above everything else on a ticket, because *what is
+this work for* precedes every other question on the screen and the surface was not answering it.
+`src/surfaces/ticket/TicketBar.tsx` renders it in the frame's second header row: the key, the
+session, the stage, and nothing else.
+
+The two facts it added are two different kinds of claim, and keeping them apart is the whole point.
+**`display_key` is a name** — the per-project `CTW-12` an operator quotes — and it is
+server-assigned and nullable, so a ticket written before the instance assigned one has none. That
+ticket still has an identifier, and the bar shows it under the label `ticket` rather than under the
+label `key`: printing a UUID where a key belongs would be spelling one fact as another.
+**`SessionState` is a position** — `dispatched → briefed → working → gated`, a closed enum — so the
+position is real and is drawn as four segments, with only the current one named. A state outside
+that ladder draws no segments at all, because putting an unknown value at an invented position is
+the guess this whole surface refuses.
+
+The stage is the third thing, and it is a name and never a position. `stage` is nowhere on
+`TicketResource`, but the board projection folds `workflow.changed` server-side and serves the
+result as the card's `stage_key`, so the ticket's *current* stage is a served fact and is shown as
+one. What no read carries is the **ordered stage list** a `workflow_ref` declares — and `stage` is
+an open string qualified by that ref, so stages are per-workflow and a fixed stepper drawn here
+would be a guess about someone else's workflow definition. There is therefore no "third of five" to
+draw, the stage gets a word while the session gets the segments, and a ticket the board holds no
+stage for says *not recorded* rather than borrowing the shape of an answer.
+
+The bar has no vendored mockup — the approved ticket page predates the cockpit — so its rules live
+in `app/conductor.css` beside the chat workspace's and the pools screen's, built only from the
+vendored sheet's own variables. `newestSession` and `stageOf` are read-layer functions rather than
+component-local ones precisely so `tests/repository/test_surface_semantics.py` can drive them:
+which of several sessions the line stands for, and whether a stage is served, absent or unread, are
+decisions about what may be claimed, not rendering details.
+
 ### Limits, and the field the read has no place for
 
 `/limits` renders `GET /v1/pools`: the latest credential-pool sweep per harness profile. It is the

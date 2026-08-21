@@ -120,6 +120,13 @@ export const NO_STAGES_HERE = silence("recorded workflow stage for this ticket")
 
 export const NO_WORKFLOW_REF_HERE = silence("recorded workflow run for this ticket");
 
+/**
+ * A ticket's work sessions are a recorded class — `GET /v1/tickets/{id}/sessions`
+ * answers — so a ticket the record holds none for is a measurement, not a
+ * capability anyone is waiting on.
+ */
+export const NO_SESSIONS_HERE = silence("recorded work session for this ticket");
+
 export const NO_EVIDENCE_HERE = silence("recorded proof event for this ticket");
 
 export const NO_EVENTS_HERE = silence("appended event for this ticket");
@@ -159,6 +166,7 @@ export const DECLARED_SOURCES: Readonly<Record<string, FutureSource>> = {
   NO_METRIC_DEFINITIONS,
   NO_STAGES_HERE,
   NO_WORKFLOW_REF_HERE,
+  NO_SESSIONS_HERE,
   NO_EVIDENCE_HERE,
   NO_EVENTS_HERE,
   NO_COMMENTS_HERE,
