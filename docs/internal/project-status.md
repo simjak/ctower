@@ -26,15 +26,15 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 | Local CP3-C backup and recovery evidence | Verifier-only proof | Local/verifier evidence covers digest-bound object handling, backup and anchors, key recovery, isolated restore, rollback, and recovery evidence. It does not activate external targets, a supported deployment, or CP3-D production recovery. |
 | Runtime compatibility evidence | Diagnostic only | The compatibility validator accepts a closed, sanitized external report. It does not choose a product runtime, create a lock, or establish a support promise. |
 | Persistent E2 runtime installation | Development shadow | An operator may install the verified wheel at the fixed private-VPS development path and supervise loopback-only API, worker, keyring, and database services. This path is only for low-value reconstructible dogfood and makes no production or source-of-truth claim. |
-| Browser dogfood controls | Removed | The former server-mediated Inbox dogfood surface, required browser suite, and `ctower-ui` runtime (including `/setup`) were removed. The separate fresh `ctower-web` browser-app lane remains deferred to CT-I2-005 / I2.4. |
+| Browser dogfood controls | Removed | D75 retires the former server-mediated Inbox dogfood surface, required browser suite, and `ctower-ui` runtime (including `/setup`). The separate fresh `ctower-web` browser-app lane remains deferred to CT-I2-005 / I2.4. |
 | Contextual Console viewer server foundation | Development shadow proof | Exact current-session allowance, human-bound one-use view grants, bounded durable SSE, RESTRICTED encrypted output custody, typed expiry/revocation/fences, and literal private-bind checks run against disposable PostgreSQL and one registered live tmux/log target. There is no product panel, safe renderer, typing, public route, or compatibility with the older terminal reader. |
 | Product deployment and recovery | Unsupported | There is no published package, external/product Compose stack, container image, production backup/restore runbook, or production monitoring/incident path. |
 | Product browser UI, runner, effects, and agent adapters | Planned | These surfaces remain deferred. CompanyBundle component declarations do not activate their runtime behaviour. |
 | Production release | Unsupported | Release automation currently creates source tags and notes only. No ctower runtime release has been published. |
 
 Public API + protected CLI precede I1 source-of-truth cutover. Product browser implementation, browser
-evidence, and browser E2E first activate at CT-I2-005 / I2.4. The former `ctower-ui` Inbox dogfood
-exception (D41/D44) and its runtime are removed; the separate fresh `ctower-web` browser-app lane has no
+evidence, and browser E2E first activate at CT-I2-005 / I2.4. D75 retires the former `ctower-ui` Inbox
+dogfood exception and its runtime; the separate fresh `ctower-web` browser-app lane has no
 current product evidence. CT-I1-021 is a narrow server-only exception for the authenticated private Console
 proof; it does not implement the product browser surface.
 
