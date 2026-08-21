@@ -194,6 +194,9 @@
       }
       .brand { font-weight: 620; letter-spacing: -0.01em; }
       .topbar .spacer { flex: 1; }
+      /* tenant-scoped, so it sits in the tenant's own header — see the markup
+         comment. Kept beside the theme toggle, not inside the console pane. */
+      .killsw { display: flex; align-items: center; gap: 6px; margin-right: 10px; font-size: 11px; white-space: nowrap; flex: none; }
       .ghost {
         font: inherit;
         font-size: 11.5px;
@@ -580,6 +583,19 @@
         <span class="brand">ctower cockpit</span>
         <span class="dim mono">operator · shadow instance</span>
         <span class="spacer"></span>
+        <!-- setConsoleKillSwitch is bearerAuth over {enabled, reason} — no
+             console session, no browser session — so it is the one console
+             control reachable from this credential-free boundary, and it ships
+             in slice 1. It lives HERE, not in the console pane: the request
+             carries no session scope of any kind, so it stops every stream in
+             the tenant. A tenant-global stop drawn inside one lane's pane
+             understates its blast radius. Off is not a success state, so the
+             chip is plain machine fact rather than green. -->
+        <span class="killsw" title="Global console kill switch — off. Stops every console stream in the tenant; AC-CON-06 closes each affected stream with a typed reason within five seconds.">
+          <span class="dim">console kill switch</span>
+          <span class="chip sc-idle">off</span>
+          <button class="ghost" type="button">Stop all streams…</button>
+        </span>
         <button class="ghost" id="theme" type="button">Toggle theme</button>
       </header>
 
@@ -842,14 +858,24 @@
                typing authority. There is no input element in this pane at all,
                so there is nothing to disable.
 
-               Drawn here in its END state (slice 4). It is the one pane that
-               cannot run on this cockpit's current boundary: every console
-               operation authenticates with `browserSession` + the ConsoleCsrf
-               header, and AC-CON-02 binds a grant to one exact browser session
-               and one stream. Until that boundary decision lands (§9 slice 4,
-               open question 4), the tab is drawn PRESENT and declared-absent —
-               an empty hole where a terminal belongs is what somebody fills
-               with a tmux read. -->
+               Drawn here in its END state (slice 4). Its VIEWER is the one
+               thing that cannot run on this cockpit's current boundary: the
+               four /v1/console/... operations (list, grant, renew, stream)
+               authenticate with `browserSession` + the ConsoleCsrf header, and
+               AC-CON-02 binds a grant to one exact browser session and one
+               stream. Until that boundary decision lands (§9 slice 4, open
+               question 4), the tab is drawn PRESENT and declared-absent — an
+               empty hole where a terminal belongs is what somebody fills with a
+               tmux read.
+
+               The three /v1/admin/console/... operations are bearerAuth and are
+               NOT behind that boundary. The kill switch is therefore drawn in
+               the strip from slice 1 — it needs no session of either kind — and
+               it sits in the pane header rather than inside the tab it
+               disables. Revocation is not drawn beside it: it is authorized but
+               needs a console_session_id that only the viewer's discovery
+               produces. -->
+
           <section class="console-wrap" aria-label="Console">
             <div class="tabs" role="tablist">
               <button class="tab" role="tab" aria-selected="false">Setup</button>

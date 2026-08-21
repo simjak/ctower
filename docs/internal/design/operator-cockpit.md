@@ -97,12 +97,33 @@ of any kind, because every read happens server-side. The cockpit lands there. It
 the one structural constraint in this document that changes the build order.** Every read the
 other three panes need authenticates with `bearerAuth` and can therefore be made server-side by a
 browser holding nothing — `readPoolLimits`, `listSpawnRecords`, `listProjectSessions` and the
-inbox operations are all in that class. Every console operation instead carries
-`"security": [{"browserSession": []}]` plus the `ConsoleCsrf` header parameter in the authored
-OpenAPI, and `AC-CON-02` binds each grant to *"one exact Actor, human role binding, browser
-session, policy revision, Project, and console session"*, consumed by **at most one stream**. A
-browser that holds no session cannot be the browser a grant is bound to. §9's slice 4 is where
-that lands, and §7.2 is why the earlier reading of `AC-CON-03` was wrong.
+inbox operations are all in that class.
+
+The console operations are **not one plane, and the path prefix is the split**. The authored
+OpenAPI puts four operations under `/v1/console/…` with `"security": [{"browserSession": []}]`
+plus the `ConsoleCsrf` header parameter — `listVisibleConsoleSessions` (`:120`),
+`mintConsoleViewGrant` (`:136`), `renewConsoleViewGrant` (`:159`), `streamConsoleEvents`
+(`:181`) — and three under `/v1/admin/console/…` with `"security": [{"bearerAuth": []}]` and no
+CSRF parameter at all: `allowConsoleSession` (`:50`), `revokeConsoleSession` (`:75`),
+`setConsoleKillSwitch` (`:99`). **The browser boundary belongs to the four-operation viewer
+plane, not to all seven.** That is where `AC-CON-02` binds each grant to *"one exact Actor, human
+role binding, browser session, policy revision, Project, and console session"*, consumed by **at
+most one stream**; a browser that holds no session cannot be the browser a grant is bound to. §9's
+slice 4 is where the viewer lands, and §7.2 is why the earlier reading of `AC-CON-03` was wrong.
+
+The three admin operations sit in the same bearer class as the other three panes' reads, so the
+correct statement is not "the console pane is blocked" but **which of its controls is blocked, and
+why each one is**:
+
+| Admin operation | Reachable server-side from the credential-free cockpit? | The actual constraint |
+| --- | --- | --- |
+| `setConsoleKillSwitch` | **Yes, today.** `bearerAuth`, and `ConsoleKillSwitchRequest` is only `{enabled, reason}` — no console session, no browser session, nothing the cockpit cannot supply. | None. This is the one console control the cockpit can build in slice 1. The same empty scope decides where it is drawn: it stops every stream in the tenant, so it belongs in the top bar rather than in the console pane — §4.4. |
+| `revokeConsoleSession` | Authorized, but **id-starved**. `bearerAuth` and a `{reason}` body, but the `console_session_id` lives in the path. | A programmatic walk of the authored surface finds exactly two producers of a `console_session_id`: `listVisibleConsoleSessions` (browser plane) and `allowConsoleSession`'s own `201 ConsoleSessionAllowance` (the runner's registration echo). A credential-free browser can therefore authorize a revocation it cannot name. Revoke rides in with the viewer, not before it. |
+| `allowConsoleSession` | Authorized, and **not an operator control at all**. | `ConsoleSessionAllowRequest` requires fifteen runner-side fields — `adapter_key: "tmux-v1"`, `runner_epoch`, `runtime_attempt_id`, `backend_incarnation`, `opaque_backend_ref`, `seat_principal_id`, `assignment_interval_sequence` and the rest. That is a registration payload the runner already holds; no cockpit screen composes it, and none should. It is excluded from this design as a non-UI operation, not deferred. |
+
+So one control ships in slice 1, one rides with the viewer in slice 4, and one is out of scope.
+That is a sharper build order than the pane-wide block, and it comes from reading the security
+block per operation rather than per feature.
 
 ---
 
@@ -607,12 +628,38 @@ The tab strip mirrors Conductor's `Setup · Run · ● Terminal · +`, but every
 all of them stay live in read-only v1 — the same reason the Chat/Raw and File/Diff switches are
 live today.
 
-One scheduling fact belongs with this pane rather than only in §9: everything above is
-implementable today as *operations* and not today as a *pane*, because all seven console
-operations require a browser holding a human session and a CSRF token, which this cockpit's
-boundary withholds (§2, §7.2). Until that decision lands, the `Terminal` tab is drawn present and
-declared-absent with the reason on it — §9's slice 4 states the options and their cost. Nothing
-in the pane's design changes either way; only when it can run.
+One scheduling fact belongs with this pane rather than only in §9, and it applies to the **viewer**
+rather than to the pane's whole operation set. The four `/v1/console/…` operations — discovery,
+grant, renewal, stream — each require a browser holding a human session and a CSRF token, which
+this cockpit's boundary withholds (§2, §7.2). Everything drawn above is therefore implementable
+today as *operations* and not today as a *viewer*. Until that decision lands, the `Terminal` tab is
+drawn present and declared-absent with the reason on it — §9's slice 4 states the options and their
+cost. Nothing in the pane's design changes either way; only when it can run.
+
+**The kill switch is the exception, and it ships first.** `setConsoleKillSwitch` is
+`bearerAuth` with a `{enabled, reason}` body and no session of either kind in it (§2's table), so
+it is reachable from the credential-free boundary in slice 1 — before any viewer exists.
+
+**Where it goes is decided by its request body, not by its subject matter.**
+`ConsoleKillSwitchRequest` is `{enabled, reason}` — it names no console session, no lane, no
+Project. It stops every console stream in the tenant. So it is drawn in the **cockpit's own top
+bar**, beside the instance identity, and *not* in the console pane: a tenant-global stop placed
+inside one lane's fourth pane reads as scoped to that lane, and an operator who believes a global
+control is local will use it wrongly in exactly the situation it exists for. The rule generalises
+past this one control — **a control's blast radius is whatever its request body scopes it to, and
+that is where the design must place it.** It carries its current state, its reason, and who set
+it, with `AC-CON-06`'s five-second close semantics stated on the confirm. Two rules come with
+shipping it early. It is a
+**mutation with a required reason**, so it follows `AC-UX-09`'s pending-until-durable rule (§4.2b) like every
+other write — an operator who flips it must see `durability pending` and then the accepted state,
+never an optimistic toggle. And when it is on, the declared-absent `Terminal` tab says *the kill
+switch is on*, not *no boundary* — an operator turning off every stream and then reading "this
+pane cannot run here" would be told the wrong cause of their own action.
+
+Revocation does **not** ship with it. It is bearer-authorized but needs a `console_session_id` the
+credential-free boundary has no way to obtain (§2), so its control is drawn only in slice 4
+alongside the discovery list that names the session. `allowConsoleSession` gets no screen at all:
+its request is a fifteen-field runner registration payload, which is the runner's to compose.
 
 ---
 
@@ -1136,7 +1183,7 @@ scopes a build without knowing which half they are in.
 
 | Cockpit need | Existing operation / schema | Notes |
 | --- | --- | --- |
-| Terminal pane, end to end | `listVisibleConsoleSessions`, `mintConsoleViewGrant`, `renewConsoleViewGrant`, `streamConsoleEvents`, `allowConsoleSession`, `revokeConsoleSession`, `setConsoleKillSwitch` | Seven operations, already active (§7.4), and **no new operation is needed**. It is *not* pure UI work: all seven carry `"security": [{"browserSession": []}]` and the `ConsoleCsrf` parameter, so the pane needs a browser that holds a human session — which this cockpit's boundary deliberately does not give it (§2, §7.2). The missing piece is a boundary, not a route. |
+| Terminal pane, end to end | viewer plane: `listVisibleConsoleSessions`, `mintConsoleViewGrant`, `renewConsoleViewGrant`, `streamConsoleEvents` · admin plane: `setConsoleKillSwitch`, `revokeConsoleSession`, `allowConsoleSession` | Seven operations, already active (§7.4), and **no new operation is needed**. It is *not* pure UI work, but the blocker is per-plane rather than pane-wide: the four `/v1/console/…` viewer operations carry `"security": [{"browserSession": []}]` and the `ConsoleCsrf` parameter, so they need a browser holding a human session — which this cockpit's boundary deliberately does not give it (§2, §7.2). The three `/v1/admin/console/…` operations are `bearerAuth` with no CSRF parameter and are in the same reachable class as every other pane's reads; `setConsoleKillSwitch` is buildable in slice 1, `revokeConsoleSession` waits only for an id the viewer produces, and `allowConsoleSession` is a runner registration payload with no screen. For the viewer, the missing piece is a boundary, not a route. |
 | Left-rail lane rows | `listSpawnRecords` / `getSpawnRecord` (`GET /v1/spawn-records`, filterable by `project_key`, `status`) | `SpawnRecord` already carries `project_key`, `seat_key`, `crew_name`, `worktree_path`, `harness`, `model`, `effort`, `workspace_id`, `status` — the row shape the rail needs |
 | Lane state transitions | `appendSpawnTransition` (`POST /v1/spawn-records/{spawn_id}/transitions`) | |
 | Crew session registry | `listProjectSessions`, `listTicketSessions`, `startTicketSession`, `recordTicketSessionFact` | `TicketSession` carries `crew_name`, `harness_ref`, `model_ref`, `branch_ref`, `state`, `outcome`, token counts |
@@ -1152,9 +1199,10 @@ The honest headline: **the terminal pane, the spend surface and every *read* the
 surface needs already exist as operations.** That is not a small finding — it is most of the
 wizard's hardest step and the whole of the highest-risk pane. Two qualifications keep it honest,
 and both are elsewhere in this document rather than buried here: the credentials surface still
-needs two operator-owned **writes** (G8, G9 — §6.1.1), and the terminal pane's seven operations
-are unreachable from this cockpit's *current* browser boundary, which is a boundary problem rather
-than an operation problem (§9, slice ordering).
+needs two operator-owned **writes** (G8, G9 — §6.1.1), and the terminal pane's **four viewer
+operations** are unreachable from this cockpit's *current* browser boundary, which is a boundary
+problem rather than an operation problem (§9, slice ordering). The pane's other three operations
+are `bearerAuth` and reachable today; §2 says which of them earns a control and when.
 
 ### 8.2 What does not exist — nine operations, and what each one costs
 
@@ -1248,12 +1296,21 @@ the last phase in a 38-phase ladder. **Build downward from what is already true.
 
 But "already true" has two axes, and an earlier draft of this document counted only one of them.
 A slice is cheap when its **operations** exist *and* when its **boundary** exists. The console
-pane scores full marks on the first and zero on the second: seven active operations, all of them
-requiring a browser that holds a human session and a CSRF token (§2, §7.2, `AC-CON-02/03`), which
-this cockpit's boundary deliberately withholds. The credentials/spend surface scores full marks on
-both: `readPoolLimits` is `bearerAuth`, so a browser holding nothing reads it server-side, exactly
-as `apps/ctower-ui` reads everything today. So the console pane moves from second to fourth, and
-the surface that needs neither a new operation nor a new boundary moves up to second.
+pane scores full marks on the first and — for its **viewer** — zero on the second: seven active
+operations, of which the four `/v1/console/…` ones require a browser that holds a human session and
+a CSRF token (§2, §7.2, `AC-CON-02/03`), which this cockpit's boundary deliberately withholds. The
+credentials/spend surface scores full marks on both: `readPoolLimits` is `bearerAuth`, so a browser
+holding nothing reads it server-side, exactly as `apps/ctower-ui` reads everything today. So the
+console **viewer** moves from second to fourth, and the surface that needs neither a new operation
+nor a new boundary moves up to second.
+
+The score is per operation, not per pane, and that is what keeps this from being a story about
+features. The three `/v1/admin/console/…` operations are `bearerAuth` and score full marks on both
+axes; they do not move to slice 4 for company. `setConsoleKillSwitch` needs nothing the credentials
+surface does not already have and lands in slice 1; `revokeConsoleSession` scores full marks on
+authority and fails on *data* — no bearer operation yields the `console_session_id` its path
+requires — so it waits for discovery rather than for a boundary, which is a third failure mode this
+ordering had to learn to name.
 
 The console pane does **not** move to last, and the original reason still stands: a terminal pane
 bolted on at the end is the one that gets a keystroke handler "just for debugging." It moves to
@@ -1274,8 +1331,18 @@ binds a grant to one. That is `AC-UX-03`'s rule applied to a whole pane rather t
 and it is deliberate scheduling insurance — an empty hole where a terminal belongs is the thing
 somebody fills with a tmux read.
 
-**Proves:** the geometry, the tokens, the `unknown` state class, D2's no-elevation rule, and that
-a declared-absent pane is drawable.
+**One console control does ship here: the global kill switch.** `setConsoleKillSwitch` is
+`bearerAuth` over a `{enabled, reason}` body (§2), so it is reachable from this boundary on day
+one, and it is the one console operation whose value does not depend on being able to watch a
+stream — an operator needs to be able to stop every console session precisely when they cannot see
+what is happening. It carries `AC-UX-09`'s `durability pending` state like any other write, and
+when it is on, the declared-absent `Terminal` tab names *the kill switch* as the reason rather
+than the boundary (§4.4). This makes slice 1 the first slice with a real mutation in it, which is
+also why the durable-write rendering rule gets proved this early rather than in slice 3.
+
+**Proves:** the geometry, the tokens, the `unknown` state class, D2's no-elevation rule, that a
+declared-absent pane is drawable, and `AC-UX-09`'s pending-until-durable rendering on a real
+mutation.
 
 ### Slice 2 — Credentials, Spend, Readiness — as far as they go without dispatch
 
@@ -1311,13 +1378,18 @@ a handoff can be drawn without the surface claiming the outcome.
 
 ### Slice 4 — the terminal tab strip, whole — and the boundary it costs
 
-The console pane end to end, on the seven already-active operations: discovery, grant with its
-five-minute clock, renewal, the bounded SSE stream, inline gap rows, typed close reasons, and the
-five never-dos of §4.4. **Still no new operations, and one new boundary** — which is the whole
-content of this slice and the reason it is not slice 2.
+The console **viewer** end to end, on the four already-active `/v1/console/…` operations:
+discovery, grant with its five-minute clock, renewal, the bounded SSE stream, inline gap rows,
+typed close reasons, and the five never-dos of §4.4 — plus `revokeConsoleSession`, which is
+`bearerAuth` and was only ever waiting on discovery for the `console_session_id` it needs in its
+path (§2). The kill switch is not here; it shipped in slice 1, because nothing in it needs a
+browser session. **Still no new operations, and one new boundary** — which is the whole content of
+this slice and the reason it is not slice 2.
 
-**What the boundary is.** Every console operation authenticates with the `browserSession` scheme
-and carries the `ConsoleCsrf` parameter; `AC-CON-03` requires *"the configured exact private
+**What the boundary is, and exactly which operations it covers.** The four viewer operations
+authenticate with the `browserSession` scheme and carry the `ConsoleCsrf` parameter
+(`openapi.yaml:120, 136, 159, 181`); the three `/v1/admin/console/…` operations do not, and this
+boundary is not about them. `AC-CON-03` requires *"the configured exact private
 Origin, secure human-session cookie, and CSRF proof matching its cookie and persisted digest"*;
 `AC-CON-02` binds one grant to *"one exact Actor, human role binding, browser session, policy
 revision, Project, and console session"* and lets **at most one stream** consume it. That session
@@ -1427,8 +1499,10 @@ same blocker and do not clear the same way.
   ahead of both the seam path and the route. A credential-law decision, not a scheduling one.
 - **CT-I1-043** (`codex`), **CT-I1-044** (survey + classification) — not started, absent from the
   ladder; the gate on slice 7 — but *not* on step 5b's G8/G9, which need neither.
-- **CT-I1-021** (console) — phase 26 of 38, **active**. Its seven operations are ready today;
-  slice 4 does not ride on them until the boundary below exists.
+- **CT-I1-021** (console) — phase 26 of 38, **active**. All seven operations are ready today, and
+  three of them are also *reachable* today: `setConsoleKillSwitch` is used in slice 1. Slice 4 does
+  not ride on the four `/v1/console/…` viewer operations until the boundary below exists, and
+  `revokeConsoleSession` waits with them for the session id rather than for the boundary (§2).
 - **The authenticated-browser boundary** — the gate on slice 4, and the only gate in this list
   that is a *decision* rather than a phase. `CT-I1-013` (position 18 of 38, active) already
   supplies the human-session foundation; what is undecided is whether this operator surface takes
@@ -1471,8 +1545,11 @@ criterion" are different admissions.
 
 3. **Does this operator surface take a human session?** This is the one question with a slice
    behind it. `apps/ctower-ui`'s defining property is a browser holding no credential of any kind;
-   every console operation requires a browser holding a human-session cookie and a CSRF token
-   (`AC-CON-02/03`), and §9's slice 4 shows why proxying is not a legal substitute. The foundation
+   the four `/v1/console/…` viewer operations require a browser holding a human-session cookie and
+   a CSRF token (`AC-CON-02/03`), and §9's slice 4 shows why proxying is not a legal substitute.
+   The question is scoped to those four: the three `/v1/admin/console/…` operations are
+   `bearerAuth`, so answering "no" costs the viewer and costs neither the kill switch nor — once
+   the viewer names a session — revocation. The foundation
    exists and is active (`CT-I1-013`, position 18 of 38; `AC-SEC-12`'s *"UI uses only an opaque
    session cookie"*), so this is not a build question — it is whether this boundary's stated
    posture changes, which is a recorded decision belonging to whoever owns that README and
@@ -1505,7 +1582,7 @@ rather than source, it says so in place.
 | Mint and its custody | `credentials.py:1–7` (no copy verb, and why), `59–88` the meanings table, `193–199` `MintRequest`, `293–294` `request_mint`; `DECISIONS.md` D72 §2 (*"which the pool may ask for and never perform"*, *"Pool membership stays operator-owned in every class"*) |
 | Closed-world inventories | `tools/codegen/_inventory.py`; `tests/contracts/http/{test_openapi,test_codegen,test_scalar_profile_codegen}.py` (`104` / `97`) |
 | Phase ladder | `tools/checks/expected-suites.toml` — `active_phase`, `phase_order` (`CT-I1-013` at 18, `CT-I1-021` at 26, `CT-I1-027` active at 28) |
-| Browser authentication boundary | `contracts/http/openapi.yaml` — every `/v1/console/…` operation carries `"security": [{"browserSession": []}]` plus the `ConsoleCsrf` parameter, against `bearerAuth` on `readPoolLimits` and the rest; `SPEC.md:4600` (AC-CON-02's one-Actor/one-browser-session/one-stream grant), `SPEC.md:4601` (AC-CON-03's Origin + cookie + CSRF), `SPEC.md:4776` (AC-SEC-12, *"UI uses only an opaque session cookie while direct APIs use Bearer credentials"*), `SPEC.md:4037–4039` (CT-I1-013's scope) |
+| Browser authentication boundary | `contracts/http/openapi.yaml` — the four `/v1/console/…` operations carry `"security": [{"browserSession": []}]` plus the `ConsoleCsrf` parameter (`:120` list, `:136` grant, `:159` renew, `:181` stream), while the three `/v1/admin/console/…` operations carry `"security": [{"bearerAuth": []}]` and no CSRF parameter (`:50` allow, `:75` revoke, `:99` kill switch) — the same bearer class as `readPoolLimits` and the rest. Request bodies place each admin control: `ConsoleKillSwitchRequest` is `{enabled, reason}`; `ConsoleSessionRevocationRequest` is `{reason}` behind a path `console_session_id`; `ConsoleSessionAllowRequest` requires fifteen runner-side fields. A programmatic walk of the authored surface finds `console_session_id` returned by exactly two operations, `listVisibleConsoleSessions` (`ConsoleSessionList`) and `allowConsoleSession` (`201 ConsoleSessionAllowance`). `SPEC.md:4600` (AC-CON-02's one-Actor/one-browser-session/one-stream grant), `SPEC.md:4601` (AC-CON-03's Origin + cookie + CSRF), `SPEC.md:4776` (AC-SEC-12, *"UI uses only an opaque session cookie while direct APIs use Bearer credentials"*), `SPEC.md:4037–4039` (CT-I1-013's scope) |
 | UI boundary and shell | `apps/ctower-ui/README.md`; `apps/ctower-ui/src/app/conductor.css:1–14, 55–58`; `apps/ctower-ui/design-reference/app.css:5, 10, 51–56`; `apps/ctower-ui/src/surfaces/**` |
 
 ### paperclip source
