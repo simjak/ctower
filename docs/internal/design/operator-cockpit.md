@@ -560,9 +560,25 @@ candidate if it appeared:
 4. **Never be reachable other than privately.** AC-CON-07 requires a literal loopback or Tailscale
    bind with an `ss -tlnp` inventory proving no wildcard or public Console listener; Funnel and
    public routes are named absent.
-5. **Never show a Commander session.** INV-91 says *non-Commander* engagement. This is a
-   discovery-level fact, so the cockpit's rail must not render a Commander terminal tab even
-   greyed — a greyed tab discloses that the session exists.
+5. **Never draw a terminal tab for any lane discovery did not return.** INV-91 says *non-Commander*
+   engagement, so a Commander terminal tab must not be rendered even greyed — a greyed tab
+   discloses that the session exists. The same rule covers every other lane, and it is worth
+   stating because it looks like a designer's choice and is not: `AC-CON-01` requires that *"only
+   an operator-allowed, standard-loop, RESTRICTED, current non-Commander engagement appears in
+   discovery"* and that *"every mismatch is a typed no-disclosure refusal or absence"*, and the
+   only browser discovery operation is the collection `listVisibleConsoleSessions` — there is no
+   per-lane existence probe and there may not be one. So the client **cannot** distinguish "no
+   backend session exists" from "a session exists and this Actor may not see it", and drawing a
+   `not reached` terminal for an absent lane would leak exactly the difference the refusal
+   erases. Absent from discovery ⇒ no tab, for every lane, Commander included.
+   `not reached` is correct only after an *authorized* read was attempted and its source failed
+   (§4.1) — which is why the two look similar and are not the same fact.
+   One thing this rule does **not** forbid, because it is a different kind of absence: the
+   pane-wide "this boundary cannot reach the console at all" treatment of §9's slice 1. That
+   states a fact about *this surface* and discloses nothing about any lane — no lane list, no
+   existence claim, no per-lane difference. Per-lane silence and surface-wide disclosure of the
+   surface's own limits are compatible, and keeping them apart is what lets the cockpit be honest
+   about the boundary without leaking a single session.
 
 Two smaller pane decisions inherited from what already exists: it keeps **one fixed dark palette
 in both app themes** (`src/surfaces/terminal/TerminalPane.tsx` already does this and records why
@@ -1144,8 +1160,8 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 | --- | --- | --- | --- |
 | G1 | **Read a lane's liveness** — the whole `LivenessFact`: `state`, `probe`, **`observed_at`**, `context_used_pct`, `conflict`, `ladder`, `evidence`, and a `served_model` carrying its own `source`, `proves` and `observed_at` | left rail (§4.1), composer gating (§4.2a) | `SpawnRecord.status` is a durable lifecycle status, not an observation of the substrate. `AC-HAD-03`/`AC-HAD-04` semantics — precedence, `substrate-unobservable:<probe>`, conflict-not-truth — have no HTTP surface at all. This is the single most load-bearing gap: without it the rail cannot honour "capped outranks working." **Carry the timestamps or the rail cannot tell current evidence from old motion**: `LivenessFact.observed_at` and `ModelObservation.{source, proves, observed_at}` already exist on the merged fact (`facts.py:40–47`, `55–68`), and dropping them is how a five-minute-old `working` keeps painting as now — §4.1.2. |
 | G2 | **Read the harness registry** — registered `HarnessSpec` key, revision, digests, declared `capabilities`, `context_window_percent`, `liveness_sources`, survey answers and derived `layers` | composer gating (§4.2a), Readiness (§5.1), Composition tab, wizard steps 2–4 | The specs exist as Python constants and contract JSON. Nothing serves them over HTTP, so the browser cannot derive the composer's enabled state from declared capability — and a UI-local guess is exactly what §4.2a forbids. |
-| G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state. **Two layers, not one: a seam-side typed turn fact set, then the HTTP read over it.** | centre (§4.2) | No transcript operation exists, and no *seam* path exists either. `collect` returns an `ArtifactSet` (`facts.py:113–127`) — branch, head, pushed, gate outputs, handoff — with no turn in it, and `observe` returns harness-private pane text that `AC-HAD-08` forbids any kernel/projection/CLI/Board path from parsing. `listTicketAuditEvents` is a typed audit stream, not a harness transcript. So the binding must first project typed turn facts across the seam — which is open question 2's vocabulary and a **contract decision** — and only then does a route have anything to serve. Costing this as a route alone is the mistake this row exists to prevent. |
-| G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME`. **Two layers again: a seam-level post-spawn input path composed over D10's `deliver_input`, then the HTTP route.** | composer (§4.2) | The five merged verbs have no lane-input method: `spawn` launches *and* delivers the initial brief, `writeback` files seat-authored facts (`AC-HAD-05` refuses an operator credential at an adapter), and `input_refusal` is a policy predicate rather than a transport. What already exists is one layer down — `SupervisorPort.deliver_input(attempt, text) -> durable command id` (`hermes/substrate.py:39`), which `spawn` already uses. The new path must **compose over it, never duplicate it**: `seam.py:1–9` names a second process-control vocabulary at the harness layer as the two-authorities-for-one-fact mistake. It also needs the ACK rule (`AC-HAD-02`: steer counts as acknowledged only on the returned durable command ID) and the principal decision of open question 3. `sendInboxMessage` is not a substitute: it is the tenant-wide comms plane, never evaluates a project grant, and would bypass the capability check entirely. |
+| G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state. **Two layers, not one: a seam-side typed turn fact set, then the HTTP read over it.** | centre (§4.2) | No transcript operation exists, and no *seam* path exists either. `collect` returns an `ArtifactSet` (`facts.py:113–127`) — branch, head, pushed, gate outputs, handoff — with no turn in it, and `observe` returns harness-private pane text that `AC-HAD-08` forbids any kernel/projection/CLI/Board path from parsing. `listTicketAuditEvents` is a typed audit stream, not a harness transcript. So the binding must first project typed turn facts across the seam — which is open question 1's vocabulary and a **contract decision** — and only then does a route have anything to serve. Costing this as a route alone is the mistake this row exists to prevent. |
+| G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME`. **Two layers again: a seam-level post-spawn input path composed over D10's `deliver_input`, then the HTTP route.** | composer (§4.2) | The five merged verbs have no lane-input method: `spawn` launches *and* delivers the initial brief, `writeback` files seat-authored facts (`AC-HAD-05` refuses an operator credential at an adapter), and `input_refusal` is a policy predicate rather than a transport. What already exists is one layer down — `SupervisorPort.deliver_input(attempt, text) -> durable command id` (`hermes/substrate.py:39`), which `spawn` already uses. The new path must **compose over it, never duplicate it**: `seam.py:1–9` names a second process-control vocabulary at the harness layer as the two-authorities-for-one-fact mistake. It also needs the ACK rule (`AC-HAD-02`: steer counts as acknowledged only on the returned durable command ID) and the principal decision of open question 2. `sendInboxMessage` is not a substitute: it is the tenant-wide comms plane, never evaluates a project grant, and would bypass the capability check entirely. |
 | G5 | **Read a workspace change set** — per-file `+N −N`, committed vs uncommitted separated, dirty paths named, plus the `ArtifactSet` triple `branch` / `head_sha` / `pushed` and the repository's own web origin | right-top (§4.3) | `recordTicketChangeReference` is a write. The `+N −N` badges in `apps/ctower-ui` today come from server-side git reads in `src/read/sources/`, which is fine for an operator surface over a local checkout and is not an API. `AC-HAD-06`'s committed-only rule needs to be enforced *in the read*, not in the renderer. The push state and the web origin are what gate and address the `Create PR` handoff below; without them the control cannot tell a clean-unpushed branch from a clean-pushed one, which are different failures. |
 | G6 | **Register a harness / submit a survey** — the wizard's write, returning `harness-survey-incomplete` / `harness-layer-conflict` / `harness-spec-incompatible` verbatim | wizard step 3 and 7 (§6) | The refusal vectors exist as test data (`harness-spec-vectors.json`); no operation performs the registration. Blocked on CT-I1-044 regardless. |
 | G7 | **Dry-run the guard** — obtain a CommandGuard decision for a normalized plan and return it, dispatching nothing | wizard step 7's `Test Agent` (§6.1) | The guard is invoked at the pre-dispatch boundary inside `spawn`. Exposing a decision-only path is a deliberate new operation, and it is the one place a "test" button can be honest. |
@@ -1163,8 +1179,8 @@ layer capability that does not exist yet, and each carries an unresolved decisio
 
 | Gap | What the merged seam supplies today | What must exist first |
 | --- | --- | --- |
-| G3 transcript | nothing at turn level — `collect` returns artifacts, `observe` returns harness-private text `AC-HAD-08` forbids anyone else parsing | a typed turn/thinking/tool/interrupt fact vocabulary crossing the seam — **open question 2**, a contract decision |
-| G4 lane input | `deliver_input` at D10's Supervisor layer, already used by `spawn`; `input_refusal` as a predicate; `STEER_DURABLE_COMMAND_ID` as a declared capability | a seam-level post-spawn input path composing over `deliver_input` (never a second process-control vocabulary), its ACK-on-durable-command-ID behaviour, and the driving-principal ruling — **open question 3**, an authority decision |
+| G3 transcript | nothing at turn level — `collect` returns artifacts, `observe` returns harness-private text `AC-HAD-08` forbids anyone else parsing | a typed turn/thinking/tool/interrupt fact vocabulary crossing the seam — **open question 1**, a contract decision |
+| G4 lane input | `deliver_input` at D10's Supervisor layer, already used by `spawn`; `input_refusal` as a predicate; `STEER_DURABLE_COMMAND_ID` as a declared capability | a seam-level post-spawn input path composing over `deliver_input` (never a second process-control vocabulary), its ACK-on-durable-command-ID behaviour, and the driving-principal ruling — **open question 2**, an authority decision |
 
 Both also need their conformance behaviour in the shared suite that `AC-HAD-01` requires of every
 binding, since a fake that cannot fail-inject an input refusal or a missing turn proves nothing
@@ -1317,7 +1333,7 @@ So the choice is a real one and it belongs to whoever owns the boundary:
 The recommendation is **A, scheduled here rather than deferred**, precisely because option B is
 stable enough to be tempting: a permanently empty terminal tab is how a "temporary" pane-text read
 gets proposed. But A is a boundary decision with a security posture attached, not a designer's
-call, so it is stated as an option with its cost rather than assumed. **Open question 4 (§10)
+call, so it is stated as an option with its cost rather than assumed. **Open question 3 (§10)
 carries it.**
 
 **Proves:** the highest-risk pane, on a backend that already passed AC-CON-01..07, with its
@@ -1333,7 +1349,7 @@ classify its turns. Centre pane renders turns, thinking, tool rows, interrupt ch
 
 **Requires two things, and phase activation is the smaller one.**
 
-1. **An accepted turn-level typed fact vocabulary** — open question 2. `AC-HAD-08` forbids every
+1. **An accepted turn-level typed fact vocabulary** — open question 1. `AC-HAD-08` forbids every
    kernel, reporter, projection, CLI and Board path from parsing a harness-private transcript, and
    no contract names the turn / thinking / tool-call / interrupt / elapsed fact set that would
    cross the seam instead (§8.2, G3). This is a contract decision with a conformance obligation
@@ -1353,7 +1369,7 @@ as refusal. Idle-lane input only, because that is what today's two bindings decl
 binding declares `INTERRUPT_AND_RESUME`, mid-turn steer lights up with no cockpit change (§4.2a) —
 which is the test of whether §4.2a was designed right.
 
-**Requires an accepted operator-input authority model** — open question 3 — **before the seam
+**Requires an accepted operator-input authority model** — open question 2 — **before the seam
 path, and the seam path before the route.** `AC-HAD-05` binds every `writeback` fact to one seat's
 own project-seat credential and refuses an operator or commander credential presented to an
 adapter; an operator message to a lane is, by construction, an operator action. Whether it arrives
@@ -1386,10 +1402,10 @@ same blocker and do not clear the same way.
 - **CT-I1-041** (seam + `hermes`) — merged (#533); phase 37 of 38, not active.
 - **CT-I1-042** (`claude-code`) — merged (#538); phase 38 of 38, not active.
 - **Phase activation** — *a* gate on slices 5 and 6, and by itself insufficient for either.
-- **An accepted turn-level typed fact vocabulary** (open question 2) — the gate on slice 5's G3,
+- **An accepted turn-level typed fact vocabulary** (open question 1) — the gate on slice 5's G3,
   and the longest-lead item on this list. Decidable today; nothing waits on it but everything
   transcript-shaped waits behind it.
-- **An accepted operator-input authority model** (open question 3) — the gate on slice 6's G4,
+- **An accepted operator-input authority model** (open question 2) — the gate on slice 6's G4,
   ahead of both the seam path and the route. A credential-law decision, not a scheduling one.
 - **CT-I1-043** (`codex`), **CT-I1-044** (survey + classification) — not started, absent from the
   ladder; the gate on slice 7 — but *not* on step 5b's G8/G9, which need neither.
@@ -1398,7 +1414,7 @@ same blocker and do not clear the same way.
 - **The authenticated-browser boundary** — the gate on slice 4, and the only gate in this list
   that is a *decision* rather than a phase. `CT-I1-013` (position 18 of 38, active) already
   supplies the human-session foundation; what is undecided is whether this operator surface takes
-  a session at all (§9 slice 4, options A and B; open question 4).
+  a session at all (§9 slice 4, options A and B; open question 3).
 
 Slices 1–3 are buildable now, with no new boundary and one new operation between them. Slice 4 is
 buildable the moment its boundary decision lands, and needs no new operation at all. R3109 does not
@@ -1408,33 +1424,34 @@ change the harness-adapter epic's finish line; it is what the finish line is for
 
 ## 10. Open questions the seam design does not settle
 
-Per the brief's stop-and-report instruction, four questions this document could not answer from
-the seam contract, SPEC, or source. None blocks slices 1–3; question 4 is the gate on slice 4.
+Per the brief's stop-and-report instruction, three questions this document could not answer from
+the seam contract, SPEC, or source. Neither of the first two blocks slices 1–3; the third is the
+gate on slice 4.
 
-1. **Does a console session exist for a lane the cockpit can otherwise see?** INV-91's visibility
-   join requires a live tmux `@project` and a session incarnation, and it excludes Commander
-   engagements. A cockpit lane row therefore has two independent existence facts — the lane, and a
-   viewable console session for it — and they can disagree. §4.4 says a Commander tab must not be
-   drawn even greyed, but for a *non*-Commander lane with no allowance, the design needs a ruling:
-   is "no console session" an absence (draw nothing) or a declared absence (draw `not reached`)?
-   The disclosure rules point at the first for Commander and the second for everything else;
-   that reading needs confirming by whoever owns INV-91.
+An earlier draft carried a fourth — whether a lane absent from console discovery should draw a
+`not reached` terminal or no tab at all — and it was not an open question. `AC-CON-01` settles it:
+discovery returns only allowed engagements and *"every mismatch is a typed no-disclosure refusal
+or absence"*, and the only browser discovery operation is a collection rather than a per-lane
+probe, so the client cannot tell the two apart and must not appear to. The ruling now lives where
+it belongs, in §4.4's never-do list, as a contract consequence rather than an operator decision.
+It is recorded here because "the design could not decide this" and "the design had not read the
+criterion" are different admissions.
 
-2. **What is the transcript's typed fact vocabulary?** `AC-HAD-08` forbids any kernel, reporter,
+1. **What is the transcript's typed fact vocabulary?** `AC-HAD-08` forbids any kernel, reporter,
    projection, CLI or Board path from parsing a harness-private transcript format, so the binding
    must project typed facts across the seam. The five verbs name `collect` for *artifacts*; no
    contract names the turn-level fact set (turn, thinking, tool call, interrupt, elapsed) that G3
    would serve. Designing the centre pane's rows implies proposing that vocabulary, which is a
    contract decision, not a design one.
 
-3. **Which principal drives the cockpit's writes?** `AC-HAD-05` requires every `writeback` fact to
+2. **Which principal drives the cockpit's writes?** `AC-HAD-05` requires every `writeback` fact to
    attribute to one seat's own project-seat credential and refuses an operator or commander
    credential presented to an adapter. G4's input command is an *operator* action against a lane.
    Whether that is an operator-principal command that the runner then converts, or something else,
    is a boundary question the seam design does not state, and getting it wrong is a credential-law
    violation rather than a UI bug.
 
-4. **Does this operator surface take a human session?** This is the one question with a slice
+3. **Does this operator surface take a human session?** This is the one question with a slice
    behind it. `apps/ctower-ui`'s defining property is a browser holding no credential of any kind;
    every console operation requires a browser holding a human-session cookie and a CSRF token
    (`AC-CON-02/03`), and §9's slice 4 shows why proxying is not a legal substitute. The foundation
