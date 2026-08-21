@@ -21,6 +21,9 @@
         · one lane is `dead_auth` — dead login behind a normal-looking pane —
           carrying its failing axis, its observation age, the mint that fixes
           it, and a `reap` control disabled because AC-HAD-07 refuses it
+        · every state chip carries its probe and observation age in `title`
+          (D5 — a number's derivation lives in that number's hover); the dead
+          row shows one inline because there the age IS the finding
         · one workspace is `not reached`, not `+0 -0`
         · the PR control is a handoff, disabled and naming the dirty paths on
           the control — ctower has no pull-request authority to create one
@@ -659,25 +662,19 @@
           </div>
 
           <div class="legend">
-            <b>substrate-unobservable:worktree_read</b>
+            <p style="margin: 0 0 6px"><b class="mono">substrate-unobservable:worktree_read</b> —
+              <b>estate-import</b> renders <b>not reached</b>, never <span class="mono">+0 −0</span>.
+              A source that exists and did not answer is not one that has no changes.</p>
+            <b>Four states, four next actions</b>
             <ul>
-              <li><b>estate-import</b> renders <b>not reached</b>, never
-                <span class="mono">+0 −0</span>: a source that exists and did not answer is not a
-                source that has no changes.</li>
-            </ul>
-            <b style="display: block; margin-top: 9px">four states, four next actions</b>
-            <ul>
-              <li><b>capped</b> is quota spent with a reset — waiting fixes it.</li>
-              <li><b>dead · auth</b> is the login itself; only a mint of <i>this</i> profile's own
-                device flow fixes it, never a copied file.</li>
-              <li><b>not reached</b> is unknown, not dead.</li>
-              <li><b>Reap is disabled, not missing.</b> AC-HAD-07 refuses <span class="mono">reap</span>
-                on a <span class="mono">dead_auth</span> lane — it is preserved for resume, with one
-                nudge offered before any replacement.</li>
-              <li><b>Every chip carries its probe and its age</b> on hover, and past its freshness
-                bound the state becomes <b>unknown</b> — never a faded <b>working</b>. There is no
-                stale state; there is an old observation, which is a source that is not answering
-                now.</li>
+              <li><b>capped</b> — quota spent, with a reset. Waiting fixes it.</li>
+              <li><b>dead · auth</b> — the login itself. Only a mint of <i>this</i> profile's own
+                device flow fixes it, never a copied file. <b>Reap is disabled, not missing:</b>
+                AC-HAD-07 refuses it on a <span class="mono">dead_auth</span> lane, which is
+                preserved for resume with one nudge before any replacement.</li>
+              <li><b>not reached</b> — unknown, not dead.</li>
+              <li>Every chip carries its probe and age on hover; past its freshness bound the
+                state becomes <b>unknown</b>, never a faded <b>working</b>.</li>
             </ul>
           </div>
         </nav>
