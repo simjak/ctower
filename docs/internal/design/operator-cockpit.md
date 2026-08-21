@@ -291,6 +291,20 @@ countable:
 | Error | **Fact + next action.** Zero philosophy. *"No binding by that alias. Check the name."* — not why aliases exist. |
 | Rationale | **Never renders.** It lives in this document, or behind an `(i)`. |
 
+**Two rules the operator's second pass added, both about words rather than counts.**
+
+*Name a thing by what it does, not by the repository's word for it.* The change list grouped files
+as **collectable** / **uncollectable** — correct against `AC-HAD-06`, and unreadable: the operator
+asked what they meant. They are now **Committed** / **Uncommitted**, which is the fact an operator
+already owns, and the consequence — *only committed work can be used as evidence* — is the `(i)`.
+The dead lane's `Nudge` and `Re-mint` became **Wake** and **Sign in again ↗** for the same reason.
+A label that needs the design doc to decode it has failed, however precise it is.
+
+*A key is drawn once, not once per row.* The rail's state marks are **icon-only**; the legend at
+the foot of the pane is the key. The word stays in the DOM for a screen reader and in `title` for a
+pointer, so nothing is lost — it stops being drawn seven times. This is the general form: when a
+vocabulary is small, closed, and legended, the glyph alone carries it in the list.
+
 **The budget governs chrome, never content.** A transcript turn, a terminal pane's bytes, and a
 lane's own prose are the *lane speaking*; they are the thing the operator opened the cockpit to
 read, and truncating them would be the redaction the console design already forbids. What the
@@ -417,6 +431,12 @@ more destructive. The primary control is the nudge; the mint is the real fix; a 
 control appears only after the nudge has been offered and declined. The refusal itself is a rule
 rather than a disabled button: it reaches the pixel as the row's `(i)`, and the row's two controls
 are the two that work.
+
+**Both controls are labelled by what they do, not by ctower's word for it.** The operator asked
+what *Nudge* and *Re-mint* meant, which is the label failing rather than the operator: `nudge` and
+`mint` are this repository's internal vocabulary. They render as **Wake** and **Sign in again ↗**.
+The arrow is load-bearing — it says the login happens outside ctower, which is D72's ask-never-
+perform rule showing up as a glyph instead of a sentence.
 
 **And the composer's capability rule alone does not cover this case.** `input_refusal`
 (`policy.py:144–159`) refuses only when the lane is `working` and the binding declares no
