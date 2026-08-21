@@ -1,6 +1,6 @@
 import { Minus, Undo2 } from "lucide-react";
 import type { ReactElement } from "react";
-import { Badge, Button, Mono } from "../../ui/primitives";
+import { Button, Chip, Mono } from "../../ui/primitives";
 import { cn } from "../../ui/cn";
 import type { EntityFact } from "../read";
 
@@ -28,27 +28,27 @@ export function EntityRow({
     <div
       className={cn(
         "group flex items-center gap-3 rounded-md border px-4 py-3",
-        "transition-colors duration-(--motion-duration-fast)",
-        removed ? "border-warn-line bg-warn-bg" : "border-line-2 bg-surface-2 hover:bg-raised/50"
+        "",
+        removed ? "border-amber/40 bg-amber/10" : "border-line bg-card hover:bg-raised"
       )}
     >
       <div className={cn("min-w-0 flex-1", removed ? "opacity-70" : "")}>
         <div
           className={cn(
-            "truncate text-sm font-medium text-ink",
+            "truncate text-sm font-medium text-fg",
             removed ? "line-through decoration-1" : ""
           )}
         >
           {fact.name}
         </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-ink-3">
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-muted">
           <Mono className="shrink-0">{fact.key}</Mono>
           {fact.detail === null ? null : (
             <>
-              <span aria-hidden className="text-ink-4">
+              <span aria-hidden className="text-muted">
                 ·
               </span>
-              <Mono className="truncate text-ink-4" title={fact.detailTitle ?? fact.detail}>
+              <Mono className="truncate text-muted" title={fact.detailTitle ?? fact.detail}>
                 {fact.detail}
               </Mono>
             </>
@@ -58,10 +58,10 @@ export function EntityRow({
 
       {removed ? (
         <>
-          <Badge tone="warn">Retires on apply</Badge>
+          <Chip tone="amber">Retires on apply</Chip>
           <Button
             size="sm"
-            variant="ghost"
+            variant="quiet"
             onClick={(): void => {
               onRemove(false);
             }}
@@ -72,16 +72,17 @@ export function EntityRow({
       ) : (
         <>
           {fact.subjects.length === 0 ? null : (
-            <Badge tone="neutral" title={fact.subjects.join(" · ")}>
+            <Chip tone="neutral" title={fact.subjects.join(" · ")}>
               {fact.subjects.length} {subjectNoun}
-            </Badge>
+            </Chip>
           )}
           <Button
             size="sm"
-            variant="ghost"
+            variant="quiet"
             /* Always drawn, never hover-only: a control an operator has to
-               discover by sweeping the mouse is a control that is not there. */
-            className="text-ink-3"
+               discover by sweeping the mouse is a control that is not there.
+               Quiet, not outlined — a border on every row is a border that has
+               not justified itself. */
             aria-label={`Remove ${fact.name}`}
             onClick={(): void => {
               onRemove(true);

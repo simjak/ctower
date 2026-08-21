@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import {
-  Badge,
+  Chip,
   Card,
   CardBody,
   CardHeader,
@@ -110,14 +110,14 @@ export function ComposeStep({
           <CardHeader>
             <CardTitle>Everything else</CardTitle>
             <span className="flex-1" />
-            <Badge tone="neutral">read only</Badge>
+            <Chip tone="neutral">read only</Chip>
           </CardHeader>
           <CardBody className="flex flex-wrap gap-1.5">
             {componentCounts(draft.base).map((entry) => (
-              <Badge key={entry.kind} tone="neutral">
+              <Chip key={entry.kind} tone="neutral">
                 {entry.kind}
-                <Mono className="text-ink-3">{entry.count}</Mono>
-              </Badge>
+                <Mono className="text-muted">{entry.count}</Mono>
+              </Chip>
             ))}
           </CardBody>
         </Card>
@@ -126,16 +126,16 @@ export function ComposeStep({
           <CardHeader>
             <CardTitle>Secrets</CardTitle>
             <span className="flex-1" />
-            <Badge tone="neutral">references only</Badge>
+            <Chip tone="neutral">references only</Chip>
           </CardHeader>
           <CardBody className="flex flex-wrap gap-1.5">
             {draft.base.secret_binding_refs.length === 0 ? (
-              <p className="m-0 text-sm text-ink-3">No secret is bound to this company.</p>
+              <p className="m-0 text-sm text-muted">No secret is bound to this company.</p>
             ) : (
               draft.base.secret_binding_refs.map((reference) => (
-                <Badge key={reference.name} tone="neutral" title={reference.reference_class}>
+                <Chip key={reference.name} tone="neutral" title={reference.reference_class}>
                   <Mono>{reference.name}</Mono>
-                </Badge>
+                </Chip>
               ))
             )}
           </CardBody>
@@ -166,12 +166,12 @@ function EntityCard({
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <span className="flex-1" />
-        {retiring === 0 ? null : <Badge tone="warn">{retiring} retiring</Badge>}
-        <Mono className="text-ink-3">{facts.length - retiring} kept</Mono>
+        {retiring === 0 ? null : <Chip tone="amber">{retiring} retiring</Chip>}
+        <Mono className="text-muted">{facts.length - retiring} kept</Mono>
       </CardHeader>
       <CardBody className="space-y-2">
         {facts.length === 0 ? (
-          <p className="m-0 text-sm text-ink-3">{empty}</p>
+          <p className="m-0 text-sm text-muted">{empty}</p>
         ) : (
           facts.map((fact) => (
             <EntityRow
@@ -192,14 +192,14 @@ function EntityCard({
 
 function Provenance({ seed }: { readonly seed: Seed }): ReactNode {
   if (seed.kind === "template") {
-    return <Badge tone="unknown">new company</Badge>;
+    return <Chip tone="neutral">new company</Chip>;
   }
   return (
     <>
-      <Badge tone="proven" title={`Activated ${seed.result.metadata.activated_at}`}>
+      <Chip tone="ok" title={`Activated ${seed.result.metadata.activated_at}`}>
         version {seed.result.active_version}
-      </Badge>
-      <Mono className="text-ink-4" title={seed.result.bundle_digest}>
+      </Chip>
+      <Mono className="text-muted" title={seed.result.bundle_digest}>
         {shortDigest(seed.result.bundle_digest)}
       </Mono>
     </>
