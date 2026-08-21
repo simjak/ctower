@@ -40,14 +40,12 @@ class UiTeardownTests(unittest.TestCase):
         self.assertNotIn("apps/ctower-ui", workspace)
         self.assertIn("apps/ctower-web", workspace)
 
-        package = (self.root / "package.json").read_text(encoding="utf-8")
-        self.assertNotIn("@ctower/ui", package)
-
     def test_removed_browser_gate_wiring_is_absent(self) -> None:
         for relative in (
             "tests/dogfood",
             "playwright.config.ts",
             "tools/checks/playwright.py",
+            "tests/repository/test_browser_network_chokepoint.py",
         ):
             with self.subTest(path=relative):
                 self.assertFalse((self.root / relative).exists())
@@ -58,6 +56,116 @@ class UiTeardownTests(unittest.TestCase):
         for removed_suite in ("dogfood-inbox-controls", "locked-five", "surface-affordances"):
             with self.subTest(suite=removed_suite):
                 self.assertNotIn(removed_suite, expected_suites)
+
+        gitignore = (self.root / ".gitignore").read_text(encoding="utf-8")
+        for removed_artifact in (".next/", "next-env.d.ts", "playwright-report/", "test-results/"):
+            with self.subTest(ignored_artifact=removed_artifact):
+                self.assertNotIn(removed_artifact, gitignore)
+
+        policy = (self.root / "tools/checks/policy.toml").read_text(encoding="utf-8")
+        self.assertNotIn('name = "dogfood-tests"', policy)
+        self.assertNotIn('name = "phase-1-ui"', policy)
+        self.assertIn('name = "web"', policy)
+        self.assertNotIn('"**/.next/**"', policy)
+
+        package = (self.root / "package.json").read_text(encoding="utf-8")
+        for removed_marker in (
+            "apps/ctower-ui/",
+            "playwright.config.ts",
+            "tools/checks/playwright.py",
+            "@ctower/ui",
+        ):
+            with self.subTest(package_marker=removed_marker):
+                self.assertNotIn(removed_marker, package)
+
+        lockfile = (self.root / "pnpm-lock.yaml").read_text(encoding="utf-8")
+        for removed_marker in (
+            "apps/ctower-ui:",
+            "apps/ctower-web:",
+            "next@16.3.0",
+            "playwright@1.61.1",
+        ):
+            with self.subTest(lock_marker=removed_marker):
+                self.assertNotIn(removed_marker, lockfile)
+
+    def test_current_contract_has_no_retired_dogfood_claims(self) -> None:
+        current_documents = (
+            "ARCHITECTURE.md",
+            "docs/internal/SPEC.md",
+            "docs/internal/IMPLEMENTATION-ROADMAP.md",
+            "docs/internal/project-status.md",
+            "docs/internal/security/console-phase1-verification.md",
+            "docs/internal/security/console-q3-typing-cso.md",
+            "docs/internal/specs/operator-requests.md",
+            "docs/concepts/board.md",
+            "docs/concepts/chat.md",
+            "docs/concepts/tickets.md",
+            "docs/internal/concepts/seats-and-crews.md",
+            "docs/internal/concepts/terminal-read.md",
+        )
+        for relative in ("docs/internal/operations/browser-quickstart.md",):
+            with self.subTest(obsolete_document=relative):
+                self.assertFalse((self.root / relative).exists())
+        current_text = {
+            relative: (self.root / relative).read_text(encoding="utf-8")
+            for relative in current_documents
+        }
+
+        retired_claims = (
+            "D41, D42, D44 and D45 alone permit",
+            "D44 and D45 permit exactly one separate",
+            "D41 permits exactly one separate",
+            "D41/D42/D44/D45 is not a product route",
+            "private UI send box each resolve",
+            "project-seat CLI and the private UI send-box idiom are the only ordinary",
+            "Seat CLI and UI send-box capture send",
+            "local browser controls are a server-mediated development surface",
+            "Open `/board` on the shadow instance.",
+            "Open `/inbox`. Select a thread. Type in the send box",
+            "On the local shadow browser, open `/board`",
+            "Open `/team` in the local shadow browser",
+            "Open `/team/<seat>` to see one terminal tab",
+            "dogfood-inbox-controls",
+            "apps/ctower-ui",
+        )
+        for relative, text in current_text.items():
+            for claim in retired_claims:
+                with self.subTest(document=relative, claim=claim):
+                    self.assertNotIn(claim, text)
+
+        self.assertIn("former `ctower-ui` runtime", current_text["ARCHITECTURE.md"])
+        self.assertIn("D75 retires", current_text["docs/internal/project-status.md"])
+
+        current_config = {
+            ".gitignore": (".next/", "next-env.d.ts", "playwright-report/", "test-results/"),
+            "package.json": (
+                "apps/ctower-ui/",
+                "playwright.config.ts",
+                "tools/checks/playwright.py",
+                "@ctower/ui",
+            ),
+            "pnpm-lock.yaml": (
+                "apps/ctower-ui:",
+                "apps/ctower-web:",
+                "next@16.3.0",
+                "playwright@1.61.1",
+            ),
+            "tools/checks/expected-suites.toml": (
+                "dogfood-inbox-controls",
+                "locked-five",
+                "surface-affordances",
+            ),
+            "tools/checks/policy.toml": (
+                'name = "dogfood-tests"',
+                'name = "phase-1-ui"',
+                '"**/.next/**"',
+            ),
+        }
+        for relative, markers in current_config.items():
+            text = (self.root / relative).read_text(encoding="utf-8")
+            for marker in markers:
+                with self.subTest(config=relative, marker=marker):
+                    self.assertNotIn(marker, text)
 
 
 if __name__ == "__main__":
