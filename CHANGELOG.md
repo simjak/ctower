@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.31.0](https://github.com/simjak/ctower/compare/v0.30.0...v0.31.0) (2026-08-21)
+
+
+### Features
+
+* **catalog:** repository admission boundary ([#519](https://github.com/simjak/ctower/issues/519)) ([7f89e00](https://github.com/simjak/ctower/commit/7f89e00d2e0b474f59dd2b20a230a7b921099eed))
+* **ctower-ui:** Conductor-shaped chat workspace, de-texted screens, three panels moved onto the record ([#500](https://github.com/simjak/ctower/issues/500)) ([c6fe5c1](https://github.com/simjak/ctower/commit/c6fe5c1f65885096f1fe95a2538b4e3a108478e2))
+* **harness:** the adapter seam and the Hermes binding ([#533](https://github.com/simjak/ctower/issues/533)) ([f027daa](https://github.com/simjak/ctower/commit/f027daad662f9279186133a304321a03e4eefbae))
+* **harness:** the claude-code binding ([#538](https://github.com/simjak/ctower/issues/538)) ([d72408e](https://github.com/simjak/ctower/commit/d72408e773bead34d1f2ba76f8dddbc47ab593c2))
+* **harness:** the codex binding ([#539](https://github.com/simjak/ctower/issues/539)) ([9bc6c35](https://github.com/simjak/ctower/commit/9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99))
+* **inbox:** transport contract with project-qualified addressing ([#530](https://github.com/simjak/ctower/issues/530)) ([83dae4c](https://github.com/simjak/ctower/commit/83dae4ca8858d9e97610b5dba63feb97c0b0af05))
+* **migration:** land estate record imports ([#505](https://github.com/simjak/ctower/issues/505)) ([b99c04c5f2ca339b75c3536fbabef3c12b6d176d))
+* **pools:** record-backed credential-limits tracking ([#531](https://github.com/simjak/ctower/issues/531)) ([b68eaaf](https://github.com/simjak/ctower/commit/b68eaaf49eea951ed1f6baf6022aa352a302449e))
+* **record:** canonical Ticket movement feed ([#503](https://github.com/simjak/ctower/issues/503)) ([df2068b](https://github.com/simjak/ctower/commit/df2068b1657c5401d5706500ca34236a3451028d))
+* **record:** per-project ticket display keys — server-assigned, backfilled, addressable ([#529](https://github.com/simjak/ctower/issues/529)) ([d0ea9a3](https://github.com/simjak/ctower/commit/d0ea9a36386ae2b7e5ae9711951a529550edb4d7))
+* **requests:** add maintenance proposal queue ([#494](https://github.com/simjak/ctower/issues/494)) ([94a964d](https://github.com/simjak/ctower/commit/94a964dbcd51a8fdd792526ac7f48438c577b52c))
+* **runtime:** activity-gated routine surface ([#502](https://github.com/simjak/ctower/issues/502)) ([50d72c7](https://github.com/simjak/ctower/commit/50d72c7fad7d14e27cf780543415279a5c38e507))
+* **runtime:** routine work items — fire files an inbox item, never a session injection ([#509](https://github.com/simjak/ctower/issues/509)) ([1dce769](https://github.com/simjak/ctower/commit/1dce7690be67de5df26a3cf4b90cbdf45e515a89))
+* **runtime:** spawn-custody records ([#506](https://github.com/simjak/ctower/issues/506)) ([3efa949](https://github.com/simjak/ctower/commit/3efa949e3442e84770e2d46b6f8eec4ec3799096))
+* **ui:** add the Requests surface ([#511](https://github.com/simjak/ctower/issues/511)) ([c384e1e](https://github.com/simjak/ctower/commit/c384e1e3e2af9a5d4aa473c5c974c052c11a1307))
+* **ui:** read-only limits shadow surface ([#535](https://github.com/simjak/ctower/issues/535)) ([79a0208c3b799d7ffe6b7c81a3c0a45147442838))
+
+
+### Chores
+
+* **deps:** consolidated verify-host bump — five pins, one coherent recompile ([#528](https://github.com/simjak/ctower/issues/528)) ([354e0e3](https://github.com/simjak/ctower/commit/354e0e32dba4eb1e43282009e745f2b1e0e76984))
+* **phases:** activate the harness-adapter phases ([#542](https://github.com/simjak/ctower/issues/542)) ([77ad1fa](https://github.com/simjak/ctower/commit/77ad1faff924e091286f55cb3297d8afc12b032f))
+* patch pnpm security vulnerabilities ([#498](https://github.com/simjak/ctower/issues/498)) ([a8f75ce](https://github.com/simjak/ctower/commit/a8f75ce7ce60698b27abb554be79e441cc2f745c))
+
+
+### Documentation
+
+* **concepts:** every component with software and accounting examples ([#510](https://github.com/simjak/ctower/issues/510)) ([a954e6f](https://github.com/simjak/ctower/commit/a954e6f98ffc8bfd84dbbeb01d9b12fdaf98efcd))
+* **harness:** the later-wave credentials survey ([#541](https://github.com/simjak/ctower/issues/541)) ([5288ef8](https://github.com/simjak/ctower/commit/5288ef85f6542ee4b811ee883e4ce28b4e2b6694))
+* **review:** the review record lives in the repository ([#516](https://github.com/simjak/ctower/issues/516)) ([ba05e54](https://github.com/simjak/ctower/commit/ba05e54e1fdbd073251e3396ef875376b0236ab0))
+* **spec:** crew and role record — authenticated stage-role enforcement ([#527](https://github.com/simjak/ctower/issues/527)) ([01fd722](https://github.com/simjak/ctower/commit/01fd72296443d7be2defb5b0e0a219251aa41263))
+* **spec:** the external estate migrates in; three migration candidates admitted ([#501](https://github.com/simjak/ctower/issues/501)) ([7bc0e0c](https://github.com/simjak/ctower/commit/7bc0e0c74a95116099ceb3bb651acabd97a6fb3b))
+* **spec:** the harness-adapter epic — tickets, acceptance, and the seam decision ([#532](https://github.com/simjak/ctower/issues/532)) ([d669bd4](https://github.com/simjak/ctower/commit/d669bd497d645dc30ae7e14f3c12b6dff7f0a27b))
+* **spec:** routine output is an Inbox work item, not a session injection ([#508](https://github.com/simjak/ctower/issues/508)) ([a941182](https://github.com/simjak/ctower/commit/a941182932dee8a65e965a3a099e1cfc8ab9d094))
+
+
+### Tests
+
+* **acceptance:** the manibo onboarding journey ([#536](https://github.com/simjak/ctower/issues/536)) ([6c032d3](https://github.com/simjak/ctower/commit/6c032d3b526e5fc529533550232a2c19edbbf661))
+
+
+### Bug Fixes
+
+* **checks:** mint-time uniqueness for stable IDs and migration numbers ([#534](https://github.com/simjak/ctower/issues/534)) ([2fc6255](https://github.com/simjak/ctower/commit/2fc62551099777004aee95f52b5b629dd2b29b26))
+* **ci:** bound and retry the secret-service setup step ([#540](https://github.com/simjak/ctower/issues/540)) ([d71df24](https://github.com/simjak/ctower/commit/d71df24281df39ffcb549746ff539b50764ed303))
+* **inbox:** compose the Project grant on correspondent reads ([#537](https://github.com/simjak/ctower/issues/537)) ([f185abe](https://github.com/simjak/ctower/commit/f185abefef1857f30c327f04bb219384dfbfc569))
+* **record:** enforce the persisted Project grant on every Project-scoped Ticket read ([#507](https://github.com/simjak/ctower/issues/507)) ([9be1081](https://github.com/simjak/ctower/commit/9be1081729d853eb16ea251a2e11aecd07832bdd))
+* **record:** fold workflow events into the ticket timeline read ([#526](https://github.com/simjak/ctower/issues/526)) ([c714126](https://github.com/simjak/ctower/commit/c714126635130bbb164bf08aed466d37c6c0cae7))
+* **record:** refuse foreign-project projection reads ([#517](https://github.com/simjak/ctower/issues/517)) ([aa7f9f3](https://github.com/simjak/ctower/commit/aa7f9f3092f83b554ab8402183d2321f81fccae3))
+* **record:** thread identity into the projection read signature ([#520](https://github.com/simjak/ctower/issues/520)) ([bb48ba5](https://github.com/simjak/ctower/commit/bb48ba539c98b6b7e6f97540431e0ed066c6d209))
+
 ## [0.30.0](https://github.com/simjak/ctower/compare/v0.29.0...v0.30.0) (2026-08-14)
 
 
