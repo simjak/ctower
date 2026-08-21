@@ -1,8 +1,11 @@
 import { Bot, Building2, Cpu, Target } from "lucide-react";
 import type { ReactElement } from "react";
-import { Chip, Input, Mono } from "../ui/primitives";
+import { Button, Chip, Input, Mono } from "../ui/primitives";
 import { cn } from "../ui/cn";
-import { ADAPTERS, suggestKey } from "./answers";
+import { CheckList } from "../harness/CheckList";
+import { ConfigFields } from "../harness/ConfigFields";
+import { ADAPTERS, adapterFor } from "../harness/schema";
+import { suggestKey } from "./answers";
 import type { Answers } from "./answers";
 import { StepFrame } from "./StepFrame";
 
@@ -63,6 +66,7 @@ export function NameStep({ answers, onAnswers, onNext }: StepProps): ReactElemen
 
 /** Step 2 — the runtime the team runs on, chosen before the staff. */
 export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): ReactElement {
+  const adapter = adapterFor(answers.adapter);
   return (
     <StepFrame
       step={2}
@@ -73,46 +77,67 @@ export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): 
       onBack={onBack}
       onNext={onNext}
       nextLabel="Connect"
-      nextReady={answers.adapter !== ""}
+      nextReady={adapter !== undefined}
+      /* The lifted test button: this step owns the control, the harness form
+         owns what it means. Today it owns a refusal, because the probe has no
+         operation behind it yet. */
+      action={
+        <Button variant="ghost" size="sm" disabled title="The harness surface has not landed yet.">
+          Test now
+        </Button>
+      }
     >
-      <Label htmlFor="">Adapter</Label>
+      <p className="mb-1.5 text-xs text-muted">Adapter</p>
       <div className="grid gap-3 sm:grid-cols-3">
-        {ADAPTERS.map((adapter) => (
+        {ADAPTERS.map((entry) => (
           <button
-            key={adapter.key}
+            key={entry.key}
             type="button"
-            aria-pressed={answers.adapter === adapter.key}
+            aria-pressed={answers.adapter === entry.key}
             onClick={(): void => {
-              onAnswers({ ...answers, adapter: adapter.key });
+              onAnswers({ ...answers, adapter: entry.key });
             }}
             className={cn(
               "relative cursor-pointer rounded-md border px-4 pt-6 pb-4 text-center",
-              answers.adapter === adapter.key
+              answers.adapter === entry.key
                 ? "border-amber bg-amber/10"
                 : "border-line bg-card hover:bg-raised"
             )}
           >
-            {adapter.recommended ? (
+            {entry.recommended ? (
               <Chip tone="amber" className="absolute -top-2.5 right-3">
                 Recommended
               </Chip>
             ) : null}
-            <span className="block text-sm font-semibold text-fg">{adapter.label}</span>
-            <span className="mt-1 block text-xs text-muted">{adapter.blurb}</span>
+            <span className="block text-sm font-semibold text-fg">{entry.label}</span>
+            <span className="mt-1 block text-xs text-muted">{entry.blurb}</span>
           </button>
         ))}
       </div>
 
-      <div className="mt-4 rounded-md border border-line p-4">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="m-0 text-sm font-medium text-fg">Adapter environment check</p>
-            <p className="mt-1 mb-0 text-xs text-muted">
-              A live probe that asks the adapter to answer for itself.
+      <div className="mt-5">
+        <p className="mb-1.5 text-xs text-muted">Settings</p>
+        <ConfigFields
+          fields={adapter?.config ?? []}
+          values={{}}
+          onValue={(): void => {
+            /* no adapter declares a field yet; the renderer is what will draw them */
+          }}
+          empty="This adapter declares no settings yet."
+        />
+      </div>
+
+      <div className="mt-5">
+        <CheckList
+          title="Adapter environment check"
+          checks={[]}
+          empty={
+            <p className="m-0 text-sm text-muted">
+              A live probe that asks the adapter to answer for itself.{" "}
+              <span className="text-fg">Available when the harness surface lands.</span>
             </p>
-          </div>
-          <Chip>available when the harness surface lands</Chip>
-        </div>
+          }
+        />
       </div>
     </StepFrame>
   );
@@ -120,7 +145,7 @@ export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): 
 
 /** Step 3 — the first agent, created on the harness chosen in step 2. */
 export function AgentStep({ answers, onAnswers, onNext, onBack }: StepProps): ReactElement {
-  const adapter = ADAPTERS.find((entry) => entry.key === answers.adapter);
+  const adapter = adapterFor(answers.adapter);
   return (
     <StepFrame
       step={3}

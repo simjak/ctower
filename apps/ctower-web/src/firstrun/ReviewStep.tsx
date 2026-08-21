@@ -1,6 +1,9 @@
 import { Check } from "lucide-react";
 import type { ReactElement } from "react";
+import type { CompanyBundleValidationResult } from "@ctower/client";
 import type { Answer } from "../api/client";
+import { CheckList } from "../harness/CheckList";
+import { checksOf } from "../harness/checks";
 import { Chip, Mono } from "../ui/primitives";
 import { Mark } from "../ui/marks";
 import { Malformed, Refused, Unreachable } from "../wizard/states";
@@ -22,12 +25,15 @@ export function ReviewStep({
   previewing,
   onStart,
   onBack,
+  validation,
 }: {
   readonly answers: Answers;
   readonly outcome: Answer<unknown> | null;
   readonly previewing: boolean;
   readonly onStart: () => void;
   readonly onBack: () => void;
+  /** The registry's own answer about this exact bundle, once it has one. */
+  readonly validation: CompanyBundleValidationResult | null;
 }): ReactElement {
   const adapter = ADAPTERS.find((entry) => entry.key === answers.adapter);
   const sending = outcome?.kind === "asking";
@@ -55,6 +61,15 @@ export function ReviewStep({
         />
       </ul>
 
+      {validation === null ? null : (
+        <div className="mt-6">
+          <CheckList
+            title="What the registry checked"
+            checks={checksOf(validation.checks)}
+            empty={<p className="m-0 text-sm text-muted">Nothing was checked.</p>}
+          />
+        </div>
+      )}
       {outcome !== null && outcome.kind === "answered" && previewing ? (
         <p className="mt-6 mb-0 rounded-md border border-line bg-card p-4 text-sm text-muted">
           Checked and planned against the live registry. A preview does not write — on a tower that

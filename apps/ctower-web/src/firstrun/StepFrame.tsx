@@ -24,6 +24,7 @@ export function StepFrame({
   nextReady,
   onSkip,
   skipLabel,
+  action,
 }: {
   readonly step: number;
   readonly total: number;
@@ -37,6 +38,8 @@ export function StepFrame({
   readonly nextReady: boolean;
   readonly onSkip?: (() => void) | undefined;
   readonly skipLabel?: string | undefined;
+  /** A control this step owns whose meaning belongs to the form inside it. */
+  readonly action?: ReactNode;
 }): ReactElement {
   return (
     <div className="mx-auto w-[min(640px,100%)] px-6 py-16">
@@ -59,10 +62,11 @@ export function StepFrame({
         >
           {icon}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="m-0 text-xl leading-tight font-bold tracking-[-0.02em]">{title}</h1>
           <p className="mt-1 mb-0 text-sm text-muted">{lead}</p>
         </div>
+        {action === undefined ? null : <div className="shrink-0">{action}</div>}
       </div>
 
       <div className="mt-8">{children}</div>

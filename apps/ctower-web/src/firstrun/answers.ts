@@ -1,31 +1,7 @@
 import type { CompanyBundleDocument } from "@ctower/client";
 import { canonicalDigest } from "../mint/digest";
 import { resourceOf } from "../mint/component";
-
-/** The adapters this wizard can stand a team up on. */
-export interface Adapter {
-  readonly key: string;
-  readonly label: string;
-  readonly blurb: string;
-  readonly recommended: boolean;
-}
-
-/**
- * The three adapters the runner actually has a binding for. `hermes`,
- * `claude-code` and `codex` are the three the conformance suite covers; a card
- * for anything else would be offering a harness with nothing behind it, which
- * is how a stub becomes an adapter by accident.
- */
-export const ADAPTERS: readonly Adapter[] = [
-  {
-    key: "claude-code",
-    label: "Claude Code",
-    blurb: "Claude Code CLI harness",
-    recommended: true,
-  },
-  { key: "codex", label: "Codex", blurb: "Codex CLI harness", recommended: true },
-  { key: "hermes", label: "Hermes", blurb: "Hermes profile harness", recommended: false },
-];
+export { ADAPTERS, adapterFor } from "../harness/schema";
 
 /** Everything the five steps collect, and nothing else. */
 export interface Answers {
