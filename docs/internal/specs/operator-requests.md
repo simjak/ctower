@@ -126,7 +126,7 @@ the key with another digest refuses. Sequence gaps are allowed, but reuse and re
 critical path contains only bounded validation, the Record transaction, and the durability acknowledgement,
 not model work, provider calls, Git, or projection catch-up.
 
-The v1 strict capture contract has one native source shape. Seat CLI and UI send-box capture send
+The v1 strict capture contract has one native source shape. The project-seat CLI sends
 `source.kind=native` and no source reference; the server derives the immutable alias from tenant, resolved
 Actor principal, and idempotency key. Exact replay therefore resolves the same alias and a different digest
 still refuses. Ordinary capture and promotion schemas reject `source.kind=external`; only OR-06's dedicated,
@@ -138,9 +138,10 @@ An accepted response names Request UUID, `R` reference, project, Record position
 cutover-RPO0 policy it is returned only after the commit has received the required external-failure-domain
 durable acknowledgement. A server-observed off-host acknowledgement timeout returns `durability_pending`, not
 success: the Request is excluded from effects and accepted projections and replay under the same key is safe.
-A client transport timeout or disconnect may return no typed result at all and remains ambiguous; the UI keeps
-the draft and the CLI spool keeps the encrypted entry, then reconciles/replays the same key. Editing creates a
-new key. Neither client may display pending or no-response ambiguity as accepted.
+A client transport timeout or disconnect may return no typed result at all and remains ambiguous; the CLI spool
+keeps the encrypted entry, then reconciles/replays the same key. A future product browser may keep its draft
+when CT-I2-011 activates. Editing creates a new key. No client may display pending or no-response ambiguity as
+accepted.
 
 ### 2. OR-02 — Request owns intent; Ticket owns executable work
 
@@ -203,15 +204,16 @@ client data, or a Board row cannot repair Record truth.
 ### 5. OR-05 — Every v1 capture channel resolves one existing server Actor
 
 **NEW in #397; composes with merged `INV-69`, `INV-70`, `INV-73`, generated clients, and protected spools.**
-The v1 channel set is closed: the project-seat CLI and the private UI send-box idiom are the only ordinary
-capture channels. Both use identity planes and custody already admitted by the canonical specification, call
-the same strict Request intake command, and receive the same durability states. No channel may claim Actor,
-submitter, owner, project grant, or accepted state.
+The v1 channel set is closed to the project-seat CLI as the only ordinary capture channel. It uses the identity
+plane and custody already admitted by the canonical specification, calls the same strict Request intake command,
+and receives its typed durability states. The caller may not claim Actor, submitter, owner, project grant, or
+accepted state. A future product-browser channel belongs to CT-I2-011 and is not implemented or evidenced by
+this v1 specification.
 
 | v1 channel | Existing identity custody and pending behavior |
 |---|---|
 | Seat CLI | A protected project-seat bearer resolves one machine-plane Actor and version-pinned project grant server-side. The grant supplies project scope and capability; the payload supplies text and a client key. The encrypted spool retains pending commands and replays the same key. |
-| UI send box | The private HTTPS edge resolves one human Actor from the existing OIDC session, human-role binding, and same-origin CSRF check. The browser holds no bearer or owner claim. A project selector is only a request for server authorization. Pending keeps the text, names the uncertainty, and retries the same key. |
+| Future UI send box (CT-I2-011) | When separately activated, the product browser must resolve one human Actor from the existing OIDC session, human-role binding, and same-origin CSRF check. The browser must hold no bearer or owner claim. A project selector is only a request for server authorization; pending must keep the text, name the uncertainty, and retry the same key. |
 
 The OR-06 migration helper is not an ordinary capture channel, principal, or credential. An operator runs it
 once through the existing authenticated human `operator` role binding; its dedicated signed-manifest command
@@ -345,10 +347,11 @@ The #385 epistemic rules bind:
 
 ## Security boundary and CSO trigger test
 
-The v1 design adds **no new trust boundary**. Its ordinary capture channels are only the seat CLI and UI
-send-box idiom, reusing the existing private HTTPS edge, one-Actor request rule, human OIDC/session/CSRF plane,
-machine project-seat bearer plane, project grants, prohibited-data refusal, Record transaction, off-host
-durability, generated clients, and read-only projection seams. The operator-run migration helper reuses the
+The v1 design adds **no new trust boundary**. Its only ordinary capture channel is the seat CLI, reusing the
+existing machine project-seat bearer plane, project grants, prohibited-data refusal, Record transaction,
+off-host durability, generated clients, and read-only projection seams. The future CT-I2-011 product-browser
+channel must reuse the existing private HTTPS edge, one-Actor request rule, and human OIDC/session/CSRF plane.
+The operator-run migration helper reuses the
 existing human `operator` binding and disappears at cutover. Secrets remain references. The Request body
 confers no identity, owner, project, Ticket, Proof, priority, triage, or close authority.
 
@@ -420,8 +423,9 @@ Acceptance:
 
 ### Phase 2 — UI channel and Board list
 
-Add the private server-mediated UI send-box idiom and contextual Request list on the already-single ctower
-authority. Keep the same command and existing human Actor contract; add no adapter identity or Slack ingress.
+When CT-I2-011 activates the product browser, add its server-mediated UI send-box contract and contextual
+Request list on the already-single ctower authority. Keep the same command and existing human Actor contract;
+add no adapter identity or Slack ingress.
 
 Acceptance:
 
@@ -479,7 +483,7 @@ activated stable tickets. Existing citations are composition points, not claims 
 | OR-02 | **NEW #397** | Existing direct Ticket action is intentionally superseded for Requests: `packages/ctower-kernel/src/ctower_kernel/record/_intake_sql.py:502-518,598-650`; promotion contract `contracts/http/openapi.yaml:224-255`; independent triage composition `docs/specs/connectors.md:359-391` |
 | OR-03 | **NEW #397** | Current source-reference/Ticket split `SPEC.md:1471`; UUIDv7 Ticket allocation `packages/ctower-kernel/src/ctower_kernel/record/identifiers.py:12-22`; new Request UUID/sequence/high-water and collision tests required |
 | OR-04 | **NEW #397** | Record transaction/cutover pending enforcement `packages/ctower-kernel/src/ctower_kernel/record/transaction.py:401-513`; canonical backup/restore contract `SPEC.md:3738-3757`; exact 2026-08-09 Mission Control incident reproduced in OR-04 |
-| OR-05 | **NEW #397** | Existing human/session and project-seat Actor planes `SPEC.md:1469-1473`; protected intake API `contracts/http/openapi.yaml:191-255`; v1 CLI/UI identity fixtures required; Slack/Hermes remains a separately decided and CSO-reviewed new boundary following `docs/security/connector-phase2-cso.md` |
+| OR-05 | **NEW #397** | Existing human/session and project-seat Actor planes `SPEC.md:1469-1473`; protected intake API `contracts/http/openapi.yaml:191-255`; v1 CLI identity fixtures required, with future CT-I2-011 browser identity fixtures deferred to that lane; Slack/Hermes remains a separately decided and CSO-reviewed new boundary following `docs/security/connector-phase2-cso.md` |
 | OR-06 | **NEW #397** | Current shadow/bulk-import prohibition `SPEC.md:1472`; existing intake source/project guard `packages/ctower-kernel/src/ctower_kernel/work/intake.py:203-216`; new enforced fence, signed freeze, manifest-bound Request import, full-row/count/sample reconciliation, and one-way cutover proofs required |
 | OR-07 | **NEW #397** | Existing read-only epistemic fold remains the source concept; no browser implementation is retained in this cut. New Request projection/list and responsive fixtures are required when the separately activated browser work lands. |
 
