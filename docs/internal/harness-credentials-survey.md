@@ -1,12 +1,12 @@
 # CT-I1-044 — later-wave credentials survey
 
-Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 1.
+Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 2.
 Observed: 2026-08-20T14:24:08Z.
 
-Dependency truth: CT-I1-043 is not landed on `origin/main`. The Codex source below is the
-immutable reviewed-at revision `ee197705b9503e4e8e86c2a39f83db0878bb986e` from open PR #539,
-retained for provenance only; it is not the current PR #539 head. This survey does not claim
-three landed bindings and remains blocked on that dependency.
+Dependency truth: CT-I1-043 / PR #539 is merged and landed on `origin/main` at
+`9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99`. The Codex source below is pinned to that
+landed revision; this survey does not claim a third later-wave binding or activate runtime
+work.
 
 This is an internal, fail-closed survey. It does not implement or register a later-wave
 Adapter. A state is `UNVERIFIED` whenever the reachable evidence does not answer the
@@ -37,7 +37,7 @@ so the correct adapter count is zero.
 | `auth-runbook-2026-08-17` | runbook update 2026-08-17 | `/srv/projects/mission-control/playbooks/codex-hermes-auth-runbook.md:77-159`; Hermes pool, provider routes, reset/error distinctions, and the no-copy law |
 | `hermes-binding-d724` | `d72408e7` | `apps/ctower-runner/src/ctower_runner/hermes/binding.py`; gateway log is serving truth and the binding observes the Hermes pool |
 | `claude-binding-d724` | `d72408e7` | `apps/ctower-runner/src/ctower_runner/claude_code/binding.py`; per-home, provided-pool pattern and checkpoint/respawn failover |
-| `codex-candidate-ee197` | `ee197705b9503e4e8e86c2a39f83db0878bb986e` | `apps/ctower-runner/src/ctower_runner/codex/binding.py`; PR #539 reviewed-at revision (OPEN, not landed on `origin/main`; not the current PR head); direct-CLI versus runtime-under-Hermes distinction and pool/substrate reconciliation |
+| `codex-candidate-ee197` | `9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99` | `apps/ctower-runner/src/ctower_runner/codex/binding.py`; PR #539 merged into `origin/main` at the pinned revision; direct-CLI versus runtime-under-Hermes distinction and pool/substrate reconciliation |
 | `qwen-cli-0215` | installed `0.21.5` | `/home/agent/.local/bin/qwen`; `qwen --version` and `qwen --help` |
 | `qwen-docs-0215` | installed `0.21.5` | `/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md` |
 | `local-command-absence` | `2026-08-20T14:24:08Z` | `command -v openclaw qwen-code zcode deepseek` — all four names absent; the separate `qwen` binary is present |
@@ -45,6 +45,26 @@ so the correct adapter count is zero.
 
 The machine-readable source is `contracts/runner/later-wave-harness-survey.json`; its
 strict authored shape is `contracts/runner/later-wave-harness-survey.schema.json`.
+
+## Derived semantic matrix
+
+Revision 2 of `contracts/runner/later-wave-harness-survey.matrix.json` closes two families
+that cannot be established by collecting judge examples:
+
+- **Referential consistency.** A verified answer that names another field's route, identity,
+  pool, or cache must match that field's allowed value set. In particular, `qwen-cli` cannot
+  claim a gateway representative probe; the route/probe rule is generated from the finite
+  domains, not from this one mutation.
+- **Evidence-type support.** Every verified answer kind has a matrix support set. The schema
+  requires every cited source ID for that claim to belong to a source type in that set. The
+  Qwen evidence snapshot has no source that can entail `published_directional` credit weights,
+  so that mutation is refused while the supported `unpublished` claim remains valid.
+
+The authored survey pins matrix SHA-256
+`b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b`. The validation-only
+proof derives 278 pair-rule, 92 referential, and 91 evidence-support violations; bounded
+Hypothesis searches and exhaustive loops require zero of those impossible documents to
+validate. No harness is executed and no credential value is read.
 
 ## Local binary and document evidence
 
@@ -178,9 +198,10 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - Declarative contract: `.venv/bin/python -m ctower_contracts verify --all`
 - Warm (pinned verify environment): `PYTHON=.venv/bin/python just check`
 - Validation-only conformance proof: the contract verifier checks generated schema definitions
-  and references; `tests/conformance/harness-adapter/test_survey_registration.py` generates
-  dependency-matrix violations with a bounded Hypothesis search and validates them against the
-  closed schema. It does not execute a harness, bind a provider, or add runtime behavior.
+  and references; `tests/conformance/harness-adapter/test_survey_registration.py` derives the
+  pair-rule, referential-consistency, and evidence-support violations from the matrix, then
+  uses bounded Hypothesis searches plus exhaustive loops to prove that none validate against
+  the closed schema. It does not execute a harness, bind a provider, or add runtime behavior.
 - No `just verify` is owed by this docs/contracts-only slice unless the repository gate
   reports that the changed generated contract surface requires it.
 
@@ -190,7 +211,7 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - crew: engineer-044-survey
 - model: gpt-5.6-luna
 - claim: CT-I1-044 is surveyed for `openclaw`, `qwen-code`, `zcode`, and `deepseek` with revision-pinned evidence; unknowns refuse registration, `deepseek` receives zero adapter work, and no credential value or rotation policy was added.
-- stood-under: The full CT-I1-044 row at `d72408e7`, sealed design `c07c049c`, auth runbook, landed Hermes/Claude bindings, the explicitly unlanded PR #539 Codex candidate, installed Qwen binary/docs, literal absence probes, strict contract data, and the declarative plus warm batteries.
+- stood-under: The full CT-I1-044 row at `d72408e7`, sealed design `c07c049c`, auth runbook, landed Hermes/Claude bindings, the landed PR #539 Codex binding at `9bc6c352`, installed Qwen binary/docs, literal absence probes, strict contract data, and the declarative plus warm batteries.
 - if-this-breaks: Re-run the exact source revisions and candidate command probes; do not convert any `UNVERIFIED` answer into a role without a newly reachable fact.
 
 ## SIGNED-OFF — 2026-08-20T21:33:29Z
@@ -201,3 +222,12 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - claim: The survey paperwork distinguishes the validation-only schema proof from runtime or binding implementation; the complete dependency matrix and bounded violation search do not activate a harness.
 - stood-under: `contracts/runner/later-wave-harness-survey.matrix.json`, the strict survey schema/data pair, and the focused conformance test at the pushed repair head.
 - if-this-breaks: Re-run the focused schema test and inspect the matrix-derived violation set; do not describe this proof as a harness execution or binding.
+
+## SIGNED-OFF — 2026-08-20T23:40:57Z
+
+- seat: engineer
+- crew: engineer-044-r6
+- model: gpt-5.6-luna
+- claim: Revision 2 closes answer-to-evidence entailment and cross-field referential consistency; the schema refuses the Qwen gateway-probe and unsupported published-credit judge cases while retaining the derived pair refusals.
+- stood-under: Matrix SHA-256 `b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b`, source #539 landed revision `9bc6c352`, strict schema/data, and 15 focused tests including bounded and exhaustive derived violation proofs.
+- if-this-breaks: Re-derive the ten-question referential and evidence-support tables; do not add a judge mutation as a special case or convert an `UNVERIFIED` answer into a role.

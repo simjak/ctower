@@ -18519,6 +18519,1226 @@
           ],
           "type": "object"
         },
+        "answers": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_pool",
+                  "rotation_cache_semantics"
+                ]
+              },
+              "x-ctower-matrix-rule-id": "no-native-pool-native-cache"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "provided_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_pool",
+                  "rotation_cache_semantics"
+                ]
+              },
+              "x-ctower-matrix-rule-id": "native-pool-no-provided-cache"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "per_task_lease"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_pool",
+                  "subagent_credential_inheritance"
+                ]
+              },
+              "x-ctower-matrix-rule-id": "no-native-pool-no-native-subagent-lease"
+            },
+            {
+              "not": {
+                "properties": {
+                  "config_surface": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "authored_config_only"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "identity_proof": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "account_file"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "config_surface",
+                  "identity_proof"
+                ]
+              },
+              "x-ctower-matrix-rule-id": "authored-config-account-file-never-both"
+            },
+            {
+              "not": {
+                "properties": {
+                  "identity_proof": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "direct_cli_account"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "probe_target": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "gateway_endpoint"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "identity_proof",
+                  "probe_target"
+                ]
+              },
+              "x-ctower-matrix-rule-id": "direct-cli-identity-gateway-probe-never-both"
+            },
+            {
+              "not": {
+                "properties": {
+                  "identity_proof": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "persisted_device_key"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "probe_target": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "direct_cli_endpoint"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "identity_proof",
+                  "probe_target"
+                ]
+              },
+              "x-ctower-matrix-rule-id": "gateway-device-identity-direct-probe-never-both"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "provided_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "provided_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "provided_pool_cache"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "config_home_respawn"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "config_home_respawn"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "config_home_respawn"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "rotation_cache_semantics": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "rotation_cache_semantics",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_credential_fallback"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_fallback",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "native-fallback-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_credential_fallback"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_fallback",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "native-fallback-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_credential_fallback"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_fallback",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "native-fallback-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_fallback",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "native-fallback-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_fallback",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "native-fallback-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_fallback": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "native_fallback",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "native-fallback-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "per_task_lease"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "subagent_credential_inheritance",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "subagent-lease-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "per_task_lease"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "subagent_credential_inheritance",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "subagent-lease-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "per_task_lease"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "subagent_credential_inheritance",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "subagent-lease-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "subagent_credential_inheritance",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "subagent-lease-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "subagent_credential_inheritance",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "subagent-lease-native-pool"
+            },
+            {
+              "not": {
+                "properties": {
+                  "native_pool": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "no_native_pool"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  },
+                  "subagent_credential_inheritance": {
+                    "properties": {
+                      "state": {
+                        "const": "verified"
+                      },
+                      "value": {
+                        "const": "model_route"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ]
+                  }
+                },
+                "required": [
+                  "subagent_credential_inheritance",
+                  "native_pool"
+                ]
+              },
+              "x-ctower-referential-rule-id": "subagent-lease-native-pool"
+            }
+          ],
+          "properties": {
+            "config_surface": {
+              "$ref": "#/$defs/config-surface-answer"
+            },
+            "credit_weights": {
+              "$ref": "#/$defs/credit-weights-answer"
+            },
+            "egress_topology": {
+              "$ref": "#/$defs/egress-topology-answer"
+            },
+            "identity_proof": {
+              "$ref": "#/$defs/identity-proof-answer"
+            },
+            "native_fallback": {
+              "$ref": "#/$defs/native-fallback-answer"
+            },
+            "native_pool": {
+              "$ref": "#/$defs/native-pool-answer"
+            },
+            "probe_target": {
+              "$ref": "#/$defs/probe-target-answer"
+            },
+            "reset_window_semantics": {
+              "$ref": "#/$defs/reset-window-semantics-answer"
+            },
+            "rotation_cache_semantics": {
+              "$ref": "#/$defs/rotation-cache-semantics-answer"
+            },
+            "subagent_credential_inheritance": {
+              "$ref": "#/$defs/subagent-credential-inheritance-answer"
+            }
+          },
+          "required": [
+            "native_pool",
+            "native_fallback",
+            "config_surface",
+            "identity_proof",
+            "reset_window_semantics",
+            "rotation_cache_semantics",
+            "subagent_credential_inheritance",
+            "egress_topology",
+            "probe_target",
+            "credit_weights"
+          ],
+          "type": "object"
+        },
         "candidate": {
           "additionalProperties": false,
           "allOf": [
@@ -18534,41 +19754,11 @@
                 ]
               },
               "then": {
-                "properties": {
-                  "adapter_work": {
-                    "const": "blocked_until_survey"
-                  },
-                  "answers": {
-                    "allOf": [
-                      {
-                        "not": {
-                          "properties": {
-                            "identity_proof": {
-                              "properties": {
-                                "state": {
-                                  "const": "verified"
-                                },
-                                "value": {
-                                  "const": "direct_cli_account"
-                                }
-                              },
-                              "required": [
-                                "state",
-                                "value"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "identity_proof"
-                          ]
-                        },
-                        "x-ctower-matrix-context-rule": {
-                          "forbidden_value": "direct_cli_account",
-                          "question": "identity_proof"
-                        }
-                      },
-                      {
-                        "not": {
+                "allOf": [
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
                           "properties": {
                             "probe_target": {
                               "properties": {
@@ -18589,30 +19779,329 @@
                             "probe_target"
                           ]
                         },
-                        "x-ctower-matrix-context-rule": {
-                          "forbidden_value": "direct_cli_endpoint",
-                          "question": "probe_target"
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "representative_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "model_route"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "decoded_claim"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "account_file"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_account"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "model_route"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_account"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-matrix-context-rule": {
+                      "forbidden_value": "direct_cli_account",
+                      "question": "identity_proof"
+                    }
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "openclaw"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-matrix-context-rule": {
+                      "forbidden_value": "direct_cli_endpoint",
+                      "question": "probe_target"
+                    }
+                  }
+                ],
+                "properties": {
+                  "adapter_work": {
+                    "const": "blocked_until_survey"
+                  },
+                  "answers": {
+                    "allOf": [
+                      {
+                        "patternProperties": {
+                          "^.+$": {
+                            "not": {
+                              "$ref": "#/$defs/model-answer"
+                            }
+                          }
                         }
                       }
                     ],
                     "patternProperties": {
                       "^.+$": {
-                        "allOf": [
-                          {
-                            "not": {
-                              "$ref": "#/$defs/model-answer"
-                            }
-                          },
-                          {
-                            "properties": {
-                              "evidence": {
-                                "contains": {
-                                  "const": "design-seam-c07"
-                                }
-                              }
+                        "properties": {
+                          "evidence": {
+                            "contains": {
+                              "const": "design-seam-c07"
                             }
                           }
-                        ]
+                        }
                       }
                     }
                   },
@@ -18660,29 +20149,278 @@
                 ]
               },
               "then": {
+                "allOf": [
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "gateway_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "representative_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "model_route"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "decoded_claim"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "account_file"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "persisted_device_key"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "model_route"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "qwen-code"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  }
+                ],
                 "properties": {
                   "adapter_work": {
                     "const": "blocked_until_survey"
                   },
                   "answers": {
-                    "patternProperties": {
-                      "^.+$": {
-                        "allOf": [
-                          {
+                    "allOf": [
+                      {
+                        "patternProperties": {
+                          "^.+$": {
                             "not": {
                               "$ref": "#/$defs/model-answer"
                             }
-                          },
-                          {
-                            "properties": {
-                              "evidence": {
-                                "contains": {
-                                  "const": "qwen-docs-0215"
-                                }
-                              }
+                          }
+                        }
+                      }
+                    ],
+                    "patternProperties": {
+                      "^.+$": {
+                        "properties": {
+                          "evidence": {
+                            "contains": {
+                              "const": "qwen-docs-0215"
                             }
                           }
-                        ]
+                        }
                       }
                     }
                   },
@@ -18730,11 +20468,339 @@
                 ]
               },
               "then": {
+                "allOf": [
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "gateway_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "representative_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "model_route"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "decoded_claim"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "account_file"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "persisted_device_key"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_account"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "model_route"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "zcode"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  }
+                ],
                 "properties": {
                   "adapter_work": {
                     "const": "blocked_until_survey"
                   },
                   "answers": {
+                    "allOf": [
+                      {
+                        "patternProperties": {
+                          "^.+$": {
+                            "not": {
+                              "$ref": "#/$defs/model-answer"
+                            }
+                          }
+                        }
+                      }
+                    ],
                     "patternProperties": {
                       "^.+$": {
                         "allOf": [
@@ -18807,6 +20873,323 @@
                 ]
               },
               "then": {
+                "allOf": [
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "unknown"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "gateway_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "probe_target": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "representative_endpoint"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "probe_target"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-probe-target"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "unknown"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "decoded_claim"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "account_file"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "persisted_device_key"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  },
+                  {
+                    "not": {
+                      "properties": {
+                        "answers": {
+                          "properties": {
+                            "identity_proof": {
+                              "properties": {
+                                "state": {
+                                  "const": "verified"
+                                },
+                                "value": {
+                                  "const": "direct_cli_account"
+                                }
+                              },
+                              "required": [
+                                "state",
+                                "value"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity_proof"
+                          ]
+                        },
+                        "key": {
+                          "const": "deepseek"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "answers"
+                      ]
+                    },
+                    "x-ctower-referential-rule-id": "effective-route-identity-proof"
+                  }
+                ],
                 "properties": {
                   "adapter_work": {
                     "const": "zero"
@@ -18904,288 +21287,7 @@
               ]
             },
             "answers": {
-              "additionalProperties": false,
-              "allOf": [
-                {
-                  "not": {
-                    "properties": {
-                      "native_pool": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "no_native_pool"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "rotation_cache_semantics": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "native_pool_cache"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "native_pool",
-                      "rotation_cache_semantics"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "no-native-pool-native-cache"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "native_pool": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "native_pool"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "rotation_cache_semantics": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "provided_pool_cache"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "native_pool",
-                      "rotation_cache_semantics"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "native-pool-no-provided-cache"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "native_pool": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "no_native_pool"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "subagent_credential_inheritance": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "per_task_lease"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "native_pool",
-                      "subagent_credential_inheritance"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "no-native-pool-no-native-subagent-lease"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "config_surface": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "authored_config_only"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "identity_proof": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "account_file"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "config_surface",
-                      "identity_proof"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "authored-config-account-file-never-both"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "identity_proof": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "direct_cli_account"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "probe_target": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "gateway_endpoint"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "identity_proof",
-                      "probe_target"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "direct-cli-identity-gateway-probe-never-both"
-                },
-                {
-                  "not": {
-                    "properties": {
-                      "identity_proof": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "persisted_device_key"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      },
-                      "probe_target": {
-                        "properties": {
-                          "state": {
-                            "const": "verified"
-                          },
-                          "value": {
-                            "const": "direct_cli_endpoint"
-                          }
-                        },
-                        "required": [
-                          "state",
-                          "value"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "identity_proof",
-                      "probe_target"
-                    ]
-                  },
-                  "x-ctower-matrix-rule-id": "gateway-device-identity-direct-probe-never-both"
-                }
-              ],
-              "properties": {
-                "config_surface": {
-                  "$ref": "#/$defs/config-surface-answer"
-                },
-                "credit_weights": {
-                  "$ref": "#/$defs/credit-weights-answer"
-                },
-                "egress_topology": {
-                  "$ref": "#/$defs/egress-topology-answer"
-                },
-                "identity_proof": {
-                  "$ref": "#/$defs/identity-proof-answer"
-                },
-                "native_fallback": {
-                  "$ref": "#/$defs/native-fallback-answer"
-                },
-                "native_pool": {
-                  "$ref": "#/$defs/native-pool-answer"
-                },
-                "probe_target": {
-                  "$ref": "#/$defs/probe-target-answer"
-                },
-                "reset_window_semantics": {
-                  "$ref": "#/$defs/reset-window-semantics-answer"
-                },
-                "rotation_cache_semantics": {
-                  "$ref": "#/$defs/rotation-cache-semantics-answer"
-                },
-                "subagent_credential_inheritance": {
-                  "$ref": "#/$defs/subagent-credential-inheritance-answer"
-                }
-              },
-              "required": [
-                "native_pool",
-                "native_fallback",
-                "config_surface",
-                "identity_proof",
-                "reset_window_semantics",
-                "rotation_cache_semantics",
-                "subagent_credential_inheritance",
-                "egress_topology",
-                "probe_target",
-                "credit_weights"
-              ],
-              "type": "object"
+              "$ref": "#/$defs/answers"
             },
             "capability_declaration": {
               "$ref": "#/$defs/capability_declaration"
@@ -19288,6 +21390,96 @@
                   }
                 }
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "authored_config_only"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "env_overridable"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-cli-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "account_file"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           ]
         },
@@ -19311,6 +21503,61 @@
                       "published_directional",
                       "unpublished"
                     ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "published_directional"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "enum": []
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "unpublished"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-local-command-absence"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-ctower-weight-registry-d724"
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -19340,7 +21587,117 @@
                   }
                 }
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "shared"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "isolated"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
+          ]
+        },
+        "evidence-source-auth-runbook-2026-08-17": {
+          "const": "auth-runbook-2026-08-17"
+        },
+        "evidence-source-claude-binding-d724": {
+          "const": "claude-binding-d724"
+        },
+        "evidence-source-codex-candidate-ee197": {
+          "const": "codex-candidate-ee197"
+        },
+        "evidence-source-ctower-weight-registry-d724": {
+          "const": "ctower-weight-registry-d724"
+        },
+        "evidence-source-design-seam-c07": {
+          "const": "design-seam-c07"
+        },
+        "evidence-source-hermes-binding-d724": {
+          "const": "hermes-binding-d724"
+        },
+        "evidence-source-local-command-absence": {
+          "const": "local-command-absence"
+        },
+        "evidence-source-qwen-cli-0215": {
+          "const": "qwen-cli-0215"
+        },
+        "evidence-source-qwen-docs-0215": {
+          "const": "qwen-docs-0215"
+        },
+        "evidence-source-spec-ct-i1-044": {
+          "const": "spec-ct-i1-044"
+        },
+        "evidence-type": {
+          "enum": [
+            "absence_probe",
+            "auth_runbook",
+            "claude_binding",
+            "codex_binding_landed",
+            "hermes_binding",
+            "qwen_binary",
+            "qwen_documentation",
+            "sealed_design",
+            "specification",
+            "weight_registry/codex",
+            "weight_registry/deepseek",
+            "weight_registry/openclaw",
+            "weight_registry/qwen-code",
+            "weight_registry/zcode"
           ]
         },
         "identity-proof-answer": {
@@ -19365,6 +21722,112 @@
                       "persisted_device_key",
                       "direct_cli_account"
                     ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "decoded_claim"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "account_file"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "persisted_device_key"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "direct_cli_account"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -19416,6 +21879,105 @@
                   }
                 }
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "native_credential_fallback"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "no_native_fallback"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-local-command-absence"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "model_fallback_only"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-cli-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           ]
         },
@@ -19439,6 +22001,71 @@
                       "native_pool",
                       "no_native_pool"
                     ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "native_pool"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "no_native_pool"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-local-command-absence"
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -19466,6 +22093,105 @@
                       "direct_cli_endpoint",
                       "representative_endpoint"
                     ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "gateway_endpoint"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "direct_cli_endpoint"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-cli-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "representative_endpoint"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-codex-candidate-ee197"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-cli-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -19546,6 +22272,93 @@
                   }
                 }
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "provider_reset_at"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "rolling_block"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "weekly_plan"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           ]
         },
@@ -19574,12 +22387,133 @@
                   }
                 }
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "native_pool_cache"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "provided_pool_cache"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "config_home_respawn"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-claude-binding-d724"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "no_rotation_cache"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-local-command-absence"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           ]
         },
         "source": {
           "additionalProperties": false,
           "properties": {
+            "evidence_type": {
+              "$ref": "#/$defs/evidence-type"
+            },
             "id": {
               "$ref": "#/$defs/source-id"
             },
@@ -19608,7 +22542,8 @@
             "id",
             "kind",
             "revision",
-            "locator"
+            "locator",
+            "evidence_type"
           ],
           "type": "object"
         },
@@ -19651,6 +22586,124 @@
                   }
                 }
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "per_task_lease"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-auth-runbook-2026-08-17"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-hermes-binding-d724"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "parent_credential"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "separate_acquisition"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "no_credential_inheritance"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidence": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/evidence-source-design-seam-c07"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-qwen-docs-0215"
+                        },
+                        {
+                          "$ref": "#/$defs/evidence-source-local-command-absence"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           ]
         },
@@ -19679,7 +22732,7 @@
       "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Revision-pinned CT-I1-044 survey data. The ten-question dependency matrix is closed over finite semantic domains; its default and pair rules derive refusals rather than enumerating judge examples.",
+      "description": "Revision-pinned CT-I1-044 survey data. The matrix closes cross-field referential consistency and evidence-type support for verified claims; default and pair refusals remain derived.",
       "properties": {
         "candidates": {
           "allOf": [
@@ -19754,10 +22807,10 @@
               "const": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json"
             },
             "revision": {
-              "const": 1
+              "const": 2
             },
             "sha256": {
-              "const": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+              "const": "b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b"
             }
           },
           "required": [
@@ -19821,7 +22874,7 @@
           "type": "array"
         },
         "revision": {
-          "const": 1
+          "const": 2
         },
         "schema": {
           "const": "ctower.later-wave-harness-survey/v1"
@@ -19829,60 +22882,70 @@
         "sources": {
           "const": [
             {
+              "evidence_type": "specification",
               "id": "spec-ct-i1-044",
               "kind": "repo",
               "locator": "docs/internal/SPEC.md:5342 (CT-I1-044)",
               "revision": "d72408e7"
             },
             {
+              "evidence_type": "sealed_design",
               "id": "design-seam-c07",
               "kind": "design",
               "locator": "docs/internal/design/harness-adapter-seam.md:303-449",
               "revision": "c07c049c"
             },
             {
+              "evidence_type": "auth_runbook",
               "id": "auth-runbook-2026-08-17",
               "kind": "runbook",
               "locator": "mission-control/playbooks/codex-hermes-auth-runbook.md:77-159",
               "revision": "2026-08-17"
             },
             {
+              "evidence_type": "hermes_binding",
               "id": "hermes-binding-d724",
               "kind": "repo",
               "locator": "apps/ctower-runner/src/ctower_runner/hermes/binding.py",
               "revision": "d72408e7"
             },
             {
+              "evidence_type": "claude_binding",
               "id": "claude-binding-d724",
               "kind": "repo",
               "locator": "apps/ctower-runner/src/ctower_runner/claude_code/binding.py",
               "revision": "d72408e7"
             },
             {
+              "evidence_type": "codex_binding_landed",
               "id": "codex-candidate-ee197",
               "kind": "repo",
-              "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 reviewed-at revision (OPEN, not landed on origin/main; not the current PR head)",
-              "revision": "ee197705b9503e4e8e86c2a39f83db0878bb986e"
+              "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 merged into origin/main at 9bc6c352 (law is on main)",
+              "revision": "9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99"
             },
             {
+              "evidence_type": "qwen_binary",
               "id": "qwen-cli-0215",
               "kind": "binary",
               "locator": "/home/agent/.local/bin/qwen; qwen --version and qwen --help",
               "revision": "0.21.5"
             },
             {
+              "evidence_type": "qwen_documentation",
               "id": "qwen-docs-0215",
               "kind": "installed-doc",
               "locator": "/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md",
               "revision": "0.21.5"
             },
             {
+              "evidence_type": "absence_probe",
               "id": "local-command-absence",
               "kind": "absence-probe",
               "locator": "command -v openclaw qwen-code zcode deepseek",
               "revision": "2026-08-20T14:24:08Z"
             },
             {
+              "evidence_type": "weight_registry/codex",
               "id": "ctower-weight-registry-d724",
               "kind": "repo",
               "locator": "packages/ctower-kernel/src/ctower_kernel/pools/topology.py:89-95",
@@ -19911,12 +22974,193 @@
       "type": "object",
       "x-ctower-dependency-matrix": {
         "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
-        "law": "default rules plus pair rules; violation cases are derived",
-        "revision": 1,
-        "sha256": "a86bf1e65d65dc12fac8696d73cc1e370edb6a8a6421b42799d354aae3c63066"
+        "law": "default/pair rules plus referential and evidence-type support rules; all violation cases are derived",
+        "revision": 2,
+        "sha256": "b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b"
+      },
+      "x-ctower-evidence-type-support": {
+        "config_surface": {
+          "account_file": [
+            "claude_binding",
+            "codex_binding_landed"
+          ],
+          "authored_config_only": [
+            "sealed_design",
+            "hermes_binding",
+            "claude_binding",
+            "codex_binding_landed"
+          ],
+          "env_overridable": [
+            "qwen_binary",
+            "qwen_documentation"
+          ]
+        },
+        "credit_weights": {
+          "published_directional": {
+            "deepseek": [
+              "weight_registry/deepseek"
+            ],
+            "openclaw": [
+              "weight_registry/openclaw"
+            ],
+            "qwen-code": [
+              "weight_registry/qwen-code"
+            ],
+            "zcode": [
+              "weight_registry/zcode"
+            ]
+          },
+          "unpublished": [
+            "qwen_documentation",
+            "auth_runbook",
+            "absence_probe",
+            "weight_registry/codex"
+          ]
+        },
+        "egress_topology": {
+          "isolated": [
+            "claude_binding",
+            "qwen_documentation",
+            "sealed_design"
+          ],
+          "shared": [
+            "hermes_binding",
+            "auth_runbook",
+            "sealed_design"
+          ]
+        },
+        "identity_proof": {
+          "account_file": [
+            "claude_binding",
+            "codex_binding_landed"
+          ],
+          "decoded_claim": [
+            "hermes_binding",
+            "codex_binding_landed"
+          ],
+          "direct_cli_account": [
+            "codex_binding_landed"
+          ],
+          "persisted_device_key": [
+            "sealed_design"
+          ]
+        },
+        "native_fallback": {
+          "model_fallback_only": [
+            "qwen_binary",
+            "qwen_documentation"
+          ],
+          "native_credential_fallback": [
+            "hermes_binding",
+            "sealed_design",
+            "auth_runbook",
+            "claude_binding",
+            "codex_binding_landed"
+          ],
+          "no_native_fallback": [
+            "sealed_design",
+            "qwen_documentation",
+            "absence_probe",
+            "codex_binding_landed"
+          ]
+        },
+        "native_pool": {
+          "native_pool": [
+            "hermes_binding",
+            "sealed_design",
+            "auth_runbook"
+          ],
+          "no_native_pool": [
+            "sealed_design",
+            "qwen_documentation",
+            "absence_probe",
+            "codex_binding_landed"
+          ]
+        },
+        "probe_target": {
+          "direct_cli_endpoint": [
+            "qwen_binary",
+            "qwen_documentation",
+            "codex_binding_landed"
+          ],
+          "gateway_endpoint": [
+            "hermes_binding",
+            "auth_runbook",
+            "sealed_design"
+          ],
+          "representative_endpoint": [
+            "qwen_binary",
+            "qwen_documentation",
+            "hermes_binding",
+            "auth_runbook",
+            "codex_binding_landed"
+          ]
+        },
+        "reset_window_semantics": {
+          "provider_reset_at": [
+            "hermes_binding",
+            "auth_runbook",
+            "sealed_design"
+          ],
+          "rolling_block": [
+            "auth_runbook",
+            "sealed_design"
+          ],
+          "weekly_plan": [
+            "sealed_design",
+            "qwen_documentation"
+          ]
+        },
+        "rotation_cache_semantics": {
+          "config_home_respawn": [
+            "claude_binding",
+            "qwen_documentation"
+          ],
+          "native_pool_cache": [
+            "hermes_binding",
+            "auth_runbook",
+            "sealed_design"
+          ],
+          "no_rotation_cache": [
+            "qwen_documentation",
+            "absence_probe",
+            "sealed_design"
+          ],
+          "provided_pool_cache": [
+            "claude_binding",
+            "auth_runbook"
+          ]
+        },
+        "subagent_credential_inheritance": {
+          "no_credential_inheritance": [
+            "qwen_documentation",
+            "absence_probe",
+            "sealed_design"
+          ],
+          "parent_credential": [
+            "qwen_documentation",
+            "sealed_design"
+          ],
+          "per_task_lease": [
+            "hermes_binding",
+            "auth_runbook",
+            "sealed_design"
+          ],
+          "separate_acquisition": [
+            "qwen_documentation",
+            "sealed_design"
+          ]
+        }
       },
       "x-ctower-matrix-default-rules": [
         "model-route-coherence"
+      ],
+      "x-ctower-referential-rules": [
+        "effective-route-probe-target",
+        "effective-route-identity-proof",
+        "rotation-cache-native-pool",
+        "native-fallback-native-pool",
+        "subagent-lease-native-pool"
       ]
     },
     "contracts/runtime/dream-dispatch-effect.schema.json": {
@@ -22624,7 +25868,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.schema.json",
-      "sha256": "sha256:25e0ad83b5a93a669d312aed6f318b543f0fa1c58c077c40b39084ab80cf06d0"
+      "sha256": "sha256:ba4cc9927ac487a62057610c6c44cbb5545c12479325537b710d9909ba386aec"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",
