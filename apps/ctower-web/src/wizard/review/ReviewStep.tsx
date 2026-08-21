@@ -2,7 +2,7 @@ import { ChevronDown } from "lucide-react";
 import type { ReactElement } from "react";
 import type { BundleAction, CompanyBundlePlan } from "@ctower/client";
 import type { Answer } from "../../api/client";
-import { Badge, Card, CardBody, CardHeader, CardTitle, Mono, PageHead } from "../../ui/primitives";
+import { Card, CardBody, CardHeader, CardTitle, Chip, Mono, PageHead } from "../../ui/primitives";
 import { cn } from "../../ui/cn";
 import { shortDigest } from "../bundle";
 import { Asking, Malformed, Refused, Unreachable } from "../states";
@@ -33,7 +33,7 @@ export function ReviewStep({
     case "refused":
       return (
         <>
-          <PageHead title="Review changes" subtitle={<Badge tone="refuse">refused</Badge>} />
+          <PageHead title="Review changes" subtitle={<Chip tone="danger">refused</Chip>} />
           <Refused
             problem={answer.problem}
             action="Go back and change the company, then review again."
@@ -43,7 +43,7 @@ export function ReviewStep({
     case "unreachable":
       return (
         <>
-          <PageHead title="Review changes" subtitle={<Badge tone="unknown">no answer</Badge>} />
+          <PageHead title="Review changes" subtitle={<Chip tone="neutral">no answer</Chip>} />
           <Unreachable
             detail={answer.detail}
             action="No plan was made. This is not an empty change set."
@@ -53,7 +53,7 @@ export function ReviewStep({
     case "malformed":
       return (
         <>
-          <PageHead title="Review changes" subtitle={<Badge tone="warn">contract</Badge>} />
+          <PageHead title="Review changes" subtitle={<Chip tone="amber">contract</Chip>} />
           <Malformed detail={answer.detail} />
         </>
       );
@@ -73,16 +73,16 @@ function Plan({ plan }: { readonly plan: CompanyBundlePlan }): ReactElement {
         subtitle={
           <>
             {moved === 0 ? (
-              <Badge tone="neutral">no change</Badge>
+              <Chip tone="neutral">no change</Chip>
             ) : (
-              <Badge tone="accent">
+              <Chip tone="amber">
                 {moved} of {plan.actions.length} move
-              </Badge>
+              </Chip>
             )}
             <span>
               from version <Mono>{plan.base_version}</Mono>
             </span>
-            <Mono className="text-ink-4" title={plan.plan_digest}>
+            <Mono className="text-muted" title={plan.plan_digest}>
               {shortDigest(plan.plan_digest)}
             </Mono>
           </>
@@ -92,7 +92,7 @@ function Plan({ plan }: { readonly plan: CompanyBundlePlan }): ReactElement {
         {moved === 0 ? (
           <Card>
             <CardBody>
-              <p className="m-0 text-sm text-ink-2">
+              <p className="m-0 text-sm text-muted">
                 This company already looks exactly like this. Applying it would change nothing.
               </p>
             </CardBody>
@@ -104,11 +104,11 @@ function Plan({ plan }: { readonly plan: CompanyBundlePlan }): ReactElement {
             <CardHeader>
               <CardTitle>Warnings</CardTitle>
               <span className="flex-1" />
-              <Badge tone="warn">{plan.warnings.length}</Badge>
+              <Chip tone="amber">{plan.warnings.length}</Chip>
             </CardHeader>
             <CardBody className="space-y-1.5">
               {plan.warnings.map((warning) => (
-                <p key={warning} className="m-0 text-sm text-ink-2">
+                <p key={warning} className="m-0 text-sm text-muted">
                   {warning}
                 </p>
               ))}
@@ -125,10 +125,10 @@ function Plan({ plan }: { readonly plan: CompanyBundlePlan }): ReactElement {
 }
 
 const SIGN_INK: Readonly<Record<string, string>> = {
-  "+": "text-proven",
-  "~": "text-warn",
-  "-": "text-refuse",
-  "=": "text-ink-4",
+  "+": "text-ok",
+  "~": "text-amber-strong",
+  "-": "text-danger",
+  "=": "text-muted",
 };
 
 /**
@@ -152,12 +152,12 @@ function GroupCard({ group }: { readonly group: Group }): ReactElement {
 
   const head = (
     <>
-      <Mono aria-hidden className={cn("text-base", SIGN_INK[group.sign])}>
+      <Mono aria-hidden className={cn("text-md", SIGN_INK[group.sign])}>
         {group.sign}
       </Mono>
       <CardTitle>{group.label}</CardTitle>
       <span className="flex-1" />
-      <Mono className="text-ink-3">{group.actions.length}</Mono>
+      <Mono className="text-muted">{group.actions.length}</Mono>
     </>
   );
 
@@ -173,9 +173,9 @@ function GroupCard({ group }: { readonly group: Group }): ReactElement {
   return (
     <Card>
       <details>
-        <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-3.5 hover:bg-raised/50">
+        <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-3.5 hover:bg-raised">
           {head}
-          <ChevronDown className="size-4 shrink-0 text-ink-4" />
+          <ChevronDown className="size-4 shrink-0 text-muted" />
         </summary>
         <div className="border-t border-line">{rows}</div>
       </details>
@@ -192,18 +192,18 @@ function ActionRow({
 }): ReactElement {
   const component = action.component;
   return (
-    <div className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-raised/60">
+    <div className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-raised">
       <Mono aria-hidden className={cn("w-3 shrink-0", SIGN_INK[sign])}>
         {sign}
       </Mono>
-      <span className="min-w-0 flex-1 truncate text-sm text-ink">{component.key}</span>
-      <Mono className="hidden shrink-0 text-ink-4 md:inline" title={component.content_digest}>
+      <span className="min-w-0 flex-1 truncate text-sm text-fg">{component.key}</span>
+      <Mono className="hidden shrink-0 text-muted md:inline" title={component.content_digest}>
         {shortDigest(component.content_digest)}
       </Mono>
-      <Mono className="shrink-0 text-ink-3">r{component.revision}</Mono>
-      <Badge tone="neutral" title={component.kind}>
+      <Mono className="shrink-0 text-muted">r{component.revision}</Mono>
+      <Chip tone="neutral" title={component.kind}>
         {kindLabel(action.kind)}
-      </Badge>
+      </Chip>
     </div>
   );
 }

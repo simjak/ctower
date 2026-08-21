@@ -1,232 +1,118 @@
-/* The one token source.
+/* The token layer, and it is `DESIGN.md` verbatim.
    ─────────────────────────────────────────────────────────────────────────
-   Tailwind v4, no config file, tokens as CSS custom properties — paperclip's
-   rule verbatim (`DESIGN.md` §"The token layer"), and its reason: a parallel
-   token directory would be a second source of truth. `operator-cockpit.md` D8
-   binds the port to this layer alone; the data layer does not cross.
+   Every value below is the approved system's own, under the approved system's
+   own names, so a drift between this sheet and that file is visible by reading
+   the two side by side. Nothing here is a taste; taste was settled in the
+   consultation and lives in `DESIGN.md`.
 
-   The *values* are ctower's own, carried over from
-   `apps/ctower-ui/design-reference/app.css`, which is the approved set. D3 is
-   why: paperclip's own status line says its brand values are unspecified and
-   being redesigned, so porting its hues would be porting the one part it has
-   not settled. What ports is the mechanism — one seed per state, both themes
-   derived from that seed by `color-mix`, one radius knob, one motion tier that
-   everything else references.
+   One token source, Tailwind v4, no config file. The custom properties live in
+   ordinary `:root` rules because a theme retunes them at runtime, and
+   `@theme inline` only references them so a utility resolves to the live value.
 
-   Two blocks, and the split is paperclip's: the custom properties live in
-   ordinary `:root` rules, because a theme has to retune them at runtime, and
-   `@theme inline` only *references* them, so a utility resolves to the live
-   variable rather than to a literal baked at build time.
+   Three laws this sheet enforces that a call site cannot opt out of:
 
-   No shadows, no gradients, no glows, in either theme (D2). */
+   1. No blue exists. There is no token for it.
+   2. Amber is a fill, never a word on light. `--amber` backs a surface and
+      carries `--on-amber`; `--amber-ink` is the only token that may be an
+      amber-coloured word, and on light it is `#7C3A00` for exactly that reason.
+   3. Stillness. There is no duration token spent on hover, because hover
+      choreography is not real work moving. */
 
 @import "tailwindcss";
 
 /* The theme is a class on the document element, set before first paint by the
-   inline script in `index.html`. Same key and same class as the phase-1
-   surface, so a reader who has both open sets the theme once. */
+   inline script in `index.html`. */
 @custom-variant dark (&:where(:root.theme-dark, :root.theme-dark *));
 
 :root {
   color-scheme: light;
 
-  --bg: #ffffff;
-  --surface: #fafaf9; /* column / panel wells */
-  --surface-2: #ffffff; /* cards sit above the well */
-  --raised: #f5f5f4;
-  --line: #e7e5e4;
-  --line-2: #d6d3d1;
-
-  /* Black is the ink, and the neutral ramp is warmed to sit under amber rather
-     than fight it. Every step below is measured against `--bg`: 19.8 / 10.3 /
-     7.6 / 4.8, so the quietest one still clears AA for body text. The teal
-     scheme's `--ink-3` and `--ink-4` were 3.2 and 2.5 — the fragile
-     muted-foreground the design review flagged — and this pass fixes them
-     rather than carrying them into a new palette. */
   --ink: #0a0a0a;
-  --ink-2: #44403c;
-  --ink-3: #57534e;
-  --ink-4: #78716c;
+  --paper: #fafaf7;
+  --surface: #ffffff;
+  --line: #e7e5e0;
+  --muted: #6b6b66;
 
-  /* THE BRAND RAMP · yellow → orange, and the one rule that governs it.
-     `--accent` is a FILL: it backs a control, a focus ring, the current step,
-     a checked box, and it carries `--accent-ink` on top at 8.1:1. It is 2.2:1
-     against white, so it may never be a glyph or a word on a light surface —
-     `--accent-strong` is the ramp position that may (5.0:1), and it is what any
-     accent-coloured mark resolves to. Yellow text on white is the failure this
-     split exists to make impossible. */
-  --accent: #f59e0b;
-  --accent-deep: #d97706;
-  --accent-strong: #b45309;
-  --accent-ink: #1c1917;
-  --accent-bg: #fffbeb;
+  /* THE accent. One ramp, and the only colour that means "interactive". */
+  --amber: #f59e0b;
+  --amber-strong: #ea580c;
+  /* The one amber that may be a word or a glyph on this surface. */
+  --amber-ink: #7c3a00;
+  /* The ink that sits on an amber fill. */
+  --on-amber: #1a1206;
 
-  --proven: #0a855a;
-  --proven-bg: #eaf8f2;
-  --proven-deep: #076b48;
-  --refuse: #dc2626;
-  --refuse-bg: #fef2f2;
-  --refuse-line: #fecaca;
-  --refuse-deep: #b91c1c;
-  /* Caution sits at the far, burnt end of the same ramp, never at the accent's
-     yellow. In a brand whose interactive colour IS amber, a warning drawn in
-     amber is invisible as a warning: "you can press this" and "look at this"
-     would be the same mark. Hue separates them, and so does form — the accent
-     fills controls, caution borders and tints a block. 5.2:1 on white. */
-  --warn: #c2410c;
-  --warn-bg: #fff7ed;
-  --warn-line: #fdba74;
-  --info: #7c3aed;
-  --info-bg: #f5f3ff;
-  --info-deep: #6d28d9;
+  /* Narrow, and spent nowhere else: proven, and dead. */
+  --ok: #16a34a;
+  --danger: #dc2626;
 
-  /* D1 · the third state class. A read that did not answer is not a known
-     state, and `AC-UX-03` forbids degrading it into one. The delta names the
-     two hues it may never resolve to — the idle grey and any success hue — so
-     it is minted as its own seed rather than borrowed from the ink ramp. Blue
-     is the one hue this palette does not already spend. */
-  --unknown: #2563eb;
-  --unknown-bg: #eff6ff;
-  --unknown-line: #bfdbfe;
-  --unknown-deep: #1d4ed8;
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --card: var(--surface);
+  /* A quiet fill for a row under the pointer. Derived, never a fifth grey. */
+  --raised: color-mix(in srgb, var(--fg) 4%, transparent);
 
-  --font:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", ui-sans-serif, Roboto, "Helvetica Neue",
-    Arial, sans-serif;
-  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --r-sm: 4px;
+  --r-md: 8px;
 
-  /* one knob, and a ladder derived from it */
-  --radius: 6px;
-  --r-sm: calc(var(--radius) * 0.66);
-  --r-md: var(--radius);
-  --r-lg: calc(var(--radius) * 1.34);
+  --font-ui: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-machine: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Tier one. Anything that is "how long this thing takes to move" resolves
-     here, so retuning these five retunes the screen. */
-  --motion-duration-instant: 80ms;
-  --motion-duration-fast: 160ms;
-  --motion-duration-base: 240ms;
-  --motion-duration-slow: 360ms;
-  --motion-duration-deliberate: 520ms;
-  --motion-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* the status-chip recipe's two mix ends, so the dark block retunes the
-     recipe by retuning variables rather than by forking the rule */
-  --chip-fill: 15%;
-  --chip-ink: 82%;
-  --chip-fill-into: #ffffff;
-  --chip-ink-into: #000000;
+  /* Reserved motion: one duration, spent only when real work moves. */
+  --motion-state: 180ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root.theme-dark {
   color-scheme: dark;
 
-  /* Near-black, warmed the same way, so amber reads as light on it rather than
-     as a sticker. Measured against `--surface-2`: 16.5 / 12.1 / 7.1 / 4.8. */
-  --bg: #0c0a09;
-  --surface: #131110;
-  --surface-2: #1a1614;
-  --raised: #262120;
-  --line: #2a2422;
-  --line-2: #3a322e;
-
-  --ink: #f5f5f4;
-  --ink-2: #d6d3d1;
-  --ink-3: #a8a29e;
-  --ink-4: #8a827c;
-
-  /* On near-black the ramp is legible as both fill and mark, so `--accent` and
-     `--accent-strong` converge here — 10.8:1 as a mark, and 10.5:1 the other
-     way with `--accent-ink` on the fill. The light theme's split is a light
-     theme's problem. */
-  --accent: #fbbf24;
-  --accent-deep: #fcd34d;
-  --accent-strong: #fbbf24;
-  --accent-ink: #1c1917;
-  --accent-bg: rgb(251 191 36 / 14%);
-
-  --proven: #4fbf7b;
-  --proven-bg: rgb(79 191 123 / 13%);
-  --proven-deep: #7ad3a0;
-  --refuse: #e5695b;
-  --refuse-bg: rgb(229 105 91 / 12%);
-  --refuse-line: rgb(229 105 91 / 34%);
-  --refuse-deep: #f0a79e;
-  --warn: #fb923c;
-  --warn-bg: rgb(251 146 60 / 12%);
-  --warn-line: rgb(251 146 60 / 36%);
-  --info: #a78bfa;
-  --info-bg: rgb(167 139 250 / 12%);
-  --info-deep: #c4b5fd;
-
-  --unknown: #7aa2f7;
-  --unknown-bg: rgb(122 162 247 / 12%);
-  --unknown-line: rgb(122 162 247 / 34%);
-  --unknown-deep: #a9c3fa;
-
-  --chip-fill: 22%;
-  --chip-ink: 80%;
-  --chip-fill-into: #000000;
-  --chip-ink-into: #ffffff;
+  --bg: #111110;
+  --fg: #f5f5f2;
+  --card: #1a1a18;
+  --line: #2a2a27;
+  --muted: #8a8a84;
+  --amber-ink: #fcd34d;
+  --raised: color-mix(in srgb, var(--fg) 7%, transparent);
 }
 
-/* Reduced motion zeroes tier one, which cascades to everything that references
-   it. This screen has no pacing hold to exempt: every duration below is a
-   movement duration. */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-duration-instant: 0ms;
-    --motion-duration-fast: 0ms;
-    --motion-duration-base: 0ms;
-    --motion-duration-slow: 0ms;
-    --motion-duration-deliberate: 0ms;
+    --motion-state: 0ms;
   }
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-raised: var(--raised);
-  --color-line: var(--line);
-  --color-line-2: var(--line-2);
+  /* The scale is closed: seven sizes, and nothing larger than 28 exists. */
+  --text-*: initial;
+  --text-2xs: 12px;
+  --text-xs: 12.5px;
+  --text-sm: 13.5px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
 
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-ink-4: var(--ink-4);
-
-  --color-accent: var(--accent);
-  --color-accent-deep: var(--accent-deep);
-  --color-accent-strong: var(--accent-strong);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-bg: var(--accent-bg);
-
-  --color-proven: var(--proven);
-  --color-proven-bg: var(--proven-bg);
-  --color-proven-deep: var(--proven-deep);
-  --color-refuse: var(--refuse);
-  --color-refuse-bg: var(--refuse-bg);
-  --color-refuse-line: var(--refuse-line);
-  --color-refuse-deep: var(--refuse-deep);
-  --color-warn: var(--warn);
-  --color-warn-bg: var(--warn-bg);
-  --color-warn-line: var(--warn-line);
-  --color-info: var(--info);
-  --color-info-bg: var(--info-bg);
-  --color-info-deep: var(--info-deep);
-  --color-unknown: var(--unknown);
-  --color-unknown-bg: var(--unknown-bg);
-  --color-unknown-line: var(--unknown-line);
-  --color-unknown-deep: var(--unknown-deep);
-
-  --font-sans: var(--font);
-  --font-mono: var(--mono);
-
+  --radius-*: initial;
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
-  --radius-lg: var(--r-lg);
+
+  --font-*: initial;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-machine);
+
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-raised: var(--raised);
+
+  --color-amber: var(--amber);
+  --color-amber-strong: var(--amber-strong);
+  --color-amber-ink: var(--amber-ink);
+  --color-on-amber: var(--on-amber);
+
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
 }
 
 @layer base {
@@ -237,73 +123,56 @@
   body {
     margin: 0;
     background: var(--bg);
-    color: var(--ink);
-    font-family: var(--font);
-    font-size: 14px;
-    line-height: 1.5;
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.45;
+    /* Every number on this surface is tabular; a count that jitters as it
+       updates is a count an operator stops trusting. */
+    font-feature-settings: "tnum";
   }
 
-  /* One focus treatment, from the one interaction accent. */
+  /* One focus treatment, on everything focusable. */
   :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--amber);
     outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* Paperclip's status-chip recipe, ported whole: one seed per state in `--sc`,
-     both themes derived from that seed. The chip carries a state, never a
-     sentence — D9 caps it at two words. */
+  /* What machines own: keys, digests, ports, refs, diffs. */
+  .mono {
+    font-family: var(--font-machine);
+    font-size: var(--text-xs);
+  }
+
+  /* The state chip. Its border carries the state and its fill is a tint of the
+     same seed, so both themes derive from one value. */
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 1px 7px;
-    border: 1px solid var(--sc);
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--line);
     border-radius: 999px;
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--text-2xs);
     white-space: nowrap;
-    background-color: color-mix(in srgb, var(--sc) var(--chip-fill), var(--chip-fill-into));
-    color: color-mix(in srgb, var(--sc) var(--chip-ink), var(--chip-ink-into));
+    color: var(--muted);
   }
 
-  .chip-proven {
-    --sc: var(--proven);
+  .chip-amber {
+    border-color: var(--amber);
+    color: var(--amber-ink);
+    background: color-mix(in srgb, var(--amber) 12%, transparent);
   }
 
-  .chip-refuse {
-    --sc: var(--refuse);
+  .chip-ok {
+    border-color: var(--ok);
+    color: var(--ok);
   }
 
-  .chip-warn {
-    --sc: var(--warn);
-  }
-
-  .chip-info {
-    --sc: var(--info);
-  }
-
-  /* An active chip: the live count a step is about. It seeds from
-     `--accent-strong` rather than `--accent`, because the recipe mixes the seed
-     into the text as well as the fill and the yellow end cannot carry a word on
-     a light surface. */
-  .chip-accent {
-    --sc: var(--accent-strong);
-  }
-
-  .chip-unknown {
-    --sc: var(--unknown);
-  }
-
-  .chip-idle {
-    --sc: var(--ink-4);
-  }
-
-  /* Machine values are mono, and they are never re-formatted per screen (D6). */
-  .mono {
-    font-family: var(--mono);
-    font-variant-numeric: tabular-nums;
-    font-size: 12px;
+  .chip-danger {
+    border-color: var(--danger);
+    color: var(--danger);
   }
 }

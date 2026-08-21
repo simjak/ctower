@@ -23,7 +23,7 @@ export function Field({
   return (
     <div className="min-w-0">
       <div className="mb-1.5 flex items-center gap-1.5">
-        <span className="text-[12px] text-ink-2">{label}</span>
+        <span className="text-2xs text-muted">{label}</span>
         {hint === undefined ? null : <Hint text={hint} />}
       </div>
       {children}
@@ -35,11 +35,7 @@ export function Hint({ text }: { readonly text: string }): ReactElement {
   return (
     <TooltipPrimitive.Root>
       <TooltipPrimitive.Trigger asChild>
-        <button
-          type="button"
-          aria-label={text}
-          className="inline-flex text-ink-4 transition-colors hover:text-ink-2"
-        >
+        <button type="button" aria-label={text} className="inline-flex text-muted hover:text-muted">
           <CircleHelp className="size-3" />
         </button>
       </TooltipPrimitive.Trigger>
@@ -47,7 +43,7 @@ export function Hint({ text }: { readonly text: string }): ReactElement {
         <TooltipPrimitive.Content
           side="top"
           sideOffset={6}
-          className="z-50 max-w-xs rounded-md border border-line-2 bg-surface-2 px-2.5 py-1.5 text-[12px] text-ink"
+          className="z-50 max-w-xs rounded-md border border-line bg-card px-2.5 py-1.5 text-2xs text-fg"
         >
           {text}
         </TooltipPrimitive.Content>
@@ -77,13 +73,13 @@ export function Checkbox({
         onCheckedChange(next === true);
       }}
       className={cn(
-        "peer size-4 shrink-0 rounded-sm border border-line-2 bg-bg",
-        "transition-colors duration-(--motion-duration-fast)",
-        "data-[state=checked]:border-accent data-[state=checked]:bg-accent",
-        "outline-none focus-visible:ring-2 focus-visible:ring-accent/45"
+        "peer size-4 shrink-0 rounded-sm border border-line bg-bg",
+        "",
+        "data-[state=checked]:border-amber data-[state=checked]:bg-amber",
+        "outline-none focus-visible:ring-2 focus-visible:outline-amber"
       )}
     >
-      <CheckboxPrimitive.Indicator className="grid place-content-center text-accent-ink">
+      <CheckboxPrimitive.Indicator className="grid place-content-center text-on-amber">
         <Check className="size-3" strokeWidth={3} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>

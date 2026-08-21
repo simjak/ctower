@@ -1,8 +1,8 @@
-import { Check, TriangleAlert } from "lucide-react";
 import type { ReactElement } from "react";
 import type { CompanyBundleValidationResult } from "@ctower/client";
 import type { Answer } from "../../api/client";
-import { Badge, Card, CardBody, CardHeader, CardTitle, Mono, PageHead } from "../../ui/primitives";
+import { Card, CardBody, CardHeader, CardTitle, Chip, Mono, PageHead } from "../../ui/primitives";
+import { Mark } from "../../ui/marks";
 import { shortDigest } from "../bundle";
 import { Asking, Malformed, Refused, Unreachable } from "../states";
 import { checkName } from "./checks";
@@ -31,7 +31,7 @@ export function CheckStep({
     case "refused":
       return (
         <>
-          <PageHead title="Check the bundle" subtitle={<Badge tone="refuse">refused</Badge>} />
+          <PageHead title="Check the bundle" subtitle={<Chip tone="danger">refused</Chip>} />
           <Refused
             problem={answer.problem}
             action="Go back and change the company, then check again."
@@ -41,7 +41,7 @@ export function CheckStep({
     case "unreachable":
       return (
         <>
-          <PageHead title="Check the bundle" subtitle={<Badge tone="unknown">no answer</Badge>} />
+          <PageHead title="Check the bundle" subtitle={<Chip tone="neutral">no answer</Chip>} />
           <Unreachable
             detail={answer.detail}
             action="Nothing was checked. Check again when ctower answers."
@@ -51,7 +51,7 @@ export function CheckStep({
     case "malformed":
       return (
         <>
-          <PageHead title="Check the bundle" subtitle={<Badge tone="warn">contract</Badge>} />
+          <PageHead title="Check the bundle" subtitle={<Chip tone="amber">contract</Chip>} />
           <Malformed detail={answer.detail} />
         </>
       );
@@ -68,12 +68,8 @@ function Result({ result }: { readonly result: CompanyBundleValidationResult }):
         title="Check the bundle"
         subtitle={
           <>
-            {result.valid ? (
-              <Badge tone="proven">valid</Badge>
-            ) : (
-              <Badge tone="refuse">not valid</Badge>
-            )}
-            <Mono className="text-ink-4" title={result.bundle_digest}>
+            {result.valid ? <Chip tone="ok">valid</Chip> : <Chip tone="danger">not valid</Chip>}
+            <Mono className="text-muted" title={result.bundle_digest}>
               {shortDigest(result.bundle_digest)}
             </Mono>
           </>
@@ -84,7 +80,7 @@ function Result({ result }: { readonly result: CompanyBundleValidationResult }):
           <CardHeader>
             <CardTitle>Checks</CardTitle>
             <span className="flex-1" />
-            <Mono className="text-ink-3">
+            <Mono className="text-muted">
               {result.checks.length - warned} of {result.checks.length}
             </Mono>
           </CardHeader>
@@ -94,15 +90,11 @@ function Result({ result }: { readonly result: CompanyBundleValidationResult }):
                 key={check.code}
                 className="flex items-center gap-3 rounded-md border border-line px-4 py-2.5"
               >
-                {check.status === "passed" ? (
-                  <Check className="size-4 shrink-0 text-proven" strokeWidth={2.5} />
-                ) : (
-                  <TriangleAlert className="size-4 shrink-0 text-warn" />
-                )}
-                <span className="min-w-0 flex-1 truncate text-sm text-ink">
+                {check.status === "passed" ? <Mark name="done" /> : <Mark name="warn" />}
+                <span className="min-w-0 flex-1 truncate text-sm text-fg">
                   {checkName(check.code)}
                 </span>
-                <Mono className="hidden text-ink-4 sm:inline" title={check.code}>
+                <Mono className="hidden text-muted sm:inline" title={check.code}>
                   {check.code}
                 </Mono>
               </div>
@@ -115,11 +107,11 @@ function Result({ result }: { readonly result: CompanyBundleValidationResult }):
             <CardHeader>
               <CardTitle>Warnings</CardTitle>
               <span className="flex-1" />
-              <Badge tone="warn">{result.warnings.length}</Badge>
+              <Chip tone="amber">{result.warnings.length}</Chip>
             </CardHeader>
             <CardBody className="space-y-1.5">
               {result.warnings.map((warning) => (
-                <p key={warning} className="m-0 text-sm text-ink-2">
+                <p key={warning} className="m-0 text-sm text-muted">
                   {warning}
                 </p>
               ))}

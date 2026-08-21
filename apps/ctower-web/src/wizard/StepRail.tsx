@@ -1,21 +1,20 @@
-import { Check } from "lucide-react";
 import type { ReactElement } from "react";
 import { cn } from "../ui/cn";
+import { Mark } from "../ui/marks";
 import type { Step, StepKey } from "./steps";
 
-type Mark = "done" | "here" | "ahead";
+type Position = "done" | "here" | "ahead";
 
 /**
- * The four steps, drawn once. Each one is named as a job the operator does, and
- * carries nothing else: no call, no code, no explanation of what the step is
- * for. A step that needs a sentence to justify itself is a step in the wrong
- * place.
+ * The four steps of the Company page, drawn once, across the top.
  *
- * Progress is the brand ramp: a step behind you is the orange end, the step you
- * are on is the yellow one, and a step ahead is an outline. The success green
- * is deliberately not used here — it belongs to verdicts about the record (a
- * bundle is valid, a version is applied), and spending it on "you walked past
- * this" would make the two mean the same thing.
+ * Each is named as a job the operator does and carries nothing else: no call,
+ * no code, no explanation. They run horizontally because the shell already owns
+ * a vertical rail, and a screen with two of those tells the operator that
+ * neither is the way out.
+ *
+ * Progress is the amber ramp: the step you are on is amber, a step behind you
+ * carries the CLI's own done mark, a step ahead is quiet.
  */
 export function StepRail({
   steps,
@@ -30,11 +29,11 @@ export function StepRail({
   const furthest = steps.findIndex((step) => step.key === reached);
 
   return (
-    <nav aria-label="Steps">
-      <ol className="m-0 flex list-none gap-0.5 p-0 md:flex-col">
+    <nav aria-label="Steps" className="mb-5 border-b border-line">
+      <ol className="m-0 flex list-none gap-1 p-0">
         {steps.map((step, index) => (
-          <li key={step.key} className="min-w-0 flex-1">
-            <RailStep step={step} mark={markOf(index, here, furthest)} />
+          <li key={step.key}>
+            <RailStep step={step} position={positionOf(index, here, furthest)} />
           </li>
         ))}
       </ol>
@@ -42,40 +41,40 @@ export function StepRail({
   );
 }
 
-function RailStep({ step, mark }: { readonly step: Step; readonly mark: Mark }): ReactElement {
+function RailStep({
+  step,
+  position,
+}: {
+  readonly step: Step;
+  readonly position: Position;
+}): ReactElement {
   return (
     <div
-      aria-current={mark === "here" ? "step" : undefined}
+      aria-current={position === "here" ? "step" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-md px-2.5 py-2",
-        "transition-colors duration-(--motion-duration-fast)",
-        mark === "here" ? "bg-accent-bg" : ""
+        "flex items-center gap-2 border-b-2 px-3 py-2 text-sm",
+        position === "here" ? "border-amber font-semibold text-fg" : "border-transparent text-muted"
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "grid size-5 shrink-0 place-content-center rounded-full border text-[11px] font-medium",
-          mark === "done" ? "border-accent-deep bg-accent-deep text-accent-ink" : "",
-          mark === "here" ? "border-accent bg-accent text-accent-ink" : "",
-          mark === "ahead" ? "border-line-2 text-ink-4" : ""
-        )}
-      >
-        {mark === "done" ? <Check className="size-3" strokeWidth={3} /> : step.ordinal}
-      </span>
-      <span
-        className={cn(
-          "truncate text-[13px]",
-          mark === "here" ? "font-semibold text-ink" : "text-ink-2"
-        )}
-      >
-        {step.label}
-      </span>
+      {position === "done" ? (
+        <Mark name="done" />
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            "mono inline-block w-[1.4em] shrink-0",
+            position === "here" ? "text-amber" : ""
+          )}
+        >
+          {step.ordinal}
+        </span>
+      )}
+      <span className="truncate">{step.label}</span>
     </div>
   );
 }
 
-function markOf(index: number, here: number, furthest: number): Mark {
+function positionOf(index: number, here: number, furthest: number): Position {
   if (index === here) {
     return "here";
   }
