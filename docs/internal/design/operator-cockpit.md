@@ -238,7 +238,7 @@ Rows are **project** (its 6px mark) → **seat** → **workspace**. The Commande
 list, not a chrome affordance — the brief says *incl. commander*, and the board already renders
 the commander as an ordinary source.
 
-Four rules make this rail honest:
+Five rules make this rail honest:
 
 - **Unread is an accent bar, not the word "unread"** — the existing ctower-ui rule, and D5.
 - **`capped` and `saturated` outrank any working marker.** `AC-HAD-04` classifies cap and
@@ -252,6 +252,8 @@ Four rules make this rail honest:
   `substrate-unobservable:<probe>` surfacing as `STATE_UNKNOWN`.
 - **A dead lane is drawn as dead.** `dead_auth` is a first-class value in the seam's own
   vocabulary, and the rail owes it a distinct treatment — §4.1.1.
+- **Every state carries the time it was observed**, and past its freshness bound it becomes
+  `unknown` rather than stale — §4.1.2.
 
 #### 4.1.1 The dead lane
 
@@ -292,6 +294,36 @@ necessary and not sufficient. The composer's derived state (§4.2a) therefore re
 liveness *and* the selected entry's `auth` axis, and on a dead lane it disables send with the
 mint action on the control. This is a design decision rather than a law, and it is marked as one:
 the seam refuses a destructive delivery, not a futile one.
+
+#### 4.1.2 Every state carries when it was observed
+
+A liveness state without its observation time is a claim about *now* made from evidence of unknown
+age, and the rail is the surface where that costs the most: it is a wall of state chips an
+operator scans in one glance and trusts by default. The merged seam already carries what is
+needed — `LivenessFact.observed_at` and `probe`, plus a `served_model` with its own `source`,
+`proves` and `observed_at` (`facts.py:40–47`, `55–68`) — and the fact's own comment names the
+reason freshness is a classification input rather than a display detail: *"a lane past its window
+cannot be trusted to still hold the evidence it cites"* (`facts.py:31–36`).
+
+Three rendering rules follow:
+
+- **Every positive state names its source and its age**, on the chip's hover rather than in the
+  row (D5 — a number's derivation lives in that number's hover). `working · gateway_log · 4s` and
+  `working · gateway_log · 6m` are different claims about the same word.
+- **Past its freshness bound, a state becomes `unknown` — it does not become stale.** This is
+  §7.5 applied to time: an old observation is a source that answered once and is not answering
+  now, which is exactly the shape `AC-UX-03` sends to `STATE UNKNOWN`. The rail never draws a
+  greyed or faded `working`; there is no such state.
+- **The freshness classification is server-applied**, arriving in the read as part of the fact's
+  own basis, never computed by the browser from a timestamp. The same rule as the composer's
+  enabled state (§4.2a): one function, one source. A browser-side staleness clock is a second
+  classifier for a fact the seam already owns, and two classifiers over one fact is the
+  disagreement this repository refuses everywhere else.
+
+`served_model` gets the same treatment for a different reason: `ModelObservation.proves` is
+`serving | request | observation`, and `AC-HAD-03` records a source proving only the *request* as
+a **conflict, never as serving truth**. So the model chip renders what was served, its source, and
+its age — and when `proves` is not `serving`, it renders the conflict rather than the value.
 
 ### 4.2 Centre — the transcript, and the steer question the brief asked
 
@@ -1101,7 +1133,7 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 
 | # | Missing operation | Pane | Why nothing existing covers it |
 | --- | --- | --- | --- |
-| G1 | **Read a lane's liveness** — `served_model`, `working` / `capped` / `saturated` / `unknown`, context percentage, the classified failure, and its evidence source | left rail (§4.1), composer gating (§4.2a) | `SpawnRecord.status` is a durable lifecycle status, not an observation of the substrate. `AC-HAD-03`/`AC-HAD-04` semantics — precedence, `substrate-unobservable:<probe>`, conflict-not-truth — have no HTTP surface at all. This is the single most load-bearing gap: without it the rail cannot honour "capped outranks working." |
+| G1 | **Read a lane's liveness** — the whole `LivenessFact`: `state`, `probe`, **`observed_at`**, `context_used_pct`, `conflict`, `ladder`, `evidence`, and a `served_model` carrying its own `source`, `proves` and `observed_at` | left rail (§4.1), composer gating (§4.2a) | `SpawnRecord.status` is a durable lifecycle status, not an observation of the substrate. `AC-HAD-03`/`AC-HAD-04` semantics — precedence, `substrate-unobservable:<probe>`, conflict-not-truth — have no HTTP surface at all. This is the single most load-bearing gap: without it the rail cannot honour "capped outranks working." **Carry the timestamps or the rail cannot tell current evidence from old motion**: `LivenessFact.observed_at` and `ModelObservation.{source, proves, observed_at}` already exist on the merged fact (`facts.py:40–47`, `55–68`), and dropping them is how a five-minute-old `working` keeps painting as now — §4.1.2. |
 | G2 | **Read the harness registry** — registered `HarnessSpec` key, revision, digests, declared `capabilities`, `context_window_percent`, `liveness_sources`, survey answers and derived `layers` | composer gating (§4.2a), Readiness (§5.1), Composition tab, wizard steps 2–4 | The specs exist as Python constants and contract JSON. Nothing serves them over HTTP, so the browser cannot derive the composer's enabled state from declared capability — and a UI-local guess is exactly what §4.2a forbids. |
 | G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state. **Two layers, not one: a seam-side typed turn fact set, then the HTTP read over it.** | centre (§4.2) | No transcript operation exists, and no *seam* path exists either. `collect` returns an `ArtifactSet` (`facts.py:113–127`) — branch, head, pushed, gate outputs, handoff — with no turn in it, and `observe` returns harness-private pane text that `AC-HAD-08` forbids any kernel/projection/CLI/Board path from parsing. `listTicketAuditEvents` is a typed audit stream, not a harness transcript. So the binding must first project typed turn facts across the seam — which is open question 2's vocabulary and a **contract decision** — and only then does a route have anything to serve. Costing this as a route alone is the mistake this row exists to prevent. |
 | G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME`. **Two layers again: a seam-level post-spawn input path composed over D10's `deliver_input`, then the HTTP route.** | composer (§4.2) | The five merged verbs have no lane-input method: `spawn` launches *and* delivers the initial brief, `writeback` files seat-authored facts (`AC-HAD-05` refuses an operator credential at an adapter), and `input_refusal` is a policy predicate rather than a transport. What already exists is one layer down — `SupervisorPort.deliver_input(attempt, text) -> durable command id` (`hermes/substrate.py:39`), which `spawn` already uses. The new path must **compose over it, never duplicate it**: `seam.py:1–9` names a second process-control vocabulary at the harness layer as the two-authorities-for-one-fact mistake. It also needs the ACK rule (`AC-HAD-02`: steer counts as acknowledged only on the returned durable command ID) and the principal decision of open question 3. `sendInboxMessage` is not a substitute: it is the tenant-wide comms plane, never evaluates a project grant, and would bypass the capability check entirely. |

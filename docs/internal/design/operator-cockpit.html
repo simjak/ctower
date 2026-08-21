@@ -589,7 +589,7 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">main</span>
-              <span class="chip sc-idle"><span class="dot" style="background: var(--state-idle)"></span>idle</span>
+              <span class="chip sc-idle" title="idle · probe pane_footer · observed 11s ago"><span class="dot" style="background: var(--state-idle)"></span>idle</span>
             </button>
 
             <div class="seat">designer-cockpit-2</div>
@@ -606,7 +606,7 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">adapter-codex</span>
-              <span class="chip sc-capped"><span class="dot" style="background: var(--state-capped)"></span>capped</span>
+              <span class="chip sc-capped" title="capped · probe pane_footer · observed 38s ago · reset unknown"><span class="dot" style="background: var(--state-capped)"></span>capped</span>
             </button>
             <button class="ws" type="button" data-unread="true">
               <span class="unread"></span>
@@ -619,13 +619,13 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">intake-fence</span>
-              <span class="chip sc-working"><span class="dot" style="background: var(--state-working)"></span>working</span>
+              <span class="chip sc-working" title="working · probe gateway_log · observed 4s ago · served claude-opus-5 (proves: serving)"><span class="dot" style="background: var(--state-working)"></span>working</span>
             </button>
             <!-- a read that did not answer is not a read that returned zero -->
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">estate-import</span>
-              <span class="chip sc-unknown">not reached</span>
+              <span class="chip sc-unknown" title="unknown · substrate-unobservable:worktree_read · last answered 12m ago">not reached</span>
             </button>
 
             <div class="proj"><span class="mark" style="background: var(--p-bhloop)"></span>bhloop</div>
@@ -670,6 +670,10 @@
               <li><b>Reap is disabled, not missing.</b> AC-HAD-07 refuses <span class="mono">reap</span>
                 on a <span class="mono">dead_auth</span> lane — it is preserved for resume, with one
                 nudge offered before any replacement.</li>
+              <li><b>Every chip carries its probe and its age</b> on hover, and past its freshness
+                bound the state becomes <b>unknown</b> — never a faded <b>working</b>. There is no
+                stale state; there is an old observation, which is a source that is not answering
+                now.</li>
             </ul>
           </div>
         </nav>
