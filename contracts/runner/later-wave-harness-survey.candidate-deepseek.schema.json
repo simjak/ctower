@@ -1,0 +1,152 @@
+{
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-deepseek.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-base.schema.json#/$defs/base-candidate"
+    },
+    {
+      "properties": {
+        "adapter_work": {
+          "const": "zero"
+        },
+        "answers": {
+          "patternProperties": {
+            "^.+$": {
+              "properties": {
+                "evidence": {
+                  "contains": {
+                    "anyOf": [
+                      {
+                        "const": "design-seam-c07"
+                      },
+                      {
+                        "const": "auth-runbook-2026-08-17"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "properties": {
+            "config_surface": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "credit_weights": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "egress_topology": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "identity_proof": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "native_fallback": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "native_pool": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "probe_target": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "reset_window_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "rotation_cache_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            },
+            "subagent_credential_inheritance": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+            }
+          }
+        },
+        "capability_declaration": {
+          "properties": {
+            "liveness": {
+              "const": "inherited:hermes.gateway_log"
+            },
+            "reason": {
+              "const": "The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."
+            }
+          }
+        },
+        "classification": {
+          "const": "model"
+        },
+        "effective_route": {
+          "const": "hermes-profile"
+        },
+        "key": {
+          "const": "deepseek"
+        },
+        "registration": {
+          "properties": {
+            "reason": {
+              "const": "DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."
+            },
+            "status": {
+              "const": "not_applicable"
+            }
+          }
+        },
+        "role_disposition": {
+          "const": "not_applicable"
+        }
+      }
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "probe_target": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-probe-target"
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "identity_proof": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-identity-proof"
+    }
+  ],
+  "description": "Candidate-scoped survey profile for deepseek; values and evidence are derived from the dependency matrix.",
+  "title": "LaterWaveHarnessSurveyCandidateDeepseek"
+}

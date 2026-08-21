@@ -1,0 +1,23 @@
+{
+  "$defs": {
+    "candidate": {
+      "oneOf": [
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-openclaw.schema.json"
+        },
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-qwen-code.schema.json"
+        },
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-zcode.schema.json"
+        },
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-deepseek.schema.json"
+        }
+      ]
+    }
+  },
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LaterWaveHarnessSurveyCandidate"
+}

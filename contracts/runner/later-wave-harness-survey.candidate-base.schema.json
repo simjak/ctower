@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "base-candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_work": {
+          "enum": [
+            "blocked_until_survey",
+            "zero"
+          ]
+        },
+        "answers": {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answers"
+        },
+        "capability_declaration": {
+          "$ref": "#/$defs/capability_declaration"
+        },
+        "classification": {
+          "enum": [
+            "harness_gateway_routed",
+            "harness_baseline",
+            "harness_stub",
+            "model"
+          ]
+        },
+        "effective_route": {
+          "enum": [
+            "gateway",
+            "qwen-cli",
+            "unbound-stub",
+            "hermes-profile"
+          ]
+        },
+        "key": {
+          "enum": [
+            "openclaw",
+            "qwen-code",
+            "zcode",
+            "deepseek"
+          ]
+        },
+        "registration": {
+          "$ref": "#/$defs/registration"
+        },
+        "role_disposition": {
+          "enum": [
+            "undecidable",
+            "not_applicable"
+          ]
+        }
+      },
+      "required": [
+        "key",
+        "classification",
+        "effective_route",
+        "adapter_work",
+        "role_disposition",
+        "registration",
+        "capability_declaration",
+        "answers"
+      ],
+      "type": "object"
+    },
+    "capability_declaration": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/source-id"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "liveness": {
+          "pattern": "^(unknown|inherited:[a-z][a-z0-9_.-]{2,127})$",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "liveness",
+        "evidence",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "registration": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "refused",
+            "not_applicable"
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-base.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LaterWaveHarnessSurveyCandidateBase"
+}

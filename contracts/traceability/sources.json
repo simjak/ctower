@@ -2804,6 +2804,100 @@
         "AC-HAD-01",
         "AC-HAD-03"
       ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.answers.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-48",
+        "INV-77",
+        "AC-HAD-01",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.tokens.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.referential-rotation.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.referential-fallback.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.referential-subagent.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.candidate-base.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-48",
+        "INV-77",
+        "AC-HAD-01",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.candidate.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-48",
+        "INV-77",
+        "AC-HAD-01",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.candidate-openclaw.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.candidate-qwen-code.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.candidate-zcode.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
+    },
+    {
+      "path": "contracts/runner/later-wave-harness-survey.candidate-deepseek.schema.json",
+      "references": [
+        "SPEC#harness-adapter-seam",
+        "INV-77",
+        "AC-HAD-03"
+      ]
     }
   ]
 }

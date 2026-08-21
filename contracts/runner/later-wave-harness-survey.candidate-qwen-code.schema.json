@@ -1,0 +1,336 @@
+{
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-qwen-code.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-base.schema.json#/$defs/base-candidate"
+    },
+    {
+      "properties": {
+        "adapter_work": {
+          "const": "blocked_until_survey"
+        },
+        "answers": {
+          "properties": {
+            "config_surface": {
+              "anyOf": [
+                {
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+                    },
+                    {
+                      "properties": {
+                        "evidence": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-cli-0215"
+                              },
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
+                              }
+                            ]
+                          }
+                        },
+                        "state": {
+                          "const": "verified"
+                        },
+                        "value": {
+                          "const": "env_overridable"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value",
+                        "evidence"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "x-ctower-candidate-answer": "env-overridable"
+            },
+            "credit_weights": {
+              "anyOf": [
+                {
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+                    },
+                    {
+                      "properties": {
+                        "evidence": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
+                              },
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-auth-runbook-2026-08-17"
+                              },
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-local-command-absence"
+                              },
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-ctower-weight-registry-d724"
+                              }
+                            ]
+                          }
+                        },
+                        "state": {
+                          "const": "verified"
+                        },
+                        "value": {
+                          "const": "unpublished"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value",
+                        "evidence"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "x-ctower-candidate-answer": "unpublished"
+            },
+            "egress_topology": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "identity_proof": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "native_fallback": {
+              "anyOf": [
+                {
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+                    },
+                    {
+                      "properties": {
+                        "evidence": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-cli-0215"
+                              },
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
+                              }
+                            ]
+                          }
+                        },
+                        "state": {
+                          "const": "verified"
+                        },
+                        "value": {
+                          "const": "model_fallback_only"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value",
+                        "evidence"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "x-ctower-candidate-answer": "model-fallback-only"
+            },
+            "native_pool": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "probe_target": {
+              "anyOf": [
+                {
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+                    },
+                    {
+                      "properties": {
+                        "evidence": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-cli-0215"
+                              },
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
+                              }
+                            ]
+                          }
+                        },
+                        "state": {
+                          "const": "verified"
+                        },
+                        "value": {
+                          "const": "direct_cli_endpoint"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value",
+                        "evidence"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "x-ctower-candidate-answer": "direct-cli-endpoint"
+            },
+            "reset_window_semantics": {
+              "anyOf": [
+                {
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+                    },
+                    {
+                      "properties": {
+                        "evidence": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
+                              }
+                            ]
+                          }
+                        },
+                        "state": {
+                          "const": "verified"
+                        },
+                        "value": {
+                          "const": "weekly_plan"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value",
+                        "evidence"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "x-ctower-candidate-answer": "weekly-plan"
+            },
+            "rotation_cache_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "subagent_credential_inheritance": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            }
+          }
+        },
+        "capability_declaration": {
+          "properties": {
+            "liveness": {
+              "const": "unknown"
+            },
+            "reason": {
+              "const": "The binary is installed, but no representative authenticated serving observation was run."
+            }
+          }
+        },
+        "classification": {
+          "const": "harness_baseline"
+        },
+        "effective_route": {
+          "const": "qwen-cli"
+        },
+        "key": {
+          "const": "qwen-code"
+        },
+        "registration": {
+          "properties": {
+            "reason": {
+              "const": "The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."
+            },
+            "status": {
+              "const": "refused"
+            }
+          }
+        },
+        "role_disposition": {
+          "const": "undecidable"
+        }
+      }
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "probe_target": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "direct_cli_endpoint"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-probe-target"
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "identity_proof": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "direct_cli_account"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-identity-proof"
+    }
+  ],
+  "description": "Candidate-scoped survey profile for qwen-code; values and evidence are derived from the dependency matrix.",
+  "title": "LaterWaveHarnessSurveyCandidateQwencode"
+}
