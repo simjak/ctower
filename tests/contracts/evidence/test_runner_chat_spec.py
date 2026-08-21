@@ -31,6 +31,28 @@ _CRITERIA: tuple[tuple[str, str], ...] = (
     ("AC-CHAT-07", "ct-i2-014"),
 )
 
+_READ_GAPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("AC-CHAT-08", ("HarnessSpec", "listHarnessSpecs", "getHarnessSpec", "/v1/harness")),
+    ("AC-CHAT-09", ("TicketResource", "stage", "workflow_ref")),
+    ("AC-CHAT-10", ("listTickets", "getBoard")),
+    (
+        "AC-CHAT-11",
+        (
+            "attention findings",
+            "intake queue",
+            "project_seats",
+            "poisoned outbox messages",
+        ),
+    ),
+)
+
+_READ_INVENTORY = (
+    "authored OpenAPI",
+    "generated Python/TypeScript clients",
+    "contract operation counters",
+    "reference documentation",
+)
+
 
 def _spec() -> str:
     return _SPEC.read_text(encoding="utf-8")
@@ -102,6 +124,21 @@ def test_collect_remains_artifact_only_and_transcript_transport_is_separate() ->
     ct_i2_013 = next(line for line in spec.splitlines() if line.startswith("| CT-I2-013 |"))
     assert "collect strict typed artifacts; transport typed transcript observations" in ct_i2_013
     assert "collect strict typed artifacts/transcript facts" not in ct_i2_013
+
+
+@pytest.mark.parametrize(
+    "code, markers", _READ_GAPS, ids=lambda item: str(item).lower().replace("-", "_")
+)
+def test_record_backed_read_gaps_are_explicitly_folded_into_chat_surface(
+    code: str, markers: tuple[str, ...]
+) -> None:
+    row = _spec_row(code)
+    assert "docs/internal/design/ctower-app.md" in row
+    assert "reads over facts the record already stores" in row
+    assert "no new authority" in row
+    assert "no new seam capability" in row
+    assert all(marker in row for marker in markers)
+    assert all(inventory in row for inventory in _READ_INVENTORY)
 
 
 def test_i2_backlog_rows_remain_inside_the_markdown_table() -> None:
