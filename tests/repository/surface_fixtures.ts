@@ -14,13 +14,14 @@
 import { chooseBase } from "../../apps/ctower-ui/src/read/sources/worktrees.ts";
 import type { BaseProbe } from "../../apps/ctower-ui/src/read/sources/worktrees.ts";
 import { projectOf } from "../../apps/ctower-ui/src/read/sources/crewRoster.ts";
-import { toWorkSession } from "../../apps/ctower-ui/src/read/runtimeReads.ts";
+import { newestSession, toWorkSession } from "../../apps/ctower-ui/src/read/runtimeReads.ts";
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
 import { reclassified } from "../../apps/ctower-ui/src/read/bounded.ts";
 import {
   boardCardContextFor,
   boardEmptyKind,
+  stageOf,
 } from "../../apps/ctower-ui/src/read/boardProjection.ts";
 import type { BoardCard } from "../../apps/ctower-ui/src/read/interface.ts";
 
@@ -295,6 +296,72 @@ try {
 } catch {
   results.malformedTokensRefused = true;
 }
+
+/* ── the ticket bar ───────────────────────────────────────────────────────
+   The approved cockpit's line above the ticket screen draws two facts the page
+   was not showing, and each is a decision about which claim may be made:
+   which of several sessions a one-line summary stands for, and whether a stage
+   is a served name or an answered absence. Both are pure, so both are driven
+   here rather than left to a reviewer reading the component. */
+
+const session = (sessionId: string, startedAt: string, state: string): unknown => ({
+  ...nulled,
+  session_id: sessionId,
+  started_at: startedAt,
+  state,
+});
+
+// the newest start wins, whatever order the record returned the rows in
+results.newestSessionIsTheLatestStart = newestSession(
+  [
+    session("first", "2026-08-19T09:00:00Z", "gated"),
+    session("third", "2026-08-21T09:00:00Z", "working"),
+    session("second", "2026-08-20T09:00:00Z", "briefed"),
+  ].map(toWorkSession)
+);
+
+// a ticket the record holds no session for is an answered absence, never an
+// empty summary and never a failure
+results.noSessionIsAnAnsweredAbsence = newestSession([]);
+
+// an unparseable start stamp takes no part in the ordering: it is not an early
+// one, and it must not beat a row the record dated
+results.unparseableStartDoesNotWinTheOrdering = newestSession(
+  [
+    session("dated", "2026-08-19T09:00:00Z", "working"),
+    session("undated", "whenever", "gated"),
+  ].map(toWorkSession)
+);
+
+// with nothing to order by, the record's own first row stands rather than an
+// invented winner — and the count still says how many it stands in front of
+results.nothingToOrderByKeepsTheRecordsOrder = newestSession(
+  [session("one", "whenever", "working"), session("two", "also whenever", "gated")].map(
+    toWorkSession
+  )
+);
+
+const stagedCard = (stage: string | null): BoardCard =>
+  ({ stageLabel: stage }) as unknown as BoardCard;
+
+// the board projection folds the workflow server-side, so a card carrying a
+// stage is a served fact and is shown as one
+results.servedStageIsPresent = stageOf({ state: "present", value: stagedCard("implement") });
+
+// a card carrying none is the record answering and holding none
+results.unstagedCardIsAbsent = stageOf({ state: "present", value: stagedCard(null) });
+
+// a board read that did not land is not an answer about the stage at all
+results.unreadBoardStaysUnreadRatherThanUnstaged = stageOf({
+  state: "unavailable",
+  failure: {
+    reason: "the board read was refused",
+    failureClass: "permanent",
+    attempts: 1,
+    elapsedMs: 12,
+    status: 403,
+  },
+});
 
 // `noneOf` is exercised so the driver fails loudly if the Known constructors
 // ever stop being importable from this module

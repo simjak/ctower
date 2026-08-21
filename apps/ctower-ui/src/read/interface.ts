@@ -210,6 +210,12 @@ export interface BoardCard {
 
 export interface TicketRecord {
   readonly ticketId: string;
+  /**
+   * The per-project key an operator quotes — `CTW-12`. Server-assigned, and
+   * `null` on a record written before the instance assigned one, which is a
+   * different fact from the ticket's own identifier and is never spelled as it.
+   */
+  readonly displayKey: string | null;
   readonly title: string;
   readonly priority: Priority;
   readonly custodianId: string;

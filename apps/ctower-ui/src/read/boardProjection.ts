@@ -1,4 +1,4 @@
-import { NO_BOARD_ROW_HERE } from "./futureSources";
+import { NO_BOARD_ROW_HERE, NO_STAGES_HERE } from "./futureSources";
 import { mapReading } from "./reading";
 import type { BoardCard, BoardEntry, BoardSnapshot, Reading } from "./interface";
 
@@ -264,4 +264,25 @@ export function cardFor(board: Reading<BoardSnapshot>, ticketId: string): Readin
       ? { state: "absent", source: NO_BOARD_ROW_HERE }
       : { state: "present", value: found.card };
   });
+}
+
+/**
+ * The stage a workflow has this ticket in, as its own reading.
+ *
+ * The board projection folds `workflow.changed` server-side and serves the
+ * result as the card's `stage_key`, so a ticket's *current* stage is a served
+ * fact — it is the ordered stage list its `workflow_ref` declares that no read
+ * carries, and that is what stops the surface drawing a position rather than a
+ * name.
+ *
+ * A card that carries no stage is the record answering and holding none; a
+ * board read that did not land is not an answer at all. Deriving a reading
+ * rather than a nullable keeps those two apart all the way to the screen.
+ */
+export function stageOf(card: Reading<BoardCard>): Reading<string> {
+  return mapReading(card, (row) =>
+    row.stageLabel === null
+      ? ({ state: "absent", source: NO_STAGES_HERE } as const)
+      : ({ state: "present", value: row.stageLabel } as const)
+  );
 }

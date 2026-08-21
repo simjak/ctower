@@ -975,3 +975,101 @@ a.cw-file:hover {
   color: var(--ink-3);
   font-size: 12px;
 }
+
+/* ── the ticket bar ────────────────────────────────────────────────────────
+   The approved cockpit's one line above everything else: the key an operator
+   quotes, how far the work has got, and where the workflow has this ticket.
+
+   The vendored sheet has no rule for it — the approved ticket mockup predates
+   the cockpit — so its rules live here beside the chat workspace's and the
+   pools screen's, built only from the vendored sheet's own variables, so both
+   themes and every token stay the frame's.
+
+   It sits in the header's second row, which is where the frame already puts a
+   screen's own context line. Everything wraps: at 375px the two cells drop
+   under the key rather than pushing the row wider than the viewport. */
+.tbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.tbar .tbar-gap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tbar .tbar-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  min-width: 0;
+}
+
+/* the same key/value grammar the ticket page's custody line uses, so a reader
+   learns one shape for "this label names that fact" */
+.tbar .k {
+  color: var(--ink-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex: none;
+}
+
+.tbar .key {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.tbar .v {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+/* an answered absence is not a value: it keeps the row's shape and gives up
+   the row's emphasis */
+.tbar .v.miss {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.tbar .of {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+/* SessionState is a closed four-value ladder — dispatched, briefed, working,
+   gated — so it draws as a real stepper. The segments carry the position and
+   the state's own word carries the meaning; only the current one is named,
+   which is the whole point of drawing it. */
+.steps {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.steps i {
+  display: inline-block;
+  width: 13px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.steps i.done {
+  background: var(--line-2);
+}
+
+.steps i.now {
+  background: var(--accent);
+}

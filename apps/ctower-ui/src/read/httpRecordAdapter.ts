@@ -364,6 +364,11 @@ function toTicket(value: unknown, names: Readonly<Record<string, string>>): Tick
   const source = asRecord(row.source, "ticket.source");
   return {
     ticketId: asString(row.ticket_id, "ticket.ticket_id"),
+    // read permissively on purpose: the contract requires the field and makes
+    // it nullable, and an instance running a build from before display keys
+    // omits it entirely. A missing key and a null one are the same claim — the
+    // record names no key for this ticket — and neither may fail the read.
+    displayKey: optionalText(row.display_key, "ticket.display_key"),
     title: asString(row.title, "ticket.title"),
     priority: asMember(row.priority, "ticket.priority", PRIORITIES),
     custodianId: asString(row.custodian_id, "ticket.custodian_id"),

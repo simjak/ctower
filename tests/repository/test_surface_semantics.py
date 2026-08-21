@@ -300,5 +300,72 @@ class BoardCardContextTests(unittest.TestCase):
         self.assertEqual(context["deliverySurface"]["value"], "no qualifying checkpoint")
 
 
+class TicketBarTests(unittest.TestCase):
+    """The cockpit's ticket bar states two facts, and neither may be guessed.
+
+    The bar summarises a ticket's work in one line, so it has to choose which
+    of several sessions that line stands for, and it has to say where the
+    workflow has the ticket. Both are claims about the record, and the failure
+    mode of each is the same one this whole surface is built against: showing
+    an answer where there is none.
+    """
+
+    def test_the_newest_start_is_the_session_the_line_stands_for(self) -> None:
+        newest = _case("newestSessionIsTheLatestStart")
+        self.assertEqual(newest["state"], "present")
+        self.assertEqual(newest["value"]["session"]["sessionId"], "third")
+        self.assertEqual(
+            newest["value"]["total"],
+            3,
+            "the line stands in front of three sessions and must say so, rather than "
+            "letting one row read as the whole of this ticket's work",
+        )
+
+    def test_a_ticket_holding_no_session_is_an_answered_absence(self) -> None:
+        absent = _case("noSessionIsAnAnsweredAbsence")
+        self.assertEqual(absent["state"], "absent")
+        self.assertEqual(
+            absent["source"]["absence"],
+            "silence",
+            "the record answers this read, so a ticket with no session is a measurement "
+            "and not a capability anyone is waiting on",
+        )
+
+    def test_an_unparseable_start_stamp_does_not_win_the_ordering(self) -> None:
+        newest = _case("unparseableStartDoesNotWinTheOrdering")
+        self.assertEqual(
+            newest["value"]["session"]["sessionId"],
+            "dated",
+            "a timestamp that does not parse is not an early one, and must not order "
+            "a row ahead of one the record dated",
+        )
+
+    def test_with_nothing_to_order_by_the_records_own_order_stands(self) -> None:
+        newest = _case("nothingToOrderByKeepsTheRecordsOrder")
+        self.assertEqual(newest["value"]["session"]["sessionId"], "one")
+        self.assertEqual(newest["value"]["total"], 2)
+
+    def test_a_stage_the_board_serves_is_shown_as_the_served_fact(self) -> None:
+        """The board projection folds `workflow.changed`; the card carries the result."""
+        stage = _case("servedStageIsPresent")
+        self.assertEqual(stage["state"], "present")
+        self.assertEqual(stage["value"], "implement")
+
+    def test_a_card_carrying_no_stage_is_the_record_holding_none(self) -> None:
+        stage = _case("unstagedCardIsAbsent")
+        self.assertEqual(stage["state"], "absent")
+        self.assertEqual(stage["source"]["absence"], "silence")
+
+    def test_a_board_read_that_did_not_land_says_nothing_about_the_stage(self) -> None:
+        stage = _case("unreadBoardStaysUnreadRatherThanUnstaged")
+        self.assertEqual(
+            stage["state"],
+            "unavailable",
+            "a refused board read must not arrive at the bar as a ticket with no stage; "
+            "those are opposite claims and only one of them is about this ticket",
+        )
+        self.assertEqual(stage["failure"]["status"], 403)
+
+
 if __name__ == "__main__":
     unittest.main()
