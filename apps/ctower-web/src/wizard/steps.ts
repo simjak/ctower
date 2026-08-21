@@ -1,33 +1,21 @@
 /**
- * The wizard's four steps, which are four real operations and nothing else.
+ * The four steps, named as the operator's own jobs.
  *
- * `compose` seeds from `exportCompanyBundle`; `validate`, `plan` and `apply`
- * are `validateCompanyBundle`, `planCompanyBundle` and `applyCompanyBundle`.
- * There is no review step, no summary step, and no confirmation page: a step
- * exists here only because the API has a call behind it.
+ * A step is never named after the call behind it. `exportCompanyBundle` is a
+ * fact about this repository's contract, not a thing an operator does, and a
+ * screen that prints it has put the API's vocabulary in front of the reader's.
  */
-export type StepKey = "compose" | "validate" | "plan" | "apply";
+export type StepKey = "company" | "check" | "review" | "apply";
 
 export interface Step {
   readonly key: StepKey;
-  /** The step's own number, drawn in the rail. */
   readonly ordinal: number;
   readonly label: string;
-  /** The generated operation this step calls, shown in mono (D6). */
-  readonly operation: string;
 }
 
 export const STEPS: readonly Step[] = [
-  { key: "compose", ordinal: 1, label: "Compose", operation: "exportCompanyBundle" },
-  { key: "validate", ordinal: 2, label: "Validate", operation: "validateCompanyBundle" },
-  { key: "plan", ordinal: 3, label: "Plan", operation: "planCompanyBundle" },
-  { key: "apply", ordinal: 4, label: "Apply", operation: "applyCompanyBundle" },
+  { key: "company", ordinal: 1, label: "Company details" },
+  { key: "check", ordinal: 2, label: "Check the bundle" },
+  { key: "review", ordinal: 3, label: "Review changes" },
+  { key: "apply", ordinal: 4, label: "Apply" },
 ];
-
-export function stepAt(index: number): Step {
-  const step = STEPS[index];
-  if (step === undefined) {
-    throw new RangeError(`no wizard step at ${String(index)}`);
-  }
-  return step;
-}

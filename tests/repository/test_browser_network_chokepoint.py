@@ -40,9 +40,16 @@ _NETWORK_PATTERN = re.compile(
 )
 # Filesystem writes. This app reads another repository's live state; it may not
 # write, lock, truncate, rename or remove anything, anywhere.
+#
+# The name must be *called* to count. The bare-word form matched `truncate`
+# wherever it appeared, including a CSS utility class of that name in markup,
+# which is a class attribute rather than a syscall. Requiring the call makes the
+# pattern say what it means; every real write site still matches, because none
+# of these names does anything except when invoked.
 _WRITE_PATTERN = re.compile(
-    r"\bwriteFile\b|\bwriteFileSync\b|\bappendFile\b|\bappendFileSync\b|\bcreateWriteStream\b"
-    r"|\bunlinkSync?\b|\brmdir\b|\brmSync\b|\bmkdirSync?\b|\brenameSync?\b|\btruncate\b|\bchmodSync?\b"
+    r"\b(?:writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream"
+    r"|unlink|unlinkSync|rmdir|rmSync|mkdir|mkdirSync|rename|renameSync|truncate"
+    r"|chmod|chmodSync)\s*\("
 )
 _READING_PATTERN = re.compile(r"\.state\s*(?:===|!==)|\breading\.(?:value|failure|source)\b")
 _LINE_COMMENT = re.compile(r"//[^\n]*")
@@ -55,16 +62,34 @@ _NETWORK_POLICY_HOLDERS = {
         "finite attempts and deadline, jittered capped backoff, typed predicate, "
         "typed exhaustion"
     ),
+    "apps/ctower-web/src/api/bounded.ts": (
+        "the wizard's single bounded-retry chokepoint, with the same policy; the "
+        "generated client is constructed with the fetch it returns, so every "
+        "generated request inherits the bound rather than the client's single shot"
+    ),
     "generated/typescript/ctower-client/src/client.ts": (
-        "the generated client; unreachable at runtime from this repository's "
-        "applications, which is asserted separately below"
+        "the generated client; reachable from an application only through an "
+        "approved binder that injects that application's chokepoint, which is "
+        "asserted separately below"
     ),
 }
 _READING_HOLDERS = (
     "apps/ctower-ui/src/read/",
     "apps/ctower-ui/src/frame/Declared.tsx",
 )
-_CHOKEPOINT = "apps/ctower-ui/src/read/bounded.ts"
+_CHOKEPOINTS = (
+    "apps/ctower-ui/src/read/bounded.ts",
+    "apps/ctower-web/src/api/bounded.ts",
+)
+_CHOKEPOINT = _CHOKEPOINTS[0]
+
+# The only application modules that may value-import the generated client, each
+# mapped to the chokepoint it must hand that client as its `fetch`. An entry
+# here is not a waiver: both halves are asserted below, so a binder that stops
+# injecting its chokepoint fails exactly as loudly as an unlisted importer.
+_CLIENT_BINDERS = {
+    "apps/ctower-web/src/api/client.ts": "./bounded",
+}
 _SOURCE_DIRECTORY = "apps/ctower-ui/src/read/sources/"
 # Helpers in the source directory that carry no foreign text of their own.
 _SOURCE_HELPERS = frozenset(
@@ -124,9 +149,10 @@ class BrowserNetworkChokepointTests(unittest.TestCase):
     """O10 coverage and honest-state coverage, both derived from the tree."""
 
     def test_the_scan_finds_a_non_empty_denominator(self) -> None:
-        discovered = _sources()
+        discovered = {_relative(path) for path in _sources()}
         self.assertGreater(len(discovered), 10, "the TypeScript scan found almost nothing")
-        self.assertIn(_CHOKEPOINT, {_relative(path) for path in discovered})
+        for chokepoint in _CHOKEPOINTS:
+            self.assertIn(chokepoint, discovered)
 
     def test_every_network_call_site_sits_in_an_approved_policy_holder(self) -> None:
         unclassified = sorted(set(_matching(_NETWORK_PATTERN)) - set(_NETWORK_POLICY_HOLDERS))
@@ -134,29 +160,56 @@ class BrowserNetworkChokepointTests(unittest.TestCase):
             unclassified,
             [],
             "a network-capable call site appeared outside an approved O10 policy holder; "
-            "route it through apps/ctower-ui/src/read/bounded.ts or classify it here",
+            "route it through that application's bounded chokepoint or classify it here",
         )
 
-    def test_the_chokepoint_still_declares_every_required_bound(self) -> None:
-        code = _code(_ROOT / _CHOKEPOINT)
-        missing = [name for name in _REQUIRED_BOUNDS if name not in code]
-        self.assertEqual(missing, [], "the bounded-read policy lost a required O10 property")
+    def test_every_chokepoint_still_declares_every_required_bound(self) -> None:
+        for chokepoint in _CHOKEPOINTS:
+            with self.subTest(chokepoint=chokepoint):
+                code = _code(_ROOT / chokepoint)
+                missing = [name for name in _REQUIRED_BOUNDS if name not in code]
+                self.assertEqual(
+                    missing, [], "the bounded-read policy lost a required O10 property"
+                )
 
-    def test_the_generated_client_runtime_is_not_reachable_from_an_application(self) -> None:
+    def test_the_generated_client_runtime_is_reachable_only_through_a_binder(self) -> None:
         value_import = re.compile(
             r"^\s*import\s+(?!type\b)[^;]*?from\s+\"@ctower/client\"", re.MULTILINE
         )
-        offenders = sorted(
+        importers = sorted(
             _relative(path)
             for path in _sources()
             if path.is_relative_to(_ROOT / "apps") and value_import.search(_code(path))
         )
         self.assertEqual(
-            offenders,
-            [],
+            importers,
+            sorted(_CLIENT_BINDERS),
             "an application value-imports the generated client, whose requests are single-shot; "
-            "either bring that client under a bounded policy or keep the import type-only",
+            "either keep the import type-only, or bind that client to the application's bounded "
+            "chokepoint and declare the binder here",
         )
+
+    def test_every_binder_hands_the_generated_client_its_bounded_fetch(self) -> None:
+        """A declared binder that stops injecting its chokepoint is not a binder."""
+
+        for binder, chokepoint in _CLIENT_BINDERS.items():
+            with self.subTest(binder=binder):
+                code = _code(_ROOT / binder)
+                self.assertRegex(
+                    code,
+                    rf"import\s+\{{[^}}]*\bboundedFetch\b[^}}]*\}}\s+from\s+\"{re.escape(chokepoint)}\"",
+                    "the binder does not import its application's bounded fetch",
+                )
+                self.assertRegex(
+                    code,
+                    r"new\s+CtowerClient\s*\((?:[^)]|\)(?!\s*;))*fetch:\s*boundedFetch\(",
+                    "the binder constructs the generated client without its bounded fetch",
+                )
+                self.assertNotRegex(
+                    code,
+                    r"new\s+CtowerClient\s*\([^)]*credential:",
+                    "the browser holds no API bearer; the credential is attached server-side",
+                )
 
     def test_no_module_in_apps_writes_to_the_filesystem(self) -> None:
         offenders = sorted(path for path in _matching(_WRITE_PATTERN) if path.startswith("apps/"))

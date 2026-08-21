@@ -7,11 +7,15 @@ to a real operation.
 
 ## The four steps are four operations
 
-| Step | Operation | What it is |
+The left column is what the operator sees. The right column is this repository's
+own vocabulary and **never renders**: a step is named after the job a person
+does, not after the call behind it.
+
+| Step, as drawn | Operation behind it | What it is |
 | --- | --- | --- |
-| Compose | `exportCompanyBundle` | seeds from the active bundle when one exists, else an empty template |
-| Validate | `validateCompanyBundle` | the real check; a refusal renders as a refusal |
-| Plan | `planCompanyBundle` | the real diff — adds, changes, removes |
+| Company details | `exportCompanyBundle` | seeds from the active bundle when one exists, else an empty template |
+| Check the bundle | `validateCompanyBundle` | the real check; a refusal renders as a refusal |
+| Review changes | `planCompanyBundle` | the real diff — adds, changes, removes |
 | Apply | `applyCompanyBundle` | gated: it runs with the operator's own authority (D30) |
 
 ## The stack, and what ports from paperclip
@@ -26,7 +30,7 @@ layer does not. The token values are ctower's own, carried over from
 
 `docs/internal/SPEC.md` states it twice: the browser receives no API bearer, and
 no API token reaches browser JavaScript. The browser therefore calls its own
-origin at `/api/...`; the development server attaches the operator credential,
+origin at `/v1/...`; the development server attaches the operator credential,
 which it resolves from the same Secret Service reference the instance itself
 uses. Nothing in the client bundle, in `import.meta.env`, or in any rendered
 state carries a token. Secrets on this screen are references, never values.
