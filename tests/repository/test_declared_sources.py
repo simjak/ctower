@@ -210,7 +210,14 @@ class RailContractTests(unittest.TestCase):
                 "/feed",
                 "/files",
                 "/inbox",
+                # Live — what the fleet is doing this minute, ordered by what needs
+                # the operator. Distinct from /team, which is the durable roster.
+                # Added under the operator's direct authorization and the
+                # commander's ruling (2026-08-21): read-only, no new operation.
+                # This list is pinned so a route addition is a decision someone
+                # made on purpose, not a thing that drifted in.
                 "/limits",
+                "/live",
                 "/metrics",
                 "/portfolio",
                 "/requests",
