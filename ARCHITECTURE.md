@@ -366,9 +366,10 @@ an arbitrary harness command, it must enforce Runtime's current CommandGuard dec
 plan and targets.
 
 The target chat/steer HTTP contract is a bounded client surface, not a second control plane: crew/liveness/spec
-reads, typed transcript read/stream, composer input, and steer/ACK are the only G1–G4 operation families admitted
-by this bounded surface; the proposal-stage cockpit gap list also names G5–G10 (including G8b), which remain
-outside this bounded admission. Authored OpenAPI, generated clients, contract counters, and reference
+reads, typed transcript read/stream, composer input, and steer/ACK are the admitted G1–G4 operation families,
+including the HarnessSpec read, joined by the record-backed G10, G11, and G12 reads. The proposal-stage cockpit
+gap list's G5–G9 (including G8b) remain outside this bounded admission. These additions read existing facts and
+add no new authority or no new seam capability. Authored OpenAPI, generated clients, contract counters, and reference
 documentation close together; responses carry command identity, cursor/gap/refusal facts, source watermarks,
 and pending-versus-folded durability without credential values. No public product page, browser route, or
 browser credential authority is implied until the owning I2 implementation and browser gate are active.

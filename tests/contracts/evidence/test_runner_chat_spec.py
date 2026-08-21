@@ -29,6 +29,32 @@ _CRITERIA: tuple[tuple[str, str], ...] = (
     ("AC-CHAT-05", "ct-i2-014"),
     ("AC-CHAT-06", "ct-i2-014"),
     ("AC-CHAT-07", "ct-i2-014"),
+    ("AC-CHAT-08", "ct-i2-014"),
+    ("AC-CHAT-09", "ct-i2-014"),
+    ("AC-CHAT-10", "ct-i2-014"),
+    ("AC-CHAT-11", "ct-i2-014"),
+)
+
+_READ_GAPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("AC-CHAT-08", ("HarnessSpec", "listHarnessSpecs", "getHarnessSpec", "/v1/harness")),
+    ("AC-CHAT-09", ("TicketResource", "stage", "workflow_ref")),
+    ("AC-CHAT-10", ("listTickets", "getBoard")),
+    (
+        "AC-CHAT-11",
+        (
+            "attention findings",
+            "intake queue",
+            "project_seats",
+            "poisoned outbox messages",
+        ),
+    ),
+)
+
+_READ_INVENTORY = (
+    "authored OpenAPI",
+    "generated Python/TypeScript clients",
+    "contract operation counters",
+    "reference documentation",
 )
 
 
@@ -104,6 +130,21 @@ def test_collect_remains_artifact_only_and_transcript_transport_is_separate() ->
     assert "collect strict typed artifacts/transcript facts" not in ct_i2_013
 
 
+@pytest.mark.parametrize(
+    "code, markers", _READ_GAPS, ids=lambda item: str(item).lower().replace("-", "_")
+)
+def test_record_backed_read_gaps_are_explicitly_folded_into_chat_surface(
+    code: str, markers: tuple[str, ...]
+) -> None:
+    row = _spec_row(code)
+    assert "docs/internal/design/ctower-app.md" in row
+    assert "read over facts the record already stores" in row
+    assert "no new authority" in row
+    assert "no new seam capability" in row
+    assert all(marker in row for marker in markers)
+    assert all(inventory in row for inventory in _READ_INVENTORY)
+
+
 def test_i2_backlog_rows_remain_inside_the_markdown_table() -> None:
     lines = _spec().splitlines()
     table_start = next(
@@ -122,6 +163,9 @@ def test_runner_box_has_a_closed_right_edge_and_bounded_gap_claim() -> None:
         assert len(line) == right_edge + 1
 
     atlas = re.sub(r"\s+", " ", "\n".join(lines[368 - 1 : 374 - 1]))
-    assert f"only G1{_EN_DASH}G4 operation families admitted by this bounded surface" in atlas
+    assert (
+        f"admitted G1{_EN_DASH}G4 operation families, including the HarnessSpec read,"
+        f" joined by the record-backed G10, G11, and G12 reads"
+    ) in atlas
     assert "only operation families named by the" not in atlas
-    assert f"G5{_EN_DASH}G10 (including G8b)" in atlas
+    assert f"G5{_EN_DASH}G9 (including G8b) remain outside" in atlas
