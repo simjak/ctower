@@ -13,6 +13,7 @@ import { ThreadList } from "@/surfaces/chat/ThreadList";
 import { Transcript } from "@/surfaces/chat/Transcript";
 import { WorkPanel } from "@/surfaces/chat/WorkPanel";
 import { NothingGlyph } from "@/surfaces/chat/glyphs";
+import { addresslessReason, SEAT_COMMAND, UNADDRESSABLE } from "@/surfaces/chat/plane";
 import { readParam } from "@/surfaces/screenParams";
 import { composeThreadAction, promoteThreadAction, sendMessageAction } from "./actions";
 import type { WorkTab } from "@/surfaces/chat/WorkPanel";
@@ -47,13 +48,6 @@ export const dynamic = "force-dynamic";
  */
 
 const TABS: readonly WorkTab[] = ["changes", "checks", "review"];
-const NO_ADDRESS =
-  "this server's principal holds no registered seat, so it has no address to write from";
-const NO_SEATS = "the record lists no seat this server can write to";
-/** The record's own name for a principal that holds no seat row. */
-const UNADDRESSABLE = "unaddressable";
-/** What mints a principal with a seat row — the one action that gives it an address. */
-const SEAT_COMMAND = "ctowerctl credential seat issue";
 /**
  * A conversation with no message has no delivery truth to read, and the record
  * refuses a read-state request for one. That is an answered emptiness, not a
@@ -95,7 +89,7 @@ function Workspace({
             {(value) => (
               <ThreadList
                 canCompose={value.choices.length > 0}
-                composeReason={value.sender === "unaddressable" ? NO_ADDRESS : NO_SEATS}
+                composeReason={addresslessReason(value.sender)}
                 inbox={inbox}
                 now={now}
                 openThreadId={openThreadId}

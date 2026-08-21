@@ -18,7 +18,17 @@ import type { SessionStream } from "@/read/interface";
  * own conversation and wants the other end of it. A conversation whose other
  * participant runs no session gets a glyph and four words rather than a shell
  * that reads like a session with nothing in it.
+ *
+ * The bridge's own fidelity note is a paragraph, and it was being handed to a
+ * `title` here — 398 characters of rationale in a hover, against D9's rule that
+ * an explanation which does not fit one line is documentation rather than UI.
+ * The one line a reader needs at this pixel is what kind of thing they are
+ * looking at; the full note renders as visible text on the Workspace surface,
+ * which is the screen that is *about* the capture.
  */
+
+/** What this pane is, in one line: the `(i)` D9 permits. */
+const CAPTURE = "a terminal capture, not a recorded turn stream";
 
 function Body({ stream }: { readonly stream: SessionStream }): ReactElement {
   return (
@@ -27,7 +37,7 @@ function Body({ stream }: { readonly stream: SessionStream }): ReactElement {
         <h2>Terminal</h2>
         <span className="cw-art">{stream.chosen}</span>
         <span className="grow" />
-        <span className="cw-as" title={stream.fidelityNote}>
+        <span className="cw-as" title={CAPTURE}>
           {clockText(stream.observedAt)}
         </span>
         {stream.wasRedacted ? <span className="verdict v-changes">redacted</span> : null}

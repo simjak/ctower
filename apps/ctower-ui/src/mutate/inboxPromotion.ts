@@ -64,7 +64,7 @@ export async function promoteInboxThread(
   }
   const credential = process.env.CTOWER_UI_API_TOKEN;
   if (credential === undefined || credential === "") {
-    return unavailable("Promotion is not available because this server has no API credential.");
+    return unavailable("This server holds no API credential.");
   }
   const commandId = randomUUID();
   try {

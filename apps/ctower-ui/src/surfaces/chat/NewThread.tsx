@@ -4,15 +4,11 @@ import Link from "next/link";
 import { useActionState } from "react";
 import type { ReactElement } from "react";
 import { SendGlyph } from "./glyphs";
+import { addresslessReason, PLANE_WHY, SEAT_COMMAND, UNADDRESSABLE } from "./plane";
 import type { InboxComposeState } from "@/mutate/types";
-import type { InboxCorrespondents } from "@/read/interface";
+import type { InboxCorrespondentChoice, InboxCorrespondents } from "@/read/interface";
 
 const INITIAL_STATE: InboxComposeState = { kind: "idle" };
-/** The record's own name for a principal that holds no seat row. */
-const UNADDRESSABLE = "unaddressable";
-const NO_ADDRESS =
-  "this server's principal holds no registered seat, so it has no address to write from";
-const NO_SEATS = "the record lists no seat this server can write to";
 
 function held(state: InboxComposeState): string {
   return state.kind === "refused" || state.kind === "pending" ? state.text : "";
@@ -22,9 +18,29 @@ function chosen(state: InboxComposeState): string {
   return state.kind === "refused" || state.kind === "pending" ? state.to : "";
 }
 
-/** Why the picker is offering nobody: no address to write from, or nobody to write to. */
-function emptyReason(sender: string): string {
-  return sender === UNADDRESSABLE ? NO_ADDRESS : NO_SEATS;
+/**
+ * The listed seats, filed under the project each one belongs to.
+ *
+ * The correspondents read carries a `projectKey` per seat and this picker used
+ * to drop it, which left the reader no way to see the one thing about this
+ * surface that can catch them out: the address book is the *tenant's*, not the
+ * project they arrived from. Grouping restores that fact structurally, so the
+ * line above the list stays a line rather than becoming the paragraph D9
+ * forbids. The order inside a group is the record's own.
+ */
+function byProject(
+  choices: readonly InboxCorrespondentChoice[]
+): readonly (readonly [string, readonly string[]])[] {
+  const filed = new Map<string, string[]>();
+  for (const choice of choices) {
+    const seats = filed.get(choice.projectKey);
+    if (seats === undefined) {
+      filed.set(choice.projectKey, [choice.seatKey]);
+    } else {
+      seats.push(choice.seatKey);
+    }
+  }
+  return [...filed];
 }
 
 /**
@@ -56,10 +72,11 @@ export function NewThread({
   readonly correspondents: InboxCorrespondents;
 }): ReactElement {
   const [state, formAction, submitting] = useActionState(action, INITIAL_STATE);
-  const seats = correspondents.choices.map((choice) => choice.seatKey);
+  const projects = byProject(correspondents.choices);
+  const empty = correspondents.choices.length === 0;
   const words = held(state);
   const seat = chosen(state);
-  const idle = seats.length === 0 || submitting;
+  const idle = empty || submitting;
   return (
     <div className="cw-main" aria-labelledby="compose-heading">
       <div className="cw-head">
@@ -76,8 +93,10 @@ export function NewThread({
           </svg>
         </Link>
       </div>
-      <div className="cw-scroll">
-        {state.kind === "started" ? (
+      {/* the scroll region exists only once there is a turn in it; an empty one
+          grew to fill the pane and pushed the box a screen's height down */}
+      {state.kind === "started" ? (
+        <div className="cw-scroll">
           <div aria-live="polite" className="cw-turn mine">
             <div className="by">
               <span className="nm">{state.message.from}</span>
@@ -87,8 +106,8 @@ export function NewThread({
             </div>
             <div className="said">{state.message.text}</div>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className="cw-composer">
         <form action={formAction} className="cw-box">
           <div className="cw-bar" style={{ paddingBottom: 0 }}>
@@ -102,17 +121,17 @@ export function NewThread({
               name="to"
               required
               style={{ height: "28px", minHeight: "28px", padding: "0 9px", flex: "1 1 auto" }}
-              title={
-                seats.length === 0
-                  ? emptyReason(correspondents.sender)
-                  : "the seats the record can deliver to"
-              }
+              title={empty ? addresslessReason(correspondents.sender) : PLANE_WHY}
             >
               <option value="">seat…</option>
-              {seats.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
+              {projects.map(([project, seats]) => (
+                <optgroup key={project} label={project}>
+                  {seats.map((key) => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -142,9 +161,15 @@ export function NewThread({
             </button>
           </div>
         </form>
-        {seats.length === 0 ? (
+        {/* an empty state is one sentence and one action, and the action here is
+            the command that mints the seat row an address is */}
+        {empty ? (
           <p className="cw-said">
-            <span className="verdict v-held">no address</span> {emptyReason(correspondents.sender)}
+            <span className="verdict v-held">no address</span>{" "}
+            {addresslessReason(correspondents.sender)}
+            {correspondents.sender === UNADDRESSABLE ? (
+              <code className="mono">{SEAT_COMMAND}</code>
+            ) : null}
           </p>
         ) : null}
         {state.kind === "pending" ? (

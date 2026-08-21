@@ -66,17 +66,11 @@ _WIDTHS = stub.WIDTHS
 _RETIRED_CLAIM = "no mutation path exists on this surface"
 _NEW_TICKET_VERDICT = "cli only"
 _NEW_TICKET_COMMAND = "ctowerctl ticket capture"
-_UNCONFIRMED_SENTENCE = (
-    "The server has not confirmed this message, so it is not sent yet. "
-    "Press send again to send the same message."
-)
+_UNCONFIRMED_SENTENCE = "Not sent yet. Press send again."
 # what the line under the box reads, chip included; the chip's own stylesheet
 # upper-cases it on screen
 _UNCONFIRMED_NOTICE = f"not confirmed {_UNCONFIRMED_SENTENCE}"
-_UNCONFIRMED_COMPOSE_SENTENCE = (
-    "The server has not confirmed this message, so the thread is not started yet. "
-    "Press send again to send the same message."
-)
+_UNCONFIRMED_COMPOSE_SENTENCE = "Not started yet. Press send again."
 _UNCONFIRMED_COMPOSE_NOTICE = f"not confirmed {_UNCONFIRMED_COMPOSE_SENTENCE}"
 _SEND_FIELDS = ("project_key", "severity", "text", "thread_id", "to")
 _COMPOSE_FIELDS = ("project_key", "severity", "text", "to")

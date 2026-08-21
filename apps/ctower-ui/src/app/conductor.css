@@ -53,11 +53,25 @@
 }
 
 @media (min-width: 1100px) {
+  /* Two columns by default and three only when a right pane is actually
+     rendered. The fixed third track was drawn on every route, so the
+     conversation list and the compose screen each carried a bordered 372px
+     column with nothing in it. `:has` reads the real pane rather than a prop
+     threaded down from the screen, so a thread whose read failed — which draws
+     no right pane either — collapses correctly for free. */
   .cw {
     display: grid;
-    grid-template-columns: 276px minmax(0, 1fr) 372px;
+    grid-template-columns: 276px minmax(0, 1fr);
     height: calc(100dvh - 60px);
     min-height: 0;
+  }
+
+  .cw:has(.cw-side) {
+    grid-template-columns: 276px minmax(0, 1fr) 372px;
+  }
+
+  .cw:not(:has(.cw-side)) .cw-main {
+    border-right: 0;
   }
 
   /* on the desk all three are up at once, whichever route is open */
@@ -96,6 +110,7 @@
 .cw-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
@@ -109,6 +124,28 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--ink);
+  /* a long participant pair wrapped the whole head onto a second line and
+     pushed the transcript down; a title ellipsises, it does not reflow */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the head's own line, directly under it: one hint, never a paragraph */
+.cw-hint {
+  flex: none;
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+/* head then box, with no second rule between them — the compose pane has
+   nothing to scroll until it has started a conversation */
+.cw-head + .cw-composer {
+  border-top: 0;
 }
 
 .cw-head .grow {
@@ -362,6 +399,9 @@ a.cw-art:hover {
   background: var(--bg);
   display: flex;
   flex-direction: column;
+  /* the transcript's own measure: a box wider than the turns it produces reads
+     as a document editor rather than as the reply it is */
+  max-width: 760px;
 }
 
 .cw-box:focus-within {
@@ -569,9 +609,19 @@ a.cw-file:hover {
   opacity: 0.7;
 }
 
-/* the session pane under the right column */
+/* In the right column the empty state is not the pane — the promote control
+   under it is what fills the pane, and a growing nil pushed that control to the
+   floor with 600px of white above it. Here the nil takes its own height and the
+   controls follow it. */
+.cw-side .cw-nil {
+  flex: 0 0 auto;
+  padding: 26px 20px;
+}
+
+/* the session pane at the foot of the right column, where Conductor puts it */
 .cw-run {
   flex: none;
+  margin-top: auto;
   border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -646,6 +696,9 @@ a.cw-file:hover {
   gap: 5px;
 }
 
+/* The key is one row or it is not a key: fragmented across three lines it read
+   as three separate marks rather than as the ramp it teaches. Below the desk it
+   drops to its own line intact, which is what the head's own wrap is for. */
 .cw-legend {
   display: flex;
   gap: 12px;
@@ -653,7 +706,7 @@ a.cw-file:hover {
   font-family: var(--mono);
   font-size: 10.5px;
   color: var(--ink-3);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 /* ── Requests queue ────────────────────────────────────────────────────────

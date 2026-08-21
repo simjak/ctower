@@ -19,18 +19,9 @@ _THREAD_ID = "018f0d5e-7b9a-7c01-8000-000000000600"
 _EXPECTED_BODY = (
     '{"project_key":"ctower","severity":"info","text":"open the conversation","to":"director"}'
 )
-_UNCONFIRMED_SENTENCE = (
-    "The server has not confirmed this message, so the thread is not started yet. "
-    "Press send again to send the same message."
-)
-_UNLISTED_SENTENCE = (
-    "That seat is not one the record lists, so nothing was sent. "
-    "Pick a seat from the list and try again."
-)
-_LOST_REPLAY_SENTENCE = (
-    "This retry lost track of the message waiting for confirmation. "
-    "Reload the page and send it again."
-)
+_UNCONFIRMED_SENTENCE = "Not started yet. Press send again."
+_UNLISTED_SENTENCE = "The record does not list that seat. Pick one listed."
+_LOST_REPLAY_SENTENCE = "Lost track of this retry. Reload and send again."
 
 
 class InboxComposeTransportTests(unittest.TestCase):
@@ -232,7 +223,7 @@ class InboxComposeComponentTests(unittest.TestCase):
         self.assertIn("state.threadId", component)
         self.assertIn('"Send again"', component)
         # an empty closed world does not invite a compose it cannot honor
-        self.assertIn("seats.length === 0", component)
+        self.assertIn("correspondents.choices.length === 0", component)
         self.assertIn("disabled={idle}", component)
 
     def test_the_offered_list_is_the_records_own_and_an_empty_one_says_which(self) -> None:
@@ -240,19 +231,39 @@ class InboxComposeComponentTests(unittest.TestCase):
 
         The read already answers with the addresses the command accepts, so
         folding, filtering or supplementing them here could only make the picker
-        disagree with the command it exists to reach. And an empty list has two
-        different causes — nobody addressable to write to, or no seat of this
-        principal's own to write from — which get two different sentences,
-        because naming the wrong one tells the operator to fix the wrong thing.
+        disagree with the command it exists to reach. The picker now files those
+        addresses under the project each one belongs to — the read carries a
+        `project_key` per seat and dropping it hid the one property of this
+        surface that catches a reader out — but grouping is not filtering: every
+        listed seat reaches an option, and no option reaches the list from
+        anywhere else.
+
+        An empty list still has two different causes — nobody addressable to
+        write to, or no seat of this principal's own to write from — which get
+        two different sentences, because naming the wrong one tells the operator
+        to fix the wrong thing. Both sentences live in `plane.ts` now: they were
+        authored twice, in the screen and in this box, and drifted.
         """
         component = (_SURFACE / "surfaces/chat/NewThread.tsx").read_text(encoding="utf-8")
+        plane = (_SURFACE / "surfaces/chat/plane.ts").read_text(encoding="utf-8")
 
-        self.assertIn("correspondents.choices.map", component)
+        self.assertIn("byProject(correspondents.choices)", component)
         self.assertNotIn("new Set", component)
         self.assertNotIn("choices.filter", component)
-        self.assertIn('"unaddressable"', component)
-        self.assertIn("no registered seat", component)
-        self.assertIn("no seat this server can write to", component)
+        self.assertNotIn(".slice(", component)
+        # grouping keeps every choice: one push per choice, and nothing else
+        # ever writes to the map the options are drawn from
+        self.assertEqual(component.count("seats.push(choice.seatKey)"), 1)
+        self.assertEqual(component.count("filed.set("), 1)
+
+        self.assertIn('"unaddressable"', plane)
+        reasons = re.findall(r'^const NO_\w+ = "([^"]+)";$', plane, re.MULTILINE)
+        self.assertEqual(len(reasons), 2, "the two causes must not collapse into one sentence")
+        self.assertNotEqual(reasons[0], reasons[1])
+        for reason in reasons:
+            with self.subTest(reason=reason):
+                # D9's field-hint budget: one line, and this is what one line is
+                self.assertLessEqual(len(reason), 60)
 
     def test_a_control_this_surface_switched_off_is_drawn_switched_off(self) -> None:
         """A dead control that looks live is an invitation the page cannot honor.
