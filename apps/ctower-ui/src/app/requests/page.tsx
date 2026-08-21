@@ -1,10 +1,12 @@
+import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { StateGlyph } from "@/frame/StateGlyph";
+import type { GlyphName } from "@/frame/StateGlyph";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
-import { spanText } from "@/read/elapsed";
+import { shortId, spanText, stampText } from "@/read/elapsed";
 import { configuredProjects } from "@/read/projects";
 import type { RequestEntry, RequestsSnapshot } from "@/read/interface";
 import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
@@ -14,6 +16,34 @@ export const dynamic = "force-dynamic";
 
 const ALL_PROJECTS = "all";
 
+/**
+ * The two axes the record keeps for a Request, drawn as two chips.
+ *
+ * `state` is where the work is; `triage` is what was decided about the ask.
+ * They are separate columns because they are separate facts — a `TRIAGED` row
+ * that is a `DUPLICATE` and a `TRIAGED` row that was `ACCEPTED` are opposite
+ * instructions to an operator, and the previous screen drew them identically.
+ *
+ * The glyph is the same vocabulary `ctowerctl` prints; the tone is the manibo
+ * verdict map the rest of this surface already uses. `UNTRIAGED` is the one
+ * value drawn in the warn tone, because it is the only one that is asking the
+ * reader for something.
+ */
+const STATE_MARK: Readonly<Record<RequestEntry["state"], { glyph: GlyphName; tone: string }>> = {
+  NEW: { glyph: "open", tone: "v-filed" },
+  TRIAGED: { glyph: "open", tone: "v-filed" },
+  WIP: { glyph: "flight", tone: "v-flight" },
+  BLOCKED: { glyph: "held", tone: "v-held" },
+  DONE: { glyph: "done", tone: "v-pass" },
+};
+
+const TRIAGE_TONE: Readonly<Record<RequestEntry["triage"], string>> = {
+  UNTRIAGED: "v-changes",
+  ACCEPTED: "v-filed",
+  DUPLICATE: "v-filed",
+  REJECTED: "v-held",
+};
+
 function projectFor(value: string | null): string | null {
   if (value === null || value === ALL_PROJECTS) {
     return null;
@@ -21,18 +51,74 @@ function projectFor(value: string | null): string | null {
   return configuredProjects().some((project) => project.key === value) ? value : null;
 }
 
-function requestGlyph(state: RequestEntry["state"]): "done" | "open" | "flight" | "held" {
-  switch (state) {
-    case "DONE":
-      return "done";
-    case "BLOCKED":
-      return "held";
-    case "WIP":
-      return "flight";
-    case "NEW":
-    case "TRIAGED":
-      return "open";
+function StateChip({ state }: { readonly state: RequestEntry["state"] }): ReactElement {
+  const mark = STATE_MARK[state];
+  return (
+    <span className={`verdict ${mark.tone} request-state`}>
+      <StateGlyph name={mark.glyph} />
+      {state.toLowerCase()}
+    </span>
+  );
+}
+
+function TriageChip({ triage }: { readonly triage: RequestEntry["triage"] }): ReactElement {
+  return (
+    <span className={`verdict ${TRIAGE_TONE[triage]} request-triage`} title="triage disposition">
+      {triage.toLowerCase()}
+    </span>
+  );
+}
+
+function PriorityChip({ request }: { readonly request: RequestEntry }): ReactElement {
+  const tone = `pri ${request.priority.toLowerCase()}`;
+  if (!request.priorityDefault) {
+    return <span className={tone}>{request.priority}</span>;
   }
+  return (
+    <span className={`${tone} dflt`} title="the record's default; nobody set this priority">
+      {request.priority}
+    </span>
+  );
+}
+
+function ProjectMark({ projectKey }: { readonly projectKey: string }): ReactElement {
+  const configured = configuredProjects().find((project) => project.key === projectKey);
+  const mark = configured === undefined ? "chip proj" : `chip proj ${configured.scopeToken}`;
+  return <span className={mark}>{projectKey}</span>;
+}
+
+/**
+ * The tickets a Request was mirrored into, linked where the record serves one.
+ *
+ * `required` and `optional` are the record's own two relation kinds and stay
+ * apart: exclusivity between them is an acceptance criterion, so collapsing
+ * them into one "tickets" count would render a fact the record refuses to hold.
+ * A row whose arrays are both empty draws nothing — the record answered, and
+ * what it answered is that this ask has produced no ticket yet.
+ */
+function TicketLinks({ request }: { readonly request: RequestEntry }): ReactElement | null {
+  const links = [
+    ...request.requiredTicketIds.map((ticketId) => ({ ticketId, relation: "required" })),
+    ...request.optionalTicketIds.map((ticketId) => ({ ticketId, relation: "optional" })),
+  ];
+  if (links.length === 0) {
+    return null;
+  }
+  const scope = `?project=${encodeURIComponent(request.projectKey)}`;
+  return (
+    <>
+      {links.map((link) => (
+        <Link
+          className="chip request-ticket"
+          href={`/ticket/${encodeURIComponent(link.ticketId)}${scope}`}
+          key={link.ticketId}
+          title={`${link.relation} ticket ${link.ticketId}`}
+        >
+          {link.relation === "required" ? "ticket" : "optional"} {shortId(link.ticketId)}
+        </Link>
+      ))}
+    </>
+  );
 }
 
 function RequestFacts({ request }: { readonly request: RequestEntry }): ReactElement {
@@ -46,11 +132,20 @@ function RequestFacts({ request }: { readonly request: RequestEntry }): ReactEle
         </li>
         <li>
           <span className="k">captured</span>
-          <span className="v">{request.createdAt}</span>
+          <span className="v">{stampText(request.createdAt)}</span>
         </li>
         <li>
-          <span className="k">triage</span>
-          <span className="v">{request.triage}</span>
+          <span className="k">source</span>
+          <span className="v mono">
+            {request.sourceKind} · {request.sourceRef}
+          </span>
+        </li>
+        <li>
+          <span className="k">proof</span>
+          {/* a proof count the record did not answer is unknown, never zero */}
+          <span className="v mono">
+            {request.proofCoverage === null ? "unknown" : request.proofCoverage.toString()}
+          </span>
         </li>
         <li>
           <span className="k">freshness</span>
@@ -73,7 +168,6 @@ function RequestRow({
   readonly rank: number;
 }): ReactElement {
   const owner = request.owner.trim() === "" ? "unowned" : request.owner;
-  const priorityClass = request.priorityDefault ? "pri dflt" : "pri";
   return (
     <article className="request-row">
       <div className="request-rank" aria-label={`record order ${rank.toString()}`}>
@@ -82,14 +176,10 @@ function RequestRow({
       <div className="request-body">
         <div className="request-head">
           <span className="request-reference">{request.reference}</span>
-          <StateGlyph name={requestGlyph(request.state)} />
-          <span className="request-state">{request.state.toLowerCase()}</span>
-          <span className={priorityClass}>{request.priority}</span>
-          <span className="request-owner" title={`owner principal ${request.ownerId}`}>
-            {owner}
-          </span>
-          <span className="request-project">{request.projectKey}</span>
-          <span className="request-age">
+          <StateChip state={request.state} />
+          <TriageChip triage={request.triage} />
+          <PriorityChip request={request} />
+          <span className="request-age" title={`captured ${stampText(request.createdAt)}`}>
             age {spanText(Math.max(0, request.ageSeconds) * 1000)}
           </span>
         </div>
@@ -100,6 +190,13 @@ function RequestRow({
         {request.unknownReason === null ? null : (
           <div className="request-blocker">unknown · {request.unknownReason}</div>
         )}
+        <div className="request-foot">
+          <span className="request-owner" title={`owner principal ${request.ownerId}`}>
+            {owner}
+          </span>
+          <ProjectMark projectKey={request.projectKey} />
+          <TicketLinks request={request} />
+        </div>
         <RequestFacts request={request} />
       </div>
     </article>
@@ -135,7 +232,7 @@ function RequestQueue({ snapshot }: { readonly snapshot: RequestsSnapshot }): Re
     ) : (
       <div className="request-empty">
         <StateGlyph name="attn" />
-        <span>Request rows are unknown until every requested project answers</span>
+        <span>unknown until every requested project answers</span>
       </div>
     );
   }
@@ -180,24 +277,17 @@ function RequestsBody({
             <h1>Requests</h1>
           </div>
 
-          <section className="panel" style={{ marginTop: "16px" }}>
-            <header>
-              <h2>Record order</h2>
-              <span className="sub">accepted Requests · order is not a client sort</span>
-            </header>
-            <div className="request-order-note">
-              <span>Rows below keep the order the Request read returned.</span>
-              <span className="verdict v-held">read-only</span>
-              <span className="mono">re-ranking is not yet available</span>
-            </div>
-          </section>
-
           <UnknownProjects projects={snapshot.unansweredProjects} />
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
               <h2>Requests</h2>
-              <span className="sub">id · text · state · owner · project · age</span>
+              {/* the record's order is the ledger's order, and the one thing
+                  this screen cannot do is said where the control would be */}
+              <span className="sub request-order">
+                <span className="verdict v-held">read-only</span>
+                record order · re-ranking is not yet available
+              </span>
             </header>
             <RequestQueue snapshot={snapshot} />
           </section>
