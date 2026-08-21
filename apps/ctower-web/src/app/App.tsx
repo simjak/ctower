@@ -1,6 +1,5 @@
 import type { ReactElement } from "react";
-import { StepRail } from "../wizard/StepRail";
-import { STEPS } from "../wizard/steps";
+import { Wizard } from "../wizard/Wizard";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -16,10 +15,7 @@ export function App(): ReactElement {
         <span className="flex-1" />
         <ThemeToggle />
       </header>
-      <main className="mx-auto grid max-w-[1080px] gap-5 px-4 py-5 md:grid-cols-[196px_minmax(0,1fr)]">
-        <StepRail steps={STEPS} current="compose" reached="compose" />
-        <section className="min-w-0" aria-live="polite" />
-      </main>
+      <Wizard />
     </div>
   );
 }
