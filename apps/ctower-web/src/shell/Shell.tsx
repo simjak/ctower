@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
 import { ThemeToggle } from "../app/ThemeToggle";
-import { Chip } from "../ui/primitives";
 import { Rail } from "./Rail";
 import type { DestinationKey } from "./destinations";
 
@@ -30,7 +29,6 @@ export function Shell({
           <span className="text-md font-semibold">
             c<span className="text-amber">tower</span>
           </span>
-          {lockReason === null ? null : <Chip>first run</Chip>}
           {status}
           <span className="flex-1" />
           <ThemeToggle />

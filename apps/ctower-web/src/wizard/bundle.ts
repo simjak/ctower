@@ -66,12 +66,22 @@ export function documentOf(draft: Draft): CompanyBundleDocument {
   };
 }
 
+/**
+ * How many edits stand between the draft and what is recorded.
+ *
+ * This is a count of what the operator did, not of what the registry would do
+ * about it — those are different numbers and the page never passes one off as
+ * the other. The registry's own count comes back from the plan.
+ */
+export function editCount(draft: Draft): number {
+  const identity =
+    (draft.companyKey === draft.base.company.key ? 0 : 1) +
+    (draft.displayName === draft.base.company.display_name ? 0 : 1);
+  return draft.removed.size + identity;
+}
+
 export function isEdited(draft: Draft): boolean {
-  return (
-    draft.removed.size > 0 ||
-    draft.companyKey !== draft.base.company.key ||
-    draft.displayName !== draft.base.company.display_name
-  );
+  return editCount(draft) > 0;
 }
 
 export type GroupKey = "projects" | "agents" | "rest";

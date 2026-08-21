@@ -1,4 +1,4 @@
-import { Minus, Undo2 } from "lucide-react";
+import { Trash2, Undo2 } from "lucide-react";
 import type { ReactElement } from "react";
 import { Button, Chip, Mono } from "../../ui/primitives";
 import { cn } from "../../ui/cn";
@@ -7,11 +7,11 @@ import type { EntityFact } from "../read";
 /**
  * One project or one agent.
  *
- * Taking something out of a company is not a filter, and it was drawn as one: a
- * checkbox reads as "show me this", and what it actually meant was "retire this
- * on apply". So the control is now an explicit `Remove`, everything is kept
- * until the operator says otherwise, and a removed row states the consequence
- * where the decision was made rather than three steps later in the plan.
+ * The control is a bin, drawn always rather than on hover, and it says what it
+ * is to a screen reader. What removing means is named where the operator
+ * commits to it — in the review and on the authority gate — rather than sitting
+ * on the row as standing text: a row that permanently explains itself is the
+ * rationale habit wearing a border.
  */
 export function EntityRow({
   fact,
@@ -27,8 +27,7 @@ export function EntityRow({
   return (
     <div
       className={cn(
-        "group flex items-center gap-3 rounded-md border px-4 py-3",
-        "",
+        "flex items-center gap-3 rounded-md border px-4 py-3",
         removed ? "border-amber/40 bg-amber/10" : "border-line bg-card hover:bg-raised"
       )}
     >
@@ -57,38 +56,34 @@ export function EntityRow({
       </div>
 
       {removed ? (
-        <>
-          <Chip tone="amber">Retires on apply</Chip>
-          <Button
-            size="sm"
-            variant="quiet"
-            onClick={(): void => {
-              onRemove(false);
-            }}
-          >
-            <Undo2 /> Undo
-          </Button>
-        </>
+        <Button
+          size="sm"
+          variant="quiet"
+          aria-label={`Keep ${fact.name}`}
+          onClick={(): void => {
+            onRemove(false);
+          }}
+        >
+          <Undo2 /> Undo
+        </Button>
       ) : (
         <>
           {fact.subjects.length === 0 ? null : (
-            <Chip tone="neutral" title={fact.subjects.join(" · ")}>
+            <Chip title={fact.subjects.join(" · ")}>
               {fact.subjects.length} {subjectNoun}
             </Chip>
           )}
           <Button
             size="sm"
             variant="quiet"
-            /* Always drawn, never hover-only: a control an operator has to
-               discover by sweeping the mouse is a control that is not there.
-               Quiet, not outlined — a border on every row is a border that has
-               not justified itself. */
+            className="px-2 hover:text-danger"
             aria-label={`Remove ${fact.name}`}
+            title={`Remove ${fact.name}`}
             onClick={(): void => {
               onRemove(true);
             }}
           >
-            <Minus /> Remove
+            <Trash2 />
           </Button>
         </>
       )}
