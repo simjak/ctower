@@ -36,13 +36,13 @@ An unreachable Board is not shown as a project with zero work. It is excluded fr
 reached. An Inbox identity that cannot receive messages is not shown as zero unread. Threads that cannot be
 linked to a project stay in a separate unlinked count.
 
-## How to use the views
+## Browser product status
 
-Open `/board` and choose a project tab. Use the lane, priority, stage, owner, assignee, and source filters to
-narrow the list. Select a card to open the ticket.
+The browser Board and Portfolio are deferred to a separately activated future product-browser lane. No current
+browser route or rendered card is implementation or evidence for this contract.
 
-Open `/portfolio` when you need a cross-project check. Select a project row to move into its Board. The
-Portfolio has no write controls.
+Use `ctl board query <project>` for the current read-only project view. The future browser product must keep
+the same project scope, filters, source notes, and explicit unavailable/unknown states.
 
 From the command line, use `ctl board query <project>`. All filters are optional and combine. See the
 [CLI reference](../reference/cli.md#board-and-health).
