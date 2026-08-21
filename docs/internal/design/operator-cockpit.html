@@ -18,6 +18,9 @@
           binding declares INTERRUPT_AND_RESUME and the selected lane is working
         · one outgoing turn sits in `durability pending`, not sent
         · one lane is `capped`, outranking its advancing timer
+        · one lane is `dead_auth` — dead login behind a normal-looking pane —
+          carrying its failing axis, its observation age, the mint that fixes
+          it, and a `reap` control disabled because AC-HAD-07 refuses it
         · one workspace is `not reached`, not `+0 -0`
         · the PR control is a handoff, disabled and naming the dirty paths on
           the control — ctower has no pull-request authority to create one
@@ -275,6 +278,32 @@
       .diffs { display: flex; gap: 6px; }
       .add { color: color-mix(in srgb, var(--state-proven) 78%, var(--foreground)); }
       .del { color: color-mix(in srgb, var(--state-error) 72%, var(--foreground)); }
+
+      /* a dead lane earns the rail's only expanded row: the state alone is not
+         actionable, and the next action differs from every neighbouring state.
+         D2 still holds — one hairline rule, no elevation, no glow. */
+      .ws.dead .name { color: color-mix(in srgb, var(--state-error) 55%, var(--foreground)); }
+      .deadrow {
+        margin: 0 10px 8px 20px;
+        padding: 7px 9px;
+        border: 1px solid var(--border);
+        border-left: 2px solid var(--state-error);
+        border-radius: var(--radius-sm);
+        font-size: 11px;
+        color: var(--muted-foreground);
+      }
+      .deadwhy { margin: 0; }
+      .deadwhen { margin: 4px 0 0; font-size: 10.5px; }
+      .deadacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+      .ghost.sm { font-size: 10.5px; padding: 2px 7px; }
+      /* AC-HAD-07 refuses reap on a dead_auth lane. The control is present and
+         disabled with the refusal on it — a missing control teaches nothing. */
+      .ghost.sm:disabled {
+        cursor: not-allowed;
+        opacity: 1;
+        color: color-mix(in srgb, var(--muted-foreground) 70%, var(--background));
+        border-style: dashed;
+      }
 
       /* ── centre: the transcript ───────────────────────────────────────── */
       .tabs { display: flex; align-items: stretch; gap: 0; border-bottom: 1px solid var(--border); flex: none; }
@@ -600,20 +629,47 @@
             </button>
 
             <div class="proj"><span class="mark" style="background: var(--p-bhloop)"></span>bhloop</div>
-            <div class="seat">qa-loop</div>
-            <button class="ws" type="button">
+            <!-- LivenessState `dead_auth` (facts.py:28-36). The hardest lane to
+                 draw honestly: the harness keeps rendering a normal footer and
+                 an advancing timer while the login behind it is gone. Classified
+                 before motion, exactly like `capped`. -->
+            <div class="seat">voice-transcribe</div>
+            <button class="ws dead" type="button">
               <span class="unread"></span>
-              <span class="name">voice-latency</span>
-              <span class="chip sc-idle"><span class="dot" style="background: var(--state-idle)"></span>idle</span>
+              <span class="name">whisper-bench</span>
+              <span class="chip sc-error"><span class="dot" style="background: var(--state-error)"></span>dead · auth</span>
             </button>
+            <div class="deadrow">
+              <p class="deadwhy">
+                <span class="mono">auth: lineage-dead</span> on
+                <span class="mono">anthropic · sub-3</span> — the grant expired; the shell may
+                still say logged in.
+              </p>
+              <p class="deadwhen mono">probe gateway_log · observed 4m 12s</p>
+              <div class="deadacts">
+                <button class="ghost sm" type="button">Nudge</button>
+                <button class="ghost sm" type="button">Re-mint this profile ↗</button>
+                <button class="ghost sm" type="button" disabled>Reap — refused on a dead lane</button>
+              </div>
+            </div>
           </div>
 
           <div class="legend">
             <b>substrate-unobservable:worktree_read</b>
             <ul>
-              <li><b>estate-import</b> declares a git source that did not answer.</li>
-              <li>It renders <b>not reached</b>, never <span class="mono">+0 −0</span>: a source that
-                exists and did not answer is not a source that has no changes.</li>
+              <li><b>estate-import</b> renders <b>not reached</b>, never
+                <span class="mono">+0 −0</span>: a source that exists and did not answer is not a
+                source that has no changes.</li>
+            </ul>
+            <b style="display: block; margin-top: 9px">four states, four next actions</b>
+            <ul>
+              <li><b>capped</b> is quota spent with a reset — waiting fixes it.</li>
+              <li><b>dead · auth</b> is the login itself; only a mint of <i>this</i> profile's own
+                device flow fixes it, never a copied file.</li>
+              <li><b>not reached</b> is unknown, not dead.</li>
+              <li><b>Reap is disabled, not missing.</b> AC-HAD-07 refuses <span class="mono">reap</span>
+                on a <span class="mono">dead_auth</span> lane — it is preserved for resume, with one
+                nudge offered before any replacement.</li>
             </ul>
           </div>
         </nav>
