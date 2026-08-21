@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import type { CompanyBundleDocument } from "@ctower/client";
+import type { CompanyBundleDocument, CompanyBundleValidationResult } from "@ctower/client";
 import { ask, commands, computations } from "../api/client";
 import type { Answer } from "../api/client";
 import { commandKeyFor } from "../wizard/apply/commandKey";
@@ -27,16 +27,18 @@ export function FirstRun({
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<Answers>(BLANK);
   const [outcome, setOutcome] = useState<Answer<unknown> | null>(null);
+  const [validation, setValidation] = useState<CompanyBundleValidationResult | null>(null);
 
   const go = (next: number): void => {
     setOutcome(null);
+    setValidation(null);
     setStep(next);
   };
 
   const start = (): void => {
     setOutcome({ kind: "asking" });
     void (async (): Promise<void> => {
-      const answer = await createCompany(bundleOf(answers), previewing);
+      const answer = await createCompany(bundleOf(answers), previewing, setValidation);
       setOutcome(answer);
       if (answer.kind === "answered" && !previewing) {
         onCreated();
@@ -101,6 +103,7 @@ export function FirstRun({
         <ReviewStep
           answers={answers}
           outcome={outcome}
+          validation={validation}
           previewing={previewing}
           onStart={start}
           onBack={(): void => {
@@ -124,12 +127,14 @@ export function FirstRun({
  */
 async function createCompany(
   bundle: CompanyBundleDocument,
-  previewing: boolean
+  previewing: boolean,
+  onValidation: (validation: CompanyBundleValidationResult) => void
 ): Promise<Answer<unknown>> {
   const checked = await ask(() => computations.validateCompanyBundle({ body: { bundle } }));
   if (checked.kind !== "answered") {
     return checked;
   }
+  onValidation(checked.value);
   const planned = await ask(() => computations.planCompanyBundle({ body: { bundle } }));
   if (planned.kind !== "answered") {
     return planned;
