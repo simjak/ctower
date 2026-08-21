@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@ctower/client": "workspace:*",
+    "@noble/hashes": "^2.3.0",
+    "canonicalize": "^4.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.33.0",

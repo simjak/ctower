@@ -28,10 +28,7 @@ export function Rail({
   readonly onGo: (key: DestinationKey) => void;
 }): ReactElement {
   return (
-    <nav
-      aria-label="Sections"
-      className="border-r border-line bg-[color-mix(in_srgb,var(--bg)_60%,var(--card))] py-3.5 max-md:hidden"
-    >
+    <nav aria-label="Sections" className="py-3.5">
       {GROUPS.map((group) => (
         <div key={group}>
           <div className="px-4 pt-3 pb-1 text-[10.5px] tracking-[0.1em] text-muted">{group}</div>
@@ -63,6 +60,7 @@ function RailLink({
 }): ReactElement {
   const reachable = destination.built && lockReason === null;
   const reason = lockReason ?? "Not built yet";
+  const short = lockReason === null ? "not built" : "locked";
 
   return (
     <button
@@ -98,9 +96,9 @@ function RailLink({
               focus. Not a floating tooltip: there is nothing to mis-position. */}
           <span
             aria-hidden
-            className="ml-auto hidden truncate text-2xs text-muted group-hover:inline group-focus-visible:inline"
+            className="ml-auto hidden shrink-0 text-2xs text-muted group-hover:inline group-focus-visible:inline"
           >
-            {reason}
+            {short}
           </span>
           <span className="sr-only"> — {reason}</span>
         </>
