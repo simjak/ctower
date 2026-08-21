@@ -19,7 +19,6 @@ exclude = [
   "generated/**",
   "node_modules/**",
   "**/node_modules/**",
-  "**/.next/**",
   "tests/repository/fixtures/**",
 ]
 protected_roots = ["apps", "packages", "tools", "tests"]
@@ -282,6 +281,11 @@ allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-board-conte
 [[ownership]]
 name = "ui-design-reference"
 paths = ["apps/ctower-ui/design-reference/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "web"
+paths = ["apps/ctower-web/**"]
 allowed_dependencies = []
 
 [[ownership]]
