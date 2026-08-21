@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Create a company · ctower</title>
+    <script>
+      // Light is the default. The stored choice is applied before first paint so
+      // a dark-theme reader never gets a white flash on reload.
+      try {
+        if (window.localStorage.getItem("ctower-theme") === "dark") {
+          document.documentElement.classList.add("theme-dark");
+        }
+      } catch {
+        /* a blocked storage partition must not break first paint */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
