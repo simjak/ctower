@@ -1,0 +1,241 @@
+{
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-openclaw.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-base.schema.json#/$defs/base-candidate"
+    },
+    {
+      "properties": {
+        "adapter_work": {
+          "const": "blocked_until_survey"
+        },
+        "answers": {
+          "patternProperties": {
+            "^.+$": {
+              "properties": {
+                "evidence": {
+                  "contains": {
+                    "const": "design-seam-c07"
+                  }
+                }
+              }
+            }
+          },
+          "properties": {
+            "config_surface": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "credit_weights": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "egress_topology": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "identity_proof": {
+              "anyOf": [
+                {
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+                    },
+                    {
+                      "properties": {
+                        "evidence": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-design-seam-c07"
+                              }
+                            ]
+                          }
+                        },
+                        "state": {
+                          "const": "verified"
+                        },
+                        "value": {
+                          "const": "persisted_device_key"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value",
+                        "evidence"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "x-ctower-candidate-answer": "persisted-device-key"
+            },
+            "native_fallback": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "native_pool": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "probe_target": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "reset_window_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "rotation_cache_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "subagent_credential_inheritance": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            }
+          }
+        },
+        "capability_declaration": {
+          "properties": {
+            "liveness": {
+              "const": "unknown"
+            },
+            "reason": {
+              "const": "Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."
+            }
+          }
+        },
+        "classification": {
+          "const": "harness_gateway_routed"
+        },
+        "effective_route": {
+          "const": "gateway"
+        },
+        "key": {
+          "const": "openclaw"
+        },
+        "registration": {
+          "properties": {
+            "reason": {
+              "const": "The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."
+            },
+            "status": {
+              "const": "refused"
+            }
+          }
+        },
+        "role_disposition": {
+          "const": "undecidable"
+        }
+      }
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "probe_target": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "gateway_endpoint"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-probe-target"
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "identity_proof": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": [
+                      "persisted_device_key"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-identity-proof"
+    },
+    {
+      "not": {
+        "properties": {
+          "answers": {
+            "properties": {
+              "identity_proof": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "direct_cli_account"
+                  }
+                },
+                "required": [
+                  "state",
+                  "value"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-matrix-context-rule": {
+        "forbidden_value": "direct_cli_account",
+        "question": "identity_proof"
+      }
+    },
+    {
+      "not": {
+        "properties": {
+          "answers": {
+            "properties": {
+              "probe_target": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  },
+                  "value": {
+                    "const": "direct_cli_endpoint"
+                  }
+                },
+                "required": [
+                  "state",
+                  "value"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-matrix-context-rule": {
+        "forbidden_value": "direct_cli_endpoint",
+        "question": "probe_target"
+      }
+    }
+  ],
+  "description": "Candidate-scoped survey profile for openclaw; values and evidence are derived from the dependency matrix.",
+  "title": "LaterWaveHarnessSurveyCandidateOpenclaw"
+}

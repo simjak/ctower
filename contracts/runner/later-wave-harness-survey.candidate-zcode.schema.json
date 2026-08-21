@@ -1,0 +1,154 @@
+{
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-zcode.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-base.schema.json#/$defs/base-candidate"
+    },
+    {
+      "properties": {
+        "adapter_work": {
+          "const": "blocked_until_survey"
+        },
+        "answers": {
+          "patternProperties": {
+            "^.+$": {
+              "properties": {
+                "evidence": {
+                  "allOf": [
+                    {
+                      "contains": {
+                        "const": "design-seam-c07"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "local-command-absence"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "properties": {
+            "config_surface": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "credit_weights": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "egress_topology": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "identity_proof": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "native_fallback": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "native_pool": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "probe_target": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "reset_window_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "rotation_cache_semantics": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            },
+            "subagent_credential_inheritance": {
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+            }
+          }
+        },
+        "capability_declaration": {
+          "properties": {
+            "liveness": {
+              "const": "unknown"
+            },
+            "reason": {
+              "const": "A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."
+            }
+          }
+        },
+        "classification": {
+          "const": "harness_stub"
+        },
+        "effective_route": {
+          "const": "unbound-stub"
+        },
+        "key": {
+          "const": "zcode"
+        },
+        "registration": {
+          "properties": {
+            "reason": {
+              "const": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."
+            },
+            "status": {
+              "const": "refused"
+            }
+          }
+        },
+        "role_disposition": {
+          "const": "undecidable"
+        }
+      }
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "probe_target": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-probe-target"
+    },
+    {
+      "properties": {
+        "answers": {
+          "properties": {
+            "identity_proof": {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "verified"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "enum": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "effective-route-identity-proof"
+    }
+  ],
+  "description": "Candidate-scoped survey profile for zcode; values and evidence are derived from the dependency matrix.",
+  "title": "LaterWaveHarnessSurveyCandidateZcode"
+}
