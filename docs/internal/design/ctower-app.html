@@ -122,7 +122,7 @@
       /* a route with no read behind it is marked in the NAV, not only on the
          screen — otherwise the operator learns it is empty by walking into it */
       .nav a .absent { margin-left: auto; color: var(--state-unknown); }
-      .nav .foot { margin-top: auto; padding: 12px; }
+      .nav .foot { margin-top: auto; padding: 12px; display: flex; flex-direction: column; align-items: flex-start; }
 
       .main { overflow-y: auto; min-width: 0; }
       .crumb {
@@ -266,7 +266,8 @@
         <div class="brand"><span class="mark"></span>ctower<span class="dim mono" style="font-size: 10px">shadow</span></div>
         <div id="navlinks"></div>
         <div class="foot">
-          <button class="ghost" id="theme" type="button">Toggle theme</button>
+          <button class="ghost" id="mode" type="button">Design view</button>
+          <button class="ghost" id="theme" type="button" style="margin-top: 6px">Toggle theme</button>
         </div>
       </nav>
 
@@ -284,265 +285,247 @@
 
     <script>
       // ────────────────────────────────────────────────────────────────────
-      // THE SCREEN TABLE IS THE READ INVENTORY.
+      // THE MENU IS THE OPERATOR'S JOBS, NOT THE API'S PATHS.
       //
-      // `reads` and `writes` are counted from contracts/http/openapi.yaml, not
-      // asserted. A screen with reads gets a shape; a screen with none gets a
-      // declared absence naming the gap. This table is the artifact — the
-      // rendering is just how you walk it.
+      // The first version of this file generated one nav row per top-level
+      // OpenAPI path prefix — 22 rows of ctower's internal nouns (spawn
+      // records, intake, attention, rulings, digests). That is a faithful map
+      // of the backend's decomposition and a bad menu, because nobody wakes up
+      // wanting to do "spawn records". It is the same failure as labelling a
+      // file group "collectable": naming a thing after its implementation.
+      //
+      // This menu is built from what an operator DOES, and everything that is
+      // not a daily job either lives inside a screen that already exists or
+      // sits behind one Admin door.
+      //
+      // TWO MODES, because this file has two audiences:
+      //   Operator (default) — only destinations that can actually be served.
+      //   Design             — adds the unserveable ones with their gap, plus
+      //                        the read/write counts. That inventory is real
+      //                        work and belongs in ctower-app.md; it is here
+      //                        as an overlay, never as the product.
       // ────────────────────────────────────────────────────────────────────
       var SCREENS = [
+        { grp: "Work", id: "lanes", name: "Lanes", icon: "n-cockpit",
+          lead: "Everything running right now.",
+          body: "lanes", opens: "operator-cockpit.html",
+          reads: ["listSpawnRecords", "listProjectSessions", "readPoolLimits"], writes: 0 },
+
         { grp: "Work", id: "board", name: "Board", icon: "n-board",
-          reads: ["getBoard"], writes: 0,
-          lead: "The portfolio view, and the only way into a ticket.",
-          note: "getBoard is the single portfolio read on the whole surface.",
-          shape: "board" },
-
-        { grp: "Work", id: "tickets", name: "Tickets", icon: "n-ticket",
-          reads: [], writes: 18, gap: "G11",
-          lead: "There is no ticket list.",
-          absent: "Six ticket reads exist and every one of them needs a ticket_id you already have: getTicket, getTicketTimeline, listTicketSessions, listTicketAssignments, listTicketAuditEvents, listReviewDispatchEffects. Nothing enumerates tickets. The Board is the only entry point, and a ticket outside the board is unreachable by any read.",
-          also: "18 ticket writes exist, including create, comment, label, relate, custody, priority and the whole workflow verb set." },
-
-        { grp: "Work", id: "ticket", name: "Ticket detail", icon: "n-ticket",
-          reads: ["getTicket", "getTicketTimeline", "listTicketSessions", "listTicketAssignments", "listTicketAuditEvents", "listReviewDispatchEffects"], writes: 18,
-          lead: "The richest screen ctower can serve today.",
-          note: "Workflow stage is the one field missing — see G10.",
-          shape: "ticket" },
-
-        { grp: "Work", id: "requests", name: "Requests", icon: "n-req",
-          reads: ["listRequests"], writes: 7,
-          lead: "Intake before a ticket exists.",
-          shape: "list" },
+          lead: "Work in flight, by ticket.",
+          body: "board", reads: ["getBoard"], writes: 0,
+          design: "getBoard is the only portfolio read on the surface, so this is the only door into a ticket." },
 
         { grp: "Work", id: "inbox", name: "Inbox", icon: "n-inbox",
-          reads: ["listInboxThreads", "readInboxThread", "listInboxCorrespondents", "readInboxMessageState"], writes: 4,
-          lead: "The tenant-wide comms plane.",
-          note: "Never evaluates a project grant — §7 of the cockpit design.",
-          shape: "list" },
+          lead: "Messages between seats and you.",
+          body: "inbox",
+          reads: ["listInboxThreads", "readInboxThread", "listInboxCorrespondents", "readInboxMessageState"], writes: 4 },
 
-        { grp: "Work", id: "knowledge", name: "Knowledge", icon: "n-know",
-          reads: ["listKnowledgeDocuments", "getKnowledgeDocument"], writes: 1,
-          lead: "Durable documents.", shape: "list" },
+        { grp: "Setup", id: "crews", name: "Crews", icon: "n-crew",
+          lead: "Who works here, and whether they are ready to.",
+          body: "crews", opens: "operator-cockpit.html",
+          reads: ["listSpawnRecords", "readPoolLimits"], writes: 2,
+          design: "Absorbs seat credentials (2 writes, no read — G12) and the harness registry (no path at all — G2)." },
 
-        { grp: "Work", id: "rulings", name: "Rulings", icon: "n-ruling",
-          reads: ["listRulings", "getRuling"], writes: 1,
-          lead: "Agreements and their appeals.", shape: "list" },
+        { grp: "Setup", id: "costs", name: "Costs", icon: "n-cost",
+          lead: "Credits, quota and what is about to run out.",
+          body: "costs", reads: ["readPoolLimits"], writes: 1 },
 
-        { grp: "Work", id: "digest", name: "Morning digest", icon: "n-clock",
-          reads: ["getMorningDigest"], writes: 0,
-          lead: "One composed read of the night.", shape: "cards" },
+        { grp: "Setup", id: "projects", name: "Projects", icon: "n-proj",
+          lead: "Repositories and their delivery history.",
+          body: "projects",
+          reads: ["listProjectSessions", "listProjectEvents", "getProjectDelivery", "getMovementAtom", "listTicketMovement"], writes: 0 },
 
-        { grp: "Crews", id: "cockpit", name: "Cockpit", icon: "n-cockpit",
-          reads: ["listSpawnRecords", "listProjectSessions", "readPoolLimits"], writes: 0,
-          lead: "The four-pane operator cockpit — R3109.",
-          note: "Designed in full: operator-cockpit.html.",
-          shape: "link", href: "operator-cockpit.html" },
+        { grp: "System", id: "admin", name: "Admin", icon: "n-migrate",
+          lead: "Rarely, and usually because something is wrong.",
+          body: "admin",
+          reads: ["getControlHealth", "getCtowerProjectImportRun", "getCtowerProjectCutoverHealth", "listRulings", "listKnowledgeDocuments", "listRequests", "getMorningDigest"], writes: 30,
+          design: "One door for eleven API areas that were eleven menu rows. Each is a section, not a destination." },
 
-        { grp: "Crews", id: "crew", name: "Crew page", icon: "n-crew",
-          reads: ["listSpawnRecords", "readPoolLimits"], writes: 0,
-          lead: "Readiness composed, never asserted.",
-          note: "Designed in full: operator-cockpit.html, board two.",
-          shape: "link", href: "operator-cockpit.html" },
-
-        { grp: "Crews", id: "harness", name: "Harness", icon: "n-harness",
-          reads: [], writes: 0, gap: "G2",
+        // ── design-mode only: the destinations that cannot be served ────────
+        { grp: "Cannot be served", id: "harness", name: "Harness", icon: "n-harness",
+          designOnly: true, gap: "G2", reads: [], writes: 0,
           lead: "The harness registry has no HTTP surface at all.",
-          absent: "There is no /v1/harness path on the authored surface — not one operation, read or write. HarnessSpec exists as Python constants and contract JSON: key, revision, digests, declared capabilities, context_window_percent, liveness_sources, survey answers, derived layers. None of it is served, so a browser cannot show which harnesses are registered, cannot derive a composer's enabled state from declared capability, and cannot draw paperclip's harness picker equivalent.",
-          also: "This is the widest gap in the product: an entire object with zero operations." },
+          absent: "No /v1/harness path exists — not one operation, read or write. HarnessSpec is real (key, revision, digests, declared capabilities, liveness sources, survey answers) and served nowhere. In Operator mode this is not a menu row; it is the empty half of the Crews screen." },
 
-        { grp: "Crews", id: "pools", name: "Credentials", icon: "n-pool",
-          reads: ["readPoolLimits"], writes: 1,
-          lead: "Three axes per entry, never one word.",
-          note: "The mint's write half is G8/G8b/G9.",
-          shape: "cards" },
+        { grp: "Cannot be served", id: "tickets", name: "Ticket list", icon: "n-ticket",
+          designOnly: true, gap: "G11", reads: [], writes: 18,
+          lead: "There is no way to enumerate tickets.",
+          absent: "All six ticket reads require a ticket_id you already hold. Nothing lists them. That is why Board is the only door, and why a ticket absent from the board is unreachable by any read in the product." },
 
-        { grp: "Crews", id: "spawns", name: "Spawn records", icon: "n-spawn",
-          reads: ["listSpawnRecords", "getSpawnRecord"], writes: 2,
-          lead: "The durable attempt registry.",
-          note: "Lifecycle status only — liveness is G1.",
-          shape: "list" },
-
-        { grp: "Crews", id: "console", name: "Console", icon: "n-console",
-          reads: ["listVisibleConsoleSessions", "streamConsoleEvents"], writes: 5,
-          lead: "Bounded, granted, read-only terminal.",
-          note: "The four viewer operations need a browser session this boundary withholds.",
-          shape: "list" },
-
-        { grp: "Company", id: "org", name: "Org", icon: "n-org",
-          reads: ["exportCompanyBundle"], writes: 3,
-          lead: "The company bundle is the org chart.",
-          note: "One read, and it is an export rather than a view.",
-          shape: "cards" },
-
-        { grp: "Company", id: "projects", name: "Projects", icon: "n-proj",
-          reads: ["listProjectSessions", "listProjectEvents", "getProjectDelivery", "getMovementAtom", "listTicketMovement"], writes: 0,
-          lead: "Five reads, zero writes — the most readable object in ctower.",
-          shape: "list" },
-
-        { grp: "Company", id: "costs", name: "Costs", icon: "n-cost",
-          reads: ["readPoolLimits"], writes: 0,
-          lead: "Credits in provider-native units.",
-          note: "No currency column: a stale weight table refuses rather than mispricing.",
-          shape: "cards" },
-
-        { grp: "Company", id: "migrations", name: "Migrations", icon: "n-migrate",
-          reads: ["getCtowerProjectImportRun", "getCtowerProjectCutoverHealth"], writes: 13,
-          lead: "Thirteen writes, two reads.",
-          note: "You can run an import; you can barely watch one.",
-          shape: "list" },
-
-        { grp: "Company", id: "attention", name: "Attention", icon: "n-bell",
-          reads: [], writes: 2, gap: "G12",
-          lead: "Findings can be filed and dispositioned. None can be listed.",
-          absent: "appendAttentionFinding and recordAttentionFindingDisposition both write. No read returns a finding, so an operator can record that something needs attention and can record that it was handled, but can never open a list of what is outstanding.",
-          also: "A queue with no way to see the queue." },
-
-        { grp: "Company", id: "intake", name: "Intake", icon: "n-map",
-          reads: [], writes: 2, gap: "G12",
-          lead: "Submit and promote, with nothing to look at.",
-          absent: "submitIntake and promoteIntakeEvent write; no read serves the intake stream. The same shape as Attention — a pipeline you can push into and cannot inspect.",
-          also: "Requests (listRequests) is the nearest readable neighbour." },
-
-        { grp: "Company", id: "seats", name: "Seat credentials", icon: "n-seat",
-          reads: [], writes: 2, gap: "G12",
-          lead: "Issue and revoke, with no register.",
-          absent: "issueSeatCredential and revokeSeatCredential are the only two operations. Nothing lists which seats hold credentials — and a project_seats row is created ONLY by issuing one, so the register exists and is simply not served.",
-          also: "Security-relevant: an operator cannot audit who holds what." },
-
-        { grp: "Company", id: "health", name: "Health", icon: "n-heart",
-          reads: ["getControlHealth"], writes: 0,
-          lead: "One read for the control plane.", shape: "cards" }
+        { grp: "Cannot be served", id: "queues", name: "Write-only queues", icon: "n-bell",
+          designOnly: true, gap: "G12", reads: [], writes: 7,
+          lead: "Four things you can act on and never see.",
+          absent: "Attention findings, the intake stream, the seat-credential register and poisoned outbox messages: nine writes across four areas, zero reads between them. Each is a queue with no way to see the queue. The seat-credential one is security-relevant — nobody can audit who holds what." }
       ];
 
-      // ── rendering ────────────────────────────────────────────────────────
       var el = function (t, c, h) { var n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
-      var mark = function (sym, sc) { return '<svg class="ic ' + (sc || "") + '"><use href="#' + sym + '"/></svg>'; };
+      var mark = function (s, sc) { return '<svg class="ic ' + (sc || "") + '"><use href="#' + s + '"/></svg>'; };
+      var design = false;
+
+      function visible() {
+        return SCREENS.filter(function (s) { return design || !s.designOnly; });
+      }
 
       function nav() {
-        var box = document.getElementById("navlinks"), last = null;
-        SCREENS.forEach(function (s) {
+        var box = document.getElementById("navlinks");
+        box.innerHTML = "";
+        var last = null;
+        visible().forEach(function (s) {
           if (s.grp !== last) { box.appendChild(el("div", "navgrp", s.grp)); last = s.grp; }
-          var a = el("a", null,
-            mark(s.icon) + "<span>" + s.name + "</span>" +
-            (s.reads.length === 0 && s.gap ? '<span class="absent" title="no read serves this screen">' + mark("m-unknown") + "</span>" : ""));
+          var a = el("a", null, mark(s.icon) + "<span>" + s.name + "</span>" +
+            (s.designOnly ? '<span class="absent" title="no read serves this">' + mark("m-unknown") + "</span>" : ""));
           a.href = "#/" + s.id;
           a.id = "nav-" + s.id;
           box.appendChild(a);
         });
       }
 
-      function absentPanel(s) {
-        var d = el("div", "absent-panel");
-        d.innerHTML =
-          '<h3><span class="chip sc-unknown">' + mark("m-unknown") + "</span> No read serves this screen</h3>" +
-          "<p>" + s.absent + "</p>" +
-          '<dl class="opgrid">' +
-          "<dt>Missing</dt><dd>" + s.gap + "</dd>" +
-          "<dt>Reads</dt><dd>0</dd>" +
-          "<dt>Writes</dt><dd>" + s.writes + "</dd>" +
-          "</dl>" +
-          (s.also ? '<p style="margin: 10px 0 0">' + s.also + "</p>" : "");
-        return d;
-      }
+      var ROW = function (a, b, c, sc, m) {
+        return '<span class="key">' + a + "</span><span class=t>" + b + "</span>" +
+               '<span class="meta"></span><span class="chip ' + sc + '">' + mark(m) + c + "</span>";
+      };
 
-      var FIX = {
-        board: function () {
-          var rows = [
-            ["CT-I1-041", "Harness adapter seam — merged binding", "working", "sc-working", "m-working"],
-            ["CT-I1-042", "claude-code binding conformance", "working", "sc-working", "m-working"],
-            ["CT-I1-027", "Console view grants", "gated", "sc-capped", "m-capped"],
-            ["CT-I1-044", "Survey and classification", "idle", "sc-idle", "m-idle"],
-            ["CT-I1-013", "Human session foundation", "delivered", "sc-proven", "m-proven"]
-          ];
-          var w = el("div", "rows");
-          rows.forEach(function (r) {
-            w.appendChild(el("div", "row",
-              '<span class="key">' + r[0] + "</span><span class=t>" + r[1] + "</span>" +
-              '<span class="meta">ctower</span>' +
-              '<span class="chip ' + r[3] + '">' + mark(r[4]) + r[2] + "</span>"));
-          });
-          return w;
-        },
-        ticket: function () {
-          var w = el("div");
-          w.appendChild(el("div", "cards",
-            '<div class=card><div class=k>Priority</div><div class="v sm">high</div></div>' +
-            '<div class=card><div class=k>Custodian</div><div class="v sm">ctower-commander</div></div>' +
-            '<div class=card><div class=k>Sessions</div><div class="v">3</div></div>' +
-            '<div class=card><div class=k>Workflow stage</div><div class="v sm"><span class="chip sc-unknown">' +
-            mark("m-unknown") + 'unknown</span> <button class="i" type="button" title="No read returns a ticket stage — G10.">i</button></div></div>'));
-          w.appendChild(el("h2", null, "Sessions · listTicketSessions"));
-          var r = el("div", "rows");
+      var BODY = {
+        lanes: function () {
+          var w = el("div"), r = el("div", "rows");
           [["designer-cockpit-2", "cockpit-design", "working", "sc-working", "m-working"],
-           ["engineer-seam", "adapter-codex", "gated", "sc-capped", "m-capped"],
-           ["reviewer-intake", "intake-fence", "delivered", "sc-proven", "m-proven"]].forEach(function (x) {
-            r.appendChild(el("div", "row",
-              '<span class="key">' + x[0] + "</span><span class=t>" + x[1] + "</span>" +
-              '<span class="meta">worktree</span><span class="chip ' + x[3] + '">' + mark(x[4]) + x[2] + "</span>"));
+           ["engineer-seam", "adapter-codex", "capped", "sc-capped", "m-capped"],
+           ["engineer-seam", "seam-conformance", "idle", "sc-idle", "m-idle"],
+           ["reviewer-intake", "intake-fence", "working", "sc-working", "m-working"],
+           ["voice-transcribe", "whisper-bench", "dead", "sc-error", "m-dead"]].forEach(function (x) {
+            r.appendChild(el("div", "row", ROW(x[0], x[1], x[2], x[3], x[4])));
           });
           w.appendChild(r);
+          w.appendChild(el("p", "sub", "Open one to watch it, talk to it, and see what it changed."));
           return w;
         },
-        list: function (s) {
-          var w = el("div", "empty");
-          w.innerHTML = "Nothing to show in this fixture." +
-            '<div class="act"><button class="ghost" type="button">Refresh</button></div>';
+        board: function () {
+          var r = el("div", "rows");
+          [["CT-I1-041", "Harness adapter seam — merged binding", "working", "sc-working", "m-working"],
+           ["CT-I1-042", "claude-code binding conformance", "working", "sc-working", "m-working"],
+           ["CT-I1-027", "Console view grants", "gated", "sc-capped", "m-capped"],
+           ["CT-I1-044", "Survey and classification", "idle", "sc-idle", "m-idle"],
+           ["CT-I1-013", "Human session foundation", "delivered", "sc-proven", "m-proven"]].forEach(function (x) {
+            r.appendChild(el("div", "row", ROW(x[0], x[1], x[2], x[3], x[4])));
+          });
+          return r;
+        },
+        inbox: function () {
+          var r = el("div", "rows");
+          [["ctower-commander", "Cockpit r3 — three cells to sign-off", "3 new", "sc-working", "m-working"],
+           ["reviewer-intake", "Intake fence: two proposals", "read", "sc-idle", "m-idle"]].forEach(function (x) {
+            r.appendChild(el("div", "row", ROW(x[0], x[1], x[2], x[3], x[4])));
+          });
+          return r;
+        },
+        crews: function () {
+          var w = el("div"), r = el("div", "rows");
+          [["designer-cockpit-2", "Designer · ctower", "ready", "sc-proven", "m-proven"],
+           ["engineer-seam", "Engineer · ctower", "not ready", "sc-capped", "m-capped"],
+           ["voice-transcribe", "Engineer · bhloop", "sign-in needed", "sc-error", "m-dead"]].forEach(function (x) {
+            r.appendChild(el("div", "row", ROW(x[0], x[1], x[2], x[3], x[4])));
+          });
+          w.appendChild(r);
+          w.appendChild(el("p", "sub", "A crew's page carries its readiness, credentials and configuration."));
           return w;
         },
-        cards: function () {
+        costs: function () {
           return el("div", "cards",
-            '<div class=card><div class=k>Entries</div><div class="v">3</div></div>' +
-            '<div class=card><div class=k>Selectable</div><div class="v">1</div></div>' +
-            '<div class=card><div class=k>Earliest reset</div><div class="v sm">04:12Z</div></div>');
+            '<div class=card><div class=k>Credits this month</div><div class="v">16 024<span class="dim" style="font-size:12px"> mcr</span></div></div>' +
+            '<div class=card><div class=k>Accounts usable</div><div class="v">1<span class="dim" style="font-size:12px"> of 3</span></div></div>' +
+            '<div class=card><div class=k>Next reset</div><div class="v sm">04:12Z</div></div>' +
+            '<div class=card><div class=k>Monthly cap</div><div class="v sm"><span class="chip sc-unknown">' + mark("m-unknown") + "not set</span></div></div>");
         },
-        link: function (s) {
-          var w = el("div", "empty");
-          w.innerHTML = 'Designed in full in the companion mockup.' +
-            '<div class="act"><a class="ghost" href="' + s.href + '" style="text-decoration:none">Open ' + s.href + " ↗</a></div>";
-          return w;
+        projects: function () {
+          var r = el("div", "rows");
+          [["ctower", "7 lanes · 3 tickets in flight", "active", "sc-working", "m-working"],
+           ["manibo", "2 lanes · 1 ticket in flight", "active", "sc-working", "m-working"],
+           ["bhloop", "1 lane", "attention", "sc-error", "m-dead"]].forEach(function (x) {
+            r.appendChild(el("div", "row", ROW(x[0], x[1], x[2], x[3], x[4])));
+          });
+          return r;
+        },
+        admin: function () {
+          var w = el("div");
+          [["Health", "Control plane", "ok", "sc-proven", "m-proven"],
+           ["Migrations", "No import running", "idle", "sc-idle", "m-idle"],
+           ["Requests", "4 open", "open", "sc-working", "m-working"],
+           ["Rulings", "2 agreements", "—", "sc-idle", "m-idle"],
+           ["Knowledge", "31 documents", "—", "sc-idle", "m-idle"],
+           ["Morning digest", "Delivered 06:00Z", "—", "sc-idle", "m-idle"]].forEach(function (x) {
+            w.appendChild(el("div", "row", ROW(x[0], x[1], x[2], x[3], x[4])));
+          });
+          var r = el("div", "rows"); while (w.firstChild) r.appendChild(w.firstChild);
+          var out = el("div"); out.appendChild(r);
+          out.appendChild(el("p", "sub", "Each of these was a top-level menu row in the first draft. None of them is a daily job."));
+          return out;
         }
       };
 
       function render() {
-        var id = (location.hash || "#/board").replace("#/", "");
-        var s = SCREENS.filter(function (x) { return x.id === id; })[0] || SCREENS[0];
-        SCREENS.forEach(function (x) {
+        var id = (location.hash || "#/lanes").replace("#/", "");
+        var all = visible();
+        var s = all.filter(function (x) { return x.id === id; })[0] || all[0];
+        all.forEach(function (x) {
           var a = document.getElementById("nav-" + x.id);
+          if (!a) return;
           if (x.id === s.id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
         });
         document.getElementById("crumb-group").textContent = s.grp;
         document.getElementById("crumb-page").textContent = s.name;
-        document.getElementById("crumb-state").innerHTML =
-          '<span class="dim mono">' + s.reads.length + (s.reads.length === 1 ? " read · " : " reads · ") +
-          s.writes + (s.writes === 1 ? " write</span>" : " writes</span>");
+        document.getElementById("crumb-state").innerHTML = design
+          ? '<span class="dim mono">' + s.reads.length + (s.reads.length === 1 ? " read · " : " reads · ") +
+            s.writes + (s.writes === 1 ? " write</span>" : " writes</span>")
+          : "";
 
         var p = document.getElementById("page");
         p.innerHTML = "";
         p.appendChild(el("h1", null, s.name));
         p.appendChild(el("p", "sub", s.lead));
 
-        if (s.reads.length === 0) {
-          p.appendChild(absentPanel(s));
+        if (s.designOnly) {
+          var d = el("div", "absent-panel");
+          d.innerHTML = '<h3><span class="chip sc-unknown">' + mark("m-unknown") +
+            "</span> No read serves this</h3><p>" + s.absent + '</p><dl class="opgrid"><dt>Missing</dt><dd>' +
+            s.gap + "</dd><dt>Reads</dt><dd>0</dd><dt>Writes</dt><dd>" + s.writes + "</dd></dl>";
+          p.appendChild(d);
         } else {
-          if (FIX[s.shape]) p.appendChild(FIX[s.shape](s));
-          p.appendChild(el("h2", null, "Served by"));
-          var dl = el("dl", "opgrid");
-          dl.innerHTML = s.reads.map(function (r) { return "<dt>read</dt><dd>" + r + "</dd>"; }).join("") +
-            (s.writes ? "<dt>writes</dt><dd>" + s.writes + "</dd>" : "");
-          p.appendChild(dl);
-          if (s.note) p.appendChild(el("p", "sub", s.note));
+          if (BODY[s.body]) p.appendChild(BODY[s.body]());
+          if (s.opens) {
+            p.appendChild(el("p", "sub",
+              'Designed in full: <a href="' + s.opens + '">' + s.opens + "</a> ↗"));
+          }
+          // DESIGN MODE ONLY. In Operator mode the screen says nothing about
+          // which operation serves it, because that is a fact about ctower's
+          // construction and not about the operator's work.
+          if (design) {
+            p.appendChild(el("h2", null, "Design · served by"));
+            var dl = el("dl", "opgrid");
+            dl.innerHTML = s.reads.map(function (r) { return "<dt>read</dt><dd>" + r + "</dd>"; }).join("") +
+              (s.writes ? "<dt>writes</dt><dd>" + s.writes + "</dd>" : "");
+            p.appendChild(dl);
+            if (s.design) p.appendChild(el("p", "sub", s.design));
+          }
         }
         window.scrollTo(0, 0);
       }
 
+      function setMode(on) {
+        design = on;
+        document.getElementById("mode").textContent = design ? "Operator view" : "Design view";
+        document.body.dataset.mode = design ? "design" : "operator";
+        nav(); render();
+      }
+
       nav();
       window.addEventListener("hashchange", render);
-      render();
+      document.getElementById("mode").addEventListener("click", function () { setMode(!design); });
       document.getElementById("theme").addEventListener("click", function () {
         var e = document.documentElement;
         e.dataset.theme = e.dataset.theme === "dark" ? "light" : "dark";
       });
+      render();
     </script>
   </body>
 </html>
