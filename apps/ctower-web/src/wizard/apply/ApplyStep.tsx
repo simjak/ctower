@@ -39,7 +39,7 @@ export function ApplyStep({
         title="Apply"
         subtitle={
           <>
-            <Badge tone="info">
+            <Badge tone="accent">
               {moved} {moved === 1 ? "change" : "changes"}
             </Badge>
             <span>

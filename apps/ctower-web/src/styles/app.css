@@ -31,21 +31,35 @@
   color-scheme: light;
 
   --bg: #ffffff;
-  --surface: #fafafa; /* column / panel wells */
+  --surface: #fafaf9; /* column / panel wells */
   --surface-2: #ffffff; /* cards sit above the well */
-  --raised: #f2f2f2;
-  --line: #eaeaea;
-  --line-2: #d4d4d4;
+  --raised: #f5f5f4;
+  --line: #e7e5e4;
+  --line-2: #d6d3d1;
 
-  --ink: #171717;
-  --ink-2: #525252;
-  --ink-3: #8f8f8f;
-  --ink-4: #a3a3a3;
+  /* Black is the ink, and the neutral ramp is warmed to sit under amber rather
+     than fight it. Every step below is measured against `--bg`: 19.8 / 10.3 /
+     7.6 / 4.8, so the quietest one still clears AA for body text. The teal
+     scheme's `--ink-3` and `--ink-4` were 3.2 and 2.5 — the fragile
+     muted-foreground the design review flagged — and this pass fixes them
+     rather than carrying them into a new palette. */
+  --ink: #0a0a0a;
+  --ink-2: #44403c;
+  --ink-3: #57534e;
+  --ink-4: #78716c;
 
-  /* the single interaction accent: focus, links, selected controls */
-  --accent: #0d9488;
-  --accent-deep: #0f766e;
-  --accent-bg: #effcfa;
+  /* THE BRAND RAMP · yellow → orange, and the one rule that governs it.
+     `--accent` is a FILL: it backs a control, a focus ring, the current step,
+     a checked box, and it carries `--accent-ink` on top at 8.1:1. It is 2.2:1
+     against white, so it may never be a glyph or a word on a light surface —
+     `--accent-strong` is the ramp position that may (5.0:1), and it is what any
+     accent-coloured mark resolves to. Yellow text on white is the failure this
+     split exists to make impossible. */
+  --accent: #f59e0b;
+  --accent-deep: #d97706;
+  --accent-strong: #b45309;
+  --accent-ink: #1c1917;
+  --accent-bg: #fffbeb;
 
   --proven: #0a855a;
   --proven-bg: #eaf8f2;
@@ -54,9 +68,14 @@
   --refuse-bg: #fef2f2;
   --refuse-line: #fecaca;
   --refuse-deep: #b91c1c;
-  --warn: #b45309;
+  /* Caution sits at the far, burnt end of the same ramp, never at the accent's
+     yellow. In a brand whose interactive colour IS amber, a warning drawn in
+     amber is invisible as a warning: "you can press this" and "look at this"
+     would be the same mark. Hue separates them, and so does form — the accent
+     fills controls, caution borders and tints a block. 5.2:1 on white. */
+  --warn: #c2410c;
   --warn-bg: #fff7ed;
-  --warn-line: #fed7aa;
+  --warn-line: #fdba74;
   --info: #7c3aed;
   --info-bg: #f5f3ff;
   --info-deep: #6d28d9;
@@ -103,21 +122,29 @@
 :root.theme-dark {
   color-scheme: dark;
 
-  --bg: #0a0d13;
-  --surface: #11161f;
-  --surface-2: #151b26;
-  --raised: #1a2130;
-  --line: #232c3c;
-  --line-2: #2e394d;
+  /* Near-black, warmed the same way, so amber reads as light on it rather than
+     as a sticker. Measured against `--surface-2`: 16.5 / 12.1 / 7.1 / 4.8. */
+  --bg: #0c0a09;
+  --surface: #131110;
+  --surface-2: #1a1614;
+  --raised: #262120;
+  --line: #2a2422;
+  --line-2: #3a322e;
 
-  --ink: #e9edf5;
-  --ink-2: #a7b2c6;
-  --ink-3: #6d7a90;
-  --ink-4: #5b6880;
+  --ink: #f5f5f4;
+  --ink-2: #d6d3d1;
+  --ink-3: #a8a29e;
+  --ink-4: #8a827c;
 
-  --accent: #2dd4bf;
-  --accent-deep: #5eead4;
-  --accent-bg: rgb(45 212 191 / 12%);
+  /* On near-black the ramp is legible as both fill and mark, so `--accent` and
+     `--accent-strong` converge here — 10.8:1 as a mark, and 10.5:1 the other
+     way with `--accent-ink` on the fill. The light theme's split is a light
+     theme's problem. */
+  --accent: #fbbf24;
+  --accent-deep: #fcd34d;
+  --accent-strong: #fbbf24;
+  --accent-ink: #1c1917;
+  --accent-bg: rgb(251 191 36 / 14%);
 
   --proven: #4fbf7b;
   --proven-bg: rgb(79 191 123 / 13%);
@@ -126,9 +153,9 @@
   --refuse-bg: rgb(229 105 91 / 12%);
   --refuse-line: rgb(229 105 91 / 34%);
   --refuse-deep: #f0a79e;
-  --warn: #e8a33d;
-  --warn-bg: rgb(232 163 61 / 12%);
-  --warn-line: rgb(232 163 61 / 34%);
+  --warn: #fb923c;
+  --warn-bg: rgb(251 146 60 / 12%);
+  --warn-line: rgb(251 146 60 / 36%);
   --info: #a78bfa;
   --info-bg: rgb(167 139 250 / 12%);
   --info-deep: #c4b5fd;
@@ -172,6 +199,8 @@
 
   --color-accent: var(--accent);
   --color-accent-deep: var(--accent-deep);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-ink: var(--accent-ink);
   --color-accent-bg: var(--accent-bg);
 
   --color-proven: var(--proven);
@@ -253,6 +282,14 @@
 
   .chip-info {
     --sc: var(--info);
+  }
+
+  /* An active chip: the live count a step is about. It seeds from
+     `--accent-strong` rather than `--accent`, because the recipe mixes the seed
+     into the text as well as the fill and the yellow end cannot carry a word on
+     a light surface. */
+  .chip-accent {
+    --sc: var(--accent-strong);
   }
 
   .chip-unknown {

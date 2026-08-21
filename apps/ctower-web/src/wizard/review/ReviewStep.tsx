@@ -75,7 +75,7 @@ function Plan({ plan }: { readonly plan: CompanyBundlePlan }): ReactElement {
             {moved === 0 ? (
               <Badge tone="neutral">no change</Badge>
             ) : (
-              <Badge tone="info">
+              <Badge tone="accent">
                 {moved} of {plan.actions.length} move
               </Badge>
             )}
