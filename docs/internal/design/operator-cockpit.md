@@ -16,7 +16,7 @@ cockpit, and the crew page's seven tabs (§5.7) with its Readiness verdict rende
 are live; the theme toggle exists so a reader can check the one-seed `color-mix` claim of §3
 rather than take it on faith. Every hard state the doc argues for is drawn deliberately — the
 disabled composer, a turn in `durability pending`, a `capped` lane outranking its timer, a
-workspace `not reached`, `Create PR` naming its dirty paths, a console gap row, and `no cap
+workspace `not reached`, the PR handoff naming its dirty paths, a console gap row, and `no cap
 configured` rendered as unknown with no progress track.
 
 **Direction, verbatim (operator, 2026-08-20):** *"I want the same clean UI as paperclip has for
@@ -332,11 +332,40 @@ that reads the working tree cannot tell the difference."* Therefore:
 
 - The change list separates **committed** from **uncommitted** rows visibly. They are different
   claims, and only one of them a successor can read.
-- `Create PR` is a real `disabled` control while the tree is dirty, with the dirty paths named
-  *on the control* (D5) — the treatment `New ticket` already gets in read-only v1 — not in a page
-  banner.
 - The `Checks` tab shows the gate verdicts that exist and `not reached` where a gate was not run.
   It does not compose an aggregate "passing" out of a partial set. (D1.)
+
+#### `Create PR` is a handoff, not a ctower mutation
+
+Conductor draws `Create PR` in the window chrome and it reads as a button that makes a pull
+request. ctower may not draw that button, and the reason is a law rather than a missing route:
+its GitHub connector holds **no pull-request authority in either direction**. `AC-GH-03` scopes
+every installation token to *"only Issues write and Metadata read"* and fails closed on broader
+grants; `AC-GH-07` states *"Only issues are ingested. Pull requests are excluded"*
+(`SPEC.md:4817`, `SPEC.md:4821`). The authored HTTP surface agrees — across all 104 operations
+the only change/PR-adjacent mutation is `recordTicketChangeReference`, which records a reference
+that **already exists**. §8.2 prices the alternative rather than leaving it implied.
+
+So the control is designed as what it can honestly be:
+
+- **It opens the provider's own compare page** for the collected branch and head, in a new tab.
+  ctower creates nothing and asserts nothing about the outcome.
+- **Two independent facts gate it, and they fail differently.** The tree must be *clean* —
+  `AC-HAD-06`, where a dirty tree returns `checkpoint-uncollectable` naming the dirty paths —
+  **and** the branch must be *pushed*, which is `ArtifactSet.pushed` beside `branch` and
+  `head_sha` (`packages/ctower-runner-sdk/src/ctower_runner_sdk/facts.py:113–127`). A clean but
+  unpushed tree and a dirty tree are different failures with different next actions, so they are
+  two disabled reasons, never one. Each is named *on the control* (D5) — the treatment
+  `New ticket` already gets in read-only v1 — not in a page banner.
+- **After the operator opens the PR, its reference is recorded** through
+  `recordTicketChangeReference` and rendered through §7.1's durability discipline:
+  `ChangeReferenceResult` carries `durability_state` and `command_id`, so the row reads
+  `durability pending` until the projection folds, and never "PR opened" because the composer
+  cleared.
+- **No read exists for the pull request's state**, and the cockpit does not invent one. It
+  renders the recorded reference and nothing more. `AC-UX-06`'s forbidden words — done,
+  released, live — have no source on this surface at all (§7.6), which is the cheapest possible
+  way to satisfy that rule.
 
 ### 4.4 Right-bottom — the terminal, and who it may speak for
 
@@ -899,12 +928,34 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 | G2 | **Read the harness registry** — registered `HarnessSpec` key, revision, digests, declared `capabilities`, `context_window_percent`, `liveness_sources`, survey answers and derived `layers` | composer gating (§4.2a), Readiness (§5.1), Composition tab, wizard steps 2–4 | The specs exist as Python constants and contract JSON. Nothing serves them over HTTP, so the browser cannot derive the composer's enabled state from declared capability — and a UI-local guess is exactly what §4.2a forbids. |
 | G3 | **Read a lane transcript** — ordered turns with role, thinking blocks, tool rows, interrupt facts, elapsed, and each turn's durability state | centre (§4.2) | No transcript operation exists. `listTicketAuditEvents` is a typed audit stream, not a harness transcript, and `AC-HAD-08` forbids any kernel/projection/CLI/board path from parsing a harness-private transcript format — so the binding must project typed facts and *those* need a read. |
 | G4 | **Send input to a lane** — a durable input command with a client command ID, refused per `input_refusal` when the lane is `working` and the spec declares no `INTERRUPT_AND_RESUME` | composer (§4.2) | `sendInboxMessage` is the tenant-wide comms plane; it never evaluates a project grant and is not a lane input. Steering a crew through the inbox would bypass the capability check entirely. |
-| G5 | **Read a workspace change set** — per-file `+N −N`, committed vs uncommitted separated, dirty paths named | right-top (§4.3) | `recordTicketChangeReference` is a write. The `+N −N` badges in `apps/ctower-ui` today come from server-side git reads in `src/read/sources/`, which is fine for an operator surface over a local checkout and is not an API. `AC-HAD-06`'s committed-only rule needs to be enforced *in the read*, not in the renderer. |
+| G5 | **Read a workspace change set** — per-file `+N −N`, committed vs uncommitted separated, dirty paths named, plus the `ArtifactSet` triple `branch` / `head_sha` / `pushed` and the repository's own web origin | right-top (§4.3) | `recordTicketChangeReference` is a write. The `+N −N` badges in `apps/ctower-ui` today come from server-side git reads in `src/read/sources/`, which is fine for an operator surface over a local checkout and is not an API. `AC-HAD-06`'s committed-only rule needs to be enforced *in the read*, not in the renderer. The push state and the web origin are what gate and address the `Create PR` handoff below; without them the control cannot tell a clean-unpushed branch from a clean-pushed one, which are different failures. |
 | G6 | **Register a harness / submit a survey** — the wizard's write, returning `harness-survey-incomplete` / `harness-layer-conflict` / `harness-spec-incompatible` verbatim | wizard step 3 and 7 (§6) | The refusal vectors exist as test data (`harness-spec-vectors.json`); no operation performs the registration. Blocked on CT-I1-044 regardless. |
 | G7 | **Dry-run the guard** — obtain a CommandGuard decision for a normalized plan and return it, dispatching nothing | wizard step 7's `Test Agent` (§6.1) | The guard is invoked at the pre-dispatch boundary inside `spawn`. Exposing a decision-only path is a deliberate new operation, and it is the one place a "test" button can be honest. |
 
 Two of the seven (G6, G7) are blocked on tickets that have not started. Five (G1–G5) are
 implementable against merged seam code once its phase activates.
+
+**The mutation this list deliberately does not add: creating the pull request.** A reader
+counting Conductor's panes against this table will look for a create-PR operation and not find
+one, so the absence is stated rather than left to inference. There is no such operation today
+(the 104 authored operations contain exactly one PR-adjacent mutation, `recordTicketChangeReference`,
+which records an already-existing reference), and this design does not propose one, because
+adding it is not a route — it is a new provider authority:
+
+1. `AC-GH-03` (`SPEC.md:4817`) scopes every GitHub installation token to *"only Issues write and
+   Metadata read"* and fails closed on *"unapproved auth, ingress, or broader grants"*. Creating
+   a pull request needs Pull requests: write, which that criterion currently refuses.
+2. `AC-GH-07` (`SPEC.md:4821`) states *"Only issues are ingested. Pull requests are excluded"*.
+   A create-PR path makes pull requests a first-class provider object in both directions.
+3. So the cost is a SPEC amendment to two accepted acceptance criteria, a re-run of the
+   least-privilege registration evidence, an idempotency/read-back design for a mutation whose
+   provider outcome ctower cannot currently observe, and only *then* the four-inventory work
+   above.
+
+That is a real feature with a real decision behind it, and it belongs to whoever owns the GitHub
+connector — not to a UI design smuggling it in as a button. §4.3 therefore designs the control as
+a **handoff**: gated on clean-and-pushed, opening the provider's compare page, and recording the
+resulting reference through the operation that already exists.
 
 ### 8.3 One gap that is not an operation
 
@@ -948,13 +999,18 @@ with a backend that already passed AC-CON-01..07. Doing this pane second rather 
 single most important scheduling call in this document: a terminal pane bolted on at the end is
 the one that gets a keystroke handler "just for debugging."
 
-### Slice 3 — the change list and Create PR
+### Slice 3 — the change list and the PR handoff
 
-Right-top over G5, with committed and uncommitted separated and `Create PR` genuinely disabled on
-a dirty tree, naming the dirty paths on the control. First new operation. Ends with an operator
-able to see what a lane produced and open its PR without a shell.
+Right-top over G5, with committed and uncommitted separated, and the PR control genuinely
+disabled on a dirty tree *or* an unpushed branch, naming which of the two it is on the control.
+First new operation. Ends with an operator able to see what a lane produced and reach its
+compare page in one click — **ctower does not create the pull request** (§4.3: `AC-GH-03` scopes
+the connector's token to Issues write and Metadata read, `AC-GH-07` excludes pull requests), and
+the cockpit shows no PR until its reference is recorded through `recordTicketChangeReference`,
+pending until the projection folds.
 
-**Proves:** `AC-HAD-06`'s committed-only rule enforced in a read rather than a renderer.
+**Proves:** `AC-HAD-06`'s committed-only rule enforced in a read rather than a renderer, and that
+a handoff can be drawn without the surface claiming the outcome.
 
 ### Slice 4 — Credentials, Spend, Readiness — as far as they go without dispatch
 
@@ -1045,6 +1101,7 @@ rather than source, it says so in place.
 | Subject | Where |
 | --- | --- |
 | Acceptance criteria | `docs/internal/SPEC.md` — AC-HAD-01..12 at 4872–4883; AC-UX-01..09 at 4794–4802; AC-CON-01..07 at 4599–4605 |
+| GitHub connector authority | `SPEC.md:4817` (AC-GH-03, *"only Issues write and Metadata read"*), `SPEC.md:4821` (AC-GH-07, *"Only issues are ingested. Pull requests are excluded"*) — why §4.3's PR control is a handoff |
 | Terminal authority | `SPEC.md:885` (*"Structured events and durable commands are authoritative. The raw terminal is a compatibility view."*) and `SPEC.md:15` (*"The console foundation has no browser UI and grants no typing authority."*) |
 | Console invariants | `SPEC.md` INV-91 at 1570, INV-92 at 1571 |
 | Tickets | `SPEC.md` CT-I1-021 at 5309; CT-I1-041..044 at 5336–5342 |

@@ -19,7 +19,8 @@
         · one outgoing turn sits in `durability pending`, not sent
         · one lane is `capped`, outranking its advancing timer
         · one workspace is `not reached`, not `+0 -0`
-        · Create PR is disabled and names the dirty paths on the control
+        · the PR control is a handoff, disabled and naming the dirty paths on
+          the control — ctower has no pull-request authority to create one
         · the terminal carries a grant clock, a gap row and a redaction mark,
           and has no input element at all
         · budget renders `no cap configured` as unknown, with no progress track
@@ -758,11 +759,18 @@
 
           </div>
 
+          <!-- AC-GH-03 scopes the connector's token to Issues write + Metadata
+               read and AC-GH-07 excludes pull requests, so ctower does not
+               create one. The control is a handoff to the provider's compare
+               page, gated on clean AND pushed — two different failures. -->
           <div class="pr-row">
-            <button class="pr" type="button" disabled>Create PR — 2 uncommitted paths</button>
+            <button class="pr" type="button" disabled>Open PR on GitHub ↗ — 2 uncommitted paths</button>
             <p class="dim" style="margin: 6px 0 0; font-size: 11px">
               <code>CrewRail.tsx</code> and <code>TerminalPane.tsx</code> are uncommitted. An
-              uncommitted change is not derivable from any ref a successor can read.
+              uncommitted change is not derivable from any ref a successor can read. ctower does
+              not create the pull request; this opens the compare page for
+              <code class="mono">feat/cockpit-design@2fbce36</code> once the tree is clean and the
+              branch is pushed, and records the reference you come back with.
             </p>
           </div>
 
