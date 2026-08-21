@@ -481,7 +481,7 @@ activated stable tickets. Existing citations are composition points, not claims 
 | OR-04 | **NEW #397** | Record transaction/cutover pending enforcement `packages/ctower-kernel/src/ctower_kernel/record/transaction.py:401-513`; canonical backup/restore contract `SPEC.md:3738-3757`; exact 2026-08-09 Mission Control incident reproduced in OR-04 |
 | OR-05 | **NEW #397** | Existing human/session and project-seat Actor planes `SPEC.md:1469-1473`; protected intake API `contracts/http/openapi.yaml:191-255`; v1 CLI/UI identity fixtures required; Slack/Hermes remains a separately decided and CSO-reviewed new boundary following `docs/security/connector-phase2-cso.md` |
 | OR-06 | **NEW #397** | Current shadow/bulk-import prohibition `SPEC.md:1472`; existing intake source/project guard `packages/ctower-kernel/src/ctower_kernel/work/intake.py:203-216`; new enforced fence, signed freeze, manifest-bound Request import, full-row/count/sample reconciliation, and one-way cutover proofs required |
-| OR-07 | **NEW #397** | Existing read-only epistemic fold `apps/ctower-ui/src/read/portfolioProjection.ts:20-46,97-185,229-322`; existing rendering `apps/ctower-ui/src/app/portfolio/page.tsx:85-140`; new Request projection/list and responsive fixtures required |
+| OR-07 | **NEW #397** | Existing read-only epistemic fold remains the source concept; no browser implementation is retained in this cut. New Request projection/list and responsive fixtures are required when the separately activated browser work lands. |
 
 ## Specification acceptance checklist
 

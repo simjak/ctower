@@ -153,7 +153,7 @@ warn_unreachable = true
 warn_unused_configs = true
 show_error_codes = true
 pretty = true
-exclude = ["tests/repository/fixtures/"]
+exclude = ["tests/repository/fixtures/", "tests/type_overlays/"]
 mypy_path = [
   "tests/type_overlays",
   "apps/ctower-api/src",

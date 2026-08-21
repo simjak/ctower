@@ -53,7 +53,6 @@ _EXPECTED_ASYNC_SITES = frozenset(
             "asyncio.create_subprocess_exec",
         ),
         (Path("tools/checks/_impl/suites.py"), "asyncio.create_subprocess_exec"),
-        (Path("tools/checks/playwright.py"), "asyncio.create_subprocess_exec"),
     }
 )
 # Sites reviewed and accepted as temporarily unbounded, keyed by (path, operation). Empty in
@@ -62,9 +61,6 @@ _EXPECTED_ASYNC_SITES = frozenset(
 # `stale_exceptions` assertion in _assert_production_process_inventory fails loudly once the
 # named site becomes bounded, forcing the entry's removal in the same change that fixes it.
 #
-# gh#113's tools/checks/playwright.py exception is gone: PR simjak/ctower#307 (bound the
-# Playwright gate's process wait with a deadline) merged into main, so that site now wraps
-# process.wait() in asyncio.wait_for(..., timeout=_TIMEOUT_SECONDS) and is bounded.
 _ASYNC_EXCEPTIONS: frozenset[tuple[Path, str]] = frozenset()
 type _ResolvedReference = str | None
 

@@ -124,8 +124,8 @@ product does not have yet:
   Secret Service keyring, so it cannot be handed a container DSN;
 - a first-run bootstrap and credential ceremony that a stack can perform unattended;
 - ownership of migrations for a database nobody has already prepared;
-- a browser application — `apps/ctower-web` is an architectural boundary with no framework or runnable UI
-  chosen yet;
+- a browser application — product browser realization remains separately activated work, with no runnable UI
+  selected in this cut;
 - health and readiness wiring, durable storage, and a cleanup contract for the composed services.
 
 Adding `api:` and `ui:` service names before those exist would produce a stack that starts and does

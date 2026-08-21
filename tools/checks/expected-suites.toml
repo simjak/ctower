@@ -665,16 +665,6 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
-id = "dogfood-inbox-controls"
-owner = "CT-I1-007"
-phase = "CT-I1-007"
-status = "required"
-path = "tests/dogfood"
-patterns = ["test_*.py"]
-command = ["{python}", "-m", "pytest", "tests/dogfood", "-q"]
-timeout_seconds = 900
-
-[[suite]]
 id = "dream-dispatch-contracts"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
