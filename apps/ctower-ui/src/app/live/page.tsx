@@ -107,17 +107,14 @@ function LiveBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
       <Chrome section="Live" />
       <main className="page">
         <div className="wrap">
-          <p className="lede">
-            What the fleet is doing now, ordered by what needs you. Every state here is the one the
-            crew <b>recorded</b>, not one this screen observed.
-          </p>
+          <p className="lede">Recorded, not observed. Ordered by what needs you.</p>
           {running.length === 0 ? (
             <section className="panel" style={{ marginTop: "14px" }}>
               <header>
                 <h2>Nothing running</h2>
               </header>
               <p className="lede">
-                No crew is alive on the fleet. <Link href="/team">Org</Link> lists every seat.
+                Nothing is running. <Link href="/team">See every seat</Link>
               </p>
             </section>
           ) : (
