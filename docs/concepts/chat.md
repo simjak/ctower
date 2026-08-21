@@ -13,16 +13,10 @@ ticket or link it to an existing ticket.
 Both message directions use the same thread. Reading a thread does not mark it read. Delivery and read
 acknowledgements are separate saved facts.
 
-## How to use chat in the browser
+## Browser product status
 
-Open `/inbox`. Select a thread. Type in the send box and select **Send**.
-
-The browser sends only the message text and the thread identity. The server reads the recipient from its
-own record and derives the sender from its credential. A pending acknowledgement does not appear as a sent
-message. The text remains in the box so the same command can be retried safely.
-
-Use the promote control to create a ticket from the first message or link an existing ticket. A thread can
-be promoted only once. A refusal leaves the thread and ticket unchanged.
+The browser realization of Inbox is deferred to a separately activated future product-browser lane. No current
+browser route, send box, or promotion control is implementation or evidence for this contract.
 
 ## How to use chat in the terminal
 
@@ -30,5 +24,5 @@ Use `ctl inbox list` to see threads and `ctl inbox read <thread-id>` to read one
 send and `ctl inbox ack` to record delivery or read state. Use `ctl inbox promote` when the discussion
 becomes Board work.
 
-The local browser controls are a server-mediated development surface. They are not a general chat product. See
-the [CLI reference](../reference/cli.md#inbox) for exact command shapes.
+The protected CLI is the current supported channel. See the [CLI reference](../reference/cli.md#inbox) for
+exact command shapes; a future product browser must reuse the same server-resolved identity and authority.
