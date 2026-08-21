@@ -145,6 +145,17 @@
       .sub { margin: 0 0 20px; color: var(--muted-foreground); font-size: 12.5px; }
       h2 { margin: 26px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-foreground); }
 
+
+      /* FINDING-001 (design-review) — a keyboard operator got no focus ring at
+         all on this surface. The ring is the working-state hue so it reads as
+         "this is where you are", and it is offset so it never sits under the
+         1px borders this design uses everywhere. */
+      :where(a, button, [tabindex]):focus-visible {
+        outline: 2px solid var(--state-working);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
+      }
+
       .ghost {
         font: inherit; font-size: 11.5px;
         color: var(--muted-foreground);
