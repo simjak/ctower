@@ -3,9 +3,9 @@
 It is the fleet's own awkward shape rather than a tidy one: two accounts capped
 at two different times, one available with no clock at all, one entry the record
 holds no name for, one axis nobody could observe, one account whose login is
-gone while its quota is fine, and a drift finding. A stub that answered with one
-healthy account would let a surface that collapses the pool into a single word
-pass.
+gone while its quota is fine, one nobody has kept or evicted, and a drift
+finding. A stub that answered with one healthy account would let a surface that
+collapses the pool into a single word pass.
 
 The poisoned field is the point of the second half. `PoolEntryState` — the read
 projection this route answers with — has no field a credential value can occupy,
@@ -22,6 +22,7 @@ __all__ = (
     "CAPPED_IDENTITY",
     "CAPPED_RESET_AT",
     "DEAD_IDENTITY",
+    "DISCOVERED_IDENTITY",
     "DRIFT_DETAIL",
     "POISON_FINGERPRINT",
     "PROFILE_KEY",
@@ -34,6 +35,8 @@ PROFILE_KEY = "engineer"
 CAPPED_IDENTITY = "capped@example.invalid"
 #: the account whose login is gone rather than whose quota is spent
 DEAD_IDENTITY = "lineage-dead@example.invalid"
+#: the account the sweep found and the authored topology does not name
+DISCOVERED_IDENTITY = "discovered@example.invalid"
 SELECTABLE_IDENTITY = "available@example.invalid"
 UNMETERED_PROVIDER = "zai"
 CAPPED_RESET_AT = "2026-08-20T06:29:00Z"
@@ -93,12 +96,30 @@ def _dead_auth() -> dict[str, Any]:
         selectable=False,
         request_count=96,
         auth_state="lineage-dead",
+    )
+
+
+def _discovered() -> dict[str, Any]:
+    """The refusal that is not an axis: an account nobody has decided about.
+
+    Every axis on this row reads clear and the record still refuses it, because
+    the sweep found an identity the authored topology does not name. A screen
+    that only ever explains a refusal by naming an unclear axis has nothing to
+    say about this row, which is the case worth having in the fixture.
+    """
+    return _entry(
+        "anthropic",
+        DISCOVERED_IDENTITY,
+        quota_state="available",
+        quota_reset_at=None,
+        selectable=False,
+        request_count=0,
         registration_state="discovered",
     )
 
 
 def _entries() -> list[dict[str, Any]]:
-    """Five accounts of one profile: two clocks, one absence, one unknown axis."""
+    """Six accounts of one profile: two clocks, one absence, one unknown axis."""
     capped = _entry(
         "openai-codex",
         CAPPED_IDENTITY,
@@ -139,6 +160,7 @@ def _entries() -> list[dict[str, Any]]:
             reach_state="edge-challenged",
         ),
         _dead_auth(),
+        _discovered(),
     ]
 
 

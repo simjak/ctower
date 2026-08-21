@@ -121,6 +121,26 @@ export interface Blocking {
   readonly close: string | null;
 }
 
+/**
+ * The one refusal that is not an axis at all.
+ *
+ * A `discovered` identity is *"non-selectable pending an explicit operator
+ * keep-or-evict"* — the sweep found an account the authored topology does not
+ * name, and nobody has decided about it yet. Every axis on such a row can read
+ * clear, so a row that only ever named axes would tell an operator that the
+ * record refused an account for no stated reason while the reason sat two
+ * elements to its right.
+ *
+ * This is still not a fourth axis and is not drawn as one: it is the
+ * registration state the row already shows, said in the words that make it
+ * actionable.
+ */
+export const AWAITING_DECISION = "awaiting keep or evict";
+
+/** The `(i)` behind `discovered`: why a reference is not yet evidence. */
+export const DISCOVERED_HINT =
+  "the sweep found this account and the authored topology does not name it; a recorded reference is a claim, and only an observation is evidence";
+
 export function statedAxes(entry: PoolEntry): Readonly<Record<AxisKey, string>> {
   return { auth: entry.authState, quota: entry.quotaState, reach: entry.reachState };
 }

@@ -82,10 +82,12 @@ _SEND_FIELDS = ("project_key", "severity", "text", "thread_id", "to")
 _COMPOSE_FIELDS = ("project_key", "severity", "text", "to")
 # the record's three independent axes, and the accounts the pool stub answers with
 _POOL_AXES = 3
-_POOL_ENTRIES = 5
+_POOL_ENTRIES = 6
 # what the pool's own meanings table says closes each of the two blocked states
 _CAPPED_CLOSE = "wait for the provider to reset it"
 _DEAD_AUTH_CLOSE = "sign in again, on the host"
+# and the refusal that is not an axis at all
+_AWAITING_DECISION = "awaiting keep or evict"
 
 
 class _Drive:
@@ -556,6 +558,19 @@ class LimitsSurfaceRenderTests(unittest.TestCase):
         self.assertIn("not ready", document)
         self.assertIn("<b>quota</b>", document)
         self.assertIn("<b>auth</b>", document)
+
+    def test_a_refusal_with_every_axis_clear_still_says_what_it_is(self) -> None:
+        """The `discovered` account, whose reason is not one of the three axes.
+
+        Its auth, quota and reach all read clear and the record refuses it
+        anyway, because the sweep found an identity the authored topology does
+        not name. A row that could only explain itself by naming an unclear axis
+        would leave an operator with a refusal and no reason.
+        """
+        document = self.limits_source
+        self.assertIn(pools.DISCOVERED_IDENTITY, document)
+        self.assertIn(_AWAITING_DECISION, document)
+        self.assertNotIn("the record names no blocking axis", document)
 
     def test_the_page_states_the_per_entry_rule_and_counts_nothing_itself(self) -> None:
         document = self.limits_source

@@ -1,5 +1,13 @@
 import type { ReactElement } from "react";
-import { AXES, AxisChip, blockingOf, statedAxes, toneOf } from "./axes";
+import {
+  AWAITING_DECISION,
+  AXES,
+  AxisChip,
+  blockingOf,
+  DISCOVERED_HINT,
+  statedAxes,
+  toneOf,
+} from "./axes";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { stampText } from "@/read/elapsed";
 import type { PoolEntry } from "@/read/interface";
@@ -65,24 +73,34 @@ function Credit({ entry }: { readonly entry: PoolEntry }): ReactElement {
  * The one line a blocked account is owed: which axis, and what closes it.
  *
  * It renders only where the record itself said the account is not selectable,
- * so the line can never argue with the verdict beside it. Where the record
- * refuses an account without leaving an unclear axis, that is what it says —
- * borrowing an axis to explain the refusal would be inventing the reason.
+ * so the line can never argue with the verdict beside it.
+ *
+ * Two refusals leave every axis clear. One is the `discovered` account nobody
+ * has kept or evicted yet, and it is named, because its reason is already on
+ * the row. The other is a refusal the record states and does not explain, and
+ * that is what the line says — borrowing an axis to account for it would be
+ * inventing the reason.
  */
 function Blocked({ entry }: { readonly entry: PoolEntry }): ReactElement | null {
   if (entry.selectable) {
     return null;
   }
   const { axes, close } = blockingOf(entry);
+  if (axes.length === 0) {
+    return (
+      <span className="limits-blocked">
+        not ready —{" "}
+        <b>
+          {entry.registrationState === "discovered"
+            ? AWAITING_DECISION
+            : "the record names no blocking axis"}
+        </b>
+      </span>
+    );
+  }
   return (
     <span className="limits-blocked">
-      {axes.length === 0 ? (
-        "not ready — the record names no blocking axis"
-      ) : (
-        <>
-          not ready — <b>{axes.join(" · ")}</b> blocking
-        </>
-      )}
+      not ready — <b>{axes.join(" · ")}</b> blocking
       {close === null ? null : <span className="limits-close">{close}</span>}
     </span>
   );
@@ -102,7 +120,10 @@ export function PoolEntryRow({ entry }: { readonly entry: PoolEntry }): ReactEle
         <span className="limits-gap" />
         {/* not a fourth axis: whether the authored topology knows this account
             at all, which is the same question drift answers from the other side */}
-        <span className={`verdict ${toneOf(entry.registrationState)}`}>
+        <span
+          className={`verdict ${toneOf(entry.registrationState)}`}
+          title={entry.registrationState === "discovered" ? DISCOVERED_HINT : undefined}
+        >
           {entry.registrationState}
         </span>
       </div>
