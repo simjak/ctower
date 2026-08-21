@@ -33,6 +33,9 @@ _CRITERIA: tuple[tuple[str, str], ...] = (
     ("AC-CHAT-09", "ct-i2-014"),
     ("AC-CHAT-10", "ct-i2-014"),
     ("AC-CHAT-11", "ct-i2-014"),
+    ("AC-CHAT-12", "ct-i2-014"),
+    ("AC-CHAT-13", "ct-i2-014"),
+    ("AC-CHAT-14", "ct-i2-014"),
 )
 
 _READ_GAPS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -55,6 +58,36 @@ _READ_INVENTORY = (
     "generated Python/TypeScript clients",
     "contract operation counters",
     "reference documentation",
+)
+
+_WRITE_SURFACES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "AC-CHAT-12",
+        (
+            "registerHarness",
+            "HarnessRegistry.register",
+            "harness-survey-incomplete",
+            "harness-layer-conflict",
+        ),
+    ),
+    (
+        "AC-CHAT-13",
+        (
+            "submitHarnessSurvey",
+            "SURVEY_QUESTIONS",
+            "harness-survey-incomplete",
+            "derive_roles",
+        ),
+    ),
+    (
+        "AC-CHAT-14",
+        (
+            "bindHarnessCredentialReference",
+            "CredentialReference",
+            "credential_ref",
+            "project-scope-denied",
+        ),
+    ),
 )
 
 
@@ -139,6 +172,23 @@ def test_record_backed_read_gaps_are_explicitly_folded_into_chat_surface(
     row = _spec_row(code)
     assert "docs/internal/design/ctower-app.md" in row
     assert "read over facts the record already stores" in row
+    assert "no new authority" in row
+    assert "no new seam capability" in row
+    assert all(marker in row for marker in markers)
+    assert all(inventory in row for inventory in _READ_INVENTORY)
+
+
+@pytest.mark.parametrize(
+    "code, markers", _WRITE_SURFACES, ids=lambda item: str(item).lower().replace("-", "_")
+)
+def test_harness_setup_writes_are_http_faces_over_kernel_ceremonies(
+    code: str, markers: tuple[str, ...]
+) -> None:
+    row = _spec_row(code)
+    assert "docs/internal/design/ctower-app.md" in row
+    assert "HTTP" in row
+    assert "write" in row
+    assert "kernel" in row
     assert "no new authority" in row
     assert "no new seam capability" in row
     assert all(marker in row for marker in markers)

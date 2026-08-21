@@ -4529,6 +4529,45 @@
       "verifier": "00000000-0000-4000-8000-000000000003",
       "verdict_id": "00000000-0000-4000-8000-000000000004",
       "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-CHAT-12",
+      "disposition": "deferred",
+      "reason": "SPEC#ac-chat-12 declares this criterion; deferred until owner ticket CT-I2-014 is active",
+      "owner": "ct-i2-014",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-CHAT-13",
+      "disposition": "deferred",
+      "reason": "SPEC#ac-chat-13 declares this criterion; deferred until owner ticket CT-I2-014 is active",
+      "owner": "ct-i2-014",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-CHAT-14",
+      "disposition": "deferred",
+      "reason": "SPEC#ac-chat-14 declares this criterion; deferred until owner ticket CT-I2-014 is active",
+      "owner": "ct-i2-014",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
   ],
   "deferred_suites": [
