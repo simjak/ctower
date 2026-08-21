@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import type { ReactElement } from "react";
 import { FirstRun } from "../firstrun/FirstRun";
+import { Overlay } from "../firstrun/Overlay";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
+import type { Org } from "../shell/OrgSwitcher";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
@@ -11,13 +13,16 @@ import { useSeed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
- * One app, one shell, and one decision made here: whether this tower has a
- * company yet.
+ * One app, and one decision made here: whether this tower has a company yet.
  *
- * The company is read once, at the top, so the rail, the header and the page
- * cannot disagree about which of the two situations this is. Until that read
- * answers, neither is claimed — the rail says it is still looking rather than
- * going grey as though the answer were "nothing".
+ * The company is read once, at the top, so the shell and the page cannot
+ * disagree about which of the two situations this is. Until that read answers,
+ * neither is claimed — the rail says it is still looking rather than going grey
+ * as though the answer were "nothing".
+ *
+ * With no company there is no shell to show. Every destination would be locked,
+ * and a rail full of unreachable things is noise at the one moment the operator
+ * should be answering a single question, so the wizard takes the whole screen.
  */
 export function App(): ReactElement {
   const [reloadKey, setReloadKey] = useState(0);
@@ -31,16 +36,29 @@ export function App(): ReactElement {
     setReloadKey((count) => count + 1);
   }, []);
 
-  const firstRun = seed.kind === "answered" && seed.value.kind === "template";
-  const lockReason = lockReasonFor(seed.kind, firstRun);
+  if (seed.kind === "answered" && seed.value.kind === "template") {
+    return (
+      <TooltipScope>
+        <Overlay
+          previewing={previewing}
+          onClose={(): void => {
+            window.location.assign(window.location.pathname);
+          }}
+        >
+          <FirstRun onCreated={created} previewing={previewing} />
+        </Overlay>
+      </TooltipScope>
+    );
+  }
 
   return (
     <TooltipScope>
       <Shell
         here={here}
-        lockReason={lockReason}
+        lockReason={seed.kind === "answered" ? null : "Still reading this company"}
         onGo={setHere}
-        status={statusFor(seed.kind, firstRun, previewing)}
+        org={orgOf(seed)}
+        status={statusFor(seed.kind, previewing)}
       >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
         {seed.kind === "refused" ? (
@@ -53,38 +71,35 @@ export function App(): ReactElement {
           />
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
-        {seed.kind === "answered" ? (
-          seed.value.kind === "template" ? (
-            <FirstRun onCreated={created} />
-          ) : (
-            <CompanyPage seed={seed.value} />
-          )
+        {seed.kind === "answered" && seed.value.kind === "exported" ? (
+          <CompanyPage seed={seed.value} />
         ) : null}
       </Shell>
     </TooltipScope>
   );
 }
 
-function lockReasonFor(kind: string, firstRun: boolean): string | null {
-  if (firstRun) {
-    return "Create the company first";
-  }
-  return kind === "answered" ? null : "Still reading this company";
-}
-
 /**
  * What the header says about the tower, and only what is known.
  *
  * A page snapshot caught this claiming "first run" while the read was still
- * out: locked and first-run are different facts, and one of them was being
- * inferred from the other.
+ * out: locked and first-run are different facts, and one was being inferred
+ * from the other.
  */
-function statusFor(kind: string, firstRun: boolean, previewing: boolean): ReactElement | null {
+/** The company, once the read has actually produced one. */
+function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
+  if (seed.kind !== "answered" || seed.value.kind !== "exported") {
+    return null;
+  }
+  const company = seed.value.result.bundle.company;
+  return { name: company.display_name, key: company.key };
+}
+
+function statusFor(kind: string, previewing: boolean): ReactElement | null {
   return (
     <>
       {previewing ? <Chip tone="amber">preview</Chip> : null}
       {kind === "answered" ? null : <Chip>reading</Chip>}
-      {firstRun ? <Chip>first run</Chip> : null}
     </>
   );
 }
