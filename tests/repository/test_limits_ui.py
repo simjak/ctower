@@ -32,6 +32,8 @@ _CONTRACT = _ROOT / "contracts/http/openapi.yaml"
 _LINE_COMMENT = re.compile(r"//[^\n]*")
 _BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 # the breadcrumb every strict reader passes, which is also the field it read
+#: the rail entry the frame says this screen's name lights
+_LIT_RAIL = re.compile(r'Credentials: "([^"]+)"')
 _ENTRY_FIELD = re.compile(r"pools\.profiles\[\]\.entries\[\]\.(\w+)")
 _DRIFT_FIELD = re.compile(r"pools\.profiles\[\]\.drift\[\]\.(\w+)")
 _WEIGHT_FIELD = re.compile(r"pools\.weights\[\]\.(\w+)")
@@ -96,11 +98,22 @@ class LimitsRouteTests(unittest.TestCase):
         self.assertIn("/v1/pools", adapter)
 
     def test_the_rail_offers_the_surface_once_and_the_frame_lights_it(self) -> None:
+        """One destination, one icon, and one rail entry the screen's name lights.
+
+        The screen is named `Credentials` — what it holds — while the rail entry
+        is still named for the read that serves it. That is the case
+        ``Chrome.RAIL_OF`` exists for, and it is asserted rather than tolerated:
+        a page whose name lights no rail entry leaves a reader unable to see
+        where they are.
+        """
         rail = (_SURFACE / "frame/rail.ts").read_text(encoding="utf-8")
         self.assertEqual(rail.count('href: "/limits"'), 1)
-        self.assertIn('label: "Limits"', rail)
         self.assertIn('"/limits": icon(', (_SURFACE / "frame/Sidebar.tsx").read_text("utf-8"))
-        self.assertIn('Limits: "Limits"', (_SURFACE / "frame/Chrome.tsx").read_text("utf-8"))
+        chrome = (_SURFACE / "frame/Chrome.tsx").read_text("utf-8")
+        lit = _LIT_RAIL.search(chrome)
+        if lit is None:
+            self.fail("the frame does not say which rail entry the Credentials screen lights")
+        self.assertIn(f'label: "{lit.group(1)}"', rail)
 
     def test_the_scan_behind_this_screen_finds_a_non_empty_denominator(self) -> None:
         self.assertGreater(len(_limits_modules()), 2, "the limits module scan found almost nothing")
@@ -157,14 +170,33 @@ class ProjectionAllowlistTests(unittest.TestCase):
 class NoAggregateVerdictTests(unittest.TestCase):
     """A pool is not one word, and this screen may not make it one."""
 
-    def test_the_screen_states_the_per_entry_rule_it_follows(self) -> None:
+    def test_the_screen_states_the_per_entry_rule_within_the_copy_budget(self) -> None:
+        """The rule stays on screen; the argument for it does not.
+
+        The record answers per entry with each account's own clock, and a reader
+        who does not know that reads the first row as the pool. So the screen
+        still says what it is showing — in one hint line. What it no longer
+        carries is the three-line case for the layout, which was reviewer-facing
+        prose shipped inside an operator-facing screen and is exactly what the
+        copy budget was written against.
+        """
         page = _code(_SURFACE / "app/limits/page.tsx")
-        self.assertRegex(
-            page,
-            re.compile(r"no single .*verdict|not one word", re.IGNORECASE),
-            "the record answers per entry with each account's own clock; the screen has to "
-            "say that is what it is showing, or a reader will read the first row as the pool",
-        )
+        self.assertIn("one row per account", page)
+        for retired in ("no single pool verdict", "three clocks, not one state"):
+            with self.subTest(retired=retired):
+                self.assertNotIn(retired, page, "the screen is rendering its own rationale again")
+
+    def test_the_row_s_mark_is_the_record_s_verdict_and_not_a_composed_one(self) -> None:
+        """The one mark on the row comes from the record's own field.
+
+        A mark derived from whichever axis is blocking would read better and
+        would sometimes contradict the record: this pool answers `selectable`
+        for an entry whose quota it never observed. `capped` and `dead · auth`
+        are told apart by their axis chips, which is where the accepted design
+        puts that difference.
+        """
+        row = _code(_SURFACE / "surfaces/limits/PoolEntryRow.tsx")
+        self.assertIn('StateGlyph name={entry.selectable ? "done" : "held"}', row)
 
     def test_the_surface_neither_sorts_nor_counts_the_rows_it_was_given(self) -> None:
         for path in _limits_modules():

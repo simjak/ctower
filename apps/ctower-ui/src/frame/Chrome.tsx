@@ -20,7 +20,9 @@ const RAIL_OF = {
   Workspace: "Workspace",
   Explorer: "Explorer",
   Metrics: "Metrics",
-  Limits: "Limits",
+  // the pool screen is named for what it holds; the rail entry is renamed on
+  // the design branch, which owns that registry
+  Credentials: "Limits",
   Org: "Org",
   // one crew belongs under Org the way one ticket belongs under Tickets
   Crew: "Org",

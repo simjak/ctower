@@ -45,7 +45,7 @@ function Weights({ weights }: { readonly weights: readonly PoolWeight[] }): Reac
       {weights.length === 0 ? (
         <div className="limits-empty">
           <StateGlyph name="open" />
-          <span>the record holds no authored weights</span>
+          <span>No weights are authored for this topology.</span>
         </div>
       ) : (
         <ul className="kv">
@@ -58,37 +58,49 @@ function Weights({ weights }: { readonly weights: readonly PoolWeight[] }): Reac
   );
 }
 
+/**
+ * The three facts about the screen itself, as three elements rather than as a
+ * paragraph about them.
+ *
+ * This block used to carry the argument for the layout below it — that the
+ * record states no single pool verdict, that a profile of three accounts has
+ * three clocks — which is reviewer-facing prose shipped inside an
+ * operator-facing screen, and precisely what the copy budget was written
+ * against. The rule it argued for is enforced by the shape: one row per
+ * account, three chips on each, one clock on each. What survives here is what
+ * an operator cannot see from the shape — that nothing on this screen writes,
+ * that no credential value is on it, and the command that does change it.
+ */
+function ScreenFacts(): ReactElement {
+  return (
+    <div className="limits-note">
+      <span className="sub">one row per account, with its own clock</span>
+      <span className="limits-gap" />
+      <span className="verdict v-held">read-only</span>
+      <span className="verdict v-filed">references only</span>
+      <span className="mono">ctowerctl pools observe</span>
+    </div>
+  );
+}
+
 function LimitsBody({ limits }: { readonly limits: PoolLimits }): ReactElement {
   return (
     <>
-      <Chrome section="Limits" />
+      <Chrome section="Credentials" />
       <main className="page">
         <div className="wrap">
           <div className="lede">
-            <h1>Limits</h1>
+            <h1>Credentials</h1>
           </div>
 
-          <section className="panel" style={{ marginTop: "16px" }}>
-            <header>
-              <h2>Per account</h2>
-              <span className="sub">auth · quota · reach, each with its own clock</span>
-            </header>
-            <div className="limits-note">
-              <span>
-                Every row below is one account. The record states no single pool verdict and none is
-                composed here: a profile holding two capped accounts and one available one has three
-                clocks, not one state.
-              </span>
-              <span className="verdict v-held">read-only</span>
-              <span className="mono">ctowerctl pools observe</span>
-            </div>
-          </section>
+          <ScreenFacts />
 
           {limits.profiles.length === 0 ? (
             <section className="panel" style={{ marginTop: "16px" }}>
               <div className="limits-empty">
                 <StateGlyph name="open" />
-                <span>the record holds no credential-pool sweep yet</span>
+                <span>No pool has been swept yet.</span>
+                <span className="mono">ctowerctl pools observe</span>
               </div>
             </section>
           ) : (
@@ -110,13 +122,27 @@ function LimitsBody({ limits }: { readonly limits: PoolLimits }): ReactElement {
 }
 
 /**
- * The credential limits an operator can otherwise only reach through a CLI.
+ * Credentials — the accounts the fleet draws on, which an operator can
+ * otherwise only reach through a CLI.
+ *
+ * The screen is named for what it holds rather than for the read that serves
+ * it. `readPoolLimits` is the repository's word and `Limits` was the screen
+ * wearing it; an operator arriving here wants to know whether the crew can sign
+ * in and whether there is quota left, and the accepted navigation calls that
+ * Credentials. The route keeps its `/limits` path and the rail keeps its label
+ * until the shared navigation registry is renamed on the design branch.
  *
  * This is a shadow read of a shipped API and nothing more: the browser receives
  * no credential, the surface writes nothing, and a sweep is recorded by the
  * harness seat that took it rather than from here — which is why the one command
  * that changes anything on this screen is printed as a command instead of drawn
  * as a control that cannot be pressed.
+ *
+ * No credential material reaches this page, and the guarantee is structural
+ * rather than editorial: `read/poolLimits.ts` parses the record one named field
+ * at a time, and the contract's read projection has no field a token, key or
+ * fingerprint can occupy. What the screen renders about an account is a
+ * provider key, a decoded identity and an alias — never a value.
  */
 export default async function LimitsPage(): Promise<ReactNode> {
   const limits = await recordAdapter.poolLimits();
@@ -126,11 +152,11 @@ export default async function LimitsPage(): Promise<ReactNode> {
       subject="the credential-pool read"
       frame={(declared) => (
         <>
-          <Chrome section="Limits" />
+          <Chrome section="Credentials" />
           <main className="page">
             <div className="wrap">
               <div className="lede">
-                <h1>Limits</h1>
+                <h1>Credentials</h1>
               </div>
               <section className="panel" style={{ marginTop: "16px" }}>
                 <header>

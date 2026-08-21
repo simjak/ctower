@@ -15,8 +15,11 @@ import type { PoolDrift, PoolProfile } from "@/read/interface";
  * Drift is a separate block because it is a different claim. An entry is what
  * the sweep saw; a drift finding is where the sweep and the authored topology
  * disagree, and which of the two is missing the other. It names the enactment
- * path so the reader knows whether closing it is an operator ceremony or a
- * reference the fleet configures.
+ * path because that is what decides who closes it: an `operator-ceremony` row
+ * is a device flow the operator performs on the host, and a `secret-reference`
+ * row is an alias the fleet binds. Neither is a control this screen can offer —
+ * ctower asks for credential material and never performs the mint — so the
+ * enactment is stated and no button is drawn beside it.
  */
 
 function DriftRow({ finding }: { readonly finding: PoolDrift }): ReactElement {
@@ -28,7 +31,9 @@ function DriftRow({ finding }: { readonly finding: PoolDrift }): ReactElement {
       <span className="limits-identity">
         {finding.subscriptionIdentity ?? "no account name recorded"}
       </span>
-      <span className="limits-fact mono">{finding.enactment}</span>
+      {/* neutral on purpose: the two paths differ in custody, not in severity,
+          and a hue between them would rank one of them as the worse finding */}
+      <span className="verdict v-filed">{finding.enactment}</span>
       <span className="limits-drift-detail">{finding.detail}</span>
     </li>
   );
@@ -39,11 +44,17 @@ function Drift({ findings }: { readonly findings: readonly PoolDrift[] }): React
     return null;
   }
   return (
-    <ul className="limits-drift">
-      {findings.map((finding) => (
-        <DriftRow finding={finding} key={`${finding.providerKey}·${finding.detail}`} />
-      ))}
-    </ul>
+    <div className="limits-drift">
+      <div className="limits-drift-head">
+        <span className="limits-drift-title">Drift</span>
+        <span className="limits-drift-sub">the topology and the sweep disagree</span>
+      </div>
+      <ul className="limits-drift-list">
+        {findings.map((finding) => (
+          <DriftRow finding={finding} key={`${finding.providerKey}·${finding.detail}`} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
