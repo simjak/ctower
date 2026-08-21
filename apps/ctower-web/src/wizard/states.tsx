@@ -1,13 +1,13 @@
-import { Loader, TriangleAlert, WifiOff } from "lucide-react";
 import type { ReactElement } from "react";
 import type { Problem } from "@ctower/client";
-import { Badge, Mono } from "../ui/primitives";
+import { Chip, Mono } from "../ui/primitives";
+import { Mark } from "../ui/marks";
 
 /** A call is out. */
 export function Asking({ what }: { readonly what: string }): ReactElement {
   return (
-    <p className="m-0 flex items-center gap-2 py-6 text-[13px] text-ink-3">
-      <Loader className="size-3.5 animate-spin text-accent-strong" />
+    <p className="m-0 flex items-center gap-2 py-6 text-sm text-muted">
+      <Mark name="working" />
       {what}
     </p>
   );
@@ -29,25 +29,25 @@ export function Refused({
   readonly action: string;
 }): ReactElement {
   return (
-    <div className="rounded-lg border border-refuse-line bg-refuse-bg p-4">
+    <div className="rounded-md border border-danger/40 bg-danger/8 p-4">
       <div className="flex items-start gap-2.5">
-        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-refuse" />
+        <Mark name="dead" className="mt-0.5" />
         <div className="min-w-0 flex-1">
-          <p className="m-0 text-[13px] font-medium text-ink">{problem.detail}</p>
+          <p className="m-0 text-sm font-medium text-fg">{problem.detail}</p>
           {problem.unmet_facts !== undefined && problem.unmet_facts.length > 0 ? (
             <ul className="mt-2 mb-0 list-none space-y-0.5 p-0">
               {problem.unmet_facts.map((fact) => (
                 <li key={fact}>
-                  <Mono className="text-ink-2">{fact}</Mono>
+                  <Mono className="text-muted">{fact}</Mono>
                 </li>
               ))}
             </ul>
           ) : null}
-          <p className="mt-1.5 mb-0 text-[12px] text-ink-2">{action}</p>
+          <p className="mt-1.5 mb-0 text-2xs text-muted">{action}</p>
         </div>
-        <Badge tone="refuse" title={`${problem.title} · ${String(problem.status)}`}>
+        <Chip tone="danger" title={`${problem.title} · ${String(problem.status)}`}>
           <Mono>{problem.code}</Mono>
-        </Badge>
+        </Chip>
       </div>
     </div>
   );
@@ -66,15 +66,14 @@ export function Unreachable({
   readonly action: string;
 }): ReactElement {
   return (
-    <div className="rounded-lg border border-unknown-line bg-unknown-bg p-4">
+    <div className="rounded-md border border-line bg-raised p-4">
       <div className="flex items-start gap-2.5">
-        <WifiOff className="mt-0.5 size-4 shrink-0 text-unknown" />
         <div className="min-w-0 flex-1">
-          <p className="m-0 text-[13px] font-medium text-ink">ctower did not answer.</p>
-          <Mono className="mt-1 block text-ink-2">{detail}</Mono>
-          <p className="mt-1.5 mb-0 text-[12px] text-ink-2">{action}</p>
+          <p className="m-0 text-sm font-medium text-fg">ctower did not answer.</p>
+          <Mono className="mt-1 block text-muted">{detail}</Mono>
+          <p className="mt-1.5 mb-0 text-2xs text-muted">{action}</p>
         </div>
-        <Badge tone="unknown">unknown</Badge>
+        <Chip tone="neutral">unknown</Chip>
       </div>
     </div>
   );
@@ -88,19 +87,19 @@ export function Unreachable({
  */
 export function Malformed({ detail }: { readonly detail: string }): ReactElement {
   return (
-    <div className="rounded-lg border border-warn-line bg-warn-bg p-4">
+    <div className="rounded-md border border-amber/40 bg-amber/10 p-4">
       <div className="flex items-start gap-2.5">
-        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" />
+        <Mark name="warn" className="mt-0.5" />
         <div className="min-w-0 flex-1">
-          <p className="m-0 text-[13px] font-medium text-ink">
+          <p className="m-0 text-sm font-medium text-fg">
             ctower answered something this client cannot read.
           </p>
-          <Mono className="mt-1 block break-all text-ink-2">{detail}</Mono>
-          <p className="mt-1.5 mb-0 text-[12px] text-ink-2">
+          <Mono className="mt-1 block break-all text-muted">{detail}</Mono>
+          <p className="mt-1.5 mb-0 text-2xs text-muted">
             The contract and the running API disagree. This one is for engineering.
           </p>
         </div>
-        <Badge tone="warn">contract</Badge>
+        <Chip tone="amber">contract</Chip>
       </div>
     </div>
   );

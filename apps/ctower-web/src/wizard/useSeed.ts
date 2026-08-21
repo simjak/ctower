@@ -6,7 +6,7 @@ import type { Answer } from "../api/client";
 /**
  * What the wizard starts from.
  *
- * `exportCompanyBundle` is asked once. A bundle that is active seeds the draft
+ * `exportCompanyBundle` is asked once per `reloadKey`. A bundle that is active seeds the draft
  * with the exact document the API returned. `bundle-not-active` is the one
  * refusal that is not a refusal here — it is the answer "there is no company
  * yet", which is precisely the case this wizard exists for — so it becomes the
@@ -18,7 +18,7 @@ export type Seed =
 
 const NO_BUNDLE_YET = "bundle-not-active";
 
-export function useSeed(): Answer<Seed> {
+export function useSeed(reloadKey: number): Answer<Seed> {
   const [seed, setSeed] = useState<Answer<Seed>>(ASKING);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export function useSeed(): Answer<Seed> {
     return (): void => {
       live = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return seed;
 }

@@ -28,7 +28,7 @@ export function ThemeToggle(): ReactElement {
 
   return (
     <button
-      className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-2 hover:bg-raised"
+      className="rounded-md border border-line px-2 py-1 text-2xs text-muted hover:bg-raised"
       type="button"
       aria-pressed={dark}
       aria-label="Switch between light and dark theme"
