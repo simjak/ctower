@@ -1,0 +1,272 @@
+/* The one token source.
+   ─────────────────────────────────────────────────────────────────────────
+   Tailwind v4, no config file, tokens as CSS custom properties — paperclip's
+   rule verbatim (`DESIGN.md` §"The token layer"), and its reason: a parallel
+   token directory would be a second source of truth. `operator-cockpit.md` D8
+   binds the port to this layer alone; the data layer does not cross.
+
+   The *values* are ctower's own, carried over from
+   `apps/ctower-ui/design-reference/app.css`, which is the approved set. D3 is
+   why: paperclip's own status line says its brand values are unspecified and
+   being redesigned, so porting its hues would be porting the one part it has
+   not settled. What ports is the mechanism — one seed per state, both themes
+   derived from that seed by `color-mix`, one radius knob, one motion tier that
+   everything else references.
+
+   Two blocks, and the split is paperclip's: the custom properties live in
+   ordinary `:root` rules, because a theme has to retune them at runtime, and
+   `@theme inline` only *references* them, so a utility resolves to the live
+   variable rather than to a literal baked at build time.
+
+   No shadows, no gradients, no glows, in either theme (D2). */
+
+@import "tailwindcss";
+
+/* The theme is a class on the document element, set before first paint by the
+   inline script in `index.html`. Same key and same class as the phase-1
+   surface, so a reader who has both open sets the theme once. */
+@custom-variant dark (&:where(:root.theme-dark, :root.theme-dark *));
+
+:root {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --surface: #fafafa; /* column / panel wells */
+  --surface-2: #ffffff; /* cards sit above the well */
+  --raised: #f2f2f2;
+  --line: #eaeaea;
+  --line-2: #d4d4d4;
+
+  --ink: #171717;
+  --ink-2: #525252;
+  --ink-3: #8f8f8f;
+  --ink-4: #a3a3a3;
+
+  /* the single interaction accent: focus, links, selected controls */
+  --accent: #0d9488;
+  --accent-deep: #0f766e;
+  --accent-bg: #effcfa;
+
+  --proven: #0a855a;
+  --proven-bg: #eaf8f2;
+  --proven-deep: #076b48;
+  --refuse: #dc2626;
+  --refuse-bg: #fef2f2;
+  --refuse-line: #fecaca;
+  --refuse-deep: #b91c1c;
+  --warn: #b45309;
+  --warn-bg: #fff7ed;
+  --warn-line: #fed7aa;
+  --info: #7c3aed;
+  --info-bg: #f5f3ff;
+  --info-deep: #6d28d9;
+
+  /* D1 · the third state class. A read that did not answer is not a known
+     state, and `AC-UX-03` forbids degrading it into one. The delta names the
+     two hues it may never resolve to — the idle grey and any success hue — so
+     it is minted as its own seed rather than borrowed from the ink ramp. Blue
+     is the one hue this palette does not already spend. */
+  --unknown: #2563eb;
+  --unknown-bg: #eff6ff;
+  --unknown-line: #bfdbfe;
+  --unknown-deep: #1d4ed8;
+
+  --font:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", ui-sans-serif, Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* one knob, and a ladder derived from it */
+  --radius: 6px;
+  --r-sm: calc(var(--radius) * 0.66);
+  --r-md: var(--radius);
+  --r-lg: calc(var(--radius) * 1.34);
+
+  /* Tier one. Anything that is "how long this thing takes to move" resolves
+     here, so retuning these five retunes the screen. */
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 160ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-slow: 360ms;
+  --motion-duration-deliberate: 520ms;
+  --motion-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* the status-chip recipe's two mix ends, so the dark block retunes the
+     recipe by retuning variables rather than by forking the rule */
+  --chip-fill: 15%;
+  --chip-ink: 82%;
+  --chip-fill-into: #ffffff;
+  --chip-ink-into: #000000;
+}
+
+:root.theme-dark {
+  color-scheme: dark;
+
+  --bg: #0a0d13;
+  --surface: #11161f;
+  --surface-2: #151b26;
+  --raised: #1a2130;
+  --line: #232c3c;
+  --line-2: #2e394d;
+
+  --ink: #e9edf5;
+  --ink-2: #a7b2c6;
+  --ink-3: #6d7a90;
+  --ink-4: #5b6880;
+
+  --accent: #2dd4bf;
+  --accent-deep: #5eead4;
+  --accent-bg: rgb(45 212 191 / 12%);
+
+  --proven: #4fbf7b;
+  --proven-bg: rgb(79 191 123 / 13%);
+  --proven-deep: #7ad3a0;
+  --refuse: #e5695b;
+  --refuse-bg: rgb(229 105 91 / 12%);
+  --refuse-line: rgb(229 105 91 / 34%);
+  --refuse-deep: #f0a79e;
+  --warn: #e8a33d;
+  --warn-bg: rgb(232 163 61 / 12%);
+  --warn-line: rgb(232 163 61 / 34%);
+  --info: #a78bfa;
+  --info-bg: rgb(167 139 250 / 12%);
+  --info-deep: #c4b5fd;
+
+  --unknown: #7aa2f7;
+  --unknown-bg: rgb(122 162 247 / 12%);
+  --unknown-line: rgb(122 162 247 / 34%);
+  --unknown-deep: #a9c3fa;
+
+  --chip-fill: 22%;
+  --chip-ink: 80%;
+  --chip-fill-into: #000000;
+  --chip-ink-into: #ffffff;
+}
+
+/* Reduced motion zeroes tier one, which cascades to everything that references
+   it. This screen has no pacing hold to exempt: every duration below is a
+   movement duration. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-instant: 0ms;
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms;
+    --motion-duration-deliberate: 0ms;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+
+  --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-bg: var(--accent-bg);
+
+  --color-proven: var(--proven);
+  --color-proven-bg: var(--proven-bg);
+  --color-proven-deep: var(--proven-deep);
+  --color-refuse: var(--refuse);
+  --color-refuse-bg: var(--refuse-bg);
+  --color-refuse-line: var(--refuse-line);
+  --color-refuse-deep: var(--refuse-deep);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-line: var(--warn-line);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-info-deep: var(--info-deep);
+  --color-unknown: var(--unknown);
+  --color-unknown-bg: var(--unknown-bg);
+  --color-unknown-line: var(--unknown-line);
+  --color-unknown-deep: var(--unknown-deep);
+
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* One focus treatment, from the one interaction accent. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Paperclip's status-chip recipe, ported whole: one seed per state in `--sc`,
+     both themes derived from that seed. The chip carries a state, never a
+     sentence — D9 caps it at two words. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border: 1px solid var(--sc);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    background-color: color-mix(in srgb, var(--sc) var(--chip-fill), var(--chip-fill-into));
+    color: color-mix(in srgb, var(--sc) var(--chip-ink), var(--chip-ink-into));
+  }
+
+  .chip-proven {
+    --sc: var(--proven);
+  }
+
+  .chip-refuse {
+    --sc: var(--refuse);
+  }
+
+  .chip-warn {
+    --sc: var(--warn);
+  }
+
+  .chip-info {
+    --sc: var(--info);
+  }
+
+  .chip-unknown {
+    --sc: var(--unknown);
+  }
+
+  .chip-idle {
+    --sc: var(--ink-4);
+  }
+
+  /* Machine values are mono, and they are never re-formatted per screen (D6). */
+  .mono {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+}
