@@ -1,7 +1,7 @@
 {
   "schema": "ctower.later-wave-harness-survey/v1",
-  "revision": 2,
-  "observed_at": "2026-08-20T14:24:08Z",
+  "revision": 3,
+  "observed_at": "2026-08-21T02:33:01Z",
   "sources": [
       {"id":"spec-ct-i1-044","kind":"repo","revision":"d72408e7","locator":"docs/internal/SPEC.md:5342 (CT-I1-044)","evidence_type":"specification"},
       {"id":"design-seam-c07","kind":"design","revision":"c07c049c","locator":"docs/internal/design/harness-adapter-seam.md:303-449","evidence_type":"sealed_design"},
@@ -61,7 +61,7 @@
                 "native_fallback": {"state":"verified","value":"model_fallback_only","evidence":["qwen-cli-0215","qwen-docs-0215"]},
                 "config_surface": {"state":"verified","value":"env_overridable","evidence":["qwen-cli-0215","qwen-docs-0215"]},
                 "identity_proof": {"state":"unverified","value":null,"evidence":["qwen-docs-0215"]},
-                "reset_window_semantics": {"state":"verified","value":"weekly_plan","evidence":["design-seam-c07","qwen-docs-0215"]},
+                "reset_window_semantics": {"state":"verified","value":"weekly_plan","evidence":["qwen-docs-0215"]},
                 "rotation_cache_semantics": {"state":"unverified","value":null,"evidence":["qwen-cli-0215","qwen-docs-0215"]},
                 "subagent_credential_inheritance": {"state":"unverified","value":null,"evidence":["qwen-docs-0215"]},
                 "egress_topology": {"state":"unverified","value":null,"evidence":["qwen-docs-0215"]},
@@ -112,5 +112,5 @@
               }
       }
     ],
-  "matrix": {"id":"https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json","revision":2,"sha256":"b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b"}
+  "matrix": {"id":"https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json","revision":3,"sha256":"af18b4d0719bbbac10b8a5882c9a0cf7c099aaae890118ef0be3a8f6ea2f3cf4"}
 }

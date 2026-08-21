@@ -31,8 +31,8 @@ _QUESTIONS = (
     "credit_weights",
 )
 _CANDIDATES = ("openclaw", "qwen-code", "zcode", "deepseek")
-_MATRIX_SHA256 = "b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b"
-_MATRIX_REVISION = 2
+_MATRIX_SHA256 = "af18b4d0719bbbac10b8a5882c9a0cf7c099aaae890118ef0be3a8f6ea2f3cf4"
+_MATRIX_REVISION = 3
 _MATRIX_PAIR_COUNT = 45
 Violation = tuple[str, str, str, str, str, str]
 ReferentialViolation = tuple[str, str, str, str, str, str]
@@ -157,7 +157,7 @@ def _answer_referential_cases(
         (candidate, anchor, anchor_value, dependent, dependent_value, relation["id"])
         for candidate in _CANDIDATES
         for anchor_value in domains[anchor]
-        if anchor_value not in {"unknown", "model_route"}
+        if anchor_value != "model_route"
         for dependent_value in domains[dependent]
         if dependent_value not in allowed_by_anchor[anchor_value]
     )
@@ -199,7 +199,7 @@ def _supported_source_ids(
 def _evidence_cases_for_candidate(
     candidate: str,
     domains: dict[str, list[str]],
-    support: dict[str, dict[str, Any]],
+    candidate_support: dict[str, dict[str, dict[str, list[str]]]],
     source_types: dict[str, str],
     answers: dict[str, Any],
 ) -> tuple[EvidenceViolation, ...]:
@@ -209,7 +209,11 @@ def _evidence_cases_for_candidate(
         for answer_value in domains[question]
         if answer_value not in {"unknown", "model_route"}
         if any(
-            source_id not in _supported_source_ids(support[question][answer_value], source_types)
+            source_id
+            not in _supported_source_ids(
+                candidate_support.get(candidate, {}).get(question, {}).get(answer_value, []),
+                source_types,
+            )
             for source_id in answers[question]["evidence"]
         )
     )
@@ -219,7 +223,9 @@ def _derived_evidence_violation_set() -> tuple[EvidenceViolation, ...]:
     """Derive verified-claim/evidence mismatches from the support table."""
     matrix = _matrix()
     domains = cast(dict[str, list[str]], matrix["domains"])
-    support = cast(dict[str, dict[str, Any]], matrix["evidence_type_support"])
+    candidate_support = cast(
+        dict[str, dict[str, dict[str, list[str]]]], matrix["candidate_evidence_type_support"]
+    )
     source_types = {
         source["id"]: source["evidence_type"]
         for source in cast(list[dict[str, str]], _document()["sources"])
@@ -231,7 +237,7 @@ def _derived_evidence_violation_set() -> tuple[EvidenceViolation, ...]:
             _evidence_cases_for_candidate(
                 candidate,
                 domains,
-                support,
+                candidate_support,
                 source_types,
                 document_candidates[candidate]["answers"],
             )
@@ -255,6 +261,14 @@ def _set_token(document: dict[str, Any], candidate: str, question: str, answer_v
         answer["state"] = "verified"
         answer["value"] = answer_value
     answer.pop("note", None)
+
+
+def _set_verified(
+    document: dict[str, Any], candidate: str, question: str, value: str, evidence: list[str]
+) -> None:
+    answer = _candidates(document)[candidate]["answers"][question]
+    answer.clear()
+    answer.update({"state": "verified", "value": value, "evidence": evidence})
 
 
 def _assert_matrix_inventory(matrix: dict[str, Any]) -> None:
@@ -293,6 +307,9 @@ def _assert_schema_matrix_bindings(matrix: dict[str, Any]) -> None:
         if relation["anchor"] != "effective_route"
     }
     assert schema["x-ctower-matrix-default-rules"] == ["model-route-coherence"]
+    assert schema["x-ctower-candidate-evidence-type-support"] == matrix[
+        "candidate_evidence_type_support"
+    ]
     context_rules = [
         rule
         for rule in schema["$defs"]["candidate"]["allOf"][0]["then"]["allOf"]
@@ -384,6 +401,69 @@ def test_verified_credit_claim_requires_candidate_supporting_evidence() -> None:
     _set_token(document, "qwen-code", "credit_weights", "published_directional")
 
     assert _errors(document), "Qwen has no cited evidence type for published directional weights"
+
+
+def test_all_eight_prior_judge_surveys_refuse() -> None:
+    cases: list[tuple[str, dict[str, Any]]] = []
+
+    temporal = copy.deepcopy(_document())
+    temporal["observed_at"] = "1970-01-01T00:00:00Z"
+    cases.append(("r3_temporal_paradox", temporal))
+
+    absence_only = copy.deepcopy(_document())
+    _set_verified(
+        absence_only,
+        "qwen-code",
+        "reset_window_semantics",
+        "weekly_plan",
+        ["local-command-absence"],
+    )
+    cases.append(("r3_weekly_plan_with_absence_only_evidence", absence_only))
+
+    answer_note = copy.deepcopy(_document())
+    answer_note["candidates"][1]["answers"]["native_pool"]["note"] = "verified native pool"
+    cases.append(("r4_unverified_answer_note_claims_verified_pool", answer_note))
+
+    model_note = copy.deepcopy(_document())
+    model_note["candidates"][3]["answers"]["native_pool"]["note"] = "active harness adapter"
+    cases.append(("r4_model_disposition_note_claims_live_harness_adapter", model_note))
+
+    gateway_probe = copy.deepcopy(_document())
+    _set_verified(
+        gateway_probe,
+        "qwen-code",
+        "probe_target",
+        "gateway_endpoint",
+        ["qwen-docs-0215"],
+    )
+    cases.append(("r5_qwen_cli_route_claims_gateway_probe", gateway_probe))
+
+    published_weights = copy.deepcopy(_document())
+    _set_verified(
+        published_weights,
+        "qwen-code",
+        "credit_weights",
+        "published_directional",
+        ["qwen-docs-0215", "ctower-weight-registry-d724"],
+    )
+    cases.append(("r5_qwen_claims_published_weights_without_qwen_row", published_weights))
+
+    candidate_entailment = copy.deepcopy(_document())
+    _set_verified(candidate_entailment, "openclaw", "native_pool", "native_pool", ["design-seam-c07"])
+    cases.append(("r7_openclaw_pool_from_generic_design_evidence", candidate_entailment))
+
+    dependent_unknown = copy.deepcopy(_document())
+    _set_verified(
+        dependent_unknown,
+        "openclaw",
+        "rotation_cache_semantics",
+        "native_pool_cache",
+        ["design-seam-c07"],
+    )
+    cases.append(("r7_native_pool_cache_with_unverified_pool", dependent_unknown))
+
+    failures = [(name, _errors(document)) for name, document in cases]
+    assert not [(name, errors) for name, errors in failures if not errors]
 
 
 @settings(max_examples=3, derandomize=True, deadline=None)

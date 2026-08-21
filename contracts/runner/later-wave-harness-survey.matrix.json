@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
   "schema": "ctower.later-wave-harness-survey-matrix/v1",
-  "revision": 2,
+  "revision": 3,
   "question_order": ["native_pool","native_fallback","config_surface","identity_proof","reset_window_semantics","rotation_cache_semantics","subagent_credential_inheritance","egress_topology","probe_target","credit_weights"],
   "answer_token_encoding": {"unknown":"unverified/null","model_route":"not_applicable/model","other":"verified/string"},
-  "legal_combination_law": "Cartesian product of ten finite domains, with default and pair rules, candidate context, referential equalities, and evidence-type support; violations are derived.",
+  "legal_combination_law": "Cartesian product of ten finite domains, with default and pair rules, candidate context, referential equalities, and candidate/source evidence-type support; violations are derived.",
   "domains": {
       "native_pool": ["unknown","native_pool","no_native_pool","model_route"],
       "native_fallback": ["unknown","native_credential_fallback","no_native_fallback","model_fallback_only","model_route"],
@@ -33,9 +33,9 @@
   "referential_consistency": [
       {"id":"effective-route-probe-target","anchor":"effective_route","dependent":"probe_target","allowed":{"gateway":["unknown","gateway_endpoint"],"qwen-cli":["unknown","direct_cli_endpoint"],"unbound-stub":["unknown"],"hermes-profile":["model_route"]}},
       {"id":"effective-route-identity-proof","anchor":"effective_route","dependent":"identity_proof","allowed":{"gateway":["unknown","persisted_device_key"],"qwen-cli":["unknown","direct_cli_account"],"unbound-stub":["unknown"],"hermes-profile":["model_route"]}},
-      {"id":"rotation-cache-native-pool","anchor":"rotation_cache_semantics","dependent":"native_pool","allowed":{"native_pool_cache":["native_pool"],"provided_pool_cache":["no_native_pool"],"config_home_respawn":["no_native_pool"],"no_rotation_cache":["unknown","native_pool","no_native_pool","model_route"],"model_route":["model_route"]}},
-      {"id":"native-fallback-native-pool","anchor":"native_fallback","dependent":"native_pool","allowed":{"native_credential_fallback":["native_pool"],"no_native_fallback":["unknown","native_pool","no_native_pool","model_route"],"model_fallback_only":["unknown","native_pool","no_native_pool","model_route"],"model_route":["model_route"]}},
-      {"id":"subagent-lease-native-pool","anchor":"subagent_credential_inheritance","dependent":"native_pool","allowed":{"per_task_lease":["native_pool"],"parent_credential":["unknown","native_pool","no_native_pool","model_route"],"separate_acquisition":["unknown","native_pool","no_native_pool","model_route"],"no_credential_inheritance":["unknown","native_pool","no_native_pool","model_route"],"model_route":["model_route"]}}
+      {"id":"rotation-cache-native-pool","anchor":"rotation_cache_semantics","dependent":"native_pool","allowed":{"unknown":["unknown","model_route"],"native_pool_cache":["native_pool"],"provided_pool_cache":["no_native_pool"],"config_home_respawn":["no_native_pool"],"no_rotation_cache":["unknown","native_pool","no_native_pool","model_route"],"model_route":["model_route"]}},
+      {"id":"native-fallback-native-pool","anchor":"native_fallback","dependent":"native_pool","allowed":{"unknown":["unknown","model_route"],"native_credential_fallback":["native_pool"],"no_native_fallback":["unknown","native_pool","no_native_pool","model_route"],"model_fallback_only":["unknown","native_pool","no_native_pool","model_route"],"model_route":["model_route"]}},
+      {"id":"subagent-lease-native-pool","anchor":"subagent_credential_inheritance","dependent":"native_pool","allowed":{"unknown":["unknown","model_route"],"per_task_lease":["native_pool"],"parent_credential":["unknown","native_pool","no_native_pool","model_route"],"separate_acquisition":["unknown","native_pool","no_native_pool","model_route"],"no_credential_inheritance":["unknown","native_pool","no_native_pool","model_route"],"model_route":["model_route"]}}
     ],
   "evidence_type_support": {
       "native_pool": {"native_pool":["hermes_binding","sealed_design","auth_runbook"],"no_native_pool":["sealed_design","qwen_documentation","absence_probe","codex_binding_landed"]},
@@ -49,6 +49,7 @@
       "probe_target": {"gateway_endpoint":["hermes_binding","auth_runbook","sealed_design"],"direct_cli_endpoint":["qwen_binary","qwen_documentation","codex_binding_landed"],"representative_endpoint":["qwen_binary","qwen_documentation","hermes_binding","auth_runbook","codex_binding_landed"]},
       "credit_weights": {"published_directional":{"openclaw":["weight_registry/openclaw"],"qwen-code":["weight_registry/qwen-code"],"zcode":["weight_registry/zcode"],"deepseek":["weight_registry/deepseek"]},"unpublished":["qwen_documentation","auth_runbook","absence_probe","weight_registry/codex"]}
     },
+  "candidate_evidence_type_support": {"openclaw":{"identity_proof":{"persisted_device_key":["sealed_design"]}},"qwen-code":{"native_fallback":{"model_fallback_only":["qwen_binary","qwen_documentation"]},"config_surface":{"env_overridable":["qwen_binary","qwen_documentation"]},"reset_window_semantics":{"weekly_plan":["qwen_documentation"]},"probe_target":{"direct_cli_endpoint":["qwen_binary","qwen_documentation"]},"credit_weights":{"unpublished":["qwen_documentation","auth_runbook","absence_probe","weight_registry/codex"]}},"zcode":{},"deepseek":{}},
   "evidence_types": ["absence_probe","auth_runbook","claude_binding","codex_binding_landed","hermes_binding","qwen_binary","qwen_documentation","sealed_design","specification","weight_registry/codex","weight_registry/deepseek","weight_registry/openclaw","weight_registry/qwen-code","weight_registry/zcode"],
   "candidate_context": {"openclaw":{"effective_route":"gateway","forbidden":[{"question":"identity_proof","value":"direct_cli_account"},{"question":"probe_target","value":"direct_cli_endpoint"}]},"qwen-code":{"effective_route":"qwen-cli","forbidden":[]},"zcode":{"effective_route":"unbound-stub","forbidden":[]},"deepseek":{"effective_route":"hermes-profile","legal":"model_route for every question except credit_weights, which may be unknown"}},
   "signed_off": {
