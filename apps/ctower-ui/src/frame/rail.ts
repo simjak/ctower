@@ -22,6 +22,13 @@ export interface RailItem {
 }
 
 export const RAIL: readonly RailItem[] = [
+  // What is running right now, and who is on it. Distinct from Org, which is the
+  // durable roster: this one answers "what is the fleet doing this minute" and
+  // sorts by what needs the operator rather than by name. Added under the
+  // operator's direct authorization (2026-08-21) and the commander's ruling on
+  // the same date; the locked-five model treats it as a contextual view of the
+  // fleet, not a sixth primary destination.
+  { href: "/live", label: "Live", group: null },
   { href: "/portfolio", label: "Portfolio", group: null },
   { href: "/requests", label: "Requests", group: null },
   { href: "/board", label: "Dashboard", group: null },
