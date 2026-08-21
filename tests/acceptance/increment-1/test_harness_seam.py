@@ -71,6 +71,10 @@ def _spec() -> HarnessSpec:
     return parsed
 
 
+def _registration_registry() -> HarnessRegistry:
+    return HarnessRegistry()
+
+
 def _python_files(root: Path) -> Iterator[Path]:
     yield from sorted(path for path in root.rglob("*.py") if path.is_file())
 
@@ -244,7 +248,7 @@ def test_a_digest_mismatch_performs_zero_dispatch_and_refuses_by_name(field: str
     document = _document()
     document[field] = "sha256:not-a-real-digest"
 
-    refusal = HarnessRegistry().register(document, "real")
+    refusal = _registration_registry().register(document, "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-spec-digest-mismatch"
@@ -254,7 +258,7 @@ def test_a_revoked_spec_is_a_refusal_and_never_a_fallback_to_a_generic_process()
     document = _document()
     document["status"] = "revoked"
 
-    refusal = HarnessRegistry().register(document, "real")
+    refusal = _registration_registry().register(document, "real")
 
     assert isinstance(refusal, Refusal), refusal
     assert refusal.name == "harness-spec-revoked"
@@ -262,7 +266,7 @@ def test_a_revoked_spec_is_a_refusal_and_never_a_fallback_to_a_generic_process()
 
 
 def test_the_public_seam_does_not_publish_on_one_real_binding() -> None:
-    registry = HarnessRegistry()
+    registry = _registration_registry()
     registry.register(_document(), "real")
 
     refusal = registry.publication()

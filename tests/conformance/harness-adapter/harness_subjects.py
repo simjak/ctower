@@ -1,14 +1,14 @@
 """Every implementation the one shared suite drives, built the same way.
 
-Three subjects: the real `hermes` and `claude-code` bindings and the deterministic
+Four subjects: the real `hermes`, `claude-code`, and `codex` bindings plus the deterministic
 fault-injection fake. The suite below them never branches on which is which — that is the
 whole point of the earning rule, and a suite that grew a per-binding branch would prove
 nothing. Registering a subject here is the only step a new binding takes to enter it; no cell
 above knows how many subjects there are, or which one it is running against.
 
-The two real bindings sit on opposite sides of the survey. Hermes ships both resilience
-layers, so ctower configures and observes them; claude-code ships neither, so ctower provides
-them. A contract proven twice on the same side of that split would not be proven at all.
+The real bindings sit on both sides of the survey. Hermes ships both resilience layers, so
+ctower configures and observes them; Claude-Code and direct-CLI Codex ship neither, so ctower
+provides them. A contract proven twice on the same side of that split would not be proven at all.
 """
 
 from __future__ import annotations
@@ -38,10 +38,19 @@ from harness_doubles import (
 from ctower_runner.claude_code.binding import ClaudeCodeBinding
 from ctower_runner.claude_code.corpus import CLAUDE_CODE_CORPUS
 from ctower_runner.claude_code.liveness import classify_pane as classify_claude_code_pane
-from ctower_runner.claude_code.pool import ClaudeCodePool, ConfigHome, ConfigHomeStore
+from ctower_runner.claude_code.pool import ClaudeCodePool, ConfigHome
+from ctower_runner.claude_code.pool import ConfigHomeStore as ClaudeConfigHomeStore
 from ctower_runner.claude_code.spec import (
     harness_spec_document as claude_code_spec_document,
 )
+from ctower_runner.codex.binding import CodexBinding
+from ctower_runner.codex.ceremonies import CeremonyInvocation, CeremonyOutcome
+from ctower_runner.codex.corpus import CODEX_CORPUS
+from ctower_runner.codex.liveness import classify_pane as classify_codex_pane
+from ctower_runner.codex.pool import CodexAccount, CodexPool
+from ctower_runner.codex.pool import ConfigHomeStore as CodexConfigHomeStore
+from ctower_runner.codex.route import CodexRegistrationAuthority
+from ctower_runner.codex.spec import harness_spec_document as codex_spec_document
 from ctower_runner.hermes.binding import HermesBinding
 from ctower_runner.hermes.corpus import HERMES_CORPUS
 from ctower_runner.hermes.liveness import classify_pane
@@ -77,6 +86,7 @@ __all__ = [
     "hermes_document",
     "judgment_inputs",
     "registered_registry",
+    "registration_authority",
     "seat_credential",
     "subjects",
 ]
@@ -106,6 +116,14 @@ _CLAUDE_FAULT_PANES: dict[str, str] = {
     "dead_auth": CLAUDE_CODE_CORPUS[6].sample,
 }
 _CLAUDE_HOME_SLUGS: tuple[str, ...] = ("home-a", "home-b", "home-c")
+_CODEX_ARTIFACT_DIGEST = digest_of(b"codex-cli-artifact-under-test")
+_CODEX_CONFIG_DIGEST = digest_of(b"codex-config-home-under-test")
+_CODEX_HEALTHY_PANE = CODEX_CORPUS[7].sample
+_CODEX_FAULT_PANES: dict[str, str] = {
+    "cap_menu": CODEX_CORPUS[6].sample,
+    "context_saturation": CODEX_CORPUS[9].sample,
+    "dead_auth": CODEX_CORPUS[4].sample,
+}
 _FAKE_STATES: dict[Fault, LivenessState] = {
     "cap_menu": "capped",
     "context_saturation": "saturated",
@@ -123,6 +141,14 @@ def claude_code_document() -> dict[str, object]:
 
     return claude_code_spec_document(
         artifact_digest=_CLAUDE_ARTIFACT_DIGEST, config_digest=_CLAUDE_CONFIG_DIGEST
+    )
+
+
+def codex_document() -> dict[str, object]:
+    """The second real binding's declaration, answered `no` on both native layers."""
+
+    return codex_spec_document(
+        artifact_digest=_CODEX_ARTIFACT_DIGEST, config_digest=_CODEX_CONFIG_DIGEST
     )
 
 
@@ -172,6 +198,13 @@ def registered_registry() -> HarnessRegistry:
     registry.register(hermes_document(), "real")
     registry.register(fake_document(), "fault_injection_fake")
     return registry
+
+
+def registration_authority(document: dict[str, object]) -> CodexRegistrationAuthority:
+    """Bind registration to the parent-harness spec supplied by the composition root."""
+
+    spec = _spec(document)
+    return CodexRegistrationAuthority(spec)
 
 
 def _attempt_pin(spec: HarnessSpec, *, epoch: int = 1, judgment_lane: bool = False) -> AttemptPin:
@@ -314,9 +347,16 @@ def judgment_inputs(spec: HarnessSpec) -> DispatchInputs:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _HermesSubject(ConformanceSubject):
+    """Expose Hermes' refusal-free mint return type to its direct legacy cell."""
+
+    pool: HermesPool
+
+
 def build_hermes(
     *, guard: StubGuard | None = None, receipts: StubReceipts | None = None
-) -> ConformanceSubject:
+) -> _HermesSubject:
     """Compose the real binding over deterministic ports."""
 
     spec = _spec(hermes_document())
@@ -325,7 +365,7 @@ def build_hermes(
     engine = StubEngine(state, pool_records(BASE_TIME + timedelta(hours=6)), PROFILE_KEY)
     pool = HermesPool(spec, engine, PROFILE_KEY, clock, lease_ids)
     supervisor = StubSupervisor(state)
-    return ConformanceSubject(
+    return _HermesSubject(
         name="hermes",
         binding_class="real",
         binding=HermesBinding(
@@ -371,7 +411,7 @@ def build_claude_code(
         gateway_model=spec.probe.model_ref,
     )
     clock = StepClock()
-    pool = ClaudeCodePool(spec, _config_homes(), PROFILE_KEY, clock, lease_ids)
+    pool = ClaudeCodePool(spec, _claude_config_homes(), PROFILE_KEY, clock, lease_ids)
     return ConformanceSubject(
         name="claude-code",
         binding_class="real",
@@ -401,7 +441,56 @@ def build_claude_code(
     )
 
 
-def _config_homes() -> ConfigHomeStore:
+def build_codex(
+    *, guard: StubGuard | None = None, receipts: StubReceipts | None = None
+) -> ConformanceSubject:
+    """Compose the second real binding over the same deterministic ports.
+
+    The rollout double is the same object that serves hermes its gateway log: both are a
+    served-model source answering for one attempt, and what separates them is which source each
+    binding DECLARED, not which double it was handed.
+    """
+
+    spec = _spec(codex_document())
+    state = SubstrateState(
+        pane=_CODEX_HEALTHY_PANE,
+        # The double returns the text actually delivered, not a hidden digest. This keeps the
+        # binding-specific ACK proof on the real non-secret marker.
+        brief_digest="read the row, build exactly its scope",
+        gateway_model=spec.probe.model_ref,
+    )
+    clock = StepClock()
+    pool = CodexPool(spec, _codex_config_homes(), _StubCeremonies(), PROFILE_KEY, clock, lease_ids)
+    return ConformanceSubject(
+        name="codex",
+        binding_class="real",
+        binding=CodexBinding(
+            spec,
+            supervisor=StubSupervisor(state),
+            rollout=StubGateway(state),
+            workspace=StubWorkspace(state),
+            writeback_port=StubWriteback(state),
+            pool=pool,
+            boundary=DispatchBoundary(
+                guard or StubGuard(), receipts or StubReceipts(), GUARD_VERSION
+            ),
+            clock=clock,
+        ),
+        pool=pool,
+        inputs=_inputs(spec),
+        credential=seat_credential(),
+        control=_PaneControl(
+            state=state,
+            spec=spec,
+            healthy=_CODEX_HEALTHY_PANE,
+            faults=_CODEX_FAULT_PANES,
+            cases=CODEX_CORPUS,
+            classifier=classify_codex_pane,
+        ),
+    )
+
+
+def _claude_config_homes() -> ClaudeConfigHomeStore:
     """One config home per account: the provided pool's whole topology, as data.
 
     The same three engine records the configure-and-observe pool observes, keyed here by
@@ -421,7 +510,45 @@ def _config_homes() -> ConfigHomeStore:
         )
         for slug, record in zip(_CLAUDE_HOME_SLUGS, records, strict=True)
     }
-    return ConfigHomeStore(homes=homes, live_slug=_CLAUDE_HOME_SLUGS[0])
+    return ClaudeConfigHomeStore(homes=homes, live_slug=_CLAUDE_HOME_SLUGS[0])
+
+
+class _StubCeremonies:
+    """The fleet's ceremonies, as this binding is allowed to ask them. Nothing is executed.
+
+    A ceremony reports what it installed and whether its own hook completed; its refusals are
+    the ceremony's own and are exercised where they belong, in this row's acceptance suite.
+    """
+
+    def run(self, invocation: CeremonyInvocation) -> CeremonyOutcome:
+        return CeremonyOutcome(
+            ceremony=invocation.ceremony,
+            installed_identity="seat-three@example.test",
+            installed_generation=2,
+            hook_completed=True,
+        )
+
+
+def _codex_config_homes() -> CodexConfigHomeStore:
+    """One config home per account: the provided pool's whole topology, as data.
+
+    The same three engine records the configure-and-observe pool observes, keyed here by the
+    account's own decoded identity and carrying the adjacent token fields the projection must
+    leave behind. Nothing is keyed by label: a label has pointed at the wrong account twice.
+    """
+
+    records = pool_records(BASE_TIME + timedelta(hours=6))
+    accounts = {
+        str(record["subscription_identity"]): CodexAccount(
+            account_identity=str(record["subscription_identity"]),
+            codex_home=f"/srv/codex-homes/{index}",
+            refresh_generation=1,
+            entry=record,
+        )
+        for index, record in enumerate(records)
+    }
+    live = str(records[0]["subscription_identity"])
+    return CodexConfigHomeStore(accounts=accounts, live_identity=live)
 
 
 def build_fake(
@@ -473,22 +600,24 @@ BUILDERS: tuple[tuple[str, SubjectBuilder], ...] = (
     ("hermes", build_hermes),
     ("claude-code", build_claude_code),
     ("fault-injection-fake", build_fake),
+    ("codex", build_codex),
 )
 
-# The authored half of the same three subjects, for cells that vary a declaration rather than
+# The authored half of the same four subjects, for cells that vary a declaration rather than
 # a substrate. A capability a binding could declare is data, and a suite that can only see
 # the capabilities today's fleet happens to hold would encode that accident as law.
 DOCUMENTS: tuple[tuple[str, DocumentBuilder], ...] = (
     ("hermes", hermes_document),
     ("claude-code", claude_code_document),
     ("fault-injection-fake", fake_document),
+    ("codex", codex_document),
 )
 
 
 def subjects() -> tuple[ConformanceSubject, ...]:
     """Every implementation under test, in one tuple the whole suite parametrizes over."""
 
-    return (build_hermes(), build_claude_code(), build_fake())
+    return (build_hermes(), build_claude_code(), build_fake(), build_codex())
 
 
 def _fake_entries() -> tuple[EntryState, ...]:

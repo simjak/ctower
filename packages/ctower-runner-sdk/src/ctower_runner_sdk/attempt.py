@@ -88,8 +88,19 @@ class AttemptPin:
     """
 
     lease_id: UUID | None = None
+    credential_identity: str | None = None
+    """The selected account identity, as a reference pinned after acquisition."""
 
-    def with_lease(self, lease_id: UUID) -> AttemptPin:
+    credential_home: str | None = None
+    """The selected account's config-home reference, never credential material."""
+
+    def with_lease(
+        self,
+        lease_id: UUID,
+        *,
+        credential_identity: str | None = None,
+        credential_home: str | None = None,
+    ) -> AttemptPin:
         """Return the pin this attempt actually rides, credential included."""
 
         return AttemptPin(
@@ -103,6 +114,8 @@ class AttemptPin:
             declared_rungs=self.declared_rungs,
             judgment_lane=self.judgment_lane,
             lease_id=lease_id,
+            credential_identity=credential_identity,
+            credential_home=credential_home,
         )
 
     def supersedes(self, other: AttemptPin) -> bool:
@@ -118,6 +131,8 @@ class AttemptPin:
         return {
             "attempt_id": str(self.attempt_id),
             "composition_digest": self.composition_digest,
+            "credential_home": self.credential_home,
+            "credential_identity": self.credential_identity,
             "epoch": self.epoch,
             "declared_rungs": list(self.declared_rungs),
             "harness_ref": self.harness_ref,

@@ -7,6 +7,7 @@ not publish, and it says so by name rather than by staying quiet.
 
 from __future__ import annotations
 
+import inspect
 import json
 from collections.abc import Mapping
 from pathlib import Path
@@ -17,6 +18,7 @@ from harness_subjects import (
     fake_document,
     hermes_document,
     registered_registry,
+    registration_authority,
     subjects,
 )
 
@@ -60,6 +62,40 @@ def test_every_authored_vector_registers_or_refuses_exactly_as_declared(
         return
     assert isinstance(outcome, Refusal), outcome
     assert outcome.name == vector["refusal"]
+
+
+def test_registration_rejects_a_route_derived_from_the_proposed_phantom_document() -> None:
+    parent = hermes_document()
+    proposed = dict(parent)
+    proposed_key = "gpt-5.6-sol"
+    proposed["key"] = proposed_key
+
+    outcome = HarnessRegistry().register(proposed, "real")
+
+    assert isinstance(outcome, Refusal), outcome
+    assert outcome.name == "harness-runtime-not-a-harness"
+
+
+def test_a_self_derived_authority_cannot_enter_the_public_registry() -> None:
+    parent = hermes_document()
+    proposed = dict(parent)
+    proposed_key = "gpt-5.6-sol"
+    proposed["key"] = proposed_key
+    caller_authority = registration_authority(proposed)
+    caller_route = caller_authority.route_for(proposed_key)
+
+    assert caller_route.refusal_for(proposed_key) is None
+    assert "authorities" not in inspect.signature(HarnessRegistry).parameters
+
+    registry = HarnessRegistry()
+    outcome = registry.register(proposed, "real")
+
+    assert isinstance(outcome, Refusal), outcome
+    assert outcome.name == "harness-runtime-not-a-harness"
+    assert isinstance(registry.resolve("gpt-5.6-sol"), Refusal)
+    publication = registry.publication()
+    assert isinstance(publication, Refusal)
+    assert registry.real_bindings() == ()
 
 
 def test_the_role_table_is_derived_from_surveys_and_not_from_harness_names() -> None:

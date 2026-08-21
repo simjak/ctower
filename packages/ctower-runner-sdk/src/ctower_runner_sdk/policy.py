@@ -9,14 +9,14 @@ binding and never crosses the seam.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Literal
 
 from ctower_runner_sdk.attempt import AttemptPin, SeatRef
 from ctower_runner_sdk.facts import (
     ArtifactSet,
     Handoff,
+    LadderDisposition,
     LivenessState,
     ModelObservation,
     TeardownReceipt,
@@ -32,15 +32,15 @@ __all__ = [
     "LadderDisposition",
     "classify_state",
     "collect_refusal",
+    "dispatch_pin_refusal",
     "input_refusal",
     "ladder_disposition",
     "serving_observation",
     "teardown_receipt",
+    "terminate_after_receipt",
     "undeclared_source_refusal",
     "writeback_refusal",
 ]
-
-type LadderDisposition = Literal["as_intended", "ladder", "substitution"]
 
 # Exhaustive. A seat's authority ceiling is these three scopes and nothing wider.
 WRITEBACK_SCOPES: frozenset[str] = frozenset({"capture", "transition", "evidence"})
@@ -74,6 +74,45 @@ def classify_state(
     return "idle"
 
 
+def dispatch_pin_refusal(spec: HarnessSpec, attempt: AttemptPin) -> Refusal | None:
+    """Refuse a dispatch whose harness, revision, or composition is not this spec's.
+
+    This is the seam's shared pre-lease, pre-guard boundary. A binding-specific launcher may
+    have a different executable or serving source, but none may acquire a credential or ask a
+    guard about an attempt that was seated against another composition. The revision check is
+    deliberately independent of the digest: a stale revision must not become current merely
+    because a caller forged a matching composition string.
+    """
+
+    expected_digest = spec.composition_digest()
+    mismatches: list[str] = []
+    if attempt.harness_ref != spec.key:
+        mismatches.append("harness_ref")
+    if attempt.spec_revision != spec.revision:
+        mismatches.append("spec_revision")
+    if attempt.composition_digest != expected_digest:
+        mismatches.append("composition_digest")
+    if not mismatches:
+        return None
+    return Refusal(
+        name="harness-dispatch-pin-mismatch",
+        observed=f"the attempt has mismatched composition pins: {', '.join(mismatches)}",
+        meaning=(
+            "an attempt may dispatch only the harness, revision, and composition it was seated for"
+        ),
+        action="seat a new attempt against the registered spec; no lease or guard is consumed",
+        detail=(
+            ("mismatched_fields", ",".join(mismatches)),
+            ("attempt_harness_ref", attempt.harness_ref),
+            ("expected_harness_ref", spec.key),
+            ("attempt_spec_revision", str(attempt.spec_revision)),
+            ("expected_spec_revision", str(spec.revision)),
+            ("attempt_composition_digest", attempt.composition_digest),
+            ("expected_composition_digest", expected_digest),
+        ),
+    )
+
+
 def serving_observation(
     spec: HarnessSpec, readings: Sequence[ModelObservation]
 ) -> tuple[ModelObservation | None, str | None]:
@@ -102,16 +141,19 @@ def serving_observation(
 
 
 def ladder_disposition(attempt: AttemptPin, served_model: str | None) -> LadderDisposition:
-    """Say whether a served model is the ladder doing its job or a real substitution.
+    """Say whether serving matches the ladder, substitutes, or remains unknown.
 
     A known fallback rung of the **durable spawn intent** is the never-stall ladder, not a
     substitution — anchoring "expected" to the latest ledger row instead reports the
     recovery as the violation. The exception is a judgment lane, where tolerance is zero:
     switching family under the same author assignment does not create reviewer
     independence, so any deviation there is a substitution however well the ladder worked.
+    Missing serving truth is explicitly unknown, never evidence that the requested model served.
     """
 
-    if served_model is None or served_model == attempt.intent_model:
+    if served_model is None:
+        return "unknown"
+    if served_model == attempt.intent_model:
         return "as_intended"
     if attempt.judgment_lane:
         return "substitution"
@@ -244,6 +286,38 @@ def teardown_receipt(
     if order == "reap":
         return _reap(state, artifacts, sole_work_unpushed=sole_work_unpushed, nudged=nudge_offered)
     return _checkpoint(artifacts)
+
+
+def terminate_after_receipt(
+    receipt: TeardownReceipt | Refusal,
+    attempt: AttemptPin,
+    terminate: Callable[[AttemptPin], bool | Refusal],
+) -> TeardownReceipt | Refusal:
+    """Stop exactly once after a successful receipt, and type every stop failure."""
+
+    if isinstance(receipt, Refusal):
+        return receipt
+    try:
+        stopped = terminate(attempt)
+    except BaseException as error:
+        if isinstance(error, (KeyboardInterrupt, SystemExit, GeneratorExit)):
+            raise
+        return _termination_refusal(attempt)
+    if isinstance(stopped, Refusal):
+        return stopped
+    if stopped is not True:
+        return _termination_refusal(attempt)
+    return receipt
+
+
+def _termination_refusal(attempt: AttemptPin) -> Refusal:
+    return Refusal(
+        name="harness-termination-failed",
+        observed="the supervisor did not confirm termination",
+        meaning="a receipt without a stopped lane permits concurrent work under stale ownership",
+        action="repair the supervisor termination path; do not report the lane as stopped",
+        detail=(("attempt_id", str(attempt.attempt_id)),),
+    )
 
 
 def _checkpoint(artifacts: ArtifactSet | None) -> TeardownReceipt | Refusal:
