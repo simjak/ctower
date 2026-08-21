@@ -837,7 +837,7 @@ a.cw-file:hover {
   }
 }
 
-/* ── the credential-limits surface ──────────────────────────────────────
+/* ── the Credentials surface ────────────────────────────────────────────
    One row per account, and no shape in it that could hold a pool-level
    verdict: the axes are three chips side by side, and the clock belongs to
    the row rather than to the panel above it. Built only from the vendored
@@ -846,14 +846,22 @@ a.cw-file:hover {
 .limits-note {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px 12px;
+  margin-top: 16px;
   font-size: 12px;
   color: var(--ink-2);
 }
 
 .limits-note .mono {
   color: var(--ink-3);
+}
+
+/* the one flexible cell in a row of facts: what is stated about the screen
+   sits left, what is stated about the reader's options sits right */
+.limits-gap {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .limits-pool {
@@ -910,20 +918,62 @@ a.cw-file:hover {
 .limits-axes {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px 10px;
 }
 
+/* THE AXIS TRIAD. Three chips in a fixed order, each carrying its own axis's
+   glyph and its own state's hue: a cleared axis recedes, a blocking one is
+   where the eye lands. The glyph replaces the axis's word without merging
+   anything — three marks stay three marks. */
+
 .limits-axis {
-  display: inline-flex;
-  align-items: center;
   gap: 5px;
+  padding-left: 5px;
 }
 
+.limits-axis-ic {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+/* the axis's word, kept for a reader who cannot see its glyph and taken out of
+   the ink for one who can — the triad exists to spend six fewer words a row */
 .limits-axis-name {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.03em;
-  color: var(--ink-4);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* D1 — an axis nobody observed may not settle into the grey of one that was
+   observed and found ordinary. The dash is the half of that distinction that
+   survives with the hue removed entirely. */
+.limits-unobserved {
+  border-style: dashed;
+}
+
+/* which axis is blocking, and what closes it: the one line a refused account
+   is owed, per the pool's own meanings table */
+.limits-blocked {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.limits-blocked b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.limits-close {
+  color: var(--ink-3);
 }
 
 .limits-facts {
@@ -941,13 +991,35 @@ a.cw-file:hover {
 }
 
 .limits-drift {
+  border-top: 1px solid var(--warn-line);
+  background: var(--warn-bg);
+}
+
+.limits-drift-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 14px 0;
+}
+
+.limits-drift-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.limits-drift-sub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.limits-drift-list {
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--warn-line);
-  background: var(--warn-bg);
 }
 
 .limits-drift-row {

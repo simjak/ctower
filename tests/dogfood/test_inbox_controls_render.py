@@ -82,7 +82,10 @@ _SEND_FIELDS = ("project_key", "severity", "text", "thread_id", "to")
 _COMPOSE_FIELDS = ("project_key", "severity", "text", "to")
 # the record's three independent axes, and the accounts the pool stub answers with
 _POOL_AXES = 3
-_POOL_ENTRIES = 4
+_POOL_ENTRIES = 5
+# what the pool's own meanings table says closes each of the two blocked states
+_CAPPED_CLOSE = "wait for the provider's own reset"
+_DEAD_AUTH_CLOSE = "sign in again, on the host"
 
 
 class _Drive:
@@ -478,7 +481,7 @@ class InboxComposeRenderTests(unittest.TestCase):
 
 
 class LimitsSurfaceRenderTests(unittest.TestCase):
-    """What the credential-limits document says, and the field family it lacks."""
+    """What the Credentials document says, and the field family it lacks."""
 
     limits_source: ClassVar[str] = ""
 
@@ -491,7 +494,13 @@ class LimitsSurfaceRenderTests(unittest.TestCase):
         self.assertIn(pools.CAPPED_IDENTITY, document)
         self.assertIn(pools.SELECTABLE_IDENTITY, document)
         self.assertIn(pools.UNMETERED_PROVIDER, document)
+        self.assertIn(pools.DEAD_IDENTITY, document)
         self.assertIn(pools.DRIFT_DETAIL, document)
+
+    def test_the_screen_is_named_for_what_it_holds(self) -> None:
+        """`Limits` is the read's name; `Credentials` is the operator's."""
+        document = self.limits_source
+        self.assertIn("<h1>Credentials</h1>", document)
 
     def test_every_account_keeps_its_own_clock_and_its_own_axes(self) -> None:
         """The claim a single-status screen cannot make, made in a served page.
@@ -514,10 +523,47 @@ class LimitsSurfaceRenderTests(unittest.TestCase):
         self.assertIn(">unknown</span>", document)
         self.assertIn(">edge-challenged</span>", document)
 
+    def test_the_axis_triad_is_drawn_and_still_names_each_axis(self) -> None:
+        """Six fewer words a row, and not one axis merged into another.
+
+        The accepted design replaces the axis labels with three glyphs in a
+        fixed order. What it does not do is spend the axis's *name*: the word
+        stays in the document for a reader who cannot see a glyph, which is why
+        the count above still finds three per account.
+        """
+        document = self.limits_source
+        self.assertEqual(document.count('class="limits-axis-ic"'), _POOL_AXES * _POOL_ENTRIES)
+
+    def test_a_capped_account_and_a_dead_one_do_not_look_alike(self) -> None:
+        """The pair the accepted design refuses to collapse, checked on the page.
+
+        Both accounts are unusable and the difference is the whole operator
+        value of the screen: a capped account is waiting for the provider's
+        clock and nobody can do anything about it, while a dead lineage is
+        waiting for a person to sign in again. They are separated three ways —
+        the axis that is blocking, the hue that axis takes, and the line naming
+        what closes it.
+        """
+        document = self.limits_source
+        self.assertIn('<span class="verdict limits-axis v-changes"', document)
+        self.assertIn('<span class="verdict limits-axis v-held"', document)
+        self.assertIn(">lineage-dead</span>", document)
+        self.assertIn(">capped</span>", document)
+        self.assertIn(_CAPPED_CLOSE, document)
+        self.assertIn(_DEAD_AUTH_CLOSE, document)
+        # the mark beside each account is the record's own verdict, and both of
+        # these accounts carry the same one: what differs is stated, not implied
+        self.assertIn("not ready", document)
+        self.assertIn("<b>quota</b>", document)
+        self.assertIn("<b>auth</b>", document)
+
     def test_the_page_states_the_per_entry_rule_and_counts_nothing_itself(self) -> None:
         document = self.limits_source
-        self.assertIn("no single pool verdict", document)
-        self.assertIn("three clocks, not one state", document)
+        self.assertIn("one row per account, with its own clock", document)
+        # D9 — the screen no longer argues for its own layout
+        for retired in ("no single pool verdict", "three clocks, not one state"):
+            with self.subTest(retired=retired):
+                self.assertNotIn(retired, document)
         # the only pool-level number on the page is the one the record answered with
         self.assertIn("2 selectable · swept 2026-08-17 20:00:00 UTC", document)
 

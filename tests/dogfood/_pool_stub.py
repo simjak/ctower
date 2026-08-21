@@ -2,9 +2,10 @@
 
 It is the fleet's own awkward shape rather than a tidy one: two accounts capped
 at two different times, one available with no clock at all, one entry the record
-holds no name for, one axis nobody could observe, and a drift finding. A stub
-that answered with one healthy account would let a surface that collapses the
-pool into a single word pass.
+holds no name for, one axis nobody could observe, one account whose login is
+gone while its quota is fine, and a drift finding. A stub that answered with one
+healthy account would let a surface that collapses the pool into a single word
+pass.
 
 The poisoned field is the point of the second half. `PoolEntryState` — the read
 projection this route answers with — has no field a credential value can occupy,
@@ -20,6 +21,7 @@ from typing import Any
 __all__ = (
     "CAPPED_IDENTITY",
     "CAPPED_RESET_AT",
+    "DEAD_IDENTITY",
     "DRIFT_DETAIL",
     "POISON_FINGERPRINT",
     "PROFILE_KEY",
@@ -30,6 +32,8 @@ __all__ = (
 
 PROFILE_KEY = "engineer"
 CAPPED_IDENTITY = "capped@example.invalid"
+#: the account whose login is gone rather than whose quota is spent
+DEAD_IDENTITY = "lineage-dead@example.invalid"
 SELECTABLE_IDENTITY = "available@example.invalid"
 UNMETERED_PROVIDER = "zai"
 CAPPED_RESET_AT = "2026-08-20T06:29:00Z"
@@ -48,6 +52,8 @@ def _entry(
     selectable: bool,
     request_count: int,
     reach_state: str = "ok",
+    auth_state: str = "healthy",
+    registration_state: str = "enrolled",
     label: str | None = None,
     status: str | None = None,
     millicredits: int | None = None,
@@ -56,8 +62,8 @@ def _entry(
         "provider_key": provider_key,
         "subscription_identity": identity,
         "entry_label": label,
-        "registration_state": "enrolled",
-        "auth_state": "healthy",
+        "registration_state": registration_state,
+        "auth_state": auth_state,
         "quota_state": quota_state,
         "quota_reset_at": quota_reset_at,
         "reach_state": reach_state,
@@ -71,7 +77,14 @@ def _entry(
 
 
 def _entries() -> list[dict[str, Any]]:
-    """Four accounts of one profile: two clocks, one absence, one unknown axis."""
+    """Five accounts of one profile: two clocks, one absence, one unknown axis.
+
+    The fifth is the account whose login is gone rather than whose quota is
+    spent. It is here because those two are the pair the accepted design refuses
+    to let look alike — a capped account waits for a clock, a dead one waits for
+    a person — and a stub without both would let a screen that draws them
+    identically pass.
+    """
     capped = _entry(
         "openai-codex",
         CAPPED_IDENTITY,
@@ -110,6 +123,17 @@ def _entries() -> list[dict[str, Any]]:
             selectable=True,
             request_count=17,
             reach_state="edge-challenged",
+        ),
+        # login itself is gone: quota is fine and there is no clock to wait for
+        _entry(
+            "anthropic",
+            DEAD_IDENTITY,
+            quota_state="available",
+            quota_reset_at=None,
+            selectable=False,
+            request_count=96,
+            auth_state="lineage-dead",
+            registration_state="discovered",
         ),
     ]
 
