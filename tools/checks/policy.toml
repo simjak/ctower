@@ -280,6 +280,11 @@ paths = ["apps/ctower-api/src/**"]
 allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "process-execution-tools"]
 
 [[ownership]]
+name = "ui-shell"
+paths = ["apps/ctower-ui/**"]
+allowed_dependencies = []
+
+[[ownership]]
 name = "development-runtime-tests"
 paths = ["tests/development_runtime/**"]
 allowed_dependencies = [
