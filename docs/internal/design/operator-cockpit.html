@@ -562,6 +562,48 @@
       .board2 .verdict { margin: 12px 0 0; }
       .board2 .spend { padding: 0; margin-top: 6px; }
 
+      /* ── BOARD THREE — the mint's state sheet ─────────────────────────
+         A screen with eleven states and six typed failures cannot be drawn as
+         one screenshot without picking a favourite, and the states this design
+         argues about are the ones a favourite would omit. So it is drawn as a
+         sheet: every state at once, each labelled, so a reader can check that
+         none of them renders a secret. */
+      .board3 { border-top: 4px solid var(--border); background: var(--background); padding-bottom: 26px; }
+      .board3 .panel { padding: 14px 20px 0; max-width: none; }
+      .states {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
+        gap: 10px;
+        padding: 0 20px;
+      }
+      .st { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px 10px; background: var(--card); }
+      /* a failure card is not a red card: the state is ordinary, and colouring
+         the container would say the screen is broken rather than that the
+         write refused. Only the chip carries the hue. */
+      .st-h { display: flex; align-items: baseline; gap: 7px; margin-bottom: 6px; }
+      .st-n { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); flex: none; }
+      .st-t { font-size: 11.5px; font-weight: 600; }
+      .st-b { font-size: 11.5px; line-height: 1.45; }
+      .st-b .mono { font-size: 11px; }
+      .st-note { display: block; margin-top: 6px; font-size: 10.5px; color: var(--muted-foreground); line-height: 1.4; }
+      .st-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+      /* the reference field is deliberately NOT a password input — a dot-mask
+         is the tell that a UI expects a value, and this one expects a name */
+      .st-field {
+        display: block;
+        width: 100%;
+        font: inherit;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        padding: 4px 7px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--background);
+        color: var(--foreground);
+      }
+      .st-field:disabled { color: var(--muted-foreground); cursor: not-allowed; }
+      .st-lbl { display: block; font-size: 10.5px; color: var(--muted-foreground); margin-bottom: 3px; }
+
       .legend {
         border-top: 1px solid var(--border);
         padding: 9px 12px 14px;
