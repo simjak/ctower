@@ -11,7 +11,7 @@
 * **harness:** the claude-code binding ([#538](https://github.com/simjak/ctower/issues/538)) ([d72408e](https://github.com/simjak/ctower/commit/d72408e773bead34d1f2ba76f8dddbc47ab593c2))
 * **harness:** the codex binding ([#539](https://github.com/simjak/ctower/issues/539)) ([9bc6c35](https://github.com/simjak/ctower/commit/9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99))
 * **inbox:** transport contract with project-qualified addressing ([#530](https://github.com/simjak/ctower/issues/530)) ([83dae4c](https://github.com/simjak/ctower/commit/83dae4ca8858d9e97610b5dba63feb97c0b0af05))
-* **migration:** land estate record imports ([#505](https://github.com/simjak/ctower/issues/505)) ([b99c04c5f2ca339b75c3536fbabef3c12b6d176d))
+* **migration:** land estate record imports ([#505](https://github.com/simjak/ctower/issues/505)) ([b99c04c](https://github.com/simjak/ctower/commit/b99c04c5f2ca339b75c3536fbabef3c12b6d176d))
 * **pools:** record-backed credential-limits tracking ([#531](https://github.com/simjak/ctower/issues/531)) ([b68eaaf](https://github.com/simjak/ctower/commit/b68eaaf49eea951ed1f6baf6022aa352a302449e))
 * **record:** canonical Ticket movement feed ([#503](https://github.com/simjak/ctower/issues/503)) ([df2068b](https://github.com/simjak/ctower/commit/df2068b1657c5401d5706500ca34236a3451028d))
 * **record:** per-project ticket display keys — server-assigned, backfilled, addressable ([#529](https://github.com/simjak/ctower/issues/529)) ([d0ea9a3](https://github.com/simjak/ctower/commit/d0ea9a36386ae2b7e5ae9711951a529550edb4d7))
@@ -20,7 +20,7 @@
 * **runtime:** routine work items — fire files an inbox item, never a session injection ([#509](https://github.com/simjak/ctower/issues/509)) ([1dce769](https://github.com/simjak/ctower/commit/1dce7690be67de5df26a3cf4b90cbdf45e515a89))
 * **runtime:** spawn-custody records ([#506](https://github.com/simjak/ctower/issues/506)) ([3efa949](https://github.com/simjak/ctower/commit/3efa949e3442e84770e2d46b6f8eec4ec3799096))
 * **ui:** add the Requests surface ([#511](https://github.com/simjak/ctower/issues/511)) ([c384e1e](https://github.com/simjak/ctower/commit/c384e1e3e2af9a5d4aa473c5c974c052c11a1307))
-* **ui:** read-only limits shadow surface ([#535](https://github.com/simjak/ctower/issues/535)) ([79a0208c3b799d7ffe6b7c81a3c0a45147442838))
+* **ui:** read-only limits shadow surface ([#535](https://github.com/simjak/ctower/issues/535)) ([79a0208](https://github.com/simjak/ctower/commit/79a0208c3b799d7ffe6b7c81a3c0a45147442838))
 
 
 ### Chores
