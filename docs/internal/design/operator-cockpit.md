@@ -130,8 +130,26 @@ Its product stance is already ctower's, verbatim:
 | Colour | OKLCH neutral semantic core — `--background: oklch(1 0 0)`, `--foreground: oklch(0.145 0 0)`, `--muted-foreground: oklch(0.556 0 0)`, `--border: oklch(0.922 0 0)` — with a complete `.dark` override block and a `--sidebar-*` family. | `index.css:74–91`, `.dark` at `289+` |
 | Radius | **One knob.** `--radius: 0.5rem` and a multiplicative ladder — `--radius-sm: calc(var(--radius) * 0.6)` through `--radius-4xl: calc(var(--radius) * 2.6)` — so the whole app's corner language retunes from a single value. | `index.css:59–74` |
 | Status | One seed hue per state, consumed through a `color-mix` recipe that derives both modes from that one seed: `.status-chip { background-color: color-mix(in srgb, var(--sc) 15%, white); color: color-mix(in srgb, var(--sc) 82%, black); border-color: var(--sc) }`, with a `.dark` counterpart at 22%/80%/48%. | `index.css:1951–1959` |
-| Motion | Two tiers, and the rule is about **components**, not about tokens: *"Any new motion in the redesigned thread MUST reference one of these tokens — no hardcoded ms / cubic-bezier in components (enforced by a check script)."* Tier one is the primitives — `--motion-duration-{instant,fast,base,slow,deliberate}` = 80/160/240/360/520ms plus two house curves (`--motion-ease-out-expo: cubic-bezier(0.16,1,0.3,1)`, `--motion-ease-standard: cubic-bezier(0.4,0,0.2,1)`). Tier two is scoped tokens, most of which reference a primitive (`--motion-tool-enter`, `--motion-cot-collapse`, `--motion-diff-reveal`) while a minority carry a literal because no primitive fits — staggers (`40ms`), loops (`1.6s`, `1.1s`) and one-off timings (`380ms`, `320ms`, `4000ms`). The reduced-motion block is where the two tiers show: it zeroes the **primitives**, *"Zeroing the primitives cascades to every scoped token that references them; the literal-valued scoped tokens (staggers, loops) are zeroed explicitly."* | `index.css:216–219` (the component rule), `223–231` (primitives), `233–254` (scoped), `551–573` (reduced motion) |
+| Motion | Two tiers, and the rule is about **components**, not about tokens: *"Any new motion in the redesigned thread MUST reference one of these tokens — no hardcoded ms / cubic-bezier in components (enforced by a check script)."* Tier one is the primitives — `--motion-duration-{instant,fast,base,slow,deliberate}` = 80/160/240/360/520ms plus two house curves (`--motion-ease-out-expo: cubic-bezier(0.16,1,0.3,1)`, `--motion-ease-standard: cubic-bezier(0.4,0,0.2,1)`). Tier two is 21 scoped tokens, and the split is **counted, not characterised**: nine reference a primitive (`--motion-tool-enter`, `--motion-cot-collapse`, `--motion-diff-reveal`, …) and twelve carry a literal — ten durations (staggers `40ms` ×2, loops `1.6s`/`1.1s`, one-offs `380ms`, `240ms`, `4000ms`, `200ms`, `400ms`, `320ms`) and two scoped easing curves. The reduced-motion block is where the two tiers show: it zeroes the five **primitives**, *"Zeroing the primitives cascades to every scoped token that references them; the literal-valued scoped tokens (staggers, loops) are zeroed explicitly"*, and nine of the ten literal durations are in fact listed there — every one except `--motion-interstitial-dwell`. | `index.css:216–219` (the component rule), `223–231` (primitives), `233–254` (scoped), `551–573` (reduced motion) |
 | Components | shadcn `new-york`, `baseColor: neutral`, `cssVariables: true`, lucide icons. | `ui/components.json` |
+
+**What the source does not say — and the cockpit's own rule in its place.** `index.css` never
+states *why* twelve scoped tokens hold a literal instead of referencing a primitive. It is not a
+"no primitive fits" rule and this design does not claim one on the file's behalf: at least one
+literal is numerically identical to a primitive — `--motion-line-scroll: 240ms` (`:248`) against
+`--motion-duration-base: 240ms` (`:229`) — so that reading is disprovable from the same file. The
+only stated intent around those values is mechanical and applies to both tiers equally: they are
+*"tunable placeholders the human tunes live via the tweak panel, then pastes back"* (`:214–215`)
+and the scoped block is *"grouped for the tweak panel"* (`:233`).
+
+So the cockpit needs a rule of its own, and this is a **design decision made here, not a citation**:
+a cockpit scoped token references a primitive by default, and may carry a literal only when the
+value is not a movement duration at all — a stagger step, a loop period, or a pacing hold. Anything
+that is "how long this thing takes to move" must resolve to `--motion-duration-*`, so that retuning
+the five primitives retunes the cockpit. Owning this explicitly also fixes the maintenance cost the
+counterexample exposes: a literal that duplicates a primitive silently stops tracking it. The
+enforceable half is paperclip's, verbatim and already checked by a script there — no hardcoded
+ms/cubic-bezier **in components** — and the cockpit adopts that check as-is.
 
 One motion detail is worth carrying verbatim because the cockpit will hit it: paperclip's
 reduced-motion block deliberately does **not** zero `--motion-interstitial-dwell`, and says why —
@@ -1494,8 +1512,10 @@ rather than source, it says so in place.
 
 `/srv/projects/paperclip-eval/DESIGN.md` (product stance, eight principles, enforcement);
 `ui/src/index.css` (tokens: `23–24` type, `59–74` radius ladder and semantic core, `155–165`
-status hues, `216–219` the no-hardcoded-ms component rule, `223–231` motion primitives, `233–254`
-scoped motion tokens, `551–573` the reduced-motion collapse and its deliberate dwell exception at
+status hues, `214–215` the tunable-placeholder/tweak-panel note, `216–219` the no-hardcoded-ms
+component rule, `223–231` motion primitives, `229` vs `248` the `240ms` primitive/literal
+duplicate, `233–254` scoped motion tokens — nine referencing, twelve literal, counted rather
+than characterised, `551–573` the reduced-motion collapse and its deliberate dwell exception at
 `567–569`, `1951–1959` the `.status-chip` recipe, `289+` the `.dark` block);
 `ui/components.json`;
 `ui/src/components/agent-config-defaults.ts:8, 11`;

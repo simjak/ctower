@@ -90,7 +90,10 @@
         --motion-duration-base: 240ms;
         --motion-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
         --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-        /* scoped tokens reference the primitives, never a literal */
+        /* cockpit rule (§3.1, our decision — not paperclip's stated one): a
+           scoped token references a primitive unless the value is not a
+           movement duration. No stagger/loop/hold exists in this mockup, so
+           every scoped token here resolves to a primitive. */
         --motion-tool-enter: var(--motion-duration-base);
         --motion-chip-enter: var(--motion-duration-fast);
       }
