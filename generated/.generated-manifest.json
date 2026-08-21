@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:c0f8aba2d2533d48100eb99d5de4196cdcb5df1b69ce0485a461e0468bcf82a3"
+          "sha256": "sha256:50434fc9e7129928dfd1ca55dca3d2429d8697b850f5f10004c17e9b7c10f3f5"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:8013104a844c0e9aa81520d447e1fa6b81de30bc73bd1c4532635a80d0595ed1"
+          "sha256": "sha256:adb61bce06b7505c7ff5fddb948d32ae3ab9d079b9dcb46cdf0ea069526ddf55"
         }
       ],
       "tool_version": "2"
@@ -429,6 +429,54 @@
           "sha256": "sha256:183b8879e3e93a0fe15edfa712c6ad0ebee7586e850159c41574bec0ef58cfa0"
         },
         {
+          "path": "contracts/runner/later-wave-harness-survey.answers.schema.json",
+          "sha256": "sha256:173e66612416a41cfa5475425aabbe5313c3d477b8a8e2a33c9e39fdcf69aae2"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.candidate-base.schema.json",
+          "sha256": "sha256:7199f021de4220454e79a331b7345cf062f2c89961815d9fbc2103da28ea3b11"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.candidate-deepseek.schema.json",
+          "sha256": "sha256:0bfcac0df08d68cdc9d0679e5d8c5bb50cdc22b8f89094cf932f3b4c987e0d22"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.candidate-openclaw.schema.json",
+          "sha256": "sha256:10eab70b98d065f7fb7cf457840298c1bd93eb74ec18e41f74ad93af6caa383b"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.candidate-qwen-code.schema.json",
+          "sha256": "sha256:d8df0b0b81dffb3980e857777e371d2a3f255747f6b03e8f768e309ce1af73ec"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.candidate-zcode.schema.json",
+          "sha256": "sha256:9abd3b94b1ea52891e2fc85a13b0e621aaaedb667f95a114e962c15bbfe412c1"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.candidate.schema.json",
+          "sha256": "sha256:783c13a43aee61887ff9f7dffad55cc9f7ad6416af04d3c0406990f2d27f273d"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.referential-fallback.schema.json",
+          "sha256": "sha256:3c570b39301f8bad709c3228747c26fbbe0cc45afe83684aae0fa029be099a31"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.referential-rotation.schema.json",
+          "sha256": "sha256:1ccf03c1c3a45c2cb989e8b7d8f12d2336c51b2b01d26984ffd55c68225f4521"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.referential-subagent.schema.json",
+          "sha256": "sha256:5c0f1b52ad966a7f34d184ea50680e8b7380a561c4f0e46ab5918b422cfb9b0c"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.schema.json",
+          "sha256": "sha256:dfc3eb33f2165f337175ba3ea5ca49af283c9d3b2f9357c69b18a25a19af156f"
+        },
+        {
+          "path": "contracts/runner/later-wave-harness-survey.tokens.schema.json",
+          "sha256": "sha256:ab9b04eff2092aea551419bd8a7728fd0515c4c66bbc5d35d65e4d83e65ed55d"
+        },
+        {
           "path": "contracts/runtime/dream-dispatch-effect.schema.json",
           "sha256": "sha256:07c8f49c19c9c12134cef1734a5f55cb5d5634cb8b93182cefc190cef98b2eeb"
         },
@@ -592,7 +640,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:6cd5fc98a24d55227a16ef37794789e665b0686890392cec1e9ee14564c85cb8"
+          "sha256": "sha256:e2d617d191b6031609da9fde5c5b1802e1ce57e4407a66afea718bbbb80082f7"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

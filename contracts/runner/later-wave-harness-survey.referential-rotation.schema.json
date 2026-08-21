@@ -1,0 +1,165 @@
+{
+  "$defs": {},
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.referential-rotation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "rotation_cache_semantics": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+          }
+        },
+        "required": [
+          "rotation_cache_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "native_pool": {
+            "anyOf": [
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+              },
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+              }
+            ]
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+    },
+    {
+      "if": {
+        "properties": {
+          "rotation_cache_semantics": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-native-pool-cache"
+          }
+        },
+        "required": [
+          "rotation_cache_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "native_pool": {
+            "anyOf": [
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-native-pool"
+              }
+            ]
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+    },
+    {
+      "if": {
+        "properties": {
+          "rotation_cache_semantics": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-provided-pool-cache"
+          }
+        },
+        "required": [
+          "rotation_cache_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "native_pool": {
+            "anyOf": [
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-no-native-pool"
+              }
+            ]
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+    },
+    {
+      "if": {
+        "properties": {
+          "rotation_cache_semantics": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-config-home-respawn"
+          }
+        },
+        "required": [
+          "rotation_cache_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "native_pool": {
+            "anyOf": [
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-no-native-pool"
+              }
+            ]
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+    },
+    {
+      "if": {
+        "properties": {
+          "rotation_cache_semantics": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-no-rotation-cache"
+          }
+        },
+        "required": [
+          "rotation_cache_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "native_pool": {
+            "anyOf": [
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
+              },
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-native-pool"
+              },
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-no-native-pool"
+              },
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+              }
+            ]
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+    },
+    {
+      "if": {
+        "properties": {
+          "rotation_cache_semantics": {
+            "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+          }
+        },
+        "required": [
+          "rotation_cache_semantics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "native_pool": {
+            "anyOf": [
+              {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/model-answer"
+              }
+            ]
+          }
+        }
+      },
+      "x-ctower-referential-rule-id": "rotation-cache-native-pool"
+    }
+  ],
+  "description": "Derived rotation-cache-native-pool law from the ten-question dependency matrix.",
+  "title": "LaterWaveHarnessSurveyReferentialRotation"
+}

@@ -4156,8 +4156,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-01",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-01 places public-Seam publication behind two real bindings and one deterministic fault-injection fake at CT-I1-042; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-01 declares this criterion; in force at the active phase",
       "owner": "ct-i1-042",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4169,8 +4169,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-02",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-02 places the acknowledged-dispatch contract at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-02 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4182,8 +4182,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-03",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-03 places per-binding served-model evidence sources at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-03 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4195,8 +4195,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-04",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-04 places cap-and-saturation precedence over any working marker at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-04 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4208,8 +4208,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-05",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-05 places seat-credentialed writeback inside the three exhaustive scopes at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-05 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4221,8 +4221,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-06",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-06 places collection from committed refs and durable records only at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-06 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4234,8 +4234,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-07",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-07 places the checkpoint, park, and reap teardown orders at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-07 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4247,8 +4247,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-08",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-08 places harness independence across the seam at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-08 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4260,8 +4260,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-09",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-09 places fail-closed composition and the CommandGuard pre-dispatch boundary at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-09 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4273,8 +4273,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-10",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-10 places the three-axis pool entry state and its exhaustion refusal at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-10 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4286,8 +4286,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-11",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-11 places rotation completeness and probe validity at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-11 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4299,8 +4299,8 @@
     {
       "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-HAD-12",
-      "disposition": "deferred",
-      "reason": "SPEC#ac-had-12 places credit-unit ledger fidelity and generated-ladder reconciliation at CT-I1-041; deferred beyond the active phase",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-had-12 declares this criterion; in force at the active phase",
       "owner": "ct-i1-041",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
@@ -4412,30 +4412,6 @@
       "status": "not_exercised",
       "source_count": 0,
       "reason": "expected-suite registry defers this suite to phase CT-I1-035; not required and not counted as passing"
-    },
-    {
-      "suite_id": "harness-adapter-conformance",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-041; not required and not counted as passing"
-    },
-    {
-      "suite_id": "harness-seam-acceptance",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-041; not required and not counted as passing"
-    },
-    {
-      "suite_id": "claude-code-binding-acceptance",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-042; not required and not counted as passing"
-    },
-    {
-      "suite_id": "codex-binding-acceptance",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "expected-suite registry defers this suite to phase CT-I1-043; not required and not counted as passing"
     }
   ]
 }

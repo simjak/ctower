@@ -1,0 +1,482 @@
+{
+  "$defs": {
+    "answer": {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
+    },
+    "answers": {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answers"
+    },
+    "candidate": {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate.schema.json#/$defs/candidate"
+    },
+    "question": {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/question"
+    },
+    "source": {
+      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/source"
+    }
+  },
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Revision-pinned CT-I1-044 survey envelope. Answer semantics and candidate profiles are modular authored contracts compiled from the dependency matrix.",
+  "properties": {
+    "candidates": {
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "key": {
+                "const": "openclaw"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "key": {
+                "const": "qwen-code"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "key": {
+                "const": "zcode"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "key": {
+                "const": "deepseek"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "maxContains": 1,
+          "minContains": 1
+        }
+      ],
+      "items": {
+        "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate.schema.json#/$defs/candidate"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array"
+    },
+    "matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "const": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json"
+        },
+        "revision": {
+          "const": 4
+        },
+        "sha256": {
+          "const": "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "observed_at": {
+      "const": "2026-08-21T02:33:01Z"
+    },
+    "questions": {
+      "const": [
+        {
+          "id": "native_pool",
+          "prompt": "Does the candidate ship a native credential pool?"
+        },
+        {
+          "id": "native_fallback",
+          "prompt": "Does the candidate ship a native credential/provider fallback?"
+        },
+        {
+          "id": "config_surface",
+          "prompt": "What is the config surface, and is it authored-config-only?"
+        },
+        {
+          "id": "identity_proof",
+          "prompt": "What proves credential identity: a decodable claim, account file, or nothing?"
+        },
+        {
+          "id": "reset_window_semantics",
+          "prompt": "What are the reset or window semantics?"
+        },
+        {
+          "id": "rotation_cache_semantics",
+          "prompt": "What cache or restart semantics apply after rotation?"
+        },
+        {
+          "id": "subagent_credential_inheritance",
+          "prompt": "How do subagents inherit or acquire credentials?"
+        },
+        {
+          "id": "egress_topology",
+          "prompt": "Is egress shared across entries or isolated per entry?"
+        },
+        {
+          "id": "probe_target",
+          "prompt": "Which product, endpoint, and model does a representative probe measure?"
+        },
+        {
+          "id": "credit_weights",
+          "prompt": "Where are per-model, per-direction credit weights published?"
+        }
+      ],
+      "items": {
+        "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/question"
+      },
+      "maxItems": 10,
+      "minItems": 10,
+      "type": "array"
+    },
+    "revision": {
+      "const": 4
+    },
+    "schema": {
+      "const": "ctower.later-wave-harness-survey/v1"
+    },
+    "sources": {
+      "const": [
+        {
+          "evidence_type": "specification",
+          "id": "spec-ct-i1-044",
+          "kind": "repo",
+          "locator": "docs/internal/SPEC.md:5342 (CT-I1-044)",
+          "revision": "d72408e7"
+        },
+        {
+          "evidence_type": "sealed_design",
+          "id": "design-seam-c07",
+          "kind": "design",
+          "locator": "docs/internal/design/harness-adapter-seam.md:303-449",
+          "revision": "c07c049c"
+        },
+        {
+          "evidence_type": "auth_runbook",
+          "id": "auth-runbook-2026-08-17",
+          "kind": "runbook",
+          "locator": "mission-control/playbooks/codex-hermes-auth-runbook.md:77-159",
+          "revision": "2026-08-17"
+        },
+        {
+          "evidence_type": "hermes_binding",
+          "id": "hermes-binding-d724",
+          "kind": "repo",
+          "locator": "apps/ctower-runner/src/ctower_runner/hermes/binding.py",
+          "revision": "d72408e7"
+        },
+        {
+          "evidence_type": "claude_binding",
+          "id": "claude-binding-d724",
+          "kind": "repo",
+          "locator": "apps/ctower-runner/src/ctower_runner/claude_code/binding.py",
+          "revision": "d72408e7"
+        },
+        {
+          "evidence_type": "codex_binding_landed",
+          "id": "codex-binding-main-539",
+          "kind": "repo",
+          "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 merged into origin/main at merge commit 9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99 (PR head 1058d09a9796bba1292b021ee81f57d56e2fccba)",
+          "revision": "9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99"
+        },
+        {
+          "evidence_type": "qwen_binary",
+          "id": "qwen-cli-0215",
+          "kind": "binary",
+          "locator": "/home/agent/.local/bin/qwen; qwen --version and qwen --help",
+          "revision": "0.21.5"
+        },
+        {
+          "evidence_type": "qwen_documentation",
+          "id": "qwen-docs-0215",
+          "kind": "installed-doc",
+          "locator": "/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md",
+          "revision": "0.21.5"
+        },
+        {
+          "evidence_type": "absence_probe",
+          "id": "local-command-absence",
+          "kind": "absence-probe",
+          "locator": "command -v openclaw qwen-code zcode deepseek",
+          "revision": "2026-08-20T14:24:08Z"
+        },
+        {
+          "evidence_type": "weight_registry/codex",
+          "id": "ctower-weight-registry-d724",
+          "kind": "repo",
+          "locator": "packages/ctower-kernel/src/ctower_kernel/pools/topology.py:89-95",
+          "revision": "d72408e7"
+        }
+      ],
+      "items": {
+        "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/source"
+      },
+      "maxItems": 10,
+      "minItems": 10,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema",
+    "revision",
+    "observed_at",
+    "matrix",
+    "sources",
+    "questions",
+    "candidates"
+  ],
+  "title": "LaterWaveHarnessSurvey",
+  "type": "object",
+  "x-ctower-candidate-evidence-type-support": {
+    "deepseek": {},
+    "openclaw": {
+      "identity_proof": {
+        "persisted_device_key": [
+          "sealed_design"
+        ]
+      }
+    },
+    "qwen-code": {
+      "config_surface": {
+        "env_overridable": [
+          "qwen_binary",
+          "qwen_documentation"
+        ]
+      },
+      "native_fallback": {
+        "model_fallback_only": [
+          "qwen_binary",
+          "qwen_documentation"
+        ]
+      },
+      "reset_window_semantics": {
+        "weekly_plan": [
+          "qwen_documentation"
+        ]
+      }
+    },
+    "zcode": {}
+  },
+  "x-ctower-dependency-matrix": {
+    "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
+    "law": "default/pair rules plus referential and candidate/source evidence-type support rules; all violation cases are derived",
+    "revision": 4,
+    "sha256": "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
+  },
+  "x-ctower-evidence-type-support": {
+    "config_surface": {
+      "account_file": [
+        "claude_binding",
+        "codex_binding_landed"
+      ],
+      "authored_config_only": [
+        "sealed_design",
+        "hermes_binding",
+        "claude_binding",
+        "codex_binding_landed"
+      ],
+      "env_overridable": [
+        "qwen_binary",
+        "qwen_documentation"
+      ]
+    },
+    "credit_weights": {
+      "published_directional": {
+        "deepseek": [
+          "weight_registry/deepseek"
+        ],
+        "openclaw": [
+          "weight_registry/openclaw"
+        ],
+        "qwen-code": [
+          "weight_registry/qwen-code"
+        ],
+        "zcode": [
+          "weight_registry/zcode"
+        ]
+      },
+      "unpublished": [
+        "qwen_documentation",
+        "auth_runbook",
+        "absence_probe",
+        "weight_registry/codex"
+      ]
+    },
+    "egress_topology": {
+      "isolated": [
+        "claude_binding",
+        "qwen_documentation",
+        "sealed_design"
+      ],
+      "shared": [
+        "hermes_binding",
+        "auth_runbook",
+        "sealed_design"
+      ]
+    },
+    "identity_proof": {
+      "account_file": [
+        "claude_binding",
+        "codex_binding_landed"
+      ],
+      "decoded_claim": [
+        "hermes_binding",
+        "codex_binding_landed"
+      ],
+      "direct_cli_account": [
+        "codex_binding_landed"
+      ],
+      "persisted_device_key": [
+        "sealed_design"
+      ]
+    },
+    "native_fallback": {
+      "model_fallback_only": [
+        "qwen_binary",
+        "qwen_documentation"
+      ],
+      "native_credential_fallback": [
+        "hermes_binding",
+        "sealed_design",
+        "auth_runbook",
+        "claude_binding",
+        "codex_binding_landed"
+      ],
+      "no_native_fallback": [
+        "sealed_design",
+        "qwen_documentation",
+        "absence_probe",
+        "codex_binding_landed"
+      ]
+    },
+    "native_pool": {
+      "native_pool": [
+        "hermes_binding",
+        "sealed_design",
+        "auth_runbook"
+      ],
+      "no_native_pool": [
+        "sealed_design",
+        "qwen_documentation",
+        "absence_probe",
+        "codex_binding_landed"
+      ]
+    },
+    "probe_target": {
+      "direct_cli_endpoint": [
+        "qwen_binary",
+        "qwen_documentation",
+        "codex_binding_landed"
+      ],
+      "gateway_endpoint": [
+        "hermes_binding",
+        "auth_runbook",
+        "sealed_design"
+      ],
+      "representative_endpoint": [
+        "qwen_binary",
+        "qwen_documentation",
+        "hermes_binding",
+        "auth_runbook",
+        "codex_binding_landed"
+      ]
+    },
+    "reset_window_semantics": {
+      "provider_reset_at": [
+        "hermes_binding",
+        "auth_runbook",
+        "sealed_design"
+      ],
+      "rolling_block": [
+        "auth_runbook",
+        "sealed_design"
+      ],
+      "weekly_plan": [
+        "sealed_design",
+        "qwen_documentation"
+      ]
+    },
+    "rotation_cache_semantics": {
+      "config_home_respawn": [
+        "claude_binding",
+        "qwen_documentation"
+      ],
+      "native_pool_cache": [
+        "hermes_binding",
+        "auth_runbook",
+        "sealed_design"
+      ],
+      "no_rotation_cache": [
+        "qwen_documentation",
+        "absence_probe",
+        "sealed_design"
+      ],
+      "provided_pool_cache": [
+        "claude_binding",
+        "auth_runbook"
+      ]
+    },
+    "subagent_credential_inheritance": {
+      "no_credential_inheritance": [
+        "qwen_documentation",
+        "absence_probe",
+        "sealed_design"
+      ],
+      "parent_credential": [
+        "qwen_documentation",
+        "sealed_design"
+      ],
+      "per_task_lease": [
+        "hermes_binding",
+        "auth_runbook",
+        "sealed_design"
+      ],
+      "separate_acquisition": [
+        "qwen_documentation",
+        "sealed_design"
+      ]
+    }
+  },
+  "x-ctower-matrix-default-rules": [
+    "model-route-coherence"
+  ],
+  "x-ctower-referential-rules": [
+    "effective-route-probe-target",
+    "effective-route-identity-proof",
+    "rotation-cache-native-pool",
+    "native-fallback-native-pool",
+    "subagent-lease-native-pool"
+  ]
+}

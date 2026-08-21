@@ -1,0 +1,331 @@
+{
+  "$defs": {
+    "token-account-file": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "account_file"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-authored-config-only": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "authored_config_only"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-config-home-respawn": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "config_home_respawn"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-direct-cli-account": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "direct_cli_account"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-direct-cli-endpoint": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "direct_cli_endpoint"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-gateway": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "gateway"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-gateway-endpoint": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "gateway_endpoint"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-hermes-profile": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "hermes-profile"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-model-fallback-only": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "model_fallback_only"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-native-credential-fallback": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "native_credential_fallback"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-native-pool": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "native_pool"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-native-pool-cache": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "native_pool_cache"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-no-credential-inheritance": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "no_credential_inheritance"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-no-native-fallback": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "no_native_fallback"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-no-native-pool": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "no_native_pool"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-no-rotation-cache": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "no_rotation_cache"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-parent-credential": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "parent_credential"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-per-task-lease": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "per_task_lease"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-persisted-device-key": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "persisted_device_key"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-provided-pool-cache": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "provided_pool_cache"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-qwen-cli": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "qwen-cli"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-separate-acquisition": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "separate_acquisition"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    },
+    "token-unbound-stub": {
+      "properties": {
+        "state": {
+          "const": "verified"
+        },
+        "value": {
+          "const": "unbound-stub"
+        }
+      },
+      "required": [
+        "state",
+        "value"
+      ]
+    }
+  },
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Closed verified-answer token matchers shared by matrix-derived laws.",
+  "title": "LaterWaveHarnessSurveyAnswerTokens",
+  "type": "object"
+}

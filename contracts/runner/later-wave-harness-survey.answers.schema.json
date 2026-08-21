@@ -1,0 +1,407 @@
+{
+  "$defs": {
+    "answer": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "unverified"
+            },
+            "value": {
+              "const": null
+            }
+          }
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "not_applicable"
+            },
+            "value": {
+              "const": "model"
+            }
+          }
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "verified"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/source-id"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "state": {
+          "enum": [
+            "verified",
+            "not_applicable",
+            "unverified"
+          ]
+        },
+        "value": {
+          "type": [
+            "boolean",
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "value",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "answers": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "not": {
+            "properties": {
+              "native_pool": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-no-native-pool"
+              },
+              "rotation_cache_semantics": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-native-pool-cache"
+              }
+            },
+            "required": [
+              "native_pool",
+              "rotation_cache_semantics"
+            ]
+          },
+          "x-ctower-matrix-rule-id": "no-native-pool-native-cache"
+        },
+        {
+          "not": {
+            "properties": {
+              "native_pool": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-native-pool"
+              },
+              "rotation_cache_semantics": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-provided-pool-cache"
+              }
+            },
+            "required": [
+              "native_pool",
+              "rotation_cache_semantics"
+            ]
+          },
+          "x-ctower-matrix-rule-id": "native-pool-no-provided-cache"
+        },
+        {
+          "not": {
+            "properties": {
+              "native_pool": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-no-native-pool"
+              },
+              "subagent_credential_inheritance": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-per-task-lease"
+              }
+            },
+            "required": [
+              "native_pool",
+              "subagent_credential_inheritance"
+            ]
+          },
+          "x-ctower-matrix-rule-id": "no-native-pool-no-native-subagent-lease"
+        },
+        {
+          "not": {
+            "properties": {
+              "config_surface": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-authored-config-only"
+              },
+              "identity_proof": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-account-file"
+              }
+            },
+            "required": [
+              "config_surface",
+              "identity_proof"
+            ]
+          },
+          "x-ctower-matrix-rule-id": "authored-config-account-file-never-both"
+        },
+        {
+          "not": {
+            "properties": {
+              "identity_proof": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-direct-cli-account"
+              },
+              "probe_target": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-gateway-endpoint"
+              }
+            },
+            "required": [
+              "identity_proof",
+              "probe_target"
+            ]
+          },
+          "x-ctower-matrix-rule-id": "direct-cli-identity-gateway-probe-never-both"
+        },
+        {
+          "not": {
+            "properties": {
+              "identity_proof": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-persisted-device-key"
+              },
+              "probe_target": {
+                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json#/$defs/token-direct-cli-endpoint"
+              }
+            },
+            "required": [
+              "identity_proof",
+              "probe_target"
+            ]
+          },
+          "x-ctower-matrix-rule-id": "gateway-device-identity-direct-probe-never-both"
+        },
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.referential-rotation.schema.json"
+        },
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.referential-fallback.schema.json"
+        },
+        {
+          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.referential-subagent.schema.json"
+        }
+      ],
+      "properties": {
+        "config_surface": {
+          "$ref": "#/$defs/answer"
+        },
+        "credit_weights": {
+          "$ref": "#/$defs/answer"
+        },
+        "egress_topology": {
+          "$ref": "#/$defs/answer"
+        },
+        "identity_proof": {
+          "$ref": "#/$defs/answer"
+        },
+        "native_fallback": {
+          "$ref": "#/$defs/answer"
+        },
+        "native_pool": {
+          "$ref": "#/$defs/answer"
+        },
+        "probe_target": {
+          "$ref": "#/$defs/answer"
+        },
+        "reset_window_semantics": {
+          "$ref": "#/$defs/answer"
+        },
+        "rotation_cache_semantics": {
+          "$ref": "#/$defs/answer"
+        },
+        "subagent_credential_inheritance": {
+          "$ref": "#/$defs/answer"
+        }
+      },
+      "required": [
+        "native_pool",
+        "native_fallback",
+        "config_surface",
+        "identity_proof",
+        "reset_window_semantics",
+        "rotation_cache_semantics",
+        "subagent_credential_inheritance",
+        "egress_topology",
+        "probe_target",
+        "credit_weights"
+      ],
+      "type": "object"
+    },
+    "evidence-source-auth-runbook-2026-08-17": {
+      "const": "auth-runbook-2026-08-17"
+    },
+    "evidence-source-claude-binding-d724": {
+      "const": "claude-binding-d724"
+    },
+    "evidence-source-codex-binding-main-539": {
+      "const": "codex-binding-main-539"
+    },
+    "evidence-source-ctower-weight-registry-d724": {
+      "const": "ctower-weight-registry-d724"
+    },
+    "evidence-source-design-seam-c07": {
+      "const": "design-seam-c07"
+    },
+    "evidence-source-hermes-binding-d724": {
+      "const": "hermes-binding-d724"
+    },
+    "evidence-source-local-command-absence": {
+      "const": "local-command-absence"
+    },
+    "evidence-source-qwen-cli-0215": {
+      "const": "qwen-cli-0215"
+    },
+    "evidence-source-qwen-docs-0215": {
+      "const": "qwen-docs-0215"
+    },
+    "evidence-source-spec-ct-i1-044": {
+      "const": "spec-ct-i1-044"
+    },
+    "evidence-type": {
+      "enum": [
+        "absence_probe",
+        "auth_runbook",
+        "claude_binding",
+        "codex_binding_landed",
+        "hermes_binding",
+        "qwen_binary",
+        "qwen_documentation",
+        "sealed_design",
+        "specification",
+        "weight_registry/codex",
+        "weight_registry/deepseek",
+        "weight_registry/openclaw",
+        "weight_registry/qwen-code",
+        "weight_registry/zcode"
+      ]
+    },
+    "model-answer": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/answer"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "not_applicable"
+            },
+            "value": {
+              "const": "model"
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ]
+        }
+      ]
+    },
+    "question": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "native_pool",
+            "native_fallback",
+            "config_surface",
+            "identity_proof",
+            "reset_window_semantics",
+            "rotation_cache_semantics",
+            "subagent_credential_inheritance",
+            "egress_topology",
+            "probe_target",
+            "credit_weights"
+          ]
+        },
+        "prompt": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_type": {
+          "$ref": "#/$defs/evidence-type"
+        },
+        "id": {
+          "$ref": "#/$defs/source-id"
+        },
+        "kind": {
+          "enum": [
+            "repo",
+            "design",
+            "runbook",
+            "binary",
+            "installed-doc",
+            "absence-probe"
+          ]
+        },
+        "locator": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "revision",
+        "locator",
+        "evidence_type"
+      ],
+      "type": "object"
+    },
+    "source-id": {
+      "enum": [
+        "spec-ct-i1-044",
+        "design-seam-c07",
+        "auth-runbook-2026-08-17",
+        "hermes-binding-d724",
+        "claude-binding-d724",
+        "codex-binding-main-539",
+        "qwen-cli-0215",
+        "qwen-docs-0215",
+        "local-command-absence",
+        "ctower-weight-registry-d724"
+      ]
+    },
+    "unverified-answer": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/answer"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "unverified"
+            },
+            "value": {
+              "const": null
+            }
+          },
+          "required": [
+            "state",
+            "value"
+          ]
+        }
+      ]
+    }
+  },
+  "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Shared answer vocabulary, pair refusals, and references to the modular referential laws.",
+  "title": "LaterWaveHarnessSurveyAnswers",
+  "type": "object"
+}

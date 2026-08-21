@@ -1,8 +1,9 @@
 # Runner (harness-adapter seam) contracts
 
-The authored data half of the harness-adapter seam (CT-I1-041, D72). Three contracts live here and
-nothing else does: `harness-spec.schema.json`, the closed `harness-capability.schema.json`
-vocabulary it draws from, and `credential-lease.schema.json`.
+The authored data half of the harness-adapter seam (CT-I1-041, D72). The base seam contracts live
+here: `harness-spec.schema.json`, the closed `harness-capability.schema.json` vocabulary it draws
+from, and `credential-lease.schema.json`. CT-I1-044 adds a separate, refusal-oriented survey
+contract and data document; it does not register a later-wave binding.
 
 A `HarnessSpec` is **data**. It is parsed without executing package code — the shape D11 already
 requires of every extension manifest — so a binding that cannot declare a capability does not
@@ -30,3 +31,27 @@ no field a credential value can occupy: secrets are references, never values.
 
 These contracts activate no dispatch. Execution stays `not_exercised` at the component level;
 `ctower-runner-sdk` parses this data and `ctower-runner` binds `hermes` to it.
+
+`later-wave-harness-survey.schema.json` and `later-wave-harness-survey.json` are authored
+revision-pinned evidence for the four CT-I1-044 candidates. Every unanswered fact is explicit
+`unverified`, so `configure`/`provide` remains undecidable and registration is refused. The
+`deepseek` entry is a model disposition, not a HarnessSpec: its adapter work is zero and its
+serving truth remains inherited from the Hermes profile route.
+
+The survey schema is closed over exact revision-pinned source snapshots, exact question
+ID/prompt pairs, the observation timestamp paired with those snapshots, and the complete
+45-pair dependency matrix in `later-wave-harness-survey.matrix.json`. The matrix defines the
+finite answer domains, candidate context, legal combinations, and two semantic families.
+The authored schema compiles those laws into modular answer, token, referential-law, candidate
+base, and candidate-profile contracts rather than repeating one minified triple encoding:
+referential equality across fields (route/probe target, route/identity, and credential
+pool/cache relationships) and evidence-type support for every verified answer kind. The
+schema compiles those matrix laws into fail-closed refusals: a value that names an
+incompatible route or cites an evidence source that cannot entail the claim is rejected,
+rather than being accepted because another field looks plausible. It rejects non-null values
+for `unverified` answers, unsupported evidence for a verified claim, unresolved evidence IDs,
+contradictory refusal/liveness reasons, and candidate role/registration/liveness or answer
+combinations that contradict the four declared dispositions. `tests/conformance/harness-adapter/test_survey_registration.py` is a
+validation-only conformance proof: its bounded Hypothesis searches generate 278 pair-rule,
+116 referential, and 116 candidate/source evidence-support violations and must find zero that validate; it does
+not execute or bind a harness.
