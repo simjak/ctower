@@ -19437,52 +19437,7 @@
                   "x-ctower-candidate-answer": "env-overridable"
                 },
                 "credit_weights": {
-                  "anyOf": [
-                    {
-                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
-                    },
-                    {
-                      "allOf": [
-                        {
-                          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
-                        },
-                        {
-                          "properties": {
-                            "evidence": {
-                              "items": {
-                                "anyOf": [
-                                  {
-                                    "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
-                                  },
-                                  {
-                                    "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-auth-runbook-2026-08-17"
-                                  },
-                                  {
-                                    "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-local-command-absence"
-                                  },
-                                  {
-                                    "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-ctower-weight-registry-d724"
-                                  }
-                                ]
-                              }
-                            },
-                            "state": {
-                              "const": "verified"
-                            },
-                            "value": {
-                              "const": "unpublished"
-                            }
-                          },
-                          "required": [
-                            "state",
-                            "value",
-                            "evidence"
-                          ]
-                        }
-                      ]
-                    }
-                  ],
-                  "x-ctower-candidate-answer": "unpublished"
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
                 },
                 "egress_topology": {
                   "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
@@ -19536,46 +19491,7 @@
                   "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
                 },
                 "probe_target": {
-                  "anyOf": [
-                    {
-                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
-                    },
-                    {
-                      "allOf": [
-                        {
-                          "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
-                        },
-                        {
-                          "properties": {
-                            "evidence": {
-                              "items": {
-                                "anyOf": [
-                                  {
-                                    "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-cli-0215"
-                                  },
-                                  {
-                                    "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
-                                  }
-                                ]
-                              }
-                            },
-                            "state": {
-                              "const": "verified"
-                            },
-                            "value": {
-                              "const": "direct_cli_endpoint"
-                            }
-                          },
-                          "required": [
-                            "state",
-                            "value",
-                            "evidence"
-                          ]
-                        }
-                      ]
-                    }
-                  ],
-                  "x-ctower-candidate-answer": "direct-cli-endpoint"
+                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
                 },
                 "reset_window_semantics": {
                   "anyOf": [
@@ -20487,10 +20403,10 @@
               "const": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json"
             },
             "revision": {
-              "const": 3
+              "const": 4
             },
             "sha256": {
-              "const": "ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512"
+              "const": "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
             }
           },
           "required": [
@@ -20554,7 +20470,7 @@
           "type": "array"
         },
         "revision": {
-          "const": 3
+          "const": 4
         },
         "schema": {
           "const": "ctower.later-wave-harness-survey/v1"
@@ -20668,22 +20584,8 @@
               "qwen_documentation"
             ]
           },
-          "credit_weights": {
-            "unpublished": [
-              "qwen_documentation",
-              "auth_runbook",
-              "absence_probe",
-              "weight_registry/codex"
-            ]
-          },
           "native_fallback": {
             "model_fallback_only": [
-              "qwen_binary",
-              "qwen_documentation"
-            ]
-          },
-          "probe_target": {
-            "direct_cli_endpoint": [
               "qwen_binary",
               "qwen_documentation"
             ]
@@ -20699,8 +20601,8 @@
       "x-ctower-dependency-matrix": {
         "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
         "law": "default/pair rules plus referential and candidate/source evidence-type support rules; all violation cases are derived",
-        "revision": 3,
-        "sha256": "ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512"
+        "revision": 4,
+        "sha256": "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
       },
       "x-ctower-evidence-type-support": {
         "config_surface": {
@@ -23943,7 +23845,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-qwen-code.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.candidate-qwen-code.schema.json",
-      "sha256": "sha256:0ac6e1cf5bc354d1db42a3015c1d5b7c2bdeb576587855ec191188a28dbc763e"
+      "sha256": "sha256:d8df0b0b81dffb3980e857777e371d2a3f255747f6b03e8f768e309ce1af73ec"
     },
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.candidate-zcode.schema.json",
@@ -23973,7 +23875,7 @@
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.schema.json",
       "path": "contracts/runner/later-wave-harness-survey.schema.json",
-      "sha256": "sha256:35ccc5ca4c7322f5a69064cfb6f75f1e1b3f317a6fc209c9914d739e5bfd19be"
+      "sha256": "sha256:dfc3eb33f2165f337175ba3ea5ca49af283c9d3b2f9357c69b18a25a19af156f"
     },
     {
       "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.tokens.schema.json",

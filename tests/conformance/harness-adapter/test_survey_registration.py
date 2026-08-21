@@ -33,8 +33,8 @@ _QUESTIONS = (
     "credit_weights",
 )
 _CANDIDATES = ("openclaw", "qwen-code", "zcode", "deepseek")
-_MATRIX_SHA256 = "ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512"
-_MATRIX_REVISION = 3
+_MATRIX_SHA256 = "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
+_MATRIX_REVISION = 4
 _MATRIX_PAIR_COUNT = 45
 Violation = tuple[str, str, str, str, str, str]
 ReferentialViolation = tuple[str, str, str, str, str, str]
@@ -505,7 +505,7 @@ def test_referential_consistency_search_rejects_nonmatching_qwen_probe(
     document = copy.deepcopy(_document())
     _set_token(document, "qwen-code", "probe_target", probe_target)
 
-    assert bool(_errors(document)) is (probe_target != "direct_cli_endpoint")
+    assert _errors(document), f"unsupported Qwen probe claim accepted: {probe_target}"
 
 
 @settings(max_examples=2, derandomize=True, deadline=None)
@@ -516,7 +516,7 @@ def test_evidence_support_search_rejects_unsupported_verified_credit_claim(
     document = copy.deepcopy(_document())
     _set_token(document, "qwen-code", "credit_weights", credit_claim)
 
-    assert bool(_errors(document)) is (credit_claim == "published_directional")
+    assert _errors(document), f"unsupported Qwen credit claim accepted: {credit_claim}"
 
 
 @settings(max_examples=256, derandomize=True, deadline=None)

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
   "schema": "ctower.later-wave-harness-survey-matrix/v1",
-  "revision": 3,
+  "revision": 4,
   "question_order": [
     "native_pool",
     "native_fallback",
@@ -497,20 +497,6 @@
       "reset_window_semantics": {
         "weekly_plan": [
           "qwen_documentation"
-        ]
-      },
-      "probe_target": {
-        "direct_cli_endpoint": [
-          "qwen_binary",
-          "qwen_documentation"
-        ]
-      },
-      "credit_weights": {
-        "unpublished": [
-          "qwen_documentation",
-          "auth_runbook",
-          "absence_probe",
-          "weight_registry/codex"
         ]
       }
     },

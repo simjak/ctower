@@ -94,10 +94,10 @@
           "const": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json"
         },
         "revision": {
-          "const": 3
+          "const": 4
         },
         "sha256": {
-          "const": "ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512"
+          "const": "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
         }
       },
       "required": [
@@ -161,7 +161,7 @@
       "type": "array"
     },
     "revision": {
-      "const": 3
+      "const": 4
     },
     "schema": {
       "const": "ctower.later-wave-harness-survey/v1"
@@ -275,22 +275,8 @@
           "qwen_documentation"
         ]
       },
-      "credit_weights": {
-        "unpublished": [
-          "qwen_documentation",
-          "auth_runbook",
-          "absence_probe",
-          "weight_registry/codex"
-        ]
-      },
       "native_fallback": {
         "model_fallback_only": [
-          "qwen_binary",
-          "qwen_documentation"
-        ]
-      },
-      "probe_target": {
-        "direct_cli_endpoint": [
           "qwen_binary",
           "qwen_documentation"
         ]
@@ -306,8 +292,8 @@
   "x-ctower-dependency-matrix": {
     "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
     "law": "default/pair rules plus referential and candidate/source evidence-type support rules; all violation cases are derived",
-    "revision": 3,
-    "sha256": "ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512"
+    "revision": 4,
+    "sha256": "70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"
   },
   "x-ctower-evidence-type-support": {
     "config_surface": {

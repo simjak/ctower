@@ -1,6 +1,6 @@
 # CT-I1-044 — later-wave credentials survey
 
-Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 3.
+Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 4.
 Observed: 2026-08-21T02:33:01Z.
 
 Dependency truth: CT-I1-043 / PR #539 is merged and landed on `origin/main` at
@@ -48,7 +48,7 @@ strict authored shape is `contracts/runner/later-wave-harness-survey.schema.json
 
 ## Derived semantic matrix
 
-Revision 3 of `contracts/runner/later-wave-harness-survey.matrix.json` closes two families
+Revision 4 of `contracts/runner/later-wave-harness-survey.matrix.json` closes two families
 that cannot be established by collecting judge examples:
 
 - **Referential consistency.** A verified answer that names another field's route, identity,
@@ -58,12 +58,13 @@ that cannot be established by collecting judge examples:
 - **Evidence-type support.** Every candidate/question/value proposition has a candidate-scoped
   matrix support set. The schema requires every cited source ID for that proposition to belong
   to its entailing source set; generic evidence about another candidate is not transferable.
-  The Qwen evidence snapshot has no source that can entail `published_directional` credit weights,
-  so that mutation is refused while the supported `unpublished` claim remains valid.
+  The Qwen snapshot does not entail the complete representative product/endpoint/model probe
+  tuple or the universal publication-status claim for directional credit weights, so both
+  propositions remain `UNVERIFIED` and refusal-only.
 
 The authored survey pins matrix SHA-256
-`ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512`. The validation-only
-proof derives 278 pair-rule, 116 referential, and 114 candidate/source evidence-support violations; bounded
+`70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829`. The validation-only
+proof derives 278 pair-rule, 116 referential, and 116 candidate/source evidence-support violations; bounded
 Hypothesis searches and exhaustive loops require zero of those impossible documents to
 validate. No harness is executed and no credential value is read.
 
@@ -248,3 +249,12 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - claim: Revision 3 closes candidate/source evidence entailment and unverified-anchor referential laws; modular schema contracts compile the matrix, preserve refusal-only scope, and keep all prior signature blocks append-only.
 - stood-under: Matrix SHA-256 `ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512`, revision 3, r7 F4/Q1/G1 findings, the Commander r8 closure criterion, and the focused 16-test validation-only battery.
 - if-this-breaks: Re-run the eight prior refusal witnesses and both bounded property searches against the exact new head; preserve all earlier signature text and do not add judge-specific exceptions or runtime behavior.
+
+## SIGNED-OFF — 2026-08-21T04:39:33Z
+
+- seat: engineer
+- crew: engineer-044-r9
+- model: gpt-5.6-luna
+- claim: Revision 4 removes the two unsupported Qwen candidate/source evidence propositions, keeps both answers `UNVERIFIED` and refusal-only, and preserves the survey-only validation boundary.
+- stood-under: r8 F1's exact Qwen cells, matrix SHA-256 `70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829`, RED family proof, derived populations `278/116/116`, independent 60-case oracle, generated contract parity, and no-runtime scope.
+- if-this-breaks: Re-pin the exact pushed head and rerun the family-B RED/GREEN tests, all eight historical refusals, the unchanged 60-case primary-source search, generated checks, and the designated gate; preserve all prior signature entries and do not add judge-specific exceptions or runtime behavior.

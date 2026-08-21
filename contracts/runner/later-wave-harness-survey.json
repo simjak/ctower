@@ -1,6 +1,6 @@
 {
   "schema": "ctower.later-wave-harness-survey/v1",
-  "revision": 3,
+  "revision": 4,
   "observed_at": "2026-08-21T02:33:01Z",
   "sources": [
       {"id":"spec-ct-i1-044","kind":"repo","revision":"d72408e7","locator":"docs/internal/SPEC.md:5342 (CT-I1-044)","evidence_type":"specification"},
@@ -112,5 +112,5 @@
               }
       }
     ],
-  "matrix": {"id":"https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json","revision":3,"sha256":"ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512"}
+  "matrix": {"id":"https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json","revision":4,"sha256":"70e239afb1847df869326125dfa24af903f44d001457a18c8f4e428ab0821829"}
 }

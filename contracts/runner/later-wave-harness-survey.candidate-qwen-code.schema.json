@@ -55,52 +55,7 @@
               "x-ctower-candidate-answer": "env-overridable"
             },
             "credit_weights": {
-              "anyOf": [
-                {
-                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
-                },
-                {
-                  "allOf": [
-                    {
-                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
-                    },
-                    {
-                      "properties": {
-                        "evidence": {
-                          "items": {
-                            "anyOf": [
-                              {
-                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
-                              },
-                              {
-                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-auth-runbook-2026-08-17"
-                              },
-                              {
-                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-local-command-absence"
-                              },
-                              {
-                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-ctower-weight-registry-d724"
-                              }
-                            ]
-                          }
-                        },
-                        "state": {
-                          "const": "verified"
-                        },
-                        "value": {
-                          "const": "unpublished"
-                        }
-                      },
-                      "required": [
-                        "state",
-                        "value",
-                        "evidence"
-                      ]
-                    }
-                  ]
-                }
-              ],
-              "x-ctower-candidate-answer": "unpublished"
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
             },
             "egress_topology": {
               "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
@@ -154,46 +109,7 @@
               "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
             },
             "probe_target": {
-              "anyOf": [
-                {
-                  "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
-                },
-                {
-                  "allOf": [
-                    {
-                      "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/answer"
-                    },
-                    {
-                      "properties": {
-                        "evidence": {
-                          "items": {
-                            "anyOf": [
-                              {
-                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-cli-0215"
-                              },
-                              {
-                                "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/evidence-source-qwen-docs-0215"
-                              }
-                            ]
-                          }
-                        },
-                        "state": {
-                          "const": "verified"
-                        },
-                        "value": {
-                          "const": "direct_cli_endpoint"
-                        }
-                      },
-                      "required": [
-                        "state",
-                        "value",
-                        "evidence"
-                      ]
-                    }
-                  ]
-                }
-              ],
-              "x-ctower-candidate-answer": "direct-cli-endpoint"
+              "$ref": "https://ctower.local/contracts/runner/later-wave-harness-survey.answers.schema.json#/$defs/unverified-answer"
             },
             "reset_window_semantics": {
               "anyOf": [

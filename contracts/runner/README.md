@@ -53,5 +53,5 @@ for `unverified` answers, unsupported evidence for a verified claim, unresolved 
 contradictory refusal/liveness reasons, and candidate role/registration/liveness or answer
 combinations that contradict the four declared dispositions. `tests/conformance/harness-adapter/test_survey_registration.py` is a
 validation-only conformance proof: its bounded Hypothesis searches generate 278 pair-rule,
-116 referential, and 114 candidate/source evidence-support violations and must find zero that validate; it does
+116 referential, and 116 candidate/source evidence-support violations and must find zero that validate; it does
 not execute or bind a harness.
