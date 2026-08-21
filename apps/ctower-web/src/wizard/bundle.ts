@@ -22,7 +22,7 @@ export interface Draft {
   readonly companyKey: string;
   readonly displayName: string;
   /** Component references the operator has taken out, by `componentId`. */
-  readonly dropped: ReadonlySet<string>;
+  readonly removed: ReadonlySet<string>;
 }
 
 export const EMPTY_TEMPLATE: CompanyBundleDocument = {
@@ -38,7 +38,7 @@ export function draftFrom(base: CompanyBundleDocument): Draft {
     base,
     companyKey: base.company.key,
     displayName: base.company.display_name,
-    dropped: new Set<string>(),
+    removed: new Set<string>(),
   };
 }
 
@@ -53,10 +53,10 @@ export function componentId(reference: {
 /** The draft as the authored contract's own document, ready to send. */
 export function documentOf(draft: Draft): CompanyBundleDocument {
   const resources = draft.base.resources.filter(
-    (resource) => !draft.dropped.has(componentId(resource.component))
+    (resource) => !draft.removed.has(componentId(resource.component))
   );
   const assignments = draft.base.assignments.filter(
-    (assignment) => !draft.dropped.has(componentId(assignment.component))
+    (assignment) => !draft.removed.has(componentId(assignment.component))
   );
   return {
     ...draft.base,
@@ -68,7 +68,7 @@ export function documentOf(draft: Draft): CompanyBundleDocument {
 
 export function isEdited(draft: Draft): boolean {
   return (
-    draft.dropped.size > 0 ||
+    draft.removed.size > 0 ||
     draft.companyKey !== draft.base.company.key ||
     draft.displayName !== draft.base.company.display_name
   );

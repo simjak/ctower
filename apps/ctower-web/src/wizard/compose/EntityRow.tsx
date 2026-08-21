@@ -1,39 +1,46 @@
+import { Minus, Undo2 } from "lucide-react";
 import type { ReactElement } from "react";
-import { Badge, Mono } from "../../ui/primitives";
-import { Checkbox } from "../../ui/form";
+import { Badge, Button, Mono } from "../../ui/primitives";
 import { cn } from "../../ui/cn";
 import type { EntityFact } from "../read";
 
 /**
- * One project or one agent, as a row the operator can read at a glance and take
- * out of the company with one click.
+ * One project or one agent.
  *
- * Hierarchy is structure, not decoration: the name carries the weight, the key
- * and its supporting fact sit under it in the machine face, and the only colour
- * on the row is the checkbox when it is on.
+ * Taking something out of a company is not a filter, and it was drawn as one: a
+ * checkbox reads as "show me this", and what it actually meant was "retire this
+ * on apply". So the control is now an explicit `Remove`, everything is kept
+ * until the operator says otherwise, and a removed row states the consequence
+ * where the decision was made rather than three steps later in the plan.
  */
 export function EntityRow({
   fact,
-  kept,
+  removed,
   subjectNoun,
-  onKeep,
+  onRemove,
 }: {
   readonly fact: EntityFact;
-  readonly kept: boolean;
+  readonly removed: boolean;
   readonly subjectNoun: string;
-  readonly onKeep: (kept: boolean) => void;
+  readonly onRemove: (removed: boolean) => void;
 }): ReactElement {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-md border px-4 py-3",
+        "group flex items-center gap-3 rounded-md border px-4 py-3",
         "transition-colors duration-(--motion-duration-fast)",
-        kept ? "border-line-2 bg-surface-2 hover:bg-raised/50" : "border-line bg-transparent"
+        removed ? "border-warn-line bg-warn-bg" : "border-line-2 bg-surface-2 hover:bg-raised/50"
       )}
     >
-      <Checkbox checked={kept} onCheckedChange={onKeep} label={`Include ${fact.name}`} />
-      <div className={cn("min-w-0 flex-1", kept ? "" : "opacity-50")}>
-        <div className="truncate text-sm font-medium text-ink">{fact.name}</div>
+      <div className={cn("min-w-0 flex-1", removed ? "opacity-70" : "")}>
+        <div
+          className={cn(
+            "truncate text-sm font-medium text-ink",
+            removed ? "line-through decoration-1" : ""
+          )}
+        >
+          {fact.name}
+        </div>
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-ink-3">
           <Mono className="shrink-0">{fact.key}</Mono>
           {fact.detail === null ? null : (
@@ -48,10 +55,41 @@ export function EntityRow({
           )}
         </div>
       </div>
-      {fact.subjects.length === 0 ? null : (
-        <Badge tone="neutral" title={fact.subjects.join(" · ")}>
-          {fact.subjects.length} {subjectNoun}
-        </Badge>
+
+      {removed ? (
+        <>
+          <Badge tone="warn">Retires on apply</Badge>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(): void => {
+              onRemove(false);
+            }}
+          >
+            <Undo2 /> Undo
+          </Button>
+        </>
+      ) : (
+        <>
+          {fact.subjects.length === 0 ? null : (
+            <Badge tone="neutral" title={fact.subjects.join(" · ")}>
+              {fact.subjects.length} {subjectNoun}
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            /* Always drawn, never hover-only: a control an operator has to
+               discover by sweeping the mouse is a control that is not there. */
+            className="text-ink-3"
+            aria-label={`Remove ${fact.name}`}
+            onClick={(): void => {
+              onRemove(true);
+            }}
+          >
+            <Minus /> Remove
+          </Button>
+        </>
       )}
     </div>
   );
