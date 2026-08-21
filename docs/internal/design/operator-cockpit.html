@@ -545,6 +545,10 @@
       .board2 .cells { padding: 0; }
       .board2 .cell { padding: 4px 0; border-bottom: 1px solid var(--border); }
       .board2 .cell .what { font-size: 12px; }
+      /* a per-entry warning that ellipsises IS the pool-level collapse
+         AC-HAD-10 forbids, drawn in CSS instead of in copy. On this board the
+         evidence line wraps. */
+      .board2 .cell .what { white-space: normal; overflow: visible; text-overflow: clip; }
       .board2 .cell .src { display: block; font-size: 10.5px; color: var(--muted-foreground); }
       .board2 .verdict { margin: 12px 0 0; }
       .board2 .spend { padding: 0; margin-top: 6px; }
@@ -935,10 +939,17 @@
               <span class="src mono">claude-code r1 · art 8c11…4f · cfg d4e1…9ab</span></span>
             <span class="chip sc-proven">proven</span>
           </div>
+          <!-- AC-HAD-10: `acquire` fails only when EVERY entry is unselectable
+               — the criterion's own fixture is a mixed pool that acquires from
+               its healthy entry. So this cell is proven at
+               selectable_entry_count > 0, and the two blocked entries stay
+               visible per entry rather than being collapsed into one word. -->
           <div class="cell">
             <span class="what">Credential pool selectable
-              <span class="src">3 entries · 1 capped(reset 04:12Z) · 1 edge-challenged · 1 clear</span></span>
-            <span class="chip sc-capped">1 of 3 selectable</span>
+              <span class="src">3 entries, 3 clocks · <b>1 selectable</b> (acct-2, all three axes
+                clear) · acct-1 <span class="mono">quota: capped(reset 04:12Z)</span> · acct-3
+                <span class="mono">reach: edge-challenged</span> — neither routed to a mint</span></span>
+            <span class="chip sc-proven">proven</span>
           </div>
           <div class="cell">
             <span class="what">Guard decision current
@@ -963,8 +974,11 @@
         </div>
 
         <p class="verdict">
-          <b>Not ready.</b> One cell capped and one unknown. Closes when the pool holds a
-          selectable entry on all three axes and the registry serves a current weight table.
+          <b>Not ready.</b> Exactly one cell is unproven: the registry served no weight table for
+          this profile, and a stale or missing table refuses rather than mispricing. The pool is
+          <i>not</i> what blocks this seat — one entry clears all three axes, which is what
+          <span class="mono">acquire</span> needs, and the other two keep their own warnings
+          without lending them to the verdict.
           <span class="dim">Green is earned by evidence, or it is not shown — and no cell here
           says "Saved."</span>
         </p>

@@ -618,13 +618,22 @@ component; they have never been assembled into one view:
 | Survey answered → configure-or-provide decided | the `HarnessSpec` `survey` block; an unanswered survey is a **refusal** (`harness-survey-incomplete`), not a gap, and the candidate does not enter the conformance suite |
 | Never both | `AC-HAD-01` — a binding declaring a native layer *and* enabling ctower's own for that layer refuses `harness-layer-conflict` |
 | Composition pinned | `HarnessSpec` `key` + `revision` + `artifact_digest` + `config_digest`; unknown, incompatible, revoked or digest-mismatched ⇒ zero dispatch (`AC-HAD-09`) |
-| Credential pool selectable | `AC-HAD-10`'s three orthogonal axes, all three clear |
+| Credential pool selectable | `AC-HAD-10`'s three orthogonal axes, all three clear **on at least one entry**. `acquire` *"fails only when every entry is unselectable"*, and the criterion's own fixture is a mixed pool that acquires from its healthy entry and reports three distinct clocks — so this cell is proven at `selectable_entry_count > 0`, and a blocked sibling entry keeps its own warning without lending it to the verdict |
 | Guard current | a versioned CommandGuard decision for the exact normalized plan at the final pre-dispatch boundary (`AC-HAD-09`) |
 | Liveness observable | the spec's declared `liveness_sources`, or `liveness` returns **unknown by name** (`AC-HAD-03`) |
 | Project scope bound | `AC-HAD-05`; a foreign project key returns `project-scope-denied` with zero disclosure |
 | Spend priceable | `AC-HAD-12`'s versioned per-model per-direction weight table; stale or missing **refuses rather than silently mispricing** |
 
 Any cell unproven ⇒ the seat is not ready, and the page names which cell and what closes it.
+
+One trap inside that rule, because a composed verdict is exactly where it bites: **composing is
+not aggregating.** The credential cell is the case — a pool holding one healthy entry beside two
+blocked ones is *ready to acquire*, and rendering it as a failure teaches the pool-level
+collapse `AC-HAD-10` forbids and the `PoolLimitsView` schema names in its own description
+(*"a pool holding two exhausted entries and one near-full entry is not one word"*). Each entry
+keeps its own warning; the cell answers only its own question. A verdict that inherits every
+sibling's worst state is the mirror image of paperclip's `HEALTHY` — pessimism instead of
+optimism, and wrong in the same way: not derived from the rule it claims to apply.
 Green is earned by evidence or it is not shown. This is the same discipline as the board's
 declared-absence blocks, applied to a seat.
 
