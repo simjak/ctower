@@ -226,7 +226,7 @@ Rows are **project** (its 6px mark) → **seat** → **workspace**. The Commande
 list, not a chrome affordance — the brief says *incl. commander*, and the board already renders
 the commander as an ordinary source.
 
-Three rules make this rail honest:
+Four rules make this rail honest:
 
 - **Unread is an accent bar, not the word "unread"** — the existing ctower-ui rule, and D5.
 - **`capped` and `saturated` outrank any working marker.** `AC-HAD-04` classifies cap and
@@ -238,6 +238,48 @@ Three rules make this rail honest:
 - **A workspace whose read did not answer shows `not reached` with its classified failure**, never
   a `+0 −0`. `+0 −0` is a measurement; a failed read is not. `AC-HAD-03` gives the shape:
   `substrate-unobservable:<probe>` surfacing as `STATE_UNKNOWN`.
+- **A dead lane is drawn as dead.** `dead_auth` is a first-class value in the seam's own
+  vocabulary, and the rail owes it a distinct treatment — §4.1.1.
+
+#### 4.1.1 The dead lane
+
+`LivenessState` is a closed seven-value list — `working`, `idle`, `queued_stuck`, `saturated`,
+`capped`, `dead_auth`, `unknown` — and `NOT_WORKING` holds six of them
+(`packages/ctower-runner-sdk/src/ctower_runner_sdk/facts.py:28–36`). `dead_auth` is the one a
+cockpit is most likely to draw wrong, because it is the one the substrate hides best: the
+credential lineage behind the lane is gone, and the harness's own surface keeps rendering a
+normal footer with an advancing timer. It is the same class of failure as the capped pane above,
+and it needs the same rule — classification before motion.
+
+It is a *fourth* thing, distinct from its three neighbours in the rail, and collapsing any pair
+of them costs the operator the next action:
+
+| The row says | What is true | What closes it |
+| --- | --- | --- |
+| `capped` | the account passed login and refused work; quota is spent for this window | nothing: *"wait for the provider's own reset — no ceremony adds quota"* (`credentials.py:68–71`) |
+| `dead · auth` | login itself is gone: `auth: lineage-dead` (the grant expired, *"the shell may still say logged in"*) or `auth: chain-burned` (a copied file replayed a single-use refresh token and the provider revoked the whole chain) | a **mint** — and only ever this profile's own device flow, *"never copy another profile's file"* (`credentials.py:60–67`) |
+| `not reached` | the read did not answer; this lane's state is **unknown**, not dead | a working probe (`AC-HAD-03`) |
+| absent | there is no lane | nothing |
+
+So the row carries four things: the state, the probe and its observation age, the failing axis of
+the pool entry the lane was riding, and the action from the pool's own meanings table — never a
+generic "error".
+
+**What the row must not offer is `reap`.** `AC-HAD-07` is explicit: `reap` *"refuses a `dead_auth`
+lane, which is preserved for resume, with one nudge offered before any replacement."* A dead lane
+still holds uncollected work, and a UI whose first affordance on a dead row is *kill and respawn*
+is drawing an action the seam refuses — the same error as a spinner over a capped pane, one step
+more destructive. The primary control is the nudge; the mint is the real fix; a replacement
+control appears only after the nudge has been offered and declined.
+
+**And the composer's capability rule alone does not cover this case.** `input_refusal`
+(`policy.py:144–159`) refuses only when the lane is `working` and the binding declares no
+`INTERRUPT_AND_RESUME` — `dead_auth` is in `NOT_WORKING`, so the capability check returns *no
+refusal* and would let a message through into a lane that cannot serve it. That check is
+necessary and not sufficient. The composer's derived state (§4.2a) therefore reads capability ×
+liveness *and* the selected entry's `auth` axis, and on a dead lane it disables send with the
+mint action on the control. This is a design decision rather than a law, and it is marked as one:
+the seam refuses a destructive delivery, not a futile one.
 
 ### 4.2 Centre — the transcript, and the steer question the brief asked
 
