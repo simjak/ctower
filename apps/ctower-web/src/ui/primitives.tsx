@@ -51,7 +51,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-amber text-on-amber hover:bg-amber-strong hover:text-white",
+        // The preview flips the label to white on hover; that measures 3.56:1 on
+        // `--amber-strong`, under AA for 13.5px bold. Keeping `--on-amber` across
+        // both ends of the ramp measures 5.21:1 and changes no hue.
+        primary: "bg-amber text-on-amber hover:bg-amber-strong",
         ghost: "border-line bg-transparent text-fg hover:bg-raised",
         quiet: "text-muted hover:bg-raised hover:text-fg",
         danger: "border-danger bg-transparent text-danger",
