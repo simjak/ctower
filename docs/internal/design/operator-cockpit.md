@@ -382,6 +382,31 @@ Rows are **project** (its 6px mark) → **seat** → **workspace**. The Commande
 list, not a chrome affordance — the brief says *incl. commander*, and the board already renders
 the commander as an ordinary source.
 
+**What the three levels actually are**, because the operator asked and a rail whose hierarchy has
+to be asked about is not yet legible:
+
+| Level | Example | What it is |
+| --- | --- | --- |
+| **Project** | `ctower`, `manibo`, `bhloop` | a repository and its tenant scope. Carries the 6px colour mark. |
+| **Seat** | `engineer-seam`, `designer-cockpit-2`, `Commander` | a **role**, held by a crew member. Not a person and not a process — a seat is the thing that holds a credential, an authority scope and a project grant. One seat can be running several pieces of work at once. |
+| **Lane** | `adapter-codex`, `seam-conformance` | one **workspace**: a git worktree on a branch, with one running session on it. This is the thing you click, and it is what the centre pane, the change list and the terminal are all bound to. |
+
+So *engineer-seam · adapter-codex · seam-conformance* reads: **the engineer-seam seat is working
+two lanes at once** — one in the `adapter-codex` worktree (currently `capped`) and one in
+`seam-conformance` (`+1.1k −204`). They are two separate worktrees, two separate branches and two
+separate sessions, both held by the same seat.
+
+**And no, it is not "chatting crews".** The centre pane is bound to **one lane**, never to a seat
+and never to a project. That matters because a seat with two lanes has two different transcripts,
+two different working trees and two different tickets, and merging them into one conversation would
+be the same category error as a pool-level `HEALTHY` badge — a composed view that hides which of
+the two things you are actually talking to.
+
+`TicketSession` is the record that makes this concrete: one row binds `project_key`, `seat_key`,
+`crew_name`, `worktree_ref`, `branch_ref`, `harness_ref`, `model_ref` **and `ticket_id`**
+(`openapi.yaml`, `TicketSession`). The rail is that record, grouped. Which also means every lane in
+the rail already has a ticket — see §4.2.
+
 Five rules make this rail honest:
 
 - **Unread is an accent bar, not the word "unread"** — the existing ctower-ui rule, and D5.
@@ -477,7 +502,41 @@ Three rendering rules follow:
 a **conflict, never as serving truth**. So the model chip renders what was served, its source, and
 its age — and when `proves` is not `serving`, it renders the conflict rather than the value.
 
-### 4.2 Centre — the transcript, and the steer question the brief asked
+### 4.2 Centre — the ticket bar, the transcript, and the steer question the brief asked
+
+**The ticket bar comes first, because "what is this lane for" precedes every other question on
+this screen — and the cockpit was not answering it.** A lane is not free-floating work:
+`TicketSession` binds `ticket_id` into the same row as `worktree_ref` and `seat_key`, so the
+selected lane always *has* a ticket and the design was simply not showing it.
+
+One line above the transcript, carrying three things and no more:
+
+| What | Read | Drawn as |
+| --- | --- | --- |
+| Identity | `getTicket` → `TicketResource.display_key`, `title`, `priority` | `CT-I1-041` in mono, then the title. The key is the thing an operator quotes; the title is the thing they recognise. |
+| Session lifecycle | `listTicketSessions` → `TicketSession.state` | a **four-segment stepper**. `SessionState` is a closed enum — `dispatched → briefed → working → gated` — so position is real and can be drawn. Only the current segment is named; the other three are geometry. |
+| Workflow stage | **nothing serves it** | declared-absent (below). |
+
+The stepper is the shape D9 asks for: four segments replace four words, the eye gets *how far
+along* without reading, and the one word that remains is the one that changes.
+
+**The workflow stage is a real gap, and it is drawn as one.** `WorkflowReceipt` carries `stage`,
+and `WorkflowChangedAuditPayload` carries `source_stage` → `stage`, so a stage is a real fact with
+real transitions. But **no read returns it**: a resolved walk of every response schema on the
+authored surface finds `stage` in exactly zero of them. It exists only as the *return value of the
+two write operations* (`startTicketWorkflow`, `transitionWorkflow`) and inside audit payloads. So
+today a browser could only learn a ticket's stage by performing a transition, or by folding the
+audit stream itself — and folding a projection in the browser is the thing §7.1 exists to refuse.
+
+Two further facts shape the control even once a read exists. `stage` is
+`^[a-z][a-z0-9._-]*$` — an **open string, not an enum** — and it is qualified by `workflow_ref` and
+`workflow_version`. So stages are *per workflow*: a fixed five-step stepper drawn in the UI would
+be a guess about someone else's workflow definition. A stage stepper therefore needs **two** things
+that do not exist: the ticket's current stage, and its workflow's ordered stage list. Until both
+land, the bar shows `stage` with the `unknown` mark and its reason on the `(i)` — the same
+treatment as the `Terminal` tab in slice 1, for the same reason.
+
+**The transcript, and the steer question the brief asked.**
 
 **Backend: neither of the two verbs a first reading reaches for.** This is the pane whose backend
 mapping is easiest to get wrong, so it is stated before anything is drawn.
@@ -1407,7 +1466,7 @@ operations** are unreachable from this cockpit's *current* browser boundary, whi
 problem rather than an operation problem (§9, slice ordering). The pane's other three operations
 are `bearerAuth` and reachable today; §2 says which of them earns a control and when.
 
-### 8.2 What does not exist — ten operations, and what each one costs
+### 8.2 What does not exist — eleven operations, and what each one costs
 
 Each row is real work, because the contract is a **closed world**. Adding one operation to
 `contracts/http/openapi.yaml` is not the single edit point it looks like; it requires:
@@ -1436,9 +1495,10 @@ the precedent for the alternative: all seven carry `x-ctower-cli: null` and
 | G7 | **Dry-run the guard** — obtain a CommandGuard decision for a normalized plan and return it, dispatching nothing | wizard step 7's `Test Agent` (§6.1) | The guard is invoked at the pre-dispatch boundary inside `spawn`. Exposing a decision-only path is a deliberate new operation, and it is the one place a "test" button can be honest. |
 | G8 | **Record that a mint was asked for** — stamp a `missing` drift row as asked, by whom and when | wizard step 5b (§6.1.1), Credentials tab (§5.7) | Not the request *content*: `PoolDriftFinding` already carries the whole `MintRequest` triple (`provider_key`, `subscription_identity`, `enactment`), so `request_mint`'s answer is served today. What has no HTTP surface is the **ask itself** — `request_mint` is an Interface method on `CredentialPool` (`credentials.py:293`) with none, and `recordPoolObservation` is a sweep of observed entries rather than a record of a request. Without it, an untouched row and a three-day-stalled ceremony render identically forever (§6.1.1 states 2, 3, 3s). D72 constrains its shape hard — ctower asks and never performs — so this is an operator-principal write whose result is a *stated request*, never material. It carries no secret in either direction, which is what makes it addable at all. |
 | G8b | **Bind a secret reference to a pool identity** — `{provider_key, subscription_identity, secret_alias}` in the body, returning the echoed alias and `registration_state: discovered`, or a typed refusal | wizard step 5b (§6.1.1) | The `secret-reference` enactment path's only consuming command, and the reason an earlier draft's mint screen was not end-to-end: it asked the operator for an alias that **nothing on the authored surface accepts**. A walk of all 104 operations finds exactly two touching the pool — `readPoolLimits` and `recordPoolObservation` — and neither takes a reference. `request_mint` is not it either: its signature is `request_mint(identity)` and its return is the triple (`credentials.py:193–199`, `293–294`), so it is the question, not the answer's destination. Distinct from G8 in authority failure mode, idempotency and refusal set (§6.1.1). Carries a *reference*, never material — which is the only reason a credential write belongs on an HTTP surface at all. The `operator-ceremony` path needs no counterpart: its ceremony completes outside ctower and arrives through the pool's next observation. |
+| G10 | **Read a ticket's workflow position** — its current `stage`, and the ordered stage list its `workflow_ref`/`workflow_version` declares | ticket bar (§4.2) | `stage` is a real fact with real transitions — `WorkflowReceipt.stage`, `WorkflowChangedAuditPayload.{source_stage, stage}` — and a resolved walk of **every response schema on the authored surface finds it in none of them**. It is returned only by the two *write* operations (`startTicketWorkflow`, `transitionWorkflow`) and carried in audit payloads. So a browser can learn a stage only by performing a transition or by folding the audit stream itself, and browser-side folding is what §7.1 refuses. `getTicket` does not carry it: `TicketResource` is `display_key`, `title`, `priority`, `source`, `custodian_id`, `created_at`, `durability_state`, `version`. The *ordered list* is a second, separate absence — `stage` is `^[a-z][a-z0-9._-]*$`, an **open string qualified by `workflow_ref`**, so stages are per-workflow and a stepper drawn from a hardcoded vocabulary would be a guess about someone else's workflow. Both halves are needed before the bar can draw a position rather than a name. |
 | G9 | **Keep or evict a `discovered` identity** — the operator decision that turns an observed identity into an `enrolled` entry or removes it | wizard step 5b, Credentials tab | `AC-HAD-10` makes a `discovered` identity *"non-selectable pending operator keep-or-evict"* and `AC-HAD-12` says the same of a present-but-undesired `unregistered` entry. No operation records that decision, so today the state is reachable and its exit is not. Operator-only, keyed by **decoded identity** rather than label — a keep-or-evict routed by label is the mislabelled-entry fixture that criterion exists to catch. |
 
-Two of the ten (G6, G7) are blocked on tickets that have not started. Three (G8, G8b, G9) are
+Two of the eleven (G6, G7) are blocked on tickets that have not started. Three (G8, G8b, G9) are
 operator-owned credential writes that carry no secret in either direction and depend on no
 unstarted ticket — they are gated only by the pool's own phase.
 

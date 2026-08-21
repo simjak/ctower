@@ -334,7 +334,10 @@
       .seat { padding: 4px 10px 2px 20px; font-weight: 560; font-size: 12px; }
       .ws {
         display: grid;
-        grid-template-columns: 3px minmax(0, 1fr) auto;
+        /* bar | name | diffs | state. Every row shows its state mark, and the
+           diff column is reserved even when empty, so the marks form a single
+           scannable column instead of drifting left on rows with no diff. */
+        grid-template-columns: 3px minmax(0, 1fr) auto 13px;
         align-items: center;
         gap: 8px;
         padding: 5px 10px 5px 20px;
@@ -397,6 +400,38 @@
       }
       .tab[aria-selected="true"] { color: var(--foreground); border-bottom-color: var(--foreground); font-weight: 560; }
       .tab:hover { color: var(--foreground); }
+
+      /* ── THE TICKET BAR ────────────────────────────────────────────────
+         A lane is not free-floating work: TicketSession binds ticket_id,
+         project_key, seat_key, crew_name, worktree_ref and branch_ref into one
+         row, so the selected lane always HAS a ticket and the cockpit was
+         simply not showing it. One line above the transcript, because it is the
+         answer to "what is this lane for" and that question precedes every
+         other one on this screen. */
+      .tkt {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 16px;
+        flex: none;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+      }
+      .tkt .key { font-family: var(--font-mono); font-size: 11px; color: var(--muted-foreground); flex: none; }
+      .tkt .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+      .tkt .spacer { flex: 1; }
+
+      /* SessionState is a closed four-value ladder — dispatched, briefed,
+         working, gated — so it draws as a real stepper. Segments carry the
+         position; only the current one is named, which is the whole point. */
+      .steps { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+      .steps i {
+        width: 13px; height: 4px; border-radius: 2px;
+        background: var(--border);
+        display: inline-block;
+      }
+      .steps i.done { background: color-mix(in srgb, var(--state-working) 45%, var(--border)); }
+      .steps i.now { background: var(--state-working); }
 
       .turns { padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
       .turn { display: flex; flex-direction: column; gap: 6px; }
@@ -804,6 +839,7 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">main</span>
+              <span class="diffs"></span>
               <span class="chip sc-idle" title="idle · probe pane_footer · observed 11s ago"><svg class="ic"><use href="#m-idle"/></svg><span class="sr">idle</span></span>
             </button>
 
@@ -812,6 +848,7 @@
               <span class="unread"></span>
               <span class="name">cockpit-design</span>
               <span class="diffs mono"><span class="add">+412</span><span class="del">−18</span></span>
+              <span class="chip sc-working" title="working · probe session_transcript · observed 2s ago"><svg class="ic"><use href="#m-working"/></svg><span class="sr">working</span></span>
             </button>
 
             <div class="seat">engineer-seam</div>
@@ -821,12 +858,14 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">adapter-codex</span>
+              <span class="diffs"></span>
               <span class="chip sc-capped" title="capped · quota spent · reset 04:12Z"><svg class="ic"><use href="#m-capped"/></svg><span class="sr">capped</span></span>
             </button>
             <button class="ws" type="button" data-unread="true">
               <span class="unread"></span>
               <span class="name">seam-conformance</span>
               <span class="diffs mono"><span class="add">+1.1k</span><span class="del">−204</span></span>
+              <span class="chip sc-idle" title="idle · probe pane_footer · observed 38s ago"><svg class="ic"><use href="#m-idle"/></svg><span class="sr">idle</span></span>
             </button>
 
             <div class="proj"><span class="mark" style="background: var(--p-manibo)"></span>manibo</div>
@@ -834,12 +873,14 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">intake-fence</span>
+              <span class="diffs"></span>
               <span class="chip sc-working" title="working · probe gateway_log · observed 4s ago · served claude-opus-5"><svg class="ic"><use href="#m-working"/></svg><span class="sr">working</span></span>
             </button>
             <!-- a read that did not answer is not a read that returned zero -->
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">estate-import</span>
+              <span class="diffs"></span>
               <span class="chip sc-unknown" title="unknown · substrate-unobservable:worktree_read · last answered 12m ago"><svg class="ic"><use href="#m-unknown"/></svg><span class="sr">not reached</span></span>
             </button>
 
@@ -852,6 +893,7 @@
             <button class="ws dead" type="button">
               <span class="unread"></span>
               <span class="name">whisper-bench</span>
+              <span class="diffs"></span>
               <span class="chip sc-error" title="dead · auth · lineage-dead on anthropic sub-3 · probe gateway_log 4m 12s"><svg class="ic"><use href="#m-dead"/></svg><span class="sr">dead</span></span>
             </button>
             <!-- D9 — was: a two-line explanation of what lineage-dead means and
@@ -901,6 +943,19 @@
             <button class="tab" role="tab" aria-selected="true">cockpit-design</button>
             <button class="tab" role="tab" aria-selected="false">intake-fence</button>
             <button class="tab" role="tab" aria-selected="false" aria-label="New lane">+</button>
+          </div>
+
+          <!-- getTicket serves display_key/title/priority; listTicketSessions
+               serves the session's state. The workflow STAGE is the one thing
+               here no read serves — see G10 — so it is drawn declared-absent
+               rather than guessed, exactly like the Terminal tab in slice 1. -->
+          <div class="tkt">
+            <span class="key">CT-I1-041</span>
+            <span class="title">Harness adapter seam — merged binding and conformance</span>
+            <span class="spacer"></span>
+            <span class="steps" title="dispatched → briefed → working → gated (SessionState)"><i class="done"></i><i class="done"></i><i class="now"></i><i></i></span>
+            <span class="dim">working</span>
+            <span class="chip sc-unknown" title="workflow stage — no read serves it yet (G10)"><svg class="ic"><use href="#m-unknown"/></svg>stage<button class="i" type="button" aria-label="Why stage is unknown" title="No read returns a ticket's current workflow stage — it exists only on command receipts (G10).">i</button></span>
           </div>
 
           <div class="scroll">
@@ -1031,11 +1086,9 @@
             <div class="group-label"><svg class="ic" style="color: var(--state-unknown)"><use href="#m-unknown"/></svg>Uncommitted<button class="i" type="button" aria-label="Why this matters" title="Only committed work can be used as evidence — an uncommitted change is not readable from any ref.">i</button></div>
             <div class="file">
               <span class="path"><span class="dir">apps/ctower-ui/src/surfaces/crew/</span><span class="base">CrewRail.tsx</span></span>
-              <span class="chip sc-capped"><svg class="ic"><use href="#m-capped"/></svg>dirty</span>
             </div>
             <div class="file">
               <span class="path"><span class="dir">apps/ctower-ui/src/surfaces/terminal/</span><span class="base">TerminalPane.tsx</span></span>
-              <span class="chip sc-capped"><svg class="ic"><use href="#m-capped"/></svg>dirty</span>
             </div>
 
           </div>
@@ -1050,11 +1103,7 @@
                  its own blocker; the reason ctower hands off rather than
                  creates is §4.3's. -->
             <button class="pr" type="button" disabled>Open compare ↗ — commit 2 paths first</button>
-            <p class="dim" style="margin: 6px 0 0; font-size: 11px">
-              <code>CrewRail.tsx</code>, <code>TerminalPane.tsx</code>
-              <button class="i" type="button" aria-label="Why this is a handoff"
-                      title="ctower's token has no pull-request authority (AC-GH-07); this opens GitHub's compare page.">i</button>
-            </p>
+
           </div>
 
           <!-- ── the console pane ─────────────────────────────────────────
