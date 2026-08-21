@@ -36,6 +36,15 @@ in this document, at the section that owns each screen; nine of them that an ope
 at the pixel became one-line `(i)` affordances. Read the two together: the mockup shows what an
 operator sees, and this file is where the argument lives.
 
+Second companion, added at the operator's request after three review rounds on the cockpit:
+`ctower-app.{html,md}` beside this file — a clickable navigation shell for the **whole** product
+and the read inventory behind it. It answers a question this document raised and could not answer
+from inside one screen: which parts of ctower can have a browser at all. The headline is that the
+authored surface is **35 reads against 69 writes**, that four areas have writes and no reads, and
+that the harness registry has no HTTP path of any kind. It adds `G11` (list tickets — six ticket
+reads all require an id you already hold) and `G12` (the write-only queues), continuing §8.2's
+numbering. The cockpit and crew page are not redrawn there; that shell links here.
+
 **Direction, verbatim (operator, 2026-08-20):** *"I want the same clean UI as paperclip has for
 ctower."* Paperclip's visual language is the target aesthetic. Two reads were granted with it:
 paperclip's source at `/srv/projects/paperclip-eval/ui` for the real design system, and the live

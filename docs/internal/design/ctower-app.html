@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ctower — the whole app, clickable (R3109 navigation shell)</title>
+
+    <!--
+      Companion to docs/internal/design/ctower-app.md.
+      Open from disk. No build step, no network fetch, no product code.
+
+      WHAT THIS IS: every top-level ctower screen, reachable, with the real
+      left navigation. It is a NAVIGATION SHELL and a READ INVENTORY, not a
+      visual design of twenty screens. Each route shows either the shape of a
+      screen its reads can actually serve, or a declared absence naming the
+      read that does not exist.
+
+      WHY IT EXISTS: the authored surface is 104 operations — 35 reads and 69
+      writes. A UI is almost entirely reads. So the question that decides
+      whether ctower can have a browser product is not "what should the screens
+      look like" but "which screens can be served at all", and that question is
+      answerable today, exactly, from contracts/http/openapi.yaml.
+
+      Tokens are duplicated from operator-cockpit.html because both files must
+      open from disk with no build step. In the real app there is ONE token
+      source (§3, D8) — the duplication is a property of the mockup format, not
+      of the design.
+    -->
+
+    <style>
+      :root {
+        --font-sans: "InterVariable", "Inter", ui-sans-serif, system-ui,
+          -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        --radius: 0.5rem;
+        --radius-sm: calc(var(--radius) * 0.6);
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.145 0 0);
+        --card: oklch(1 0 0);
+        --muted-foreground: oklch(0.556 0 0);
+        --border: oklch(0.922 0 0);
+        --sidebar: oklch(0.985 0 0);
+        --accent-soft: oklch(0.96 0 0);
+        --state-working: #2563eb;
+        --state-idle: #a8aeb2;
+        --state-capped: #f59e0b;
+        --state-error: #dc2626;
+        --state-proven: #16a34a;
+        --state-unknown: #7c3aed;
+        --p-ctower: #7c3aed;
+        --p-manibo: #0d9488;
+        --p-bhloop: #be185d;
+        --motion-duration-fast: 160ms;
+        --motion-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      [data-theme="dark"] {
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --card: oklch(0.175 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --border: oklch(0.269 0 0);
+        --sidebar: oklch(0.175 0 0);
+        --accent-soft: oklch(0.225 0 0);
+        --state-unknown: #b191f0;
+        --p-ctower: #b191f0;
+        --p-manibo: #5fc9b0;
+        --p-bhloop: #e58ab4;
+      }
+      @media (prefers-reduced-motion: reduce) { :root { --motion-duration-fast: 0ms; } }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--foreground);
+        background: var(--background);
+        -webkit-font-smoothing: antialiased;
+      }
+      .mono, code { font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+      .dim { color: var(--muted-foreground); }
+      .ic { width: 13px; height: 13px; display: inline-block; vertical-align: -2px; flex: none; }
+
+      /* ── shell ─────────────────────────────────────────────────────────── */
+      .app { display: grid; grid-template-columns: 216px minmax(0, 1fr); height: 100dvh; }
+      @media (max-width: 899px) { .app { grid-template-columns: minmax(0, 1fr); } .nav { display: none; } }
+
+      .nav {
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+        padding-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .brand { display: flex; align-items: center; gap: 8px; padding: 12px 12px 14px; font-weight: 620; }
+      .brand .mark { width: 16px; height: 16px; border-radius: 4px; background: var(--p-ctower); flex: none; }
+      .navgrp {
+        padding: 12px 12px 4px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .nav a {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 5px 12px;
+        color: var(--foreground);
+        text-decoration: none;
+        font-size: 12.5px;
+      }
+      .nav a:hover { background: var(--accent-soft); }
+      .nav a[aria-current="page"] { background: var(--accent-soft); font-weight: 600; }
+      .nav a .ic { color: var(--muted-foreground); }
+      .nav a[aria-current="page"] .ic { color: var(--foreground); }
+      /* a route with no read behind it is marked in the NAV, not only on the
+         screen — otherwise the operator learns it is empty by walking into it */
+      .nav a .absent { margin-left: auto; color: var(--state-unknown); }
+      .nav .foot { margin-top: auto; padding: 12px; }
+
+      .main { overflow-y: auto; min-width: 0; }
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 11px 22px;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--muted-foreground);
+        position: sticky;
+        top: 0;
+        background: var(--background);
+        z-index: 3;
+      }
+      .crumb b { color: var(--foreground); font-weight: 600; }
+      .crumb .spacer { flex: 1; }
+      .page { padding: 20px 22px 60px; max-width: 1180px; }
+      h1 { margin: 0 0 2px; font-size: 21px; font-weight: 640; letter-spacing: -0.015em; }
+      .sub { margin: 0 0 20px; color: var(--muted-foreground); font-size: 12.5px; }
+      h2 { margin: 26px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-foreground); }
+
+      .ghost {
+        font: inherit; font-size: 11.5px;
+        color: var(--muted-foreground);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 3px 9px;
+        cursor: pointer;
+      }
+      .ghost:hover { color: var(--foreground); background: var(--accent-soft); }
+
+      .chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        white-space: nowrap; font-size: 11.5px; font-weight: 500;
+        color: var(--foreground);
+      }
+      .chip > .ic { color: var(--sc); }
+      .sc-working { --sc: var(--state-working); }
+      .sc-idle { --sc: var(--state-idle); }
+      .sc-capped { --sc: var(--state-capped); }
+      .sc-error { --sc: var(--state-error); }
+      .sc-proven { --sc: var(--state-proven); }
+      .sc-unknown { --sc: var(--state-unknown); }
+
+      /* ── the declared absence ──────────────────────────────────────────
+         The most common screen in this file, and the point of it. It states
+         what cannot be shown, what the missing read is, and — critically —
+         what the API CAN already do here, because "no screen" and "no
+         capability" are different facts and a blank page conflates them. */
+      .absent-panel {
+        border: 1px solid var(--border);
+        border-left: 2px solid var(--state-unknown);
+        border-radius: var(--radius-sm);
+        padding: 14px 16px;
+        max-width: 640px;
+        background: var(--card);
+      }
+      .absent-panel h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+      .absent-panel p { margin: 0 0 10px; font-size: 12.5px; color: var(--muted-foreground); }
+      .opgrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; font-size: 11.5px; align-items: baseline; }
+      .opgrid dt { color: var(--muted-foreground); }
+      .opgrid dd { margin: 0; font-family: var(--font-mono); font-size: 11px; }
+
+      /* ── generic screen furniture ──────────────────────────────────────── */
+      .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+      .card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; background: var(--card); }
+      .card .k { font-size: 11px; color: var(--muted-foreground); }
+      .card .v { font-size: 20px; font-weight: 620; letter-spacing: -0.01em; margin-top: 2px; }
+      .card .v.sm { font-size: 13px; font-weight: 550; }
+
+      .rows { border-top: 1px solid var(--border); }
+      .row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        gap: 12px;
+        align-items: center;
+        padding: 8px 2px;
+        border-bottom: 1px solid var(--border);
+        font-size: 12.5px;
+      }
+      .row .key { font-family: var(--font-mono); font-size: 11px; color: var(--muted-foreground); }
+      .row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .row .meta { color: var(--muted-foreground); font-size: 11.5px; }
+
+      .empty { padding: 16px 0; font-size: 12.5px; }
+      .empty .act { margin-top: 8px; }
+
+      table.map { border-collapse: collapse; width: 100%; font-size: 12px; }
+      table.map th, table.map td { text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+      table.map th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-foreground); font-weight: 600; }
+      table.map td.n { font-family: var(--font-mono); font-size: 11px; }
+
+      .i {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 13px; height: 13px; padding: 0; flex: none;
+        border: 1px solid var(--border); border-radius: 50%;
+        background: transparent; color: var(--muted-foreground);
+        font: inherit; font-size: 9px; font-style: italic; line-height: 1; cursor: help;
+      }
+      .i:hover { color: var(--foreground); border-color: var(--muted-foreground); }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="m-working" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="currentColor"/></symbol>
+        <symbol id="m-idle" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+        <symbol id="m-capped" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 8a4 4 0 0 0 8 0z" fill="currentColor"/></symbol>
+        <symbol id="m-dead" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 5.3l5.4 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+        <symbol id="m-unknown" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="1.7 1.9"/></symbol>
+        <symbol id="m-proven" viewBox="0 0 16 16"><path d="M4.2 8.3l2.6 2.5 5-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="n-board" viewBox="0 0 16 16"><rect x="2.5" y="3" width="4" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="9.5" y="3" width="4" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+        <symbol id="n-ticket" viewBox="0 0 16 16"><rect x="2.5" y="4" width="11" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 7.6h11" stroke="currentColor" stroke-width="1.4"/></symbol>
+        <symbol id="n-inbox" viewBox="0 0 16 16"><path d="M2.5 8.5V12a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8.5M2.5 8.5 4.4 3.6h7.2l1.9 4.9M2.5 8.5h3l.9 1.6h3.2l.9-1.6h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+        <symbol id="n-req" viewBox="0 0 16 16"><path d="M3 5.5h10M3 8h10M3 10.5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+        <symbol id="n-know" viewBox="0 0 16 16"><path d="M3.5 3.5h5a2 2 0 0 1 2 2v7a1.6 1.6 0 0 0-1.6-1.6H3.5z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12.5 3.5h-1.9v9h1.9z" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+        <symbol id="n-ruling" viewBox="0 0 16 16"><path d="M8 2.8v10.4M4 6h8M5.2 6 3.4 9.6h3.6zM10.8 6 9 9.6h3.6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+        <symbol id="n-cockpit" viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 3v10M13.5 8H6.2" stroke="currentColor" stroke-width="1.4"/></symbol>
+        <symbol id="n-crew" viewBox="0 0 16 16"><circle cx="6" cy="6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.6 13c0-2 1.5-3.4 3.4-3.4S9.4 11 9.4 13" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.6 4.2a2.2 2.2 0 0 1 0 3.9M11.4 9.9c1.3.5 2.1 1.7 2.1 3.1" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+        <symbol id="n-harness" viewBox="0 0 16 16"><path d="M9.6 3.2a2.6 2.6 0 0 0 3.3 3.3l-6 6a1.9 1.9 0 1 1-2.6-2.6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+        <symbol id="n-pool" viewBox="0 0 16 16"><circle cx="5.8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8.2 8h5M11.4 8v2.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+        <symbol id="n-spawn" viewBox="0 0 16 16"><path d="M8 2.6v4M8 9.4v4M4.4 8H2.6M13.4 8h-1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+        <symbol id="n-console" viewBox="0 0 16 16"><rect x="2.4" y="3.4" width="11.2" height="9.2" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 7l1.8 1.6L5 10.2M8.6 10.4h2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+        <symbol id="n-org" viewBox="0 0 16 16"><rect x="6" y="2.6" width="4" height="3.2" rx=".8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2.2" y="10.2" width="4" height="3.2" rx=".8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9.8" y="10.2" width="4" height="3.2" rx=".8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.8v2.3M4.2 10.2V8.1h7.6v2.1" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+        <symbol id="n-proj" viewBox="0 0 16 16"><path d="M2.6 5.2a1 1 0 0 1 1-1h2.5l1.3 1.6h5a1 1 0 0 1 1 1v5.4a1 1 0 0 1-1 1H3.6a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+        <symbol id="n-cost" viewBox="0 0 16 16"><path d="M10 4.6H6.8a1.9 1.9 0 0 0 0 3.8h2.4a1.9 1.9 0 0 1 0 3.8H5.8M8 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></symbol>
+        <symbol id="n-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.2V8l2 1.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></symbol>
+        <symbol id="n-migrate" viewBox="0 0 16 16"><path d="M2.8 5.6h8.4M9.2 3.4l2.2 2.2-2.2 2.2M13.2 10.4H4.8M6.8 8.2 4.6 10.4l2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="n-bell" viewBox="0 0 16 16"><path d="M4.6 11.2V7.4a3.4 3.4 0 0 1 6.8 0v3.8zM3.4 11.2h9.2M6.7 13.2h2.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+        <symbol id="n-heart" viewBox="0 0 16 16"><path d="M2.4 8.4h2.8l1.3-3.2 2.2 6L10.3 8.4h3.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="n-seat" viewBox="0 0 16 16"><rect x="3.2" y="7" width="9.6" height="6" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.6 7V5.4a2.4 2.4 0 0 1 4.8 0V7" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+        <symbol id="n-map" viewBox="0 0 16 16"><path d="M2.6 4.4 6 3.2v8.4l-3.4 1.2zM6 3.2l4 1.4v8.4L6 11.6zM10 4.6l3.4-1.2v8.4L10 13z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+      </defs>
+    </svg>
+
+    <div class="app">
+      <nav class="nav" aria-label="ctower">
+        <div class="brand"><span class="mark"></span>ctower<span class="dim mono" style="font-size: 10px">shadow</span></div>
+        <div id="navlinks"></div>
+        <div class="foot">
+          <button class="ghost" id="theme" type="button">Toggle theme</button>
+        </div>
+      </nav>
+
+      <main class="main">
+        <div class="crumb">
+          <span id="crumb-group">Work</span>
+          <span>›</span>
+          <b id="crumb-page">Board</b>
+          <span class="spacer"></span>
+          <span id="crumb-state"></span>
+        </div>
+        <div class="page" id="page"></div>
+      </main>
+    </div>
+
+    <script>
+      // ────────────────────────────────────────────────────────────────────
+      // THE SCREEN TABLE IS THE READ INVENTORY.
+      //
+      // `reads` and `writes` are counted from contracts/http/openapi.yaml, not
+      // asserted. A screen with reads gets a shape; a screen with none gets a
+      // declared absence naming the gap. This table is the artifact — the
+      // rendering is just how you walk it.
+      // ────────────────────────────────────────────────────────────────────
+      var SCREENS = [
+        { grp: "Work", id: "board", name: "Board", icon: "n-board",
+          reads: ["getBoard"], writes: 0,
+          lead: "The portfolio view, and the only way into a ticket.",
+          note: "getBoard is the single portfolio read on the whole surface.",
+          shape: "board" },
+
+        { grp: "Work", id: "tickets", name: "Tickets", icon: "n-ticket",
+          reads: [], writes: 18, gap: "G11",
+          lead: "There is no ticket list.",
+          absent: "Six ticket reads exist and every one of them needs a ticket_id you already have: getTicket, getTicketTimeline, listTicketSessions, listTicketAssignments, listTicketAuditEvents, listReviewDispatchEffects. Nothing enumerates tickets. The Board is the only entry point, and a ticket outside the board is unreachable by any read.",
+          also: "18 ticket writes exist, including create, comment, label, relate, custody, priority and the whole workflow verb set." },
+
+        { grp: "Work", id: "ticket", name: "Ticket detail", icon: "n-ticket",
+          reads: ["getTicket", "getTicketTimeline", "listTicketSessions", "listTicketAssignments", "listTicketAuditEvents", "listReviewDispatchEffects"], writes: 18,
+          lead: "The richest screen ctower can serve today.",
+          note: "Workflow stage is the one field missing — see G10.",
+          shape: "ticket" },
+
+        { grp: "Work", id: "requests", name: "Requests", icon: "n-req",
+          reads: ["listRequests"], writes: 7,
+          lead: "Intake before a ticket exists.",
+          shape: "list" },
+
+        { grp: "Work", id: "inbox", name: "Inbox", icon: "n-inbox",
+          reads: ["listInboxThreads", "readInboxThread", "listInboxCorrespondents", "readInboxMessageState"], writes: 4,
+          lead: "The tenant-wide comms plane.",
+          note: "Never evaluates a project grant — §7 of the cockpit design.",
+          shape: "list" },
+
+        { grp: "Work", id: "knowledge", name: "Knowledge", icon: "n-know",
+          reads: ["listKnowledgeDocuments", "getKnowledgeDocument"], writes: 1,
+          lead: "Durable documents.", shape: "list" },
+
+        { grp: "Work", id: "rulings", name: "Rulings", icon: "n-ruling",
+          reads: ["listRulings", "getRuling"], writes: 1,
+          lead: "Agreements and their appeals.", shape: "list" },
+
+        { grp: "Work", id: "digest", name: "Morning digest", icon: "n-clock",
+          reads: ["getMorningDigest"], writes: 0,
+          lead: "One composed read of the night.", shape: "cards" },
+
+        { grp: "Crews", id: "cockpit", name: "Cockpit", icon: "n-cockpit",
+          reads: ["listSpawnRecords", "listProjectSessions", "readPoolLimits"], writes: 0,
+          lead: "The four-pane operator cockpit — R3109.",
+          note: "Designed in full: operator-cockpit.html.",
+          shape: "link", href: "operator-cockpit.html" },
+
+        { grp: "Crews", id: "crew", name: "Crew page", icon: "n-crew",
+          reads: ["listSpawnRecords", "readPoolLimits"], writes: 0,
+          lead: "Readiness composed, never asserted.",
+          note: "Designed in full: operator-cockpit.html, board two.",
+          shape: "link", href: "operator-cockpit.html" },
+
+        { grp: "Crews", id: "harness", name: "Harness", icon: "n-harness",
+          reads: [], writes: 0, gap: "G2",
+          lead: "The harness registry has no HTTP surface at all.",
+          absent: "There is no /v1/harness path on the authored surface — not one operation, read or write. HarnessSpec exists as Python constants and contract JSON: key, revision, digests, declared capabilities, context_window_percent, liveness_sources, survey answers, derived layers. None of it is served, so a browser cannot show which harnesses are registered, cannot derive a composer's enabled state from declared capability, and cannot draw paperclip's harness picker equivalent.",
+          also: "This is the widest gap in the product: an entire object with zero operations." },
+
+        { grp: "Crews", id: "pools", name: "Credentials", icon: "n-pool",
+          reads: ["readPoolLimits"], writes: 1,
+          lead: "Three axes per entry, never one word.",
+          note: "The mint's write half is G8/G8b/G9.",
+          shape: "cards" },
+
+        { grp: "Crews", id: "spawns", name: "Spawn records", icon: "n-spawn",
+          reads: ["listSpawnRecords", "getSpawnRecord"], writes: 2,
+          lead: "The durable attempt registry.",
+          note: "Lifecycle status only — liveness is G1.",
+          shape: "list" },
+
+        { grp: "Crews", id: "console", name: "Console", icon: "n-console",
+          reads: ["listVisibleConsoleSessions", "streamConsoleEvents"], writes: 5,
+          lead: "Bounded, granted, read-only terminal.",
+          note: "The four viewer operations need a browser session this boundary withholds.",
+          shape: "list" },
+
+        { grp: "Company", id: "org", name: "Org", icon: "n-org",
+          reads: ["exportCompanyBundle"], writes: 3,
+          lead: "The company bundle is the org chart.",
+          note: "One read, and it is an export rather than a view.",
+          shape: "cards" },
+
+        { grp: "Company", id: "projects", name: "Projects", icon: "n-proj",
+          reads: ["listProjectSessions", "listProjectEvents", "getProjectDelivery", "getMovementAtom", "listTicketMovement"], writes: 0,
+          lead: "Five reads, zero writes — the most readable object in ctower.",
+          shape: "list" },
+
+        { grp: "Company", id: "costs", name: "Costs", icon: "n-cost",
+          reads: ["readPoolLimits"], writes: 0,
+          lead: "Credits in provider-native units.",
+          note: "No currency column: a stale weight table refuses rather than mispricing.",
+          shape: "cards" },
+
+        { grp: "Company", id: "migrations", name: "Migrations", icon: "n-migrate",
+          reads: ["getCtowerProjectImportRun", "getCtowerProjectCutoverHealth"], writes: 13,
+          lead: "Thirteen writes, two reads.",
+          note: "You can run an import; you can barely watch one.",
+          shape: "list" },
+
+        { grp: "Company", id: "attention", name: "Attention", icon: "n-bell",
+          reads: [], writes: 2, gap: "G12",
+          lead: "Findings can be filed and dispositioned. None can be listed.",
+          absent: "appendAttentionFinding and recordAttentionFindingDisposition both write. No read returns a finding, so an operator can record that something needs attention and can record that it was handled, but can never open a list of what is outstanding.",
+          also: "A queue with no way to see the queue." },
+
+        { grp: "Company", id: "intake", name: "Intake", icon: "n-map",
+          reads: [], writes: 2, gap: "G12",
+          lead: "Submit and promote, with nothing to look at.",
+          absent: "submitIntake and promoteIntakeEvent write; no read serves the intake stream. The same shape as Attention — a pipeline you can push into and cannot inspect.",
+          also: "Requests (listRequests) is the nearest readable neighbour." },
+
+        { grp: "Company", id: "seats", name: "Seat credentials", icon: "n-seat",
+          reads: [], writes: 2, gap: "G12",
+          lead: "Issue and revoke, with no register.",
+          absent: "issueSeatCredential and revokeSeatCredential are the only two operations. Nothing lists which seats hold credentials — and a project_seats row is created ONLY by issuing one, so the register exists and is simply not served.",
+          also: "Security-relevant: an operator cannot audit who holds what." },
+
+        { grp: "Company", id: "health", name: "Health", icon: "n-heart",
+          reads: ["getControlHealth"], writes: 0,
+          lead: "One read for the control plane.", shape: "cards" }
+      ];
+
+      // ── rendering ────────────────────────────────────────────────────────
+      var el = function (t, c, h) { var n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
+      var mark = function (sym, sc) { return '<svg class="ic ' + (sc || "") + '"><use href="#' + sym + '"/></svg>'; };
+
+      function nav() {
+        var box = document.getElementById("navlinks"), last = null;
+        SCREENS.forEach(function (s) {
+          if (s.grp !== last) { box.appendChild(el("div", "navgrp", s.grp)); last = s.grp; }
+          var a = el("a", null,
+            mark(s.icon) + "<span>" + s.name + "</span>" +
+            (s.reads.length === 0 && s.gap ? '<span class="absent" title="no read serves this screen">' + mark("m-unknown") + "</span>" : ""));
+          a.href = "#/" + s.id;
+          a.id = "nav-" + s.id;
+          box.appendChild(a);
+        });
+      }
+
+      function absentPanel(s) {
+        var d = el("div", "absent-panel");
+        d.innerHTML =
+          '<h3><span class="chip sc-unknown">' + mark("m-unknown") + "</span> No read serves this screen</h3>" +
+          "<p>" + s.absent + "</p>" +
+          '<dl class="opgrid">' +
+          "<dt>Missing</dt><dd>" + s.gap + "</dd>" +
+          "<dt>Reads</dt><dd>0</dd>" +
+          "<dt>Writes</dt><dd>" + s.writes + "</dd>" +
+          "</dl>" +
+          (s.also ? '<p style="margin: 10px 0 0">' + s.also + "</p>" : "");
+        return d;
+      }
+
+      var FIX = {
+        board: function () {
+          var rows = [
+            ["CT-I1-041", "Harness adapter seam — merged binding", "working", "sc-working", "m-working"],
+            ["CT-I1-042", "claude-code binding conformance", "working", "sc-working", "m-working"],
+            ["CT-I1-027", "Console view grants", "gated", "sc-capped", "m-capped"],
+            ["CT-I1-044", "Survey and classification", "idle", "sc-idle", "m-idle"],
+            ["CT-I1-013", "Human session foundation", "delivered", "sc-proven", "m-proven"]
+          ];
+          var w = el("div", "rows");
+          rows.forEach(function (r) {
+            w.appendChild(el("div", "row",
+              '<span class="key">' + r[0] + "</span><span class=t>" + r[1] + "</span>" +
+              '<span class="meta">ctower</span>' +
+              '<span class="chip ' + r[3] + '">' + mark(r[4]) + r[2] + "</span>"));
+          });
+          return w;
+        },
+        ticket: function () {
+          var w = el("div");
+          w.appendChild(el("div", "cards",
+            '<div class=card><div class=k>Priority</div><div class="v sm">high</div></div>' +
+            '<div class=card><div class=k>Custodian</div><div class="v sm">ctower-commander</div></div>' +
+            '<div class=card><div class=k>Sessions</div><div class="v">3</div></div>' +
+            '<div class=card><div class=k>Workflow stage</div><div class="v sm"><span class="chip sc-unknown">' +
+            mark("m-unknown") + 'unknown</span> <button class="i" type="button" title="No read returns a ticket stage — G10.">i</button></div></div>'));
+          w.appendChild(el("h2", null, "Sessions · listTicketSessions"));
+          var r = el("div", "rows");
+          [["designer-cockpit-2", "cockpit-design", "working", "sc-working", "m-working"],
+           ["engineer-seam", "adapter-codex", "gated", "sc-capped", "m-capped"],
+           ["reviewer-intake", "intake-fence", "delivered", "sc-proven", "m-proven"]].forEach(function (x) {
+            r.appendChild(el("div", "row",
+              '<span class="key">' + x[0] + "</span><span class=t>" + x[1] + "</span>" +
+              '<span class="meta">worktree</span><span class="chip ' + x[3] + '">' + mark(x[4]) + x[2] + "</span>"));
+          });
+          w.appendChild(r);
+          return w;
+        },
+        list: function (s) {
+          var w = el("div", "empty");
+          w.innerHTML = "Nothing to show in this fixture." +
+            '<div class="act"><button class="ghost" type="button">Refresh</button></div>';
+          return w;
+        },
+        cards: function () {
+          return el("div", "cards",
+            '<div class=card><div class=k>Entries</div><div class="v">3</div></div>' +
+            '<div class=card><div class=k>Selectable</div><div class="v">1</div></div>' +
+            '<div class=card><div class=k>Earliest reset</div><div class="v sm">04:12Z</div></div>');
+        },
+        link: function (s) {
+          var w = el("div", "empty");
+          w.innerHTML = 'Designed in full in the companion mockup.' +
+            '<div class="act"><a class="ghost" href="' + s.href + '" style="text-decoration:none">Open ' + s.href + " ↗</a></div>";
+          return w;
+        }
+      };
+
+      function render() {
+        var id = (location.hash || "#/board").replace("#/", "");
+        var s = SCREENS.filter(function (x) { return x.id === id; })[0] || SCREENS[0];
+        SCREENS.forEach(function (x) {
+          var a = document.getElementById("nav-" + x.id);
+          if (x.id === s.id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+        });
+        document.getElementById("crumb-group").textContent = s.grp;
+        document.getElementById("crumb-page").textContent = s.name;
+        document.getElementById("crumb-state").innerHTML =
+          '<span class="dim mono">' + s.reads.length + (s.reads.length === 1 ? " read · " : " reads · ") +
+          s.writes + (s.writes === 1 ? " write</span>" : " writes</span>");
+
+        var p = document.getElementById("page");
+        p.innerHTML = "";
+        p.appendChild(el("h1", null, s.name));
+        p.appendChild(el("p", "sub", s.lead));
+
+        if (s.reads.length === 0) {
+          p.appendChild(absentPanel(s));
+        } else {
+          if (FIX[s.shape]) p.appendChild(FIX[s.shape](s));
+          p.appendChild(el("h2", null, "Served by"));
+          var dl = el("dl", "opgrid");
+          dl.innerHTML = s.reads.map(function (r) { return "<dt>read</dt><dd>" + r + "</dd>"; }).join("") +
+            (s.writes ? "<dt>writes</dt><dd>" + s.writes + "</dd>" : "");
+          p.appendChild(dl);
+          if (s.note) p.appendChild(el("p", "sub", s.note));
+        }
+        window.scrollTo(0, 0);
+      }
+
+      nav();
+      window.addEventListener("hashchange", render);
+      render();
+      document.getElementById("theme").addEventListener("click", function () {
+        var e = document.documentElement;
+        e.dataset.theme = e.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>
