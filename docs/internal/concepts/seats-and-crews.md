@@ -17,13 +17,12 @@ The separation answers two different questions:
 Recorded work sessions keep the ticket, seat, crew, model, harness, worktree, branch, state changes, token
 counts, duration, outcome, and evidence reference. They do not turn terminal text into proof.
 
-## How to use the views
+## Current read path
 
-Open `/team` in the local shadow browser to see the organization view. Select a seat to open
-`/team/<seat>`. That page groups the live crews for the seat. Select a crew to open `/crew/<crew-name>`.
-
-The browser joins several local sources for these views. It labels missing and unreachable data instead of
-showing a false empty result. The view is read-only.
+The browser organization and crew views are deferred to the separately activated CT-I2-005/I2.4 product
+lane. No current browser route is implementation or evidence for these facts. Use the protected CLI below for
+recorded session facts; it preserves explicit missing and unreachable states rather than showing a false empty
+result.
 
 For recorded session facts, use:
 
