@@ -1290,8 +1290,20 @@ classify its turns. Centre pane renders turns, thinking, tool rows, interrupt ch
 **with the composer present and its send control disabled**, carrying the capability's own words
 (§4.2a). G1 lands here too, so the rail finally shows `capped` outranking `working`.
 
-**Requires:** the seam's phase to be active. Before that, this slice can be built against the
-conformance fixtures but must not claim a live dispatch path.
+**Requires two things, and phase activation is the smaller one.**
+
+1. **An accepted turn-level typed fact vocabulary** — open question 2. `AC-HAD-08` forbids every
+   kernel, reporter, projection, CLI and Board path from parsing a harness-private transcript, and
+   no contract names the turn / thinking / tool-call / interrupt / elapsed fact set that would
+   cross the seam instead (§8.2, G3). This is a contract decision with a conformance obligation
+   attached, not a footnote after a buildable-sequencing claim: without it there is nothing for
+   the route to serve, and a UI that fills the gap by parsing harness output violates the exact
+   criterion it is trying to honour.
+2. **The seam's phase active.** Before that, this slice can be built against the conformance
+   fixtures but must not claim a live dispatch path.
+
+The ordering follows: the vocabulary can be decided *before* the phase activates, and should be,
+because it is the item on this whole list with the longest lead time and the least UI content.
 
 ### Slice 6 — the composer sends
 
@@ -1299,6 +1311,18 @@ G4. `unsent` → `durability pending` → accepted, one stable command ID across
 as refusal. Idle-lane input only, because that is what today's two bindings declare. The day a
 binding declares `INTERRUPT_AND_RESUME`, mid-turn steer lights up with no cockpit change (§4.2a) —
 which is the test of whether §4.2a was designed right.
+
+**Requires an accepted operator-input authority model** — open question 3 — **before the seam
+path, and the seam path before the route.** `AC-HAD-05` binds every `writeback` fact to one seat's
+own project-seat credential and refuses an operator or commander credential presented to an
+adapter; an operator message to a lane is, by construction, an operator action. Whether it arrives
+as an operator-principal command the runner converts, or as something else, is a credential-law
+question, and getting it wrong is a violation rather than a UI bug. Phase activation does not
+answer it, and no amount of UI care compensates for answering it wrong.
+
+So slice 6's gates are, in order: the authority ruling, the seam-level input path composed over
+`deliver_input` with its ACK-on-durable-command-ID behaviour and its conformance fixtures, the
+HTTP route with its four inventories, and only then this pane's rendering.
 
 ### Slice 7 — the hire wizard
 
@@ -1320,7 +1344,12 @@ same blocker and do not clear the same way.
 
 - **CT-I1-041** (seam + `hermes`) — merged (#533); phase 37 of 38, not active.
 - **CT-I1-042** (`claude-code`) — merged (#538); phase 38 of 38, not active.
-- **Phase activation** — the gate on slices 5 and 6.
+- **Phase activation** — *a* gate on slices 5 and 6, and by itself insufficient for either.
+- **An accepted turn-level typed fact vocabulary** (open question 2) — the gate on slice 5's G3,
+  and the longest-lead item on this list. Decidable today; nothing waits on it but everything
+  transcript-shaped waits behind it.
+- **An accepted operator-input authority model** (open question 3) — the gate on slice 6's G4,
+  ahead of both the seam path and the route. A credential-law decision, not a scheduling one.
 - **CT-I1-043** (`codex`), **CT-I1-044** (survey + classification) — not started, absent from the
   ladder; the gate on slice 7 — but *not* on step 5b's G8/G9, which need neither.
 - **CT-I1-021** (console) — phase 26 of 38, **active**. Its seven operations are ready today;
