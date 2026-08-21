@@ -157,27 +157,39 @@
       .dim { color: var(--muted-foreground); }
 
       /* ── the status recipe: one seed, both themes derived ─────────────── */
+      /* THE CHIP IS NOW A MARK PLUS A WORD. Paperclip's own status control is a
+         shape-coded glyph beside plain text ("(dotted circle) Backlog") with no
+         border, no uppercase and no letter-spacing — and the bordered uppercase
+         pill this file used to draw everywhere is most of what read as noise.
+         The seed hue still drives it, so the one-seed claim of §3 still holds;
+         it now tints a 13px glyph instead of a filled capsule. */
       .chip {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 1px 7px;
-        border: 1px solid;
-        border-radius: var(--radius-sm);
-        font-size: 10.5px;
-        font-weight: 550;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
+        gap: 4px;
         white-space: nowrap;
-        background-color: color-mix(in srgb, var(--sc) 15%, white);
-        color: color-mix(in srgb, var(--sc) 82%, black);
-        border-color: var(--sc);
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--foreground);
         animation: chip-in var(--motion-chip-enter) var(--motion-ease-out-expo);
       }
-      [data-theme="dark"] .chip {
-        background-color: color-mix(in srgb, var(--sc) 22%, transparent);
-        color: color-mix(in srgb, var(--sc) 80%, white);
-        border-color: color-mix(in srgb, var(--sc) 48%, transparent);
+      .chip > .ic { color: var(--sc); flex: none; }
+      /* the shape carries the state; the hue only reinforces it. Greyscale, or
+         a red-green reader, still gets every distinction on this screen. */
+      .ic { width: 13px; height: 13px; display: inline-block; vertical-align: -2px; }
+      /* a count is the one thing that stays a capsule: it is a quantity, not a
+         state, and it needs an edge to read as a unit */
+      .count {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 5px;
+        min-width: 17px;
+        justify-content: center;
+        border-radius: 9px;
+        background: var(--accent-soft);
+        color: var(--muted-foreground);
+        font-size: 10.5px;
+        font-variant-numeric: tabular-nums;
       }
       @keyframes chip-in { from { opacity: 0; } to { opacity: 1; } }
       .sc-working  { --sc: var(--state-working); }
@@ -220,13 +232,47 @@
       }
       .ghost:hover { color: var(--foreground); background: var(--accent-soft); }
 
+      /* D7 — the real app takes this geometry from react-resizable-panels with
+         persisted sizes. The mockup implements the same two degrees of freedom
+         directly so the feel can be checked: drag either gutter, or the one
+         between the change list and the console. */
       .panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
       @media (min-width: 1100px) {
-        /* the shape apps/ctower-ui/src/app/conductor.css already ships */
-        .panes { grid-template-columns: 276px minmax(0, 1fr) 372px; }
+        .panes {
+          grid-template-columns: var(--w-rail, 276px) 0 minmax(0, 1fr) 0 var(--w-right, 372px);
+        }
       }
       .pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-      .pane + .pane { border-left: 1px solid var(--border); }
+
+      /* the gutter IS the border: 1px of ink, 9px of target. A splitter you can
+         see but not grab is the affordance failing in the other direction. */
+      .gut {
+        position: relative;
+        z-index: 2;
+        background: var(--border);
+        border: 0;
+        padding: 0;
+        margin: 0 -4px;
+        width: 9px;
+        border-left: 4px solid var(--background);
+        border-right: 4px solid var(--background);
+        background-clip: padding-box;
+        cursor: col-resize;
+        touch-action: none;
+      }
+      .rail + .gut { border-left-color: var(--sidebar); }
+      .gut.row {
+        width: auto;
+        height: 9px;
+        margin: -4px 0;
+        border: 0;
+        border-top: 4px solid var(--background);
+        border-bottom: 4px solid var(--background);
+        background-clip: padding-box;
+        cursor: row-resize;
+      }
+      .gut:hover, .gut:focus-visible { background-color: var(--state-working); outline: none; }
+      @media (max-width: 1099px) { .gut:not(.row) { display: none; } }
       .rail { background: var(--sidebar); }
       .scroll { overflow-y: auto; min-height: 0; flex: 1; }
 
@@ -445,11 +491,12 @@
       /* ── right-top: the change list ───────────────────────────────────── */
       .totals { padding: 7px 12px; font-size: 11.5px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
       .group-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
         padding: 8px 12px 4px;
-        font-size: 10.5px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
         color: var(--muted-foreground);
       }
       .file {
@@ -625,6 +672,22 @@
       .legend b { color: var(--foreground); font-weight: 600; }
       .legend .keys { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 
+      /* THE AXIS TRIAD — the answer to "fewer words" that AC-HAD-10 permits.
+         A credential entry has three orthogonal axes and the criterion forbids
+         collapsing them into one word. Three glyphs in a FIXED order (auth,
+         quota, reach), each carrying its own axis's hue, removes six words per
+         entry without merging anything: three marks stay three marks. A cleared
+         axis is muted, a blocking axis takes its state hue, so the eye lands on
+         the axis that is actually stopping the entry.
+
+         THE RULE THAT MAKES THIS LEGAL: a glyph may stand for ONE axis, never
+         for a composed verdict. Readiness stays words (§5.1) because it is a
+         composition of eight cells, and a single mark for it would be the
+         HEALTHY badge this design exists to refuse. */
+      .triad { display: inline-flex; align-items: center; gap: 3px; }
+      .triad .ic { width: 14px; height: 14px; color: var(--muted-foreground); }
+      .triad .ic.on { color: var(--sc); }
+
       /* D9 — the (i) affordance. ONE line, on hover. It is not a disclosure
          triangle over a paragraph and it is not where a sentence that failed
          the copy budget goes to live: if the explanation needs two lines it is
@@ -654,6 +717,38 @@
   <body>
     <div class="app">
       <!-- ── top bar ─────────────────────────────────────────────────── -->
+      <!-- ── THE MARK VOCABULARY ────────────────────────────────────────
+           Every state is SHAPE-CODED first and hue-coded second, so the screen
+           survives greyscale and a red-green reader. The shapes are chosen so
+           the distinction that matters most is the distinction you see first:
+
+             working   filled disc        something is happening
+             idle      hollow ring        nothing is happening, and that is fine
+             capped    half-filled disc   a quantity ran out — reads as a gauge
+             dead      ring with a slash  refused/ended, not merely stopped
+             unknown   DOTTED ring        the read did not answer (D1)
+
+           `unknown` is dotted rather than a lighter grey on purpose: D1 forbids
+           it resolving to the idle grey, and a dashed outline is the only one of
+           these five that stays distinct with the hue removed entirely.
+
+           The last three are AXIS glyphs, not state glyphs — see .triad. -->
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <defs>
+          <symbol id="m-working" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="currentColor"/></symbol>
+          <symbol id="m-idle" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+          <symbol id="m-capped" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 8a4 4 0 0 0 8 0z" fill="currentColor"/></symbol>
+          <symbol id="m-dead" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 5.3l5.4 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+          <symbol id="m-unknown" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="1.7 1.9"/></symbol>
+          <symbol id="m-pending" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 5.4V8l1.8 1.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></symbol>
+          <symbol id="m-proven" viewBox="0 0 16 16"><path d="M4.2 8.3l2.6 2.5 5-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+          <!-- axis glyphs: auth is a key, quota is a gauge, reach is a signal -->
+          <symbol id="a-auth" viewBox="0 0 16 16"><circle cx="5.8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.2 8h5M11.4 8v2.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+          <symbol id="a-quota" viewBox="0 0 16 16"><path d="M3.2 11.4a5 5 0 0 1 9.6 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8 11.4l2.7-3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+          <symbol id="a-reach" viewBox="0 0 16 16"><rect x="3" y="10" width="2" height="3.2" rx=".6" fill="currentColor"/><rect x="7" y="7.4" width="2" height="5.8" rx=".6" fill="currentColor"/><rect x="11" y="4.6" width="2" height="8.6" rx=".6" fill="currentColor"/></symbol>
+        </defs>
+      </svg>
+
       <header class="topbar">
         <span class="mark" style="background: var(--p-ctower)" aria-hidden="true"></span>
         <span class="brand">ctower cockpit</span>
@@ -668,8 +763,8 @@
              understates its blast radius. Off is not a success state, so the
              chip is plain machine fact rather than green. -->
         <span class="killsw" title="Global console kill switch — off. Stops every console stream in the tenant; AC-CON-06 closes each affected stream with a typed reason within five seconds.">
-          <span class="dim">console kill switch</span>
-          <span class="chip sc-idle">off</span>
+          <span class="dim">console</span>
+          <span class="chip sc-idle"><svg class="ic"><use href="#m-idle"/></svg>off</span>
           <button class="ghost" type="button">Stop all streams…</button>
         </span>
         <button class="ghost" id="theme" type="button">Toggle theme</button>
@@ -683,7 +778,7 @@
       <div class="panes">
         <!-- ══ LEFT — projects → seats → workspaces ═════════════════════ -->
         <nav class="pane rail" aria-label="Projects and crews">
-          <div class="pane-head">Crews<span class="spacer"></span><span class="dim mono">7 lanes</span></div>
+          <div class="pane-head">Crews<span class="spacer"></span><span class="count" title="7 lanes">7</span></div>
           <div class="scroll">
             <div class="proj"><span class="mark" style="background: var(--p-ctower)"></span>ctower</div>
 
@@ -691,7 +786,7 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">main</span>
-              <span class="chip sc-idle" title="idle · probe pane_footer · observed 11s ago"><span class="dot" style="background: var(--state-idle)"></span>idle</span>
+              <span class="chip sc-idle" title="idle · probe pane_footer · observed 11s ago"><svg class="ic"><use href="#m-idle"/></svg>idle</span>
             </button>
 
             <div class="seat">designer-cockpit-2</div>
@@ -708,7 +803,7 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">adapter-codex</span>
-              <span class="chip sc-capped" title="capped · probe pane_footer · observed 38s ago · reset unknown"><span class="dot" style="background: var(--state-capped)"></span>capped</span>
+              <span class="chip sc-capped" title="capped · quota spent · reset 04:12Z"><svg class="ic"><use href="#m-capped"/></svg>capped</span>
             </button>
             <button class="ws" type="button" data-unread="true">
               <span class="unread"></span>
@@ -721,13 +816,13 @@
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">intake-fence</span>
-              <span class="chip sc-working" title="working · probe gateway_log · observed 4s ago · served claude-opus-5 (proves: serving)"><span class="dot" style="background: var(--state-working)"></span>working</span>
+              <span class="chip sc-working" title="working · probe gateway_log · observed 4s ago · served claude-opus-5"><svg class="ic"><use href="#m-working"/></svg>working</span>
             </button>
             <!-- a read that did not answer is not a read that returned zero -->
             <button class="ws" type="button">
               <span class="unread"></span>
               <span class="name">estate-import</span>
-              <span class="chip sc-unknown" title="unknown · substrate-unobservable:worktree_read · last answered 12m ago">not reached</span>
+              <span class="chip sc-unknown" title="unknown · substrate-unobservable:worktree_read · last answered 12m ago"><svg class="ic"><use href="#m-unknown"/></svg>not reached</span>
             </button>
 
             <div class="proj"><span class="mark" style="background: var(--p-bhloop)"></span>bhloop</div>
@@ -739,7 +834,7 @@
             <button class="ws dead" type="button">
               <span class="unread"></span>
               <span class="name">whisper-bench</span>
-              <span class="chip sc-error"><span class="dot" style="background: var(--state-error)"></span>dead · auth</span>
+              <span class="chip sc-error" title="dead · auth · lineage-dead on anthropic sub-3 · probe gateway_log 4m 12s"><svg class="ic"><use href="#m-dead"/></svg>dead</span>
             </button>
             <!-- D9 — was: a two-line explanation of what lineage-dead means and
                  that the shell may still say logged in, plus a disabled Reap
@@ -750,8 +845,8 @@
                  rationale habit wearing a border. -->
             <div class="deadrow">
               <p class="deadwhen mono">
-                auth: lineage-dead · anthropic · sub-3
-                <span class="dim">· gateway_log 4m 12s</span>
+                <span class="triad" title="auth lineage-dead · quota and reach not the blocker"><svg class="ic on sc-error"><use href="#a-auth"/></svg><svg class="ic"><use href="#a-quota"/></svg><svg class="ic"><use href="#a-reach"/></svg></span>
+                anthropic · sub-3 <span class="dim">· 4m 12s</span>
                 <button class="i" type="button" aria-label="Why reap is unavailable"
                         title="Reap is refused on a dead lane (AC-HAD-07) — the lane is preserved for resume.">i</button>
               </p>
@@ -768,11 +863,11 @@
                a legend is the key itself: which chips exist. -->
           <div class="legend">
             <div class="keys">
-              <span class="chip sc-working">working</span>
-              <span class="chip sc-idle">idle</span>
-              <span class="chip sc-capped">capped</span>
-              <span class="chip sc-error">dead · auth</span>
-              <span class="chip sc-unknown">not reached</span>
+              <span class="chip sc-working"><svg class="ic"><use href="#m-working"/></svg>working</span>
+              <span class="chip sc-idle"><svg class="ic"><use href="#m-idle"/></svg>idle</span>
+              <span class="chip sc-capped" title="capped · quota spent · reset 04:12Z"><svg class="ic"><use href="#m-capped"/></svg>capped</span>
+              <span class="chip sc-error"><svg class="ic"><use href="#m-dead"/></svg>dead</span>
+              <span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>not reached</span>
               <button class="i" type="button" aria-label="About lane states"
                       title="States are observed, never self-reported. Hover a chip for its probe and age.">i</button>
             </div>
@@ -780,6 +875,8 @@
         </nav>
 
         <!-- ══ CENTRE — the transcript ══════════════════════════════════ -->
+        <button class="gut" type="button" aria-label="Resize rail" aria-orientation="vertical" role="separator"></button>
+
         <main class="pane" aria-label="Crew transcript">
           <div class="tabs" role="tablist">
             <button class="tab" role="tab" aria-selected="false">seam-conformance</button>
@@ -835,7 +932,7 @@
               <div class="turn mine">
                 <div class="turn-head">
                   <span class="who">You</span>
-                  <span class="chip sc-unknown">durability pending</span>
+                  <span class="chip sc-unknown" title="durability pending — the projection has not folded"><svg class="ic"><use href="#m-pending"/></svg>pending</span>
                   <span class="mono">cmd_01JQ8W…F3</span>
                 </div>
                 <div class="bubble">Carry the terminal pane's grant clock into slice 2.</div>
@@ -844,7 +941,7 @@
               <div class="turn">
                 <div class="turn-head">
                   <span class="who">designer-cockpit-2</span>
-                  <span class="chip sc-error" title="interrupted by the operator at 1m 04s">interrupted</span>
+                  <span class="chip sc-error" title="interrupted by the operator at 1m 04s"><svg class="ic"><use href="#m-dead"/></svg>interrupted</span>
                   <span class="mono">1m 04s</span>
                 </div>
                 <div class="body"><p>Rewriting §9 against the phase ladder…</p></div>
@@ -881,6 +978,8 @@
         </main>
 
         <!-- ══ RIGHT — workspace, then console ══════════════════════════ -->
+        <button class="gut" type="button" aria-label="Resize workspace" aria-orientation="vertical" role="separator"></button>
+
         <aside class="pane" data-collapse aria-label="Workspace and console">
           <div class="tabs" role="tablist">
             <button class="tab" role="tab" aria-selected="false">All files</button>
@@ -898,7 +997,7 @@
             <!-- AC-HAD-06: collect derives artifacts from committed refs and
                  durable records ONLY. Committed and uncommitted are different
                  claims and are never mixed into one list. -->
-            <div class="group-label">Committed · collectable</div>
+            <div class="group-label"><svg class="ic" style="color: var(--state-proven)"><use href="#m-proven"/></svg>Collectable</div>
             <div class="file">
               <span class="path"><span class="dir">docs/internal/design/</span><span class="base">operator-cockpit.md</span></span>
               <span class="diffs mono"><span class="add">+389</span></span>
@@ -912,14 +1011,14 @@
               <span class="diffs mono"><span class="add">+2</span><span class="del">−18</span></span>
             </div>
 
-            <div class="group-label">Uncommitted · <span class="mono">checkpoint-uncollectable</span></div>
+            <div class="group-label"><svg class="ic" style="color: var(--state-unknown)"><use href="#m-unknown"/></svg>Uncollectable<button class="i" type="button" aria-label="Why uncollectable" title="AC-HAD-06: collect derives artifacts from committed refs only.">i</button></div>
             <div class="file">
               <span class="path"><span class="dir">apps/ctower-ui/src/surfaces/crew/</span><span class="base">CrewRail.tsx</span></span>
-              <span class="chip sc-capped">dirty</span>
+              <span class="chip sc-capped"><svg class="ic"><use href="#m-capped"/></svg>dirty</span>
             </div>
             <div class="file">
               <span class="path"><span class="dir">apps/ctower-ui/src/surfaces/terminal/</span><span class="base">TerminalPane.tsx</span></span>
-              <span class="chip sc-capped">dirty</span>
+              <span class="chip sc-capped"><svg class="ic"><use href="#m-capped"/></svg>dirty</span>
             </div>
 
           </div>
@@ -964,6 +1063,8 @@
                needs a console_session_id that only the viewer's discovery
                produces. -->
 
+          <button class="gut row" type="button" aria-label="Resize console" aria-orientation="horizontal" role="separator"></button>
+
           <section class="console-wrap" aria-label="Console">
             <div class="tabs" role="tablist">
               <button class="tab" role="tab" aria-selected="false">Setup</button>
@@ -972,7 +1073,7 @@
             </div>
 
             <div class="grant">
-              <span class="chip sc-working">view grant</span>
+              <span class="chip sc-working"><svg class="ic"><use href="#m-working"/></svg>grant</span>
               <span class="mono">expires 03:41</span>
               <span class="dim">· chain 11:22 of 30:00</span>
               <span class="spacer" style="flex: 1"></span>
@@ -994,7 +1095,7 @@
             </div>
 
             <div class="term-foot">
-              <span class="chip sc-proven">redaction active</span>
+              <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>redacting</span>
               <span>fidelity: 3 gaps recorded</span>
               <span class="mono">cursor 0x2f118</span>
               <span class="dim">read-only · no typing authority · no export</span>
@@ -1041,17 +1142,17 @@
           <div class="cell">
             <span class="what">Survey answered → configure-or-provide derived
               <span class="src">8 required answers · roles pool=provide, fallback=provide</span></span>
-            <span class="chip sc-proven">proven</span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <div class="cell">
             <span class="what">Never both
               <span class="src">no native layer also enabled in ctower's own</span></span>
-            <span class="chip sc-proven">proven</span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <div class="cell">
             <span class="what">Composition pinned
               <span class="src mono">claude-code r1 · art 8c11…4f · cfg d4e1…9ab</span></span>
-            <span class="chip sc-proven">proven</span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <!-- AC-HAD-10: `acquire` fails only when EVERY entry is unselectable
                — the criterion's own fixture is a mixed pool that acquires from
@@ -1060,30 +1161,31 @@
                visible per entry rather than being collapsed into one word. -->
           <div class="cell">
             <span class="what">Credential pool selectable
-              <span class="src">3 entries · <b>1 selectable</b> · acct-1
-                <span class="mono">quota: capped(reset 04:12Z)</span> · acct-3
-                <span class="mono">reach: edge-challenged</span></span></span>
-            <span class="chip sc-proven">proven</span>
+              <span class="src">3 entries · <b>1 selectable</b>
+                <span class="triad" title="acct-2 — auth healthy, quota available, reach ok"><svg class="ic on sc-proven"><use href="#a-auth"/></svg><svg class="ic on sc-proven"><use href="#a-quota"/></svg><svg class="ic on sc-proven"><use href="#a-reach"/></svg></span>
+                <span class="triad" title="acct-1 — quota capped, reset 04:12Z"><svg class="ic"><use href="#a-auth"/></svg><svg class="ic on sc-capped"><use href="#a-quota"/></svg><svg class="ic"><use href="#a-reach"/></svg></span>
+                <span class="triad" title="acct-3 — reach edge-challenged"><svg class="ic"><use href="#a-auth"/></svg><svg class="ic"><use href="#a-quota"/></svg><svg class="ic on sc-unknown"><use href="#a-reach"/></svg></span></span></span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <div class="cell">
             <span class="what">Guard decision current
               <span class="src mono">policy r14 · normalized plan a09c…21</span></span>
-            <span class="chip sc-proven">proven</span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <div class="cell">
             <span class="what">Liveness observable
               <span class="src">declared sources: session transcript, pane-content hash</span></span>
-            <span class="chip sc-proven">proven</span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <div class="cell">
             <span class="what">Project scope bound
               <span class="src mono">ctower</span></span>
-            <span class="chip sc-proven">proven</span>
+            <span class="chip sc-proven"><svg class="ic"><use href="#m-proven"/></svg>proven</span>
           </div>
           <div class="cell" id="cell-weights">
             <span class="what">Spend priceable
               <span class="src">no weight table for this profile</span></span>
-            <span class="chip sc-unknown">unknown</span>
+            <span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>unknown</span>
           </div>
         </div>
 
@@ -1109,8 +1211,8 @@
           <!-- `no cap configured` is UNKNOWN, not HEALTHY, and there is no
                progress track: a bar with no denominator is a picture of a
                number nobody computed. -->
-          <div class="cell"><span class="what">Monthly cap</span><span class="chip sc-unknown">no cap</span></div>
-          <div class="cell"><span class="what">Weight table</span><span class="chip sc-unknown">revision unknown</span></div>
+          <div class="cell"><span class="what">Monthly cap</span><span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>no cap</span></div>
+          <div class="cell"><span class="what">Weight table</span><span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>unknown</span></div>
           <!-- D9 — was three lines on why no dollar figure is shown. The
                absence of a currency column is the statement; §5.5 argues it. -->
           <p class="dim" style="margin: 8px 0 0; font-size: 11.5px">
@@ -1158,7 +1260,7 @@
           <div class="st-h"><span class="st-n">0</span><span class="st-t">Work-list unknown</span></div>
           <div class="st-b">
             <div class="st-row">
-              <span class="chip sc-unknown">unknown</span>
+              <span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>unknown</span>
               <button class="i" type="button" aria-label="Why unknown"
                       title="The pool read did not answer — this is not an empty work-list.">i</button>
             </div>
@@ -1185,7 +1287,7 @@
           <div class="st-b">
             <div class="st-row">
               <span class="mono">anthropic · sub-3</span>
-              <span class="chip sc-capped">missing</span>
+              <span class="chip sc-capped"><svg class="ic"><use href="#m-capped"/></svg>missing</span>
             </div>
             <span class="mono dim">secret-reference</span>
             <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Show ceremony</button></div>
@@ -1198,7 +1300,7 @@
           <div class="st-b">
             <div class="st-row">
               <span class="mono">openai · sub-1</span>
-              <span class="chip sc-capped">missing</span>
+              <span class="chip sc-capped"><svg class="ic"><use href="#m-capped"/></svg>missing</span>
             </div>
             <span class="mono dim">asked 6m ago · operator:simonas</span>
           </div>
@@ -1210,7 +1312,7 @@
           <div class="st-b">
             <div class="st-row">
               <span class="mono">google · sub-7</span>
-              <span class="chip sc-unknown">still missing</span>
+              <span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>stalled</span>
             </div>
             <span class="mono dim">asked 3d ago</span>
             <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Ask again</button></div>
@@ -1224,7 +1326,7 @@
           <div class="st-b">
             <div class="st-row">
               <span class="mono">anthropic · sub-2</span>
-              <span class="chip sc-idle">device flow</span>
+              <span class="chip sc-idle"><svg class="ic"><use href="#m-idle"/></svg>device flow</span>
             </div>
             Run the device flow on the host.
             <div class="st-row" style="margin-top: 6px">
@@ -1253,7 +1355,7 @@
           <div class="st-h"><span class="st-n">5</span><span class="st-t">Submitting</span></div>
           <div class="st-b">
             <div class="st-row">
-              <span class="chip sc-idle">pending</span>
+              <span class="chip sc-idle"><svg class="ic"><use href="#m-pending"/></svg>pending</span>
               <span class="mono">cmd_01JQ9C…7B2</span>
             </div>
             <input class="st-field" type="text" value="anthropic/sub-3/oauth" readonly disabled />
@@ -1267,7 +1369,7 @@
           <div class="st-b">
             <div class="st-row">
               <span class="mono">anthropic · sub-3</span>
-              <span class="chip sc-unknown">discovered</span>
+              <span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>discovered</span>
               <button class="i" type="button" aria-label="Why not selectable"
                       title="A recorded reference is a claim; only an observation is evidence.">i</button>
             </div>
@@ -1281,9 +1383,9 @@
           <div class="st-h"><span class="st-n">7</span><span class="st-t">First observation</span></div>
           <div class="st-b">
             <div class="st-row">
-              <span class="chip sc-proven">auth: healthy</span>
-              <span class="chip sc-capped">quota: capped</span>
-              <span class="chip sc-proven">reach: ok</span>
+              <span class="chip sc-proven"><svg class="ic"><use href="#a-auth"/></svg>healthy</span>
+              <span class="chip sc-capped"><svg class="ic"><use href="#a-quota"/></svg>capped</span>
+              <span class="chip sc-proven"><svg class="ic"><use href="#a-reach"/></svg>ok</span>
             </div>
             <span class="mono dim">observed 11s ago · reset 04:12Z</span>
             <div class="st-row" style="margin-top: 4px">Not ready — <b>quota</b> blocking.</div>
@@ -1296,7 +1398,7 @@
           <div class="st-b">
             <div class="st-row">
               <span class="mono">anthropic · sub-3</span>
-              <span class="chip sc-unknown">discovered</span>
+              <span class="chip sc-unknown"><svg class="ic"><use href="#m-unknown"/></svg>discovered</span>
             </div>
             <div class="st-row" style="margin-top: 6px">
               <button class="ghost sm" type="button">Keep</button>
@@ -1309,7 +1411,7 @@
         <div class="st">
           <div class="st-h"><span class="st-n">F1</span><span class="st-t">Value, not reference</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">refused</span></div>
+            <div class="st-row"><span class="chip sc-error"><svg class="ic"><use href="#m-dead"/></svg>refused</span></div>
             Enter the alias, not the secret.
           </div>
         </div>
@@ -1318,7 +1420,7 @@
         <div class="st">
           <div class="st-h"><span class="st-n">F2</span><span class="st-t">Unknown alias</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">refused</span></div>
+            <div class="st-row"><span class="chip sc-error"><svg class="ic"><use href="#m-dead"/></svg>refused</span></div>
             No binding by that alias. Check the name.
           </div>
         </div>
@@ -1327,7 +1429,7 @@
         <div class="st">
           <div class="st-h"><span class="st-n">F3</span><span class="st-t">Already bound</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">refused</span></div>
+            <div class="st-row"><span class="chip sc-error"><svg class="ic"><use href="#m-dead"/></svg>refused</span></div>
             Bound to <span class="mono">anthropic/sub-3/legacy</span>. Evict first.
             <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Evict</button></div>
           </div>
@@ -1338,7 +1440,7 @@
           <div class="st-h"><span class="st-n">F4</span><span class="st-t">Chain burned</span></div>
           <div class="st-b">
             <div class="st-row">
-              <span class="chip sc-error">auth: chain-burned</span>
+              <span class="chip sc-error"><svg class="ic"><use href="#m-dead"/></svg>chain burned</span>
               <button class="i" type="button" aria-label="Why re-binding will not help"
                       title="The refresh chain was consumed — the same reference reproduces this.">i</button>
             </div>
@@ -1351,7 +1453,7 @@
         <div class="st">
           <div class="st-h"><span class="st-n">F5</span><span class="st-t">Wrong identity</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">mismatch</span></div>
+            <div class="st-row"><span class="chip sc-error"><svg class="ic"><use href="#m-dead"/></svg>mismatch</span></div>
             Alias resolved to <span class="mono">sub-9</span>, not <span class="mono">sub-3</span>.
             <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Evict</button></div>
           </div>
@@ -1369,7 +1471,44 @@
     </section>
 
     <script>
-      // The only script in the file. The theme toggle exists because the
+      // Two behaviours, both because they are CLAIMS a reader should be able to
+      // check rather than take on faith: that both themes derive from one seed,
+      // and that the four panes really do resize. D7 names
+      // react-resizable-panels for the real app; this is the same two degrees
+      // of freedom in 20 lines so the feel is testable from disk.
+      (function () {
+        var panes = document.querySelector(".panes");
+        var right = document.querySelector("[data-collapse]");
+        function drag(gut, apply) {
+          gut.addEventListener("pointerdown", function (e) {
+            gut.setPointerCapture(e.pointerId);
+            var move = function (ev) { apply(ev); ev.preventDefault(); };
+            var up = function () {
+              gut.removeEventListener("pointermove", move);
+              gut.removeEventListener("pointerup", up);
+            };
+            gut.addEventListener("pointermove", move);
+            gut.addEventListener("pointerup", up);
+          });
+        }
+        var guts = document.querySelectorAll(".gut:not(.row)");
+        var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+        drag(guts[0], function (e) {
+          panes.style.setProperty("--w-rail", clamp(e.clientX, 180, 460) + "px");
+        });
+        drag(guts[1], function (e) {
+          var r = panes.getBoundingClientRect();
+          panes.style.setProperty("--w-right", clamp(r.right - e.clientX, 240, 720) + "px");
+        });
+        var rowGut = document.querySelector(".gut.row");
+        var cons = document.querySelector(".console-wrap");
+        drag(rowGut, function (e) {
+          var r = right.getBoundingClientRect();
+          cons.style.height = clamp(r.bottom - e.clientY, 120, r.height - 140) + "px";
+        });
+      })();
+
+      // The theme toggle exists because the
       // one-seed color-mix recipe deriving BOTH modes is a claim the mockup
       // should let a reader check rather than take on faith.
       document.getElementById("theme").addEventListener("click", function () {
