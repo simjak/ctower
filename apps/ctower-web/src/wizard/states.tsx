@@ -7,7 +7,7 @@ import { Badge, Mono } from "../ui/primitives";
 export function Asking({ what }: { readonly what: string }): ReactElement {
   return (
     <p className="m-0 flex items-center gap-2 py-6 text-[13px] text-ink-3">
-      <Loader className="size-3.5 animate-spin text-accent" />
+      <Loader className="size-3.5 animate-spin text-accent-strong" />
       {what}
     </p>
   );

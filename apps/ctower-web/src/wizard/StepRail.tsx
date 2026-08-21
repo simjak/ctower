@@ -10,6 +10,12 @@ type Mark = "done" | "here" | "ahead";
  * carries nothing else: no call, no code, no explanation of what the step is
  * for. A step that needs a sentence to justify itself is a step in the wrong
  * place.
+ *
+ * Progress is the brand ramp: a step behind you is the orange end, the step you
+ * are on is the yellow one, and a step ahead is an outline. The success green
+ * is deliberately not used here — it belongs to verdicts about the record (a
+ * bundle is valid, a version is applied), and spending it on "you walked past
+ * this" would make the two mean the same thing.
  */
 export function StepRail({
   steps,
@@ -43,15 +49,15 @@ function RailStep({ step, mark }: { readonly step: Step; readonly mark: Mark }):
       className={cn(
         "flex items-center gap-2.5 rounded-md px-2.5 py-2",
         "transition-colors duration-(--motion-duration-fast)",
-        mark === "here" ? "bg-raised" : ""
+        mark === "here" ? "bg-accent-bg" : ""
       )}
     >
       <span
         aria-hidden
         className={cn(
           "grid size-5 shrink-0 place-content-center rounded-full border text-[11px] font-medium",
-          mark === "done" ? "border-proven bg-proven text-white" : "",
-          mark === "here" ? "border-accent bg-accent text-white" : "",
+          mark === "done" ? "border-accent-deep bg-accent-deep text-accent-ink" : "",
+          mark === "here" ? "border-accent bg-accent text-accent-ink" : "",
           mark === "ahead" ? "border-line-2 text-ink-4" : ""
         )}
       >

@@ -83,7 +83,7 @@ export function Checkbox({
         "outline-none focus-visible:ring-2 focus-visible:ring-accent/45"
       )}
     >
-      <CheckboxPrimitive.Indicator className="grid place-content-center text-white">
+      <CheckboxPrimitive.Indicator className="grid place-content-center text-accent-ink">
         <Check className="size-3" strokeWidth={3} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
