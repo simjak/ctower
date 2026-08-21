@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import type { ReactElement } from "react";
 import type { ConfiguredProject } from "@/read/projects";
+import { boardHref } from "./boardHref";
+import { ALL_SOURCES } from "./lanes";
 
 /**
  * The board's primary axis: which project's board this is.
@@ -21,16 +23,24 @@ import type { ConfiguredProject } from "@/read/projects";
 export function ProjectTabs({
   projects,
   selected,
+  lane,
 }: {
   readonly projects: readonly ConfiguredProject[];
   readonly selected: string;
+  /**
+   * The lane the reader is narrowed to, carried across the switch. A lane is a
+   * closed vocabulary every project's board answers in, so it survives; a source
+   * kind is that project's own provenance and does not, which is why the source
+   * resets to all rather than filtering the new board by a kind it may not hold.
+   */
+  readonly lane: string;
 }): ReactElement {
   const router = useRouter();
   const choose = useCallback(
     (key: string): void => {
-      router.push(`/board?project=${encodeURIComponent(key)}`);
+      router.push(boardHref({ project: key, source: ALL_SOURCES, lane }));
     },
-    [router]
+    [lane, router]
   );
 
   return (

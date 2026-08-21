@@ -6,6 +6,7 @@ import { elapsedSince, shortId } from "@/read/elapsed";
 import { boardCardContextFor } from "@/read/boardProjection";
 import type { BoardContextValue } from "@/read/boardProjection";
 import type { BoardEntry } from "@/read/interface";
+import { laneTitleOf } from "./lanes";
 
 function priorityClass(priority: string): string {
   return `pri ${priority.toLowerCase()}`;
@@ -70,7 +71,18 @@ export function LaneCard({
     <Link className="card" href={`/ticket/${encodeURIComponent(card.ticketId)}`}>
       <div className="card-top">
         <span className="tid">{shortId(card.ticketId)}</span>
-        <span className={priorityClass(card.priority)}>{card.priority}</span>
+        {/* the lane used to be the column this card sat in. The list is flat
+            now, so the card carries its own recorded lane. D9's legend rule —
+            a glyph alone carries a closed vocabulary that is legended once —
+            does not reach it: the six marks map six lanes onto four glyphs, so
+            the mark cannot tell backlog from ready or in progress from in
+            review, and the rail's tally legends the lanes it cannot separate */}
+        <span className="chip" title={`board lane ${card.lane}`}>
+          {laneTitleOf(card.lane)}
+        </span>
+        <span className="right">
+          <span className={priorityClass(card.priority)}>{card.priority}</span>
+        </span>
       </div>
       <h3 className="card-title">
         <StateGlyph name={laneGlyph(card.lane, card.blockerReason !== null)} />
@@ -86,7 +98,21 @@ export function LaneCard({
           {card.activityClass === null ? "" : ` · ${card.activityClass}`}
         </div>
       )}
-      <div className="card-context" aria-label="Board card context">
+      {/* the five members are a column inside a 296px board column; in a
+          full-width list they wrap into as many columns as the row affords, so
+          the card stays a row a reader can scan rather than a five-line block
+          repeated three hundred times. Nothing is dropped: each member's
+          contract distinguishes empty from absent from unknown, and an omitted
+          row would be this surface answering by silence */}
+      <div
+        className="card-context"
+        aria-label="Board card context"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(232px, 1fr))",
+          columnGap: "16px",
+        }}
+      >
         <ContextRow label="Tenant" values={[context.tenant]} />
         <ContextRow label="Changes" values={context.changes} />
         <ContextRow label="Labels" values={context.labels} />
