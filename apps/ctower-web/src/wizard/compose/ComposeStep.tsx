@@ -126,7 +126,7 @@ export function ComposeStep({
           <CardHeader>
             <CardTitle>Secrets</CardTitle>
             <span className="flex-1" />
-            <Badge tone="info">references only</Badge>
+            <Badge tone="neutral">references only</Badge>
           </CardHeader>
           <CardBody className="flex flex-wrap gap-1.5">
             {draft.base.secret_binding_refs.length === 0 ? (
