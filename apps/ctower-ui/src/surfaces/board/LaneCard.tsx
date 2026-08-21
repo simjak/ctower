@@ -6,6 +6,7 @@ import { elapsedSince, shortId } from "@/read/elapsed";
 import { boardCardContextFor } from "@/read/boardProjection";
 import type { BoardContextValue } from "@/read/boardProjection";
 import type { BoardEntry } from "@/read/interface";
+import { laneTitleOf } from "./lanes";
 
 function priorityClass(priority: string): string {
   return `pri ${priority.toLowerCase()}`;
@@ -70,7 +71,15 @@ export function LaneCard({
     <Link className="card" href={`/ticket/${encodeURIComponent(card.ticketId)}`}>
       <div className="card-top">
         <span className="tid">{shortId(card.ticketId)}</span>
-        <span className={priorityClass(card.priority)}>{card.priority}</span>
+        {/* the lane used to be the column this card sat in. The list is flat now,
+            so the card carries its own recorded lane rather than inheriting it
+            from where it was drawn */}
+        <span className="chip" title={`board lane ${card.lane}`}>
+          {laneTitleOf(card.lane)}
+        </span>
+        <span className="right">
+          <span className={priorityClass(card.priority)}>{card.priority}</span>
+        </span>
       </div>
       <h3 className="card-title">
         <StateGlyph name={laneGlyph(card.lane, card.blockerReason !== null)} />

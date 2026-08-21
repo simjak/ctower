@@ -107,6 +107,29 @@ export const NO_SESSION_STATES = capability(
   null
 );
 
+/**
+ * The Board carries a card's change *references* — repository, identity, ref —
+ * and nothing about their size. No read on the authored surface returns a diff
+ * stat for a ticket, so a line count on a board row could only be measured from
+ * a local checkout this surface is not entitled to attribute to the record.
+ */
+export const NO_CHANGE_SIZE = capability(
+  "how large a ticket's changes are — the record carries the change references, not the lines they touch",
+  null
+);
+
+/**
+ * The board projection is the only portfolio read on the authored surface: the
+ * six ticket reads all take an identifier the caller already holds. So the list
+ * on this screen is not a page of a larger inventory — it is the whole of what
+ * any client can reach, and a screen that lets a reader assume otherwise is
+ * making the claim by omission.
+ */
+export const NO_TICKET_INVENTORY = capability(
+  "a ticket this projection does not carry — every ticket read takes an identifier the caller already holds",
+  null
+);
+
 export const NO_METRIC_DEFINITIONS = capability(
   "a metric definition file the kernel reads, and the deploy and per-session token records the proposed examples would join against",
   null
@@ -156,6 +179,8 @@ export const DECLARED_SOURCES: Readonly<Record<string, FutureSource>> = {
   NO_ACCEPTANCE_CRITERIA,
   NO_SESSION_STATES,
   NO_DRAIN_SERIES,
+  NO_CHANGE_SIZE,
+  NO_TICKET_INVENTORY,
   NO_METRIC_DEFINITIONS,
   NO_STAGES_HERE,
   NO_WORKFLOW_REF_HERE,

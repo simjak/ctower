@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import type { ReactElement } from "react";
-import { ALL_SOURCES } from "./lanes";
+import { boardHref } from "./boardHref";
+import type { BoardSelection } from "./boardHref";
 import { Count } from "@/surfaces/Count";
 
 export interface SourceTab {
@@ -16,23 +17,26 @@ export interface SourceTab {
  * The board's secondary filter. Project is the primary axis above; this filters
  * its cards by the independent recorded `source.kind` provenance dimension.
  *
- * The selection lives in the URL, so the counts, the column counts and the
- * empty columns are all computed on the server from the same choice and cannot
+ * The selection lives in the URL, so the tab counts, the lane tally and the
+ * list itself are all computed on the server from the same choice and cannot
  * disagree with the rows on screen.
  */
 export function SourceTabs({
   tabs,
   selected,
+  selection,
 }: {
   readonly tabs: readonly SourceTab[];
   readonly selected: string;
+  /** Everything else the screen is narrowed to, so this control carries it. */
+  readonly selection: BoardSelection;
 }): ReactElement {
   const router = useRouter();
   const choose = useCallback(
     (key: string): void => {
-      router.push(key === ALL_SOURCES ? "/board" : `/board?source=${encodeURIComponent(key)}`);
+      router.push(boardHref({ ...selection, source: key }));
     },
-    [router]
+    [router, selection]
   );
 
   return (
