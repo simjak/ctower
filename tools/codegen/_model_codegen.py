@@ -244,6 +244,8 @@ def _render_schema(name: str, schema: Mapping[str, object]) -> str:
         )
         for field_name, value in properties.items()
     ]
+    if not fields:
+        fields.append("    pass")
     return f"class {name}(_BoundaryModel):\n" + "\n".join(fields)
 
 
