@@ -344,8 +344,8 @@ Service-per-noun units such as a separate reconciler are not implied.
   |                                                      |         |
   | Postgres + objects + vault refs + off-host durability |         |
   |                                                      |         |
-  | ctower-runner.service -- registry owner/reconciler    |
-  |               \- local process/tmux Adapters         |
+  | ctower-runner.service -- registry owner/reconciler             |
+  |               \- local process/tmux Adapters                   |
   |                                                               |
   | ctower-release-supervisor.service  [root-owned, separate]      |
   |              | allowlisted install/switch/restart/rollback     |
@@ -366,8 +366,9 @@ an arbitrary harness command, it must enforce Runtime's current CommandGuard dec
 plan and targets.
 
 The target chat/steer HTTP contract is a bounded client surface, not a second control plane: crew/liveness/spec
-reads, typed transcript read/stream, composer input, and steer/ACK are the only operation families named by the
-proposal-stage cockpit gap list. Authored OpenAPI, generated clients, contract counters, and reference
+reads, typed transcript read/stream, composer input, and steer/ACK are the only G1–G4 operation families admitted
+by this bounded surface; the proposal-stage cockpit gap list also names G5–G10 (including G8b), which remain
+outside this bounded admission. Authored OpenAPI, generated clients, contract counters, and reference
 documentation close together; responses carry command identity, cursor/gap/refusal facts, source watermarks,
 and pending-versus-folded durability without credential values. No public product page, browser route, or
 browser credential authority is implied until the owning I2 implementation and browser gate are active.
