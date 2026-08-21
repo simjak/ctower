@@ -33,6 +33,9 @@ _CRITERIA: tuple[tuple[str, str], ...] = (
     ("AC-CHAT-09", "ct-i2-014"),
     ("AC-CHAT-10", "ct-i2-014"),
     ("AC-CHAT-11", "ct-i2-014"),
+    ("AC-CHAT-12", "ct-i2-014"),
+    ("AC-CHAT-13", "ct-i2-014"),
+    ("AC-CHAT-14", "ct-i2-014"),
 )
 
 _READ_GAPS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -50,11 +53,46 @@ _READ_GAPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
 )
 
-_READ_INVENTORY = (
+_INVENTORY = (
     "authored OpenAPI",
     "generated Python/TypeScript clients",
     "contract operation counters",
     "reference documentation",
+)
+
+_WRITE_SURFACES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "AC-CHAT-12",
+        (
+            "registerHarness",
+            "POST /v1/harness/registrations",
+            "HarnessRegistry.register",
+            "harness-survey-incomplete",
+            "harness-layer-conflict",
+            "harness-runtime-not-a-harness",
+        ),
+    ),
+    (
+        "AC-CHAT-13",
+        (
+            "submitHarnessSurvey",
+            "POST /v1/harness/{harness_key}/survey",
+            "SURVEY_QUESTIONS",
+            "harness-survey-incomplete",
+            "derive_roles",
+        ),
+    ),
+    (
+        "AC-CHAT-14",
+        (
+            "bindHarnessCredentialReference",
+            "POST /v1/harness/{harness_key}/credential-reference",
+            "CredentialReference",
+            "credential_ref",
+            "project-scope-denied",
+            "harness-writeback-scope-refused",
+        ),
+    ),
 )
 
 
@@ -142,7 +180,24 @@ def test_record_backed_read_gaps_are_explicitly_folded_into_chat_surface(
     assert "no new authority" in row
     assert "no new seam capability" in row
     assert all(marker in row for marker in markers)
-    assert all(inventory in row for inventory in _READ_INVENTORY)
+    assert all(inventory in row for inventory in _INVENTORY)
+
+
+@pytest.mark.parametrize(
+    "code, markers", _WRITE_SURFACES, ids=lambda item: str(item).lower().replace("-", "_")
+)
+def test_harness_setup_writes_are_http_faces_over_kernel_ceremonies(
+    code: str, markers: tuple[str, ...]
+) -> None:
+    row = _spec_row(code)
+    assert "docs/internal/design/ctower-app.md" in row
+    assert "HTTP" in row
+    assert "write" in row
+    assert "kernel" in row
+    assert "no new authority" in row
+    assert "no new seam capability" in row
+    assert all(marker in row for marker in markers)
+    assert all(inventory in row for inventory in _INVENTORY)
 
 
 def test_i2_backlog_rows_remain_inside_the_markdown_table() -> None:
