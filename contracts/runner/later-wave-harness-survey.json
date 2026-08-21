@@ -1,515 +1,116 @@
 {
   "schema": "ctower.later-wave-harness-survey/v1",
-  "revision": 1,
+  "revision": 2,
   "observed_at": "2026-08-20T14:24:08Z",
   "sources": [
-    {
-      "id": "spec-ct-i1-044",
-      "kind": "repo",
-      "revision": "d72408e7",
-      "locator": "docs/internal/SPEC.md:5342 (CT-I1-044)"
-    },
-    {
-      "id": "design-seam-c07",
-      "kind": "design",
-      "revision": "c07c049c",
-      "locator": "docs/internal/design/harness-adapter-seam.md:303-449"
-    },
-    {
-      "id": "auth-runbook-2026-08-17",
-      "kind": "runbook",
-      "revision": "2026-08-17",
-      "locator": "mission-control/playbooks/codex-hermes-auth-runbook.md:77-159"
-    },
-    {
-      "id": "hermes-binding-d724",
-      "kind": "repo",
-      "revision": "d72408e7",
-      "locator": "apps/ctower-runner/src/ctower_runner/hermes/binding.py"
-    },
-    {
-      "id": "claude-binding-d724",
-      "kind": "repo",
-      "revision": "d72408e7",
-      "locator": "apps/ctower-runner/src/ctower_runner/claude_code/binding.py"
-    },
-    {
-      "id": "codex-binding-main-539",
-      "kind": "repo",
-      "revision": "9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99",
-      "locator": "apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 merged into origin/main at merge commit 9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99 (PR head 1058d09a9796bba1292b021ee81f57d56e2fccba)"
-    },
-    {
-      "id": "qwen-cli-0215",
-      "kind": "binary",
-      "revision": "0.21.5",
-      "locator": "/home/agent/.local/bin/qwen; qwen --version and qwen --help"
-    },
-    {
-      "id": "qwen-docs-0215",
-      "kind": "installed-doc",
-      "revision": "0.21.5",
-      "locator": "/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md"
-    },
-    {
-      "id": "local-command-absence",
-      "kind": "absence-probe",
-      "revision": "2026-08-20T14:24:08Z",
-      "locator": "command -v openclaw qwen-code zcode deepseek"
-    },
-    {
-      "id": "ctower-weight-registry-d724",
-      "kind": "repo",
-      "revision": "d72408e7",
-      "locator": "packages/ctower-kernel/src/ctower_kernel/pools/topology.py:89-95"
-    }
-  ],
+      {"id":"spec-ct-i1-044","kind":"repo","revision":"d72408e7","locator":"docs/internal/SPEC.md:5342 (CT-I1-044)","evidence_type":"specification"},
+      {"id":"design-seam-c07","kind":"design","revision":"c07c049c","locator":"docs/internal/design/harness-adapter-seam.md:303-449","evidence_type":"sealed_design"},
+      {"id":"auth-runbook-2026-08-17","kind":"runbook","revision":"2026-08-17","locator":"mission-control/playbooks/codex-hermes-auth-runbook.md:77-159","evidence_type":"auth_runbook"},
+      {"id":"hermes-binding-d724","kind":"repo","revision":"d72408e7","locator":"apps/ctower-runner/src/ctower_runner/hermes/binding.py","evidence_type":"hermes_binding"},
+      {"id":"claude-binding-d724","kind":"repo","revision":"d72408e7","locator":"apps/ctower-runner/src/ctower_runner/claude_code/binding.py","evidence_type":"claude_binding"},
+      {"id":"codex-binding-main-539","kind":"repo","revision":"9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99","locator":"apps/ctower-runner/src/ctower_runner/codex/binding.py; PR #539 merged into origin/main at merge commit 9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99 (PR head 1058d09a9796bba1292b021ee81f57d56e2fccba)","evidence_type":"codex_binding_landed"},
+      {"id":"qwen-cli-0215","kind":"binary","revision":"0.21.5","locator":"/home/agent/.local/bin/qwen; qwen --version and qwen --help","evidence_type":"qwen_binary"},
+      {"id":"qwen-docs-0215","kind":"installed-doc","revision":"0.21.5","locator":"/home/agent/.local/lib/qwen-code/lib/bundled/qc-helper/docs/configuration/{auth,model-providers,settings}.md","evidence_type":"qwen_documentation"},
+      {"id":"local-command-absence","kind":"absence-probe","revision":"2026-08-20T14:24:08Z","locator":"command -v openclaw qwen-code zcode deepseek","evidence_type":"absence_probe"},
+      {"id":"ctower-weight-registry-d724","kind":"repo","revision":"d72408e7","locator":"packages/ctower-kernel/src/ctower_kernel/pools/topology.py:89-95","evidence_type":"weight_registry/codex"}
+    ],
   "questions": [
-    {
-      "id": "native_pool",
-      "prompt": "Does the candidate ship a native credential pool?"
-    },
-    {
-      "id": "native_fallback",
-      "prompt": "Does the candidate ship a native credential/provider fallback?"
-    },
-    {
-      "id": "config_surface",
-      "prompt": "What is the config surface, and is it authored-config-only?"
-    },
-    {
-      "id": "identity_proof",
-      "prompt": "What proves credential identity: a decodable claim, account file, or nothing?"
-    },
-    {
-      "id": "reset_window_semantics",
-      "prompt": "What are the reset or window semantics?"
-    },
-    {
-      "id": "rotation_cache_semantics",
-      "prompt": "What cache or restart semantics apply after rotation?"
-    },
-    {
-      "id": "subagent_credential_inheritance",
-      "prompt": "How do subagents inherit or acquire credentials?"
-    },
-    {
-      "id": "egress_topology",
-      "prompt": "Is egress shared across entries or isolated per entry?"
-    },
-    {
-      "id": "probe_target",
-      "prompt": "Which product, endpoint, and model does a representative probe measure?"
-    },
-    {
-      "id": "credit_weights",
-      "prompt": "Where are per-model, per-direction credit weights published?"
-    }
-  ],
+      {"id":"native_pool","prompt":"Does the candidate ship a native credential pool?"},
+      {"id":"native_fallback","prompt":"Does the candidate ship a native credential/provider fallback?"},
+      {"id":"config_surface","prompt":"What is the config surface, and is it authored-config-only?"},
+      {"id":"identity_proof","prompt":"What proves credential identity: a decodable claim, account file, or nothing?"},
+      {"id":"reset_window_semantics","prompt":"What are the reset or window semantics?"},
+      {"id":"rotation_cache_semantics","prompt":"What cache or restart semantics apply after rotation?"},
+      {"id":"subagent_credential_inheritance","prompt":"How do subagents inherit or acquire credentials?"},
+      {"id":"egress_topology","prompt":"Is egress shared across entries or isolated per entry?"},
+      {"id":"probe_target","prompt":"Which product, endpoint, and model does a representative probe measure?"},
+      {"id":"credit_weights","prompt":"Where are per-model, per-direction credit weights published?"}
+    ],
   "candidates": [
-    {
-      "key": "openclaw",
-      "classification": "harness_gateway_routed",
-      "effective_route": "gateway",
-      "adapter_work": "blocked_until_survey",
-      "role_disposition": "undecidable",
-      "registration": {
-        "status": "refused",
-        "reason": "The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."
+      {
+        "key": "openclaw",
+        "classification": "harness_gateway_routed",
+        "effective_route": "gateway",
+        "adapter_work": "blocked_until_survey",
+        "role_disposition": "undecidable",
+        "registration": {"status":"refused","reason":"The sealed design classifies the route but does not answer the credential survey; no native/ctower layer role is guessed."},
+        "capability_declaration": {"liveness":"unknown","evidence":["design-seam-c07","local-command-absence"],"reason":"Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."},
+        "answers": {
+                "native_pool": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "native_fallback": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "config_surface": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "identity_proof": {"state":"verified","value":"persisted_device_key","evidence":["design-seam-c07"]},
+                "reset_window_semantics": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "rotation_cache_semantics": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "subagent_credential_inheritance": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "egress_topology": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "probe_target": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "credit_weights": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]}
+              }
       },
-      "capability_declaration": {
-        "liveness": "unknown",
-        "evidence": [
-          "design-seam-c07",
-          "local-command-absence"
-        ],
-        "reason": "Gateway run events and preflight facts are named by design, but no reachable binary or live event source proves them on this box."
+      {
+        "key": "qwen-code",
+        "classification": "harness_baseline",
+        "effective_route": "qwen-cli",
+        "adapter_work": "blocked_until_survey",
+        "role_disposition": "undecidable",
+        "registration": {"status":"refused","reason":"The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."},
+        "capability_declaration": {"liveness":"unknown","evidence":["qwen-cli-0215","qwen-docs-0215"],"reason":"The binary is installed, but no representative authenticated serving observation was run."},
+        "answers": {
+                "native_pool": {"state":"unverified","value":null,"evidence":["qwen-cli-0215","qwen-docs-0215"]},
+                "native_fallback": {"state":"verified","value":"model_fallback_only","evidence":["qwen-cli-0215","qwen-docs-0215"]},
+                "config_surface": {"state":"verified","value":"env_overridable","evidence":["qwen-cli-0215","qwen-docs-0215"]},
+                "identity_proof": {"state":"unverified","value":null,"evidence":["qwen-docs-0215"]},
+                "reset_window_semantics": {"state":"verified","value":"weekly_plan","evidence":["design-seam-c07","qwen-docs-0215"]},
+                "rotation_cache_semantics": {"state":"unverified","value":null,"evidence":["qwen-cli-0215","qwen-docs-0215"]},
+                "subagent_credential_inheritance": {"state":"unverified","value":null,"evidence":["qwen-docs-0215"]},
+                "egress_topology": {"state":"unverified","value":null,"evidence":["qwen-docs-0215"]},
+                "probe_target": {"state":"unverified","value":null,"evidence":["qwen-cli-0215","qwen-docs-0215"]},
+                "credit_weights": {"state":"unverified","value":null,"evidence":["qwen-docs-0215","ctower-weight-registry-d724"]}
+              }
       },
-      "answers": {
-        "native_pool": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "native_fallback": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "config_surface": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "identity_proof": {
-          "state": "verified",
-          "value": "persisted_device_key",
-          "evidence": [
-            "design-seam-c07"
-          ]
-        },
-        "reset_window_semantics": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "rotation_cache_semantics": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "subagent_credential_inheritance": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "egress_topology": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "probe_target": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "credit_weights": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        }
+      {
+        "key": "zcode",
+        "classification": "harness_stub",
+        "effective_route": "unbound-stub",
+        "adapter_work": "blocked_until_survey",
+        "role_disposition": "undecidable",
+        "registration": {"status":"refused","reason":"The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."},
+        "capability_declaration": {"liveness":"unknown","evidence":["design-seam-c07","local-command-absence"],"reason":"A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."},
+        "answers": {
+                "native_pool": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "native_fallback": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "config_surface": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "identity_proof": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "reset_window_semantics": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "rotation_cache_semantics": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "subagent_credential_inheritance": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "egress_topology": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "probe_target": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]},
+                "credit_weights": {"state":"unverified","value":null,"evidence":["design-seam-c07","local-command-absence"]}
+              }
+      },
+      {
+        "key": "deepseek",
+        "classification": "model",
+        "effective_route": "hermes-profile",
+        "adapter_work": "zero",
+        "role_disposition": "not_applicable",
+        "registration": {"status":"not_applicable","reason":"DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."},
+        "capability_declaration": {"liveness":"inherited:hermes.gateway_log","evidence":["design-seam-c07","hermes-binding-d724"],"reason":"The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."},
+        "answers": {
+                "native_pool": {"state":"not_applicable","value":"model","evidence":["spec-ct-i1-044","design-seam-c07"]},
+                "native_fallback": {"state":"not_applicable","value":"model","evidence":["spec-ct-i1-044","design-seam-c07"]},
+                "config_surface": {"state":"not_applicable","value":"model","evidence":["spec-ct-i1-044","design-seam-c07"]},
+                "identity_proof": {"state":"not_applicable","value":"model","evidence":["spec-ct-i1-044","design-seam-c07"]},
+                "reset_window_semantics": {"state":"not_applicable","value":"model","evidence":["design-seam-c07","auth-runbook-2026-08-17"]},
+                "rotation_cache_semantics": {"state":"not_applicable","value":"model","evidence":["design-seam-c07","auth-runbook-2026-08-17"]},
+                "subagent_credential_inheritance": {"state":"not_applicable","value":"model","evidence":["design-seam-c07"]},
+                "egress_topology": {"state":"not_applicable","value":"model","evidence":["design-seam-c07","auth-runbook-2026-08-17"]},
+                "probe_target": {"state":"not_applicable","value":"model","evidence":["design-seam-c07","auth-runbook-2026-08-17"]},
+                "credit_weights": {"state":"unverified","value":null,"evidence":["auth-runbook-2026-08-17","ctower-weight-registry-d724"]}
+              }
       }
-    },
-    {
-      "key": "qwen-code",
-      "classification": "harness_baseline",
-      "effective_route": "qwen-cli",
-      "adapter_work": "blocked_until_survey",
-      "role_disposition": "undecidable",
-      "registration": {
-        "status": "refused",
-        "reason": "The installed CLI proves a model fallback and configurable provider surface, not a credential pool or credential fallback; the remaining role facts are unverified."
-      },
-      "capability_declaration": {
-        "liveness": "unknown",
-        "evidence": [
-          "qwen-cli-0215",
-          "qwen-docs-0215"
-        ],
-        "reason": "The binary is installed, but no representative authenticated serving observation was run."
-      },
-      "answers": {
-        "native_pool": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-cli-0215",
-            "qwen-docs-0215"
-          ]
-        },
-        "native_fallback": {
-          "state": "verified",
-          "value": "model_fallback_only",
-          "evidence": [
-            "qwen-cli-0215",
-            "qwen-docs-0215"
-          ]
-        },
-        "config_surface": {
-          "state": "verified",
-          "value": "env_overridable",
-          "evidence": [
-            "qwen-cli-0215",
-            "qwen-docs-0215"
-          ]
-        },
-        "identity_proof": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-docs-0215"
-          ]
-        },
-        "reset_window_semantics": {
-          "state": "verified",
-          "value": "weekly_plan",
-          "evidence": [
-            "design-seam-c07",
-            "qwen-docs-0215"
-          ]
-        },
-        "rotation_cache_semantics": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-cli-0215",
-            "qwen-docs-0215"
-          ]
-        },
-        "subagent_credential_inheritance": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-docs-0215"
-          ]
-        },
-        "egress_topology": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-docs-0215"
-          ]
-        },
-        "probe_target": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-cli-0215",
-            "qwen-docs-0215"
-          ]
-        },
-        "credit_weights": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "qwen-docs-0215",
-            "ctower-weight-registry-d724"
-          ]
-        }
-      }
-    },
-    {
-      "key": "zcode",
-      "classification": "harness_stub",
-      "effective_route": "unbound-stub",
-      "adapter_work": "blocked_until_survey",
-      "role_disposition": "undecidable",
-      "registration": {
-        "status": "refused",
-        "reason": "The sealed design explicitly keeps zcode as a stub until a real binding and survey exist; the command probe found no zcode executable, while documentation reachability remains UNVERIFIED."
-      },
-      "capability_declaration": {
-        "liveness": "unknown",
-        "evidence": [
-          "design-seam-c07",
-          "local-command-absence"
-        ],
-        "reason": "A table row is not an Adapter and no liveness evidence source can be declared from reachable facts."
-      },
-      "answers": {
-        "native_pool": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "native_fallback": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "config_surface": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "identity_proof": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "reset_window_semantics": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "rotation_cache_semantics": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "subagent_credential_inheritance": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "egress_topology": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "probe_target": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        },
-        "credit_weights": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "design-seam-c07",
-            "local-command-absence"
-          ]
-        }
-      }
-    },
-    {
-      "key": "deepseek",
-      "classification": "model",
-      "effective_route": "hermes-profile",
-      "adapter_work": "zero",
-      "role_disposition": "not_applicable",
-      "registration": {
-        "status": "not_applicable",
-        "reason": "DeepSeek is a model reached through a Hermes profile, not a harness; creating a deepseek Adapter would create the phantom model-as-harness category."
-      },
-      "capability_declaration": {
-        "liveness": "inherited:hermes.gateway_log",
-        "evidence": [
-          "design-seam-c07",
-          "hermes-binding-d724"
-        ],
-        "reason": "The effective route inherits Hermes gateway/provider serving truth; no deepseek HarnessSpec is authored."
-      },
-      "answers": {
-        "native_pool": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "spec-ct-i1-044",
-            "design-seam-c07"
-          ]
-        },
-        "native_fallback": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "spec-ct-i1-044",
-            "design-seam-c07"
-          ]
-        },
-        "config_surface": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "spec-ct-i1-044",
-            "design-seam-c07"
-          ]
-        },
-        "identity_proof": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "spec-ct-i1-044",
-            "design-seam-c07"
-          ]
-        },
-        "reset_window_semantics": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "design-seam-c07",
-            "auth-runbook-2026-08-17"
-          ]
-        },
-        "rotation_cache_semantics": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "design-seam-c07",
-            "auth-runbook-2026-08-17"
-          ]
-        },
-        "subagent_credential_inheritance": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "design-seam-c07"
-          ]
-        },
-        "egress_topology": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "design-seam-c07",
-            "auth-runbook-2026-08-17"
-          ]
-        },
-        "probe_target": {
-          "state": "not_applicable",
-          "value": "model",
-          "evidence": [
-            "design-seam-c07",
-            "auth-runbook-2026-08-17"
-          ]
-        },
-        "credit_weights": {
-          "state": "unverified",
-          "value": null,
-          "evidence": [
-            "auth-runbook-2026-08-17",
-            "ctower-weight-registry-d724"
-          ]
-        }
-      }
-    }
-  ],
-  "matrix": {
-    "id": "https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json",
-    "revision": 1,
-    "sha256": "cc9f4f9fee632816a9d7825f87cbf8346fccdcc8d5e65dfb4d3f1b30a640cfa5"
-  }
+    ],
+  "matrix": {"id":"https://ctower.local/contracts/runner/later-wave-harness-survey.matrix.json","revision":2,"sha256":"b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b"}
 }
