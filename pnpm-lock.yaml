@@ -57,6 +57,12 @@ importers:
       '@ctower/client':
         specifier: workspace:*
         version: link:../../generated/typescript/ctower-client
+      '@noble/hashes':
+        specifier: ^2.3.0
+        version: 2.3.0
+      canonicalize:
+        specifier: ^4.0.0
+        version: 4.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -393,6 +399,10 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@noble/hashes@2.3.0':
+    resolution: {integrity: sha512-oN+QwyX7VSHotibwubG3kpzbwKrfnyR6OOO+3Nk/53ADL7FmgHHz4TgrbaYKvvOw09u6QTx0oiH1cNCIOuN0CQ==}
+    engines: {node: '>= 20.19.0'}
 
   '@oxc-project/types@0.146.0':
     resolution: {integrity: sha512-XC0QsnnhVe7sLIWmYmdPw7x5P0h4W8vUU3Nv1ySgWXtvCz8NizoAEpGXA0sOYoJQV2Rl13LgURAHQ5cI5ILCSA==}
@@ -1420,6 +1430,11 @@ packages:
   caniuse-lite@1.0.30001806:
     resolution: {integrity: sha512-72Cuvd95zbSYPKq6Fhg8eDJRlzgWDf7/mtoZv6Qe/DYNCEBdNxoA3+rZAU2ZhGCpZlns3EssFavaZomckT5Uuw==}
 
+  canonicalize@4.0.0:
+    resolution: {integrity: sha512-FEdXzwWs+N3rZqEqpqleiY9M1A6IAf9oo1zHFABnLW9FcJ/jzsu+G/Ks3Hq3FglmPKe80GeGBw8ZXLEnwPB0vQ==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
@@ -2363,6 +2378,8 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@16.3.0':
     optional: true
+
+  '@noble/hashes@2.3.0': {}
 
   '@oxc-project/types@0.146.0': {}
 
@@ -3389,6 +3406,8 @@ snapshots:
   callsites@3.1.0: {}
 
   caniuse-lite@1.0.30001806: {}
+
+  canonicalize@4.0.0: {}
 
   chalk@4.1.2:
     dependencies:

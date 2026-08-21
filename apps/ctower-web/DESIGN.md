@@ -16,9 +16,14 @@ operator's explicit approval.
 - **One app, one shell.** Permanent left sidebar with exactly five groups:
   LIVE (Lanes, Inbox) · WORK (Board, Requests) · TEAM (Crews, Company) ·
   RUNTIME (Harnesses, Projects) · SYSTEM (Admin).
-- **First run** (no company): every destination locked; the content area shows the
-  thirty-second company moment (name, key, create → land in the shell). The full bundle
-  editor is the Company page, not the first-run screen.
+- **First run** (no company): every destination locked; a **full-screen guided wizard**
+  runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
+  Next. The order follows the runtime, not the org chart: **1 Name your organization → 2
+  Connect harness adapters → 3 Create your first agent** (created *on* the chosen harness;
+  the pairing renders) **→ 4 Mission** (one screen, skippable) **→ 5 Review**. Each step
+  authors a real bundle document — harness, persona, agent profile, and a goal when a
+  mission is given — and Review runs **one** validate + plan + apply before `Get started`
+  lands in the shell. The full bundle editor is the Company page, not the first-run screen.
 - **Unbuilt destinations render honestly** (dimmed, "not built yet" on focus) — never a
   dead route, never a pretend page. Labels are the operator's jobs, never API operations.
 
@@ -87,3 +92,8 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-21 | Initial system: amber/black, two fonts, CLI-glyph parity, reserved motion, shell-first IA | /design-consultation with the operator; preview approved both themes |
 | 2026-08-21 | No blue anywhere | Every dev tool is blue; ctower's face is amber on black |
 | 2026-08-21 | First-run = 30-second company moment inside the shell | The operator's stated mental model; the full bundle editor is the Company page |
+| 2026-08-21 | **Superseded:** first run is paperclip's 5-step guided wizard, full-screen | Operator: "read the paperclip wizard and UI of organizations/tenants — I want the same in ctower". Paperclip's structure, ctower's amber/black skin |
+| 2026-08-21 | Wizard order puts the harness before the staff | Operator: it is the runtime the team runs on, so the agent is created *on* a chosen adapter rather than assigned one afterwards |
+| 2026-08-21 | Mission is one screen and skippable | It authors a goal document when given; a company with no stated mission is a real state, not an incomplete one |
+| 2026-08-21 | The org switcher sits at the sidebar top: current org + prefix chip, "Create new organization…" honest-unbuilt | Paperclip's pattern; no invite and no sign-out for a tailnet-private v1 |
+| 2026-08-21 | The browser mints component digests itself (RFC 8785 + SHA-256, not `crypto.subtle`) | Every wizard step authors a real component and the registry recomputes the digest; proven against the live API at 5 of 5 checks |

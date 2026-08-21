@@ -1,5 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { ThemeToggle } from "../app/ThemeToggle";
+import { OrgSwitcher } from "./OrgSwitcher";
+import type { Org } from "./OrgSwitcher";
 import { Rail } from "./Rail";
 import type { DestinationKey } from "./destinations";
 
@@ -12,6 +14,7 @@ export function Shell({
   here,
   lockReason,
   onGo,
+  org,
   status,
   children,
 }: {
@@ -19,6 +22,8 @@ export function Shell({
   /** Why nothing is reachable, when nothing is. */
   readonly lockReason: string | null;
   readonly onGo: (key: DestinationKey) => void;
+  /** The company this console is looking at, once it is known. */
+  readonly org: Org | null;
   readonly status?: ReactNode;
   readonly children: ReactNode;
 }): ReactElement {
@@ -35,7 +40,14 @@ export function Shell({
         </div>
       </header>
       <div className="grid min-h-[calc(100dvh-52px)] md:grid-cols-[200px_minmax(0,1fr)]">
-        <Rail here={here} lockReason={lockReason} onGo={onGo} />
+        <div className="border-r border-line bg-[color-mix(in_srgb,var(--bg)_60%,var(--card))] max-md:hidden">
+          {org === null ? null : (
+            <div className="border-b border-line">
+              <OrgSwitcher org={org} />
+            </div>
+          )}
+          <Rail here={here} lockReason={lockReason} onGo={onGo} />
+        </div>
         <main className="min-w-0">
           <div className="mx-auto max-w-[1200px] px-6 py-5">{children}</div>
         </main>
