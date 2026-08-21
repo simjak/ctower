@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.4](https://github.com/simjak/ctower/compare/v0.7.3...v0.7.4) (2026-08-04)
+
+
+### Bug Fixes
+
+* **api:** mount bundle routes in development runtime ([#279](https://github.com/simjak/ctower/issues/279)) ([a71be94](https://github.com/simjak/ctower/commit/a71be94919ffc552fc0765f0f35673f29e82fa0f))
+
 ## [0.7.3](https://github.com/simjak/ctower/compare/v0.7.2...v0.7.3) (2026-08-04)
 
 
