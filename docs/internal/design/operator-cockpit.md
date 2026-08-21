@@ -17,8 +17,8 @@ cockpit; the crew page's seven tabs (§5.7) with its Readiness verdict rendered;
 are live; the theme toggle exists so a reader can check the one-seed `color-mix` claim of §3
 rather than take it on faith. Every hard state the doc argues for is drawn deliberately — the
 disabled composer, a turn in `durability pending`, a `capped` lane outranking its timer, a
-`dead_auth` lane carrying its failing axis and a `reap` control disabled because `AC-HAD-07`
-refuses it, a workspace `not reached`, the PR handoff naming its dirty paths, a console gap row,
+`dead_auth` lane carrying its failing axis and its probe age with no `reap` control at all (D9),
+a workspace `not reached`, the PR handoff naming its dirty paths, a console gap row,
 the tenant-wide console kill switch in the top bar rather than in the pane it stops, and
 `no cap configured` rendered as unknown with no progress track.
 
@@ -29,6 +29,12 @@ frame leaves out. Drawing them together also makes the screen's one hard guarant
 reading the DOM: three kinds of string about a credential ever reach it — a provider key, a
 decoded subscription identity, and an alias — and no state, refusal, tooltip or `title` attribute
 carries a fourth.
+
+**The mockup is deliberately hard to read cold, and that is D9.** After the operator's verdict it
+was stripped of every sentence explaining why a state is drawn the way it is. Those sentences are
+in this document, at the section that owns each screen; nine of them that an operator would need
+at the pixel became one-line `(i)` affordances. Read the two together: the mockup shows what an
+operator sees, and this file is where the argument lives.
 
 **Direction, verbatim (operator, 2026-08-20):** *"I want the same clean UI as paperclip has for
 ctower."* Paperclip's visual language is the target aesthetic. Two reads were granted with it:
@@ -264,6 +270,81 @@ Query with client fetching. `apps/ctower-ui` is Next App Router with server comp
 client data layer, because its browser holds no credential at all. The tokens, the component
 vocabulary and the copy rules port; the data layer does not.
 
+**D9 · The copy budget — counted, not encouraged.** Operator verdict on the first mockup, verbatim
+(2026-08-21): *"too much texts, which adds noise."* It is the only delta on this list sourced from
+a look at the rendered artifact rather than from a law, and it is the one that changed the most
+pixels.
+
+The root cause is worth stating plainly because it is a trap any design doc with a companion
+mockup will fall into: **the mockup was rendering its own rationale.** Every state carried the
+sentence explaining why that state exists — reviewer-facing prose, shipped inside the
+operator-facing artifact. That prose was written to survive a review, and it did; it just had no
+business being on screen. D5 already forbade it in principle. A principle was not enough, because
+each individual sentence looked justified as it was written. So D9 is a **budget**, and a budget is
+countable:
+
+| Element | Budget |
+| --- | --- |
+| Chip | **≤ 2 words.** `dead · auth`, `not reached`, `capped`, `discovered`. Not a sentence with a border on it. |
+| Field hint | **≤ 1 line.** If the field needs two, the field is wrong. |
+| Empty state | **1 sentence + 1 action.** Paperclip's own is the model: *"No secrets are bound to this agent yet."* followed by `+ Add API access`. |
+| Error | **Fact + next action.** Zero philosophy. *"No binding by that alias. Check the name."* — not why aliases exist. |
+| Rationale | **Never renders.** It lives in this document, or behind an `(i)`. |
+
+**The budget governs chrome, never content.** A transcript turn, a terminal pane's bytes, and a
+lane's own prose are the *lane speaking*; they are the thing the operator opened the cockpit to
+read, and truncating them would be the redaction the console design already forbids. What the
+budget constrains is everything **ctower** says around them — labels, chips, hints, empty states,
+errors, banners. The test is authorship: if ctower wrote the sentence, it is on the budget.
+
+**What `(i)` is, and what it is not.** One affordance, one line, on hover or press. It is not a
+disclosure triangle over a paragraph, and it is not a place to put the sentence that failed the
+budget. **If the explanation does not fit one line, it is not UI — it is documentation**, and it
+belongs in this file where a reader can follow its citations anyway. An operator at 3am needs
+**state, fact, action**; the argument for why that state is drawn the way it is has a different
+audience and a different artifact.
+
+**The budget also settles a refusal question this document had left inconsistent.** §4.1 says the
+dead row *"must not offer `reap`"*; the first mockup drew `reap` as a disabled button carrying
+`AC-HAD-07`'s refusal as its label. Both cannot be right, and applying the budget decided it:
+
+- **Refused by law, for this state, always** → **not a control.** It is a rule. Rules live in this
+  document, with an `(i)` at the pixel if an operator would otherwise hunt for a control that is
+  never coming. A permanently-refused action drawn as a disabled button is the rationale habit
+  wearing a border — and worse, it teaches the operator that the action exists. `reap` on a
+  `dead_auth` lane is this class.
+- **Absent because something missing could arrive** — an operation not built, an authority not
+  held, a precondition not met → **drawn disabled with its reason**, because the reason is
+  actionable and the gap is a hole somebody will otherwise fill. The console `Terminal` tab in
+  slice 1, the mint's state 4b, and the `not-authorized` refusal are this class.
+
+The test between them: *could this control ever be enabled for this operator on this row?* If no,
+it is a rule; if yes, it is a disabled control.
+
+Two consequences worth naming, because they are what the budget costs:
+
+1. **The mockup stops teaching.** It gets harder to read cold, and a reviewer must hold this
+   document beside it. That is the correct trade — the mockup's job is to show what an operator
+   sees, not to defend itself.
+2. **Nothing is deleted, only moved.** Every sentence the budget removed from a screen is in this
+   document at the section that owns that screen. The de-noising commit moved text; it lost no
+   argument. Where a rule genuinely needed to stay reachable from the pixel, it became an `(i)`.
+
+This delta binds the mockup and every surface built from it, including the three boards' own
+future states. It is the one rule here an implementation can be checked against by counting — and
+the mockup is checked that way rather than asserted. Parsing the rendered DOM with `<style>` and
+`<script>` stripped, a separator glyph not counted as a word, and lane-authored regions
+(`.bubble`, `.term`, `.think-body`, gap and redaction rows) excluded as content:
+
+| Check | Result at `operator-cockpit.html` |
+| --- | --- |
+| Chips ≤ 2 words | 44 chips, **0 over** |
+| ctower-authored strings > 60 chars | **0** |
+| `(i)` titles | 9, longest **102 chars** — all one line |
+
+Any surface built from this design should carry the same three counts, and a screen that cannot
+pass them is a screen with an argument on it.
+
 ---
 
 ## 4. The four panes, mapped to real backends
@@ -328,12 +409,14 @@ So the row carries four things: the state, the probe and its observation age, th
 the pool entry the lane was riding, and the action from the pool's own meanings table — never a
 generic "error".
 
-**What the row must not offer is `reap`.** `AC-HAD-07` is explicit: `reap` *"refuses a `dead_auth`
+**What the row must not offer is `reap` — and not as a disabled control either (D9).** `AC-HAD-07` is explicit: `reap` *"refuses a `dead_auth`
 lane, which is preserved for resume, with one nudge offered before any replacement."* A dead lane
 still holds uncollected work, and a UI whose first affordance on a dead row is *kill and respawn*
 is drawing an action the seam refuses — the same error as a spinner over a capped pane, one step
 more destructive. The primary control is the nudge; the mint is the real fix; a replacement
-control appears only after the nudge has been offered and declined.
+control appears only after the nudge has been offered and declined. The refusal itself is a rule
+rather than a disabled button: it reaches the pixel as the row's `(i)`, and the row's two controls
+are the two that work.
 
 **And the composer's capability rule alone does not cover this case.** `input_refusal`
 (`policy.py:144–159`) refuses only when the lane is `working` and the binding declares no
@@ -1093,7 +1176,7 @@ has no failure design at all.
 | **alias-unknown** | G8b | *"the secret store has no binding by that alias"*. The row stays at state 4b with the field editable. This is the one refusal an operator can fix by retyping. |
 | **enactment-mismatch** | G8b | this identity's declared enactment is `operator-ceremony`; a reference is not what it wants. The screen should make this unreachable by never drawing the field on such a row — it is enumerated because a refusal that is only prevented client-side is not prevented. |
 | **already-bound** | G8b | a different alias is already bound to this identity. Refused, not applied, with the existing alias named and the exit stated: evict through G9, then bind. |
-| **not-authorized** | G8b / G8 | the principal is not an operator. Stated as an authority refusal on the control, not as a failed submit — a control an operator may not use is drawn disabled with its reason (D5), the same treatment as the dead lane's `reap` in §4.1. |
+| **not-authorized** | G8b / G8 | the principal is not an operator. Stated as an authority refusal on the control, not as a failed submit — a control an operator may not use is drawn disabled with its reason (D5, D9) — this is the class that could become enabled, so it is a control rather than a rule. |
 | **durability not acknowledged** | after state 5 | the row stays `durability pending` and says so. It does **not** flip to bound, and it does **not** silently retry — §7.1, and the live P1 that rule comes from. |
 | **observation reports `chain-burned`** | state 7 | the ceremony completed and the chain was already consumed — the copied-`auth.json` failure in rule 1 below, arriving three states after the mistake. The row names the axis and offers no re-bind, because re-binding the same reference reproduces it. |
 | **observation reports a different decoded identity** | state 7 | the alias resolved to material for another identity. This **cannot** be caught at submit — nothing but an observation decodes the identity — so it is drawn here rather than promised earlier, and the binding is surfaced for evict. A screen that claimed to validate the alias at submit time would be claiming exactly this check. |
@@ -1133,7 +1216,7 @@ ctower — it needs only G8 to stop looking identical to an untouched row.
 
 **Until G8b exists, state 4b renders the field disabled with its reason on it**, not absent and not
 enabled-and-failing: *"recording a reference needs an operation this API does not have yet"*. That
-is the same treatment as the console `Terminal` tab in slice 1 and the dead lane's `reap` in §4.1,
+is the same treatment as the console `Terminal` tab in slice 1 — both are D9's could-arrive class,
 and it is chosen for the same reason — an absent control is a hole somebody fills, and an enabled
 control over a missing command is a lie the operator only discovers after typing a reference.
 Everything else on this screen is drawable today: states 0, 1, 2, 4a, 6 and 7 all read from

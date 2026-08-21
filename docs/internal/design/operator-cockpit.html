@@ -11,7 +11,7 @@
 
       What this file is: paperclip's token system (one token source, one radius
       knob, one color-mix status recipe, two-tier motion) carrying ctower's
-      eight deltas. Every state drawn here is one the doc argues for, and the
+      nine deltas. Every state drawn here is one the doc argues for, and the
       hard cases are drawn deliberately rather than avoided:
 
         · the composer's send control is DISABLED, because neither shipped
@@ -19,8 +19,9 @@
         · one outgoing turn sits in `durability pending`, not sent
         · one lane is `capped`, outranking its advancing timer
         · one lane is `dead_auth` — dead login behind a normal-looking pane —
-          carrying its failing axis, its observation age, the mint that fixes
-          it, and a `reap` control disabled because AC-HAD-07 refuses it
+          carrying its failing axis, its probe age, and the two controls that
+          work; `reap` is refused by AC-HAD-07 always, so per D9 it is a rule
+          behind an (i), not a disabled button teaching that it exists
         · every state chip carries its probe and observation age in `title`
           (D5 — a number's derivation lives in that number's hover); the dead
           row shows one inline because there the age IS the finding
@@ -30,6 +31,16 @@
         · the terminal carries a grant clock, a gap row and a redaction mark,
           and has no input element at all
         · budget renders `no cap configured` as unknown, with no progress track
+
+      D9 — THE COPY BUDGET, applied throughout after the operator's verdict
+      ("too much texts, which adds noise"). Chips <= 2 words; field hints <= 1
+      line; empty state = 1 sentence + 1 action; errors = fact + next action;
+      RATIONALE NEVER RENDERS. Every sentence this file used to draw explaining
+      why a state exists now lives in operator-cockpit.md at the section that
+      owns that screen, or behind an (i) if an operator needs it at the pixel.
+      The prose that remains inside a transcript turn or a terminal pane is the
+      LANE's own output, which is content and not chrome — the budget governs
+      what ctower says, never what a lane said.
     -->
 
     <style>
@@ -612,8 +623,31 @@
         background: var(--sidebar);
       }
       .legend b { color: var(--foreground); font-weight: 600; }
-      .legend ul { margin: 5px 0 0; padding-left: 16px; }
-      .legend li { margin: 2px 0; }
+      .legend .keys { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+      /* D9 — the (i) affordance. ONE line, on hover. It is not a disclosure
+         triangle over a paragraph and it is not where a sentence that failed
+         the copy budget goes to live: if the explanation needs two lines it is
+         documentation, and it belongs in operator-cockpit.md instead. */
+      .i {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 13px;
+        height: 13px;
+        flex: none;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: transparent;
+        color: var(--muted-foreground);
+        font: inherit;
+        font-size: 9px;
+        font-style: italic;
+        line-height: 1;
+        cursor: help;
+      }
+      .i:hover { color: var(--foreground); border-color: var(--muted-foreground); }
     </style>
   </head>
 
@@ -641,10 +675,10 @@
         <button class="ghost" id="theme" type="button">Toggle theme</button>
       </header>
 
-      <p class="mobile-note">
-        Below 1100px the shell collapses to one route-chosen pane. No pane is dropped — all four
-        are reachable one at a time.
-      </p>
+      <!-- D9 — this note explained the responsive rule to a READER of the
+           mockup, not to an operator: at this width the operator can see the
+           collapse happening. §4's shell paragraph owns the rule. -->
+      <p class="mobile-note">One pane at a time — all four reachable.</p>
 
       <div class="panes">
         <!-- ══ LEFT — projects → seats → workspaces ═════════════════════ -->
@@ -707,35 +741,41 @@
               <span class="name">whisper-bench</span>
               <span class="chip sc-error"><span class="dot" style="background: var(--state-error)"></span>dead · auth</span>
             </button>
+            <!-- D9 — was: a two-line explanation of what lineage-dead means and
+                 that the shell may still say logged in, plus a disabled Reap
+                 carrying AC-HAD-07's refusal as its label. State, fact, action:
+                 the failing axis IS the state, the probe age IS the fact, and
+                 two controls are the action. Reap's refusal is a rule, not a
+                 control — §4.1.1 owns it; drawing a button to say "no" is the
+                 rationale habit wearing a border. -->
             <div class="deadrow">
-              <p class="deadwhy">
-                <span class="mono">auth: lineage-dead</span> on
-                <span class="mono">anthropic · sub-3</span> — the grant expired; the shell may
-                still say logged in.
+              <p class="deadwhen mono">
+                auth: lineage-dead · anthropic · sub-3
+                <span class="dim">· gateway_log 4m 12s</span>
+                <button class="i" type="button" aria-label="Why reap is unavailable"
+                        title="Reap is refused on a dead lane (AC-HAD-07) — the lane is preserved for resume.">i</button>
               </p>
-              <p class="deadwhen mono">probe gateway_log · observed 4m 12s</p>
               <div class="deadacts">
                 <button class="ghost sm" type="button">Nudge</button>
-                <button class="ghost sm" type="button">Re-mint this profile ↗</button>
-                <button class="ghost sm" type="button" disabled>Reap — refused on a dead lane</button>
+                <button class="ghost sm" type="button">Re-mint ↗</button>
               </div>
             </div>
           </div>
 
+          <!-- D9 — this was a five-item glossary teaching each state and its
+               next action. Every one of those sentences is reviewer-facing and
+               now lives in §4.1/§4.1.2 of the doc. What an operator needs from
+               a legend is the key itself: which chips exist. -->
           <div class="legend">
-            <p style="margin: 0 0 6px"><b class="mono">substrate-unobservable:worktree_read</b> —
-              <b>estate-import</b> renders <b>not reached</b>, never <span class="mono">+0 −0</span>.</p>
-            <b>Four states, four next actions</b>
-            <ul>
-              <li><b>capped</b> — quota spent, with a reset. Waiting fixes it.</li>
-              <li><b>dead · auth</b> — the login itself. Only a mint of <i>this</i> profile's own
-                device flow fixes it, never a copy.</li>
-              <li><b>Reap is disabled, not missing:</b> AC-HAD-07 refuses it on a
-                <span class="mono">dead_auth</span> lane — preserved for resume, one nudge first.</li>
-              <li><b>not reached</b> — unknown, not dead.</li>
-              <li>Chips carry probe and age on hover; past freshness the state becomes
-                <b>unknown</b>, never a faded <b>working</b>.</li>
-            </ul>
+            <div class="keys">
+              <span class="chip sc-working">working</span>
+              <span class="chip sc-idle">idle</span>
+              <span class="chip sc-capped">capped</span>
+              <span class="chip sc-error">dead · auth</span>
+              <span class="chip sc-unknown">not reached</span>
+              <button class="i" type="button" aria-label="About lane states"
+                      title="States are observed, never self-reported. Hover a chip for its probe and age.">i</button>
+            </div>
           </div>
         </nav>
 
@@ -804,7 +844,7 @@
               <div class="turn">
                 <div class="turn-head">
                   <span class="who">designer-cockpit-2</span>
-                  <span class="chip sc-error">interrupted by user</span>
+                  <span class="chip sc-error" title="interrupted by the operator at 1m 04s">interrupted</span>
                   <span class="mono">1m 04s</span>
                 </div>
                 <div class="body"><p>Rewriting §9 against the phase ladder…</p></div>
@@ -827,10 +867,14 @@
               <span class="pin">effort <b>high</b></span>
               <span class="pin mono">cfg d4e1…9ab</span>
               <button class="send" type="submit" disabled>Send</button>
+              <!-- D9 — was three sentences naming the missing capability and
+                   arguing why delivering into a live turn is destructive. The
+                   operator needs the disposition of their own text and when it
+                   moves. Which capability is missing, and why, is §4.2a's. -->
               <p class="on-control">
-                <b>claude-code</b> declares no <code>INTERRUPT_AND_RESUME</code> and this lane is
-                working. Delivering into a live turn would destroy whatever that turn is holding.
-                Your text is kept and sends when the turn ends.
+                Queued — delivers when the turn ends
+                <button class="i" type="button" aria-label="Why this is queued"
+                        title="claude-code declares no INTERRUPT_AND_RESUME, so a live turn cannot be interrupted.">i</button>
               </p>
             </div>
           </form>
@@ -885,13 +929,15 @@
                create one. The control is a handoff to the provider's compare
                page, gated on clean AND pushed — two different failures. -->
           <div class="pr-row">
-            <button class="pr" type="button" disabled>Open PR on GitHub ↗ — 2 uncommitted paths</button>
+            <!-- D9 — was a four-line paragraph explaining derivability from a
+                 ref and that ctower creates no pull request. The control names
+                 its own blocker; the reason ctower hands off rather than
+                 creates is §4.3's. -->
+            <button class="pr" type="button" disabled>Open compare ↗ — commit 2 paths first</button>
             <p class="dim" style="margin: 6px 0 0; font-size: 11px">
-              <code>CrewRail.tsx</code> and <code>TerminalPane.tsx</code> are uncommitted. An
-              uncommitted change is not derivable from any ref a successor can read. ctower does
-              not create the pull request; this opens the compare page for
-              <code class="mono">feat/cockpit-design@2fbce36</code> once the tree is clean and the
-              branch is pushed, and records the reference you come back with.
+              <code>CrewRail.tsx</code>, <code>TerminalPane.tsx</code>
+              <button class="i" type="button" aria-label="Why this is a handoff"
+                      title="ctower's token has no pull-request authority (AC-GH-07); this opens GitHub's compare page.">i</button>
             </p>
           </div>
 
@@ -989,7 +1035,8 @@
         <!-- Eight cells, each with the rule that proves it. No aggregate green
              without all eight: "Saved" answers whether a form persisted, and is
              not a readiness claim. -->
-        <h3>Readiness · composed, never asserted</h3>
+        <!-- D9 — "composed, never asserted" is the argument, not the label. §5.1 owns it. -->
+        <h3>Readiness</h3>
         <div class="cells">
           <div class="cell">
             <span class="what">Survey answered → configure-or-provide derived
@@ -1013,9 +1060,9 @@
                visible per entry rather than being collapsed into one word. -->
           <div class="cell">
             <span class="what">Credential pool selectable
-              <span class="src">3 entries, 3 clocks · <b>1 selectable</b> (acct-2, all three axes
-                clear) · acct-1 <span class="mono">quota: capped(reset 04:12Z)</span> · acct-3
-                <span class="mono">reach: edge-challenged</span> — neither routed to a mint</span></span>
+              <span class="src">3 entries · <b>1 selectable</b> · acct-1
+                <span class="mono">quota: capped(reset 04:12Z)</span> · acct-3
+                <span class="mono">reach: edge-challenged</span></span></span>
             <span class="chip sc-proven">proven</span>
           </div>
           <div class="cell">
@@ -1033,21 +1080,20 @@
               <span class="src mono">ctower</span></span>
             <span class="chip sc-proven">proven</span>
           </div>
-          <div class="cell">
+          <div class="cell" id="cell-weights">
             <span class="what">Spend priceable
-              <span class="src">registry served no weight table for this profile</span></span>
-            <span class="chip sc-unknown">weight table unknown</span>
+              <span class="src">no weight table for this profile</span></span>
+            <span class="chip sc-unknown">unknown</span>
           </div>
         </div>
 
+        <!-- D9 — was a five-line paragraph arguing why the pool is not what
+             blocks this seat and that green is earned. The verdict an operator
+             needs is the count and the named cell, with a click-through to it.
+             The composing-is-not-aggregating argument is §5.1's. -->
         <p class="verdict">
-          <b>Not ready.</b> Exactly one cell is unproven: the registry served no weight table for
-          this profile, and a stale or missing table refuses rather than mispricing. The pool is
-          <i>not</i> what blocks this seat — one entry clears all three axes, which is what
-          <span class="mono">acquire</span> needs, and the other two keep their own warnings
-          without lending them to the verdict.
-          <span class="dim">Green is earned by evidence, or it is not shown — and no cell here
-          says "Saved."</span>
+          <b>Not ready</b> — 1 of 8 unproven:
+          <a href="#cell-weights">Spend priceable</a>
         </p>
 
         <h3 style="margin-top: 20px">Spend · credits by model × account</h3>
@@ -1063,12 +1109,14 @@
           <!-- `no cap configured` is UNKNOWN, not HEALTHY, and there is no
                progress track: a bar with no denominator is a picture of a
                number nobody computed. -->
-          <div class="cell"><span class="what">Monthly cap</span><span class="chip sc-unknown">no cap configured</span></div>
+          <div class="cell"><span class="what">Monthly cap</span><span class="chip sc-unknown">no cap</span></div>
           <div class="cell"><span class="what">Weight table</span><span class="chip sc-unknown">revision unknown</span></div>
+          <!-- D9 — was three lines on why no dollar figure is shown. The
+               absence of a currency column is the statement; §5.5 argues it. -->
           <p class="dim" style="margin: 8px 0 0; font-size: 11.5px">
-            No dollar figure is shown. A stale or missing weight table refuses rather than
-            silently mispricing, and credits are metered in provider-native units so
-            <i>which model on which account drained this plan</i> is answerable directly.
+            No price — weight table unknown
+            <button class="i" type="button" aria-label="Why no price"
+                    title="A stale or missing weight table refuses rather than mispricing; credits stay in provider-native units.">i</button>
           </p>
         </div>
       </div>
@@ -1092,148 +1140,143 @@
     <section class="board3" aria-label="Mint screen states">
       <div class="panel">
         <p class="crumb" style="padding: 0">Setup wizard › designer-cockpit-2 › 5b · Credentials · mint</p>
-        <h3 style="margin: 10px 0 8px">Every state · nothing here renders a secret</h3>
+        <!-- D9 — the no-secret guarantee is a design claim, not a screen
+             label; §6.1.1 states it and the DOM check proves it. The state
+             numbers stay: they are the sheet's scaffolding, without which a
+             state sheet cannot be read at all. -->
+        <h3 style="margin: 10px 0 8px">Mint · every state</h3>
       </div>
       <div class="states">
-        <!-- 0 — an unanswered read is not an empty list. D1 applied to a
-             work-list: this is the state a default UI renders as "nothing to
-             do", which is the one wrong answer that looks like good news. -->
+        <!-- D9 — every card here carried a two-sentence note explaining why the
+             state exists. That is reviewer prose and it now lives in §6.1.1's
+             state ladder. What survives is state + fact + action, plus an (i)
+             on the four states whose reason an operator would otherwise have to
+             guess at from the pixel. -->
+
+        <!-- 0 — an unanswered read is not an empty list. -->
         <div class="st">
           <div class="st-h"><span class="st-n">0</span><span class="st-t">Work-list unknown</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-unknown">drift unknown</span></div>
-            <span class="mono">probe pool_read · did not answer</span>
-            <span class="st-note">Not an empty table. An unanswered read and a proven-empty
-              pool are different facts, and only one of them means there is nothing to do.</span>
+            <div class="st-row">
+              <span class="chip sc-unknown">unknown</span>
+              <button class="i" type="button" aria-label="Why unknown"
+                      title="The pool read did not answer — this is not an empty work-list.">i</button>
+            </div>
+            <span class="mono">probe pool_read · no answer</span>
+            <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Retry</button></div>
           </div>
         </div>
 
-        <!-- 1 — proven empty. The observation age is what makes the emptiness
-             mean anything; AC-UX-03 forbids "All clear". -->
+        <!-- 1 — empty state: one sentence, one action. Paperclip's own shape. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">1</span><span class="st-t">Empty, and proven</span></div>
+          <div class="st-h"><span class="st-n">1</span><span class="st-t">Empty</span></div>
           <div class="st-b">
-            No missing subscriptions in this profile.
-            <span class="st-note"><span class="mono">pool observed 40s ago</span> — the age is
-              part of the claim. An empty drift list computed twenty minutes ago is a weaker
-              statement than one computed now.</span>
+            No missing subscriptions.
+            <div class="st-row" style="margin-top: 6px">
+              <span class="mono dim">observed 40s ago</span>
+              <button class="ghost sm" type="button">Re-read</button>
+            </div>
           </div>
         </div>
 
-        <!-- 2 — the work-list itself, rendered from the registry's own
-             reconciliation. The enactment badge decides which ceremony. -->
+        <!-- 2 — the work-list row. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">2</span><span class="st-t">Needed, unasked</span></div>
+          <div class="st-h"><span class="st-n">2</span><span class="st-t">Needed</span></div>
           <div class="st-b">
             <div class="st-row">
               <span class="mono">anthropic · sub-3</span>
               <span class="chip sc-capped">missing</span>
             </div>
-            <div class="st-row">
-              <span class="mono">enactment: secret-reference</span>
-            </div>
-            <button class="ghost sm" type="button">What does this need?</button>
+            <span class="mono dim">secret-reference</span>
+            <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Show ceremony</button></div>
           </div>
         </div>
 
-        <!-- 3 — the asked stamp. This is the whole reason G8 exists: without
-             it states 2 and 3 are the same pixels forever. -->
+        <!-- 3 — the asked stamp, which is the whole reason G8 exists. -->
         <div class="st">
           <div class="st-h"><span class="st-n">3</span><span class="st-t">Asked</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="mono">openai · sub-1</span><span class="chip sc-capped">missing</span></div>
-            <span class="mono">asked 6m ago by operator:simonas</span>
-            <span class="st-note">G8 records the ask and nothing else. No material moves in
-              either direction — which is what makes it addable at all.</span>
-          </div>
-        </div>
-
-        <!-- 3s — the most likely real failure on this screen, and the one no
-             error state would ever fire for. Two timestamps the read already
-             serves, drawn as the condition they add up to. -->
-        <div class="st">
-          <div class="st-h"><span class="st-n">3s</span><span class="st-t">Asked, stalled</span></div>
-          <div class="st-b">
-            <div class="st-row"><span class="mono">google · sub-7</span><span class="chip sc-unknown">still missing</span></div>
-            asked <b>3d ago</b> · still missing at the last observation
-            <span class="st-note">No new fact — the ask stamp and
-              <span class="mono">observed_at</span>, drawn as a state. A ceremony that quietly
-              never completes throws no error.</span>
-          </div>
-        </div>
-
-        <!-- 4a — the OAuth path. ctower shows WHICH identity is wanted and
-             nothing about HOW: no code, no URL, no file path. The done control
-             re-reads readPoolLimits; it cannot start an observation, because
-             the only observation operation is a report by whoever exercised
-             the pool. -->
-        <div class="st">
-          <div class="st-h"><span class="st-n">4a</span><span class="st-t">operator-ceremony · waiting</span></div>
-          <div class="st-b">
-            <div class="st-row"><span class="mono">anthropic · sub-2</span><span class="chip sc-idle">device flow</span></div>
-            Run this profile's own device flow in the harness's tooling, on the host.
-            <div class="st-row" style="margin-top: 6px">
-              <button class="ghost sm" type="button">I've done it — re-read</button>
+            <div class="st-row">
+              <span class="mono">openai · sub-1</span>
+              <span class="chip sc-capped">missing</span>
             </div>
-            <span class="st-note">Re-reads the pool. It does not start an observation and does
-              not say it does: the identity appears when the pool is next observed.</span>
+            <span class="mono dim">asked 6m ago · operator:simonas</span>
           </div>
         </div>
 
-        <!-- 4b — the reference field. PLAIN TEXT, never masked: a dot-mask is
-             the tell that a UI wants a value. Disabled today because G8b does
-             not exist, and disabled-with-its-reason rather than absent — same
-             treatment as the Terminal tab and the dead lane's reap. -->
+        <!-- 3s — the failure no error state fires for. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">4b</span><span class="st-t">secret-reference · reference wanted</span></div>
+          <div class="st-h"><span class="st-n">3s</span><span class="st-t">Stalled</span></div>
           <div class="st-b">
-            <label class="st-lbl" for="alias-demo">alias in the secret store — a name, not a value</label>
+            <div class="st-row">
+              <span class="mono">google · sub-7</span>
+              <span class="chip sc-unknown">still missing</span>
+            </div>
+            <span class="mono dim">asked 3d ago</span>
+            <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Ask again</button></div>
+          </div>
+        </div>
+
+        <!-- 4a — ctower shows WHICH identity, never HOW: no code, no URL, no
+             file path. The done control re-reads and says only that. -->
+        <div class="st">
+          <div class="st-h"><span class="st-n">4a</span><span class="st-t">Ceremony · waiting</span></div>
+          <div class="st-b">
+            <div class="st-row">
+              <span class="mono">anthropic · sub-2</span>
+              <span class="chip sc-idle">device flow</span>
+            </div>
+            Run the device flow on the host.
+            <div class="st-row" style="margin-top: 6px">
+              <button class="ghost sm" type="button">Done — re-read</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4b — plain text, never masked. Disabled because G8b does not
+             exist: D9's could-arrive class, so it stays a control. -->
+        <div class="st">
+          <div class="st-h"><span class="st-n">4b</span><span class="st-t">Reference wanted</span></div>
+          <div class="st-b">
+            <label class="st-lbl" for="alias-demo">Alias in the secret store</label>
             <input class="st-field" id="alias-demo" type="text" value="anthropic/sub-3/oauth" disabled />
             <div class="st-row" style="margin-top: 6px">
-              <button class="ghost sm" type="button" disabled>
-                Record this reference — needs an operation this API does not have (G8b)
-              </button>
+              <button class="ghost sm" type="button" disabled>Record — needs G8b</button>
+              <button class="i" type="button" aria-label="Why disabled"
+                      title="No operation on this API accepts a secret reference yet.">i</button>
             </div>
-            <span class="st-note">Plain text, never a password field. Masking teaches the
-              operator to paste the wrong thing.</span>
           </div>
         </div>
 
-        <!-- 5 — AC-UX-09 on a credential write. The field goes read-only, not
-             cleared: a cleared field on a pending write is how an operator
-             retypes a reference they already sent. -->
+        <!-- 5 — AC-UX-09 on a credential write. Read-only, not cleared. -->
         <div class="st">
           <div class="st-h"><span class="st-n">5</span><span class="st-t">Submitting</span></div>
           <div class="st-b">
             <div class="st-row">
-              <span class="chip sc-idle">durability pending</span>
+              <span class="chip sc-idle">pending</span>
               <span class="mono">cmd_01JQ9C…7B2</span>
             </div>
             <input class="st-field" type="text" value="anthropic/sub-3/oauth" readonly disabled />
-            <span class="st-note">One stable command ID across reload. Read-only, not cleared.</span>
           </div>
         </div>
 
-        <!-- 6 — the state the brief names: minted-reference-shown. It is NOT a
-             success. No green, no check, no word "minted". The alias shown is
-             the one the SERVER echoed, so what the operator reads is what was
-             actually recorded. -->
+        <!-- 6 — the state the brief names. NOT a success: no green, no check,
+             no word "minted". The alias is the server's echo. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">6</span><span class="st-t">Bound — and not selectable</span></div>
+          <div class="st-h"><span class="st-n">6</span><span class="st-t">Bound</span></div>
           <div class="st-b">
             <div class="st-row">
               <span class="mono">anthropic · sub-3</span>
               <span class="chip sc-unknown">discovered</span>
+              <button class="i" type="button" aria-label="Why not selectable"
+                      title="A recorded reference is a claim; only an observation is evidence.">i</button>
             </div>
             <span class="mono">alias: anthropic/sub-3/oauth</span>
-            <div class="st-row" style="margin-top: 4px">recorded · not selectable · awaiting first observation</div>
-            <span class="st-note">The echoed alias, not the browser's own input. The ceremony
-              completing is the operator's claim; only an observation is evidence.</span>
+            <div class="st-row" style="margin-top: 4px">Awaiting first observation.</div>
           </div>
         </div>
 
-        <!-- 7 — AC-HAD-10: a mint moves ONLY the auth axis. Drawing all three
-             after the mint is what stops "minted" from meaning "ready". -->
+        <!-- 7 — AC-HAD-10: a mint moves ONLY the auth axis. -->
         <div class="st">
           <div class="st-h"><span class="st-n">7</span><span class="st-t">First observation</span></div>
           <div class="st-b">
@@ -1242,100 +1285,84 @@
               <span class="chip sc-capped">quota: capped</span>
               <span class="chip sc-proven">reach: ok</span>
             </div>
-            <span class="mono">observed 11s ago · reset 04:12Z</span>
-            <div class="st-row" style="margin-top: 4px">Still not ready — <b>quota</b> is blocking.</div>
-            <span class="st-note">Only <span class="mono">auth</span> may have moved. A mint
-              that claimed to fix quota or reach would be the one-word collapse AC-HAD-10 forbids.</span>
+            <span class="mono dim">observed 11s ago · reset 04:12Z</span>
+            <div class="st-row" style="margin-top: 4px">Not ready — <b>quota</b> blocking.</div>
           </div>
         </div>
 
-        <!-- 8 — the actual success state, three states after the operator
-             stopped typing. Keyed by decoded identity, never by label. -->
+        <!-- 8 — the actual success state, three states after typing stopped. -->
         <div class="st">
           <div class="st-h"><span class="st-n">8</span><span class="st-t">Keep or evict</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="mono">anthropic · sub-3</span><span class="chip sc-unknown">discovered</span></div>
             <div class="st-row">
-              <button class="ghost sm" type="button">Keep — enroll</button>
+              <span class="mono">anthropic · sub-3</span>
+              <span class="chip sc-unknown">discovered</span>
+            </div>
+            <div class="st-row" style="margin-top: 6px">
+              <button class="ghost sm" type="button">Keep</button>
               <button class="ghost sm" type="button">Evict</button>
             </div>
-            <span class="st-note">G9. Routed by decoded identity — a keep-or-evict routed by
-              label is the mislabelled-entry fixture the criterion exists to catch.</span>
           </div>
         </div>
 
-        <!-- F1 — the typing-time refusal. The matched TEXT is never echoed:
-             naming the shape instead of the string is what keeps a rejected
-             secret out of the screenshot the operator is about to file. -->
+        <!-- F1 — the matched TEXT is never echoed, here or anywhere. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">F1</span><span class="st-t">value-shaped input</span></div>
+          <div class="st-h"><span class="st-n">F1</span><span class="st-t">Value, not reference</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">refused in the browser</span></div>
-            Secrets are references, never values.
-            <span class="st-note">Never sent, never stored, and <b>not echoed into this
-              message</b>. The refusal names the shape that matched — 108-char bearer-token
-              shape — never the text that matched it.</span>
+            <div class="st-row"><span class="chip sc-error">refused</span></div>
+            Enter the alias, not the secret.
           </div>
         </div>
 
         <!-- F2 — the one refusal an operator can fix by retyping. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">F2</span><span class="st-t">alias-unknown</span></div>
+          <div class="st-h"><span class="st-n">F2</span><span class="st-t">Unknown alias</span></div>
           <div class="st-b">
             <div class="st-row"><span class="chip sc-error">refused</span></div>
-            The secret store has no binding by that alias.
-            <span class="st-note">Returns to 4b with the field editable.</span>
+            No binding by that alias. Check the name.
           </div>
         </div>
 
-        <!-- F3 — replacing a reference is a decision with chain-burned behind
-             it, so it refuses rather than silently applying. -->
+        <!-- F3 — replacement has chain-burned behind it, so it refuses. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">F3</span><span class="st-t">already-bound</span></div>
+          <div class="st-h"><span class="st-n">F3</span><span class="st-t">Already bound</span></div>
           <div class="st-b">
             <div class="st-row"><span class="chip sc-error">refused</span></div>
-            <span class="mono">anthropic/sub-3/legacy</span> is already bound to this identity.
-            <span class="st-note">Not applied. Exit is evict through G9, then bind — replacing
-              a reference in place is an edit with a revocation behind it.</span>
+            Bound to <span class="mono">anthropic/sub-3/legacy</span>. Evict first.
+            <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Evict</button></div>
           </div>
         </div>
 
-        <!-- F4 — the copied-auth.json failure arriving three states after the
-             mistake. No re-bind offered: the same reference reproduces it. -->
+        <!-- F4 — the copied-auth.json failure, arriving three states late. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">F4</span><span class="st-t">observation: chain-burned</span></div>
+          <div class="st-h"><span class="st-n">F4</span><span class="st-t">Chain burned</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">auth: chain-burned</span></div>
-            The refresh chain was already consumed.
-            <span class="st-note">No re-bind control: re-binding the same reference reproduces
-              it. Only a fresh login of <i>this</i> profile fixes it.</span>
+            <div class="st-row">
+              <span class="chip sc-error">auth: chain-burned</span>
+              <button class="i" type="button" aria-label="Why re-binding will not help"
+                      title="The refresh chain was consumed — the same reference reproduces this.">i</button>
+            </div>
+            Fresh login required on this profile.
+            <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Show ceremony</button></div>
           </div>
         </div>
 
-        <!-- F5 — the check a submit-time validator would have to CLAIM to
-             perform. Nothing but an observation decodes the identity, so it is
-             drawn where it actually fires. -->
+        <!-- F5 — the check a submit-time validator would have to CLAIM. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">F5</span><span class="st-t">observation: different identity</span></div>
+          <div class="st-h"><span class="st-n">F5</span><span class="st-t">Wrong identity</span></div>
           <div class="st-b">
-            <div class="st-row"><span class="chip sc-error">identity mismatch</span></div>
-            The alias resolved to material for <span class="mono">sub-9</span>, not
-            <span class="mono">sub-3</span>.
-            <span class="st-note">Cannot be caught at submit — nothing but an observation
-              decodes an identity. A screen that validated the alias on submit would be
-              claiming exactly this check.</span>
+            <div class="st-row"><span class="chip sc-error">mismatch</span></div>
+            Alias resolved to <span class="mono">sub-9</span>, not <span class="mono">sub-3</span>.
+            <div class="st-row" style="margin-top: 6px"><button class="ghost sm" type="button">Evict</button></div>
           </div>
         </div>
 
-        <!-- F6 — an authority refusal is drawn on the control, not discovered
-             after a submit. D5, same as the dead lane's reap. -->
+        <!-- F6 — an authority refusal is on the control, not after a submit.
+             D9's could-arrive class: another principal CAN use it. -->
         <div class="st">
-          <div class="st-h"><span class="st-n">F6</span><span class="st-t">not-authorized</span></div>
+          <div class="st-h"><span class="st-n">F6</span><span class="st-t">Not authorized</span></div>
           <div class="st-b">
-            <button class="ghost sm" type="button" disabled>
-              Record this reference — operator principal required
-            </button>
-            <span class="st-note">Drawn disabled with its reason, never as a failed submit.</span>
+            <button class="ghost sm" type="button" disabled>Record — operator only</button>
           </div>
         </div>
       </div>
