@@ -1,7 +1,7 @@
 # CT-I1-044 — later-wave credentials survey
 
-Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 2.
-Observed: 2026-08-20T14:24:08Z.
+Status: authored revision `ctower.later-wave-harness-survey/v1`, revision 3.
+Observed: 2026-08-21T02:33:01Z.
 
 Dependency truth: CT-I1-043 / PR #539 is merged and landed on `origin/main` at
 `9bc6c352ff2491e9bcec0cd8cfb50a19a4655b99`. The Codex source below is pinned to that
@@ -48,23 +48,31 @@ strict authored shape is `contracts/runner/later-wave-harness-survey.schema.json
 
 ## Derived semantic matrix
 
-Revision 2 of `contracts/runner/later-wave-harness-survey.matrix.json` closes two families
+Revision 3 of `contracts/runner/later-wave-harness-survey.matrix.json` closes two families
 that cannot be established by collecting judge examples:
 
 - **Referential consistency.** A verified answer that names another field's route, identity,
   pool, or cache must match that field's allowed value set. In particular, `qwen-cli` cannot
   claim a gateway representative probe; the route/probe rule is generated from the finite
   domains, not from this one mutation.
-- **Evidence-type support.** Every verified answer kind has a matrix support set. The schema
-  requires every cited source ID for that claim to belong to a source type in that set. The
-  Qwen evidence snapshot has no source that can entail `published_directional` credit weights,
+- **Evidence-type support.** Every candidate/question/value proposition has a candidate-scoped
+  matrix support set. The schema requires every cited source ID for that proposition to belong
+  to its entailing source set; generic evidence about another candidate is not transferable.
+  The Qwen evidence snapshot has no source that can entail `published_directional` credit weights,
   so that mutation is refused while the supported `unpublished` claim remains valid.
 
 The authored survey pins matrix SHA-256
-`b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b`. The validation-only
-proof derives 278 pair-rule, 92 referential, and 91 evidence-support violations; bounded
+`ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512`. The validation-only
+proof derives 278 pair-rule, 116 referential, and 114 candidate/source evidence-support violations; bounded
 Hypothesis searches and exhaustive loops require zero of those impossible documents to
 validate. No harness is executed and no credential value is read.
+
+The authored schema is modular: the envelope delegates to shared answer/token vocabulary,
+three named referential-law modules, and four candidate profiles. This is an auditable
+compilation of the matrix rather than a minified/manual triple encoding. Static validation
+closes the derived pair, candidate/source entailment, and referential families; residual
+semantic coherence is adjudicated at the registration ceremony through the
+survey-completeness refusal path, as required by SPEC CT-I1-044.
 
 ## Local binary and document evidence
 
@@ -199,7 +207,7 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - Warm (pinned verify environment): `PYTHON=.venv/bin/python just check`
 - Validation-only conformance proof: the contract verifier checks generated schema definitions
   and references; `tests/conformance/harness-adapter/test_survey_registration.py` derives the
-  pair-rule, referential-consistency, and evidence-support violations from the matrix, then
+  pair-rule, referential-consistency, and candidate/source evidence-support violations from the matrix, then
   uses bounded Hypothesis searches plus exhaustive loops to prove that none validate against
   the closed schema. It does not execute a harness, bind a provider, or add runtime behavior.
 - No `just verify` is owed by this docs/contracts-only slice unless the repository gate
@@ -231,3 +239,12 @@ this survey. The only authored decision is the refusal/zero-work disposition abo
 - claim: Revision 2 closes answer-to-evidence entailment and cross-field referential consistency; the schema refuses the Qwen gateway-probe and unsupported published-credit judge cases while retaining the derived pair refusals.
 - stood-under: Matrix SHA-256 `b1fa4c398d4c16d724d87b1bd037170a4e8a0858b7aeeb2ec9d6a8f0e86eb56b`, source #539 landed revision `9bc6c352`, strict schema/data, and 15 focused tests including bounded and exhaustive derived violation proofs.
 - if-this-breaks: Re-derive the ten-question referential and evidence-support tables; do not add a judge mutation as a special case or convert an `UNVERIFIED` answer into a role.
+
+## SIGNED-OFF — 2026-08-21T02:53:15Z
+
+- seat: engineer
+- crew: engineer-044-r8
+- model: gpt-5.6-luna
+- claim: Revision 3 closes candidate/source evidence entailment and unverified-anchor referential laws; modular schema contracts compile the matrix, preserve refusal-only scope, and keep all prior signature blocks append-only.
+- stood-under: Matrix SHA-256 `ac39702639e8a5a81a8c7e9c68f21a125f73e48ec9e33d6c1a2439ee1c598512`, revision 3, r7 F4/Q1/G1 findings, the Commander r8 closure criterion, and the focused 16-test validation-only battery.
+- if-this-breaks: Re-run the eight prior refusal witnesses and both bounded property searches against the exact new head; preserve all earlier signature text and do not add judge-specific exceptions or runtime behavior.
