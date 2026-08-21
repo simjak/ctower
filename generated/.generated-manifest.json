@@ -8,7 +8,7 @@
       "inputs": [
         {
           "path": "SPEC.md",
-          "sha256": "sha256:ccf0f49259518db51bd7a6097b86093f91755fc593cb12694ffda80550a35d83"
+          "sha256": "sha256:cd94a763ba8eb2cc68eb90ffe064d01c33b239fadb17b428f25d434b40f21b03"
         },
         {
           "path": "contracts/traceability/sources.json",
