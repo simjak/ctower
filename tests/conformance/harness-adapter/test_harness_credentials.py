@@ -10,7 +10,9 @@ credential that was never broken, burning a fresh single-use device flow to no e
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Mapping
 from datetime import timedelta
+from typing import Protocol, cast
 
 import pytest
 from ctower_contracts import validator_for
@@ -25,6 +27,7 @@ from ctower_runner_sdk.credentials import (
     CredentialPool,
     EntryState,
     Lease,
+    MeterObservation,
     ProbeResponse,
     exhaustion_refusal,
     project_entry,
@@ -40,6 +43,10 @@ _RESET = BASE_TIME + timedelta(hours=6)
 _ADJACENT = "ADJACENT-VALUE-THE-ALLOWLIST-MUST-LEAVE-BEHIND"
 _TOKEN_FIELDS = ("access_token", "refresh_token")
 _DISTINCT_CLOCKS = 3
+
+
+class _MeteredPool(Protocol):
+    metered: list[Mapping[str, object]]
 
 
 def _spec() -> HarnessSpec:
@@ -381,6 +388,40 @@ def test_no_credential_value_reaches_a_lease_a_refusal_or_a_rotation_event() -> 
     for body in bodies:
         assert _ADJACENT not in body
         assert not [field for field in _TOKEN_FIELDS if field in body]
+
+
+@pytest.mark.parametrize(
+    "subject",
+    tuple(subject for subject in subjects() if subject.binding_class == "real"),
+    ids=lambda item: item.name,
+)
+def test_every_real_pool_meter_projects_only_typed_usage_and_preserves_lease(
+    subject: ConformanceSubject,
+) -> None:
+    lease = subject.pool.acquire(
+        model_ref=subject.binding.spec.probe.model_ref,
+        tier=PROFILE_KEY,
+    )
+    assert isinstance(lease, Lease), lease
+
+    hostile = cast(
+        MeterObservation,
+        {
+            "event": "spawn",
+            "model_ref": lease.model_ref,
+            "lease_id": "caller-overwrite",
+            "access_token": "NOT_A_SECRET_REVIEW_CANARY",
+        },
+    )
+    subject.pool.meter(lease, hostile)
+
+    metered = cast(_MeteredPool, subject.pool).metered
+    row = metered[-1]
+    assert row["lease_id"] == str(lease.lease_id)
+    assert row["event"] == "spawn"
+    assert row["model_ref"] == lease.model_ref
+    assert "NOT_A_SECRET_REVIEW_CANARY" not in str(row)
+    assert "access_token" not in str(row)
 
 
 def test_a_metered_observation_carries_no_credential_value_either() -> None:

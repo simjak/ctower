@@ -1,30 +1,33 @@
-"""The ports the claude-code binding reads through, and the vocabulary it does not reopen.
+"""The ports the codex binding reads through, and the vocabulary it does not reopen.
 
 `SupervisorPort` is D10's existing Supervisor Interface as far as this binding composes over
 it — `launch`, `observe`, `deliver_input`, `terminate`, each carrying the attempt's fencing
 epoch. Nothing here invents a second process-control verb.
 
-The two ports beside it exist so harness-private reading stays behind a named boundary. The
-transcript is the only place this harness states which model actually answered, because its
-panes carry no model anywhere on screen; and the workspace answers only from committed refs,
-so no pane text can reach an artifact slot through it.
+`RolloutPort` is this harness's serving truth. The status line does print a model, and that
+model is the launch argument rendered back, so believing it would let the request corroborate
+itself. What actually answered is recorded per turn in the session rollout under the config
+home, and that is the only place this harness states it.
 
-There is deliberately no port for the credential store. This harness ships no pool, so the
-config homes are ctower's own state rather than a substrate to read, and modelling them as
-one would invite a second reader of a file ctower already writes.
+`CeremonyPort` is the whole of ctower's provided pool. This binding performs no enrolment, no
+mint, no rotation and no cooldown of its own: it asks the fleet's existing tool family, which
+is a year of incidents already paid for, and it guards and records what came back. A fifth
+rotation implementation over the same single-use refresh chains would be a race, not a spare.
 """
 
 from __future__ import annotations
 
 from typing import Protocol
 
+from ctower_runner.codex.ceremonies import CeremonyInvocation, CeremonyOutcome
 from ctower_runner_sdk.attempt import AttemptPin, WorkspaceContext
 from ctower_runner_sdk.guard import ExecutionPlan
 from ctower_runner_sdk.refusals import Refusal
 
 __all__ = [
+    "CeremonyPort",
+    "RolloutPort",
     "SupervisorPort",
-    "TranscriptPort",
     "WorkspacePort",
     "WritebackPort",
 ]
@@ -46,16 +49,26 @@ class SupervisorPort(Protocol):
         """Stop the pane and confirm it stopped. Disappearance is never read as success."""
 
 
-class TranscriptPort(Protocol):
-    """Serving truth: the session transcript under the pane's own working directory.
+class RolloutPort(Protocol):
+    """Serving truth: the session rollout this attempt's config home recorded.
 
-    The value returned is the model that answered the most recent real assistant turn, or
-    `None` when no transcript can be believed. `None` is a reading, not a gap — treating an
-    absent transcript as agreement with the request is how a whole harness family read its
-    served model as whatever was asked for.
+    `None` is a reading rather than a gap. Treating an absent rollout as agreement with the
+    launch argument is how a whole harness family reported its served model as whatever it was
+    asked for, and on this harness the pane looks identical either way.
     """
 
     def served_model(self, attempt: AttemptPin) -> str | None: ...
+
+
+class CeremonyPort(Protocol):
+    """The fleet's existing credential ceremonies, as this binding is allowed to ask them.
+
+    An outcome may be a refusal the ceremony itself raised — the generation guard lives in
+    `codex-rotate-fallback` where it was hardened, not in a copy of it here — and this binding
+    reports that verdict rather than forming a second opinion about the same chain.
+    """
+
+    def run(self, invocation: CeremonyInvocation) -> CeremonyOutcome: ...
 
 
 class WorkspacePort(Protocol):
@@ -74,8 +87,8 @@ class WorkspacePort(Protocol):
 class WritebackPort(Protocol):
     """The generated client, as the runner reaches it. No record-tier connection.
 
-    `file` returns the server's answer verbatim, including a refusal: a refusal is a result
-    to report, not an error to retry differently, and a stage change is a REQUEST whose
+    `file` returns the server's answer verbatim, including a refusal: a refusal is a result to
+    report, not an error to retry differently, and a stage change is a REQUEST whose
     disposition belongs to the server.
     """
 

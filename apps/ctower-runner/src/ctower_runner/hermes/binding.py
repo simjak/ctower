@@ -22,7 +22,7 @@ from ctower_runner.hermes.substrate import (
     WritebackPort,
 )
 from ctower_runner_sdk.attempt import AttemptPin, BriefBundle, SeatRef, WorkspaceContext
-from ctower_runner_sdk.credentials import Lease
+from ctower_runner_sdk.credentials import Lease, MeterObservation
 from ctower_runner_sdk.facts import (
     ArtifactSet,
     DispatchReceipt,
@@ -36,9 +36,11 @@ from ctower_runner_sdk.facts import (
 from ctower_runner_sdk.guard import DispatchBoundary, ExecutionPlan
 from ctower_runner_sdk.policy import (
     collect_refusal,
+    dispatch_pin_refusal,
     ladder_disposition,
     serving_observation,
     teardown_receipt,
+    terminate_after_receipt,
     writeback_refusal,
 )
 from ctower_runner_sdk.refusals import Refusal, substrate_unobservable
@@ -97,6 +99,9 @@ class HermesBinding:
         unread in a composer while the crew read as idle.
         """
 
+        mispinned = dispatch_pin_refusal(self._spec, attempt)
+        if mispinned is not None:
+            return mispinned
         lease = self._pool.acquire(model_ref=self._spec.probe.model_ref, tier=attempt.profile_ref)
         if isinstance(lease, Refusal):
             return lease
@@ -109,7 +114,7 @@ class HermesBinding:
         pane = self._supervisor.observe(pinned, 0)
         if command_id is None or pane is None or brief.digest in pane:
             return _unacknowledged(brief, pane)
-        self._pool.meter(lease, {"event": "spawn", "model_ref": lease.model_ref})
+        self._pool.meter(lease, MeterObservation(event="spawn", model_ref=lease.model_ref))
         return DispatchReceipt(
             attempt_id=str(pinned.attempt_id),
             composition_digest=pinned.composition_digest,
@@ -189,7 +194,7 @@ class HermesBinding:
         collected = self.collect(attempt, "checkpoint")
         artifacts = None if isinstance(collected, Refusal) else collected
         head_sha, pushed = self._workspace.head(self._context(attempt))
-        return teardown_receipt(
+        receipt = teardown_receipt(
             order,
             artifacts=artifacts,
             state=self.liveness(attempt, 0).state,
@@ -198,6 +203,7 @@ class HermesBinding:
             expires_at=self._clock(),
             nudge_offered=True,
         )
+        return terminate_after_receipt(receipt, attempt, self._supervisor.terminate)
 
     def lease_for(self, attempt: AttemptPin) -> Lease | Refusal:
         """Resolve the credential this attempt would ride, without dispatching anything."""

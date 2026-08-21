@@ -8,7 +8,7 @@
   ],
   "base": {
     "schema": "ctower.harness-spec/v1",
-    "key": "vector-harness",
+    "key": "hermes",
     "revision": 1,
     "artifact_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
     "config_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
