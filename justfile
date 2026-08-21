@@ -19,13 +19,13 @@ quickstart:
     @quickstart_root="$(mktemp -d /tmp/ctower-quickstart.XXXXXX)"; test -n "$quickstart_root"; case "$quickstart_root" in /tmp/ctower-quickstart.*) ;; *) exit 97 ;; esac; trap 'case "$quickstart_root" in /tmp/ctower-quickstart.*) rm -rf -- "$quickstart_root" ;; *) exit 97 ;; esac' EXIT; uv venv "$quickstart_root/venv" --python {{python}}; uv pip install --python "$quickstart_root/venv/bin/python" --require-hashes -r requirements/verify.txt; "$quickstart_root/venv/bin/python" -m pytest -p no:cacheprovider tests/acceptance/increment-1/test_workflow_cli.py -q
 
 # Warm, non-mutating developer and CI gate.
-check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests landing-boundary-coverage codegen-check traceability-check secrets-intended-tree
+check: python-check docs-check workflow-check version-check repository-tests contract-tests landing-boundary-coverage codegen-check traceability-check secrets-intended-tree
     {{python}} -m tools.checks --root . --profile fast
 
 python-check: compatibility-coverage
-    {{python}} -m ruff format --check apps/ctower-api/src apps/ctower-runner/src apps/ctowerctl/src packages/ctower-kernel/src packages/ctower-runner-sdk/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/dogfood tests/type_overlays tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1 tests/conformance
-    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctower-runner/src apps/ctowerctl/src packages/ctower-kernel/src packages/ctower-runner-sdk/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/dogfood tests/type_overlays tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1 tests/conformance
-    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctower-runner/src apps/ctowerctl/src packages/ctower-kernel/src packages/ctower-runner-sdk/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py generated/python tests/repository tests/contracts tests/compatibility tests/dogfood tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1 tests/conformance
+    {{python}} -m ruff format --check apps/ctower-api/src apps/ctower-runner/src apps/ctowerctl/src packages/ctower-kernel/src packages/ctower-runner-sdk/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/type_overlays tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1 tests/conformance
+    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctower-runner/src apps/ctowerctl/src packages/ctower-kernel/src packages/ctower-runner-sdk/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/type_overlays tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1 tests/conformance
+    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctower-runner/src apps/ctowerctl/src packages/ctower-kernel/src packages/ctower-runner-sdk/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py generated/python tests/repository tests/contracts tests/compatibility tests/type_overlays tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1 tests/conformance
 
 compatibility-coverage:
     @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/compatibility; {{python}} -c "{{coverage_gate}}" "$report_file" 90
@@ -35,11 +35,6 @@ landing-boundary-coverage:
 
 product-coverage:
     @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=ctower_api --cov=ctower_kernel --cov=ctowerctl --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/modules tests/acceptance/increment-1 -q; {{python}} -c "{{coverage_gate}}" "$report_file" 90
-
-web-check:
-    pnpm run format:check
-    pnpm run lint
-    pnpm run typecheck
 
 # Documentation builds outside the worktree so checks never create or clean `site/`.
 docs-check:

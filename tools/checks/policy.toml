@@ -90,11 +90,6 @@ paths = ["tests/repository/**"]
 allowed_dependencies = ["process-execution-tools", "repository-policy"]
 
 [[ownership]]
-name = "dogfood-tests"
-paths = ["tests/dogfood/**"]
-allowed_dependencies = []
-
-[[ownership]]
 name = "compatibility-tools"
 paths = ["tools/compatibility/**"]
 allowed_dependencies = []
@@ -333,13 +328,3 @@ paths = [
   "tests/modules/workflow/**",
 ]
 allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
-
-[[ownership]]
-name = "web"
-paths = ["apps/ctower-web/**"]
-allowed_dependencies = []
-
-[[ownership]]
-name = "phase-1-ui"
-paths = ["apps/ctower-ui/**"]
-allowed_dependencies = []
