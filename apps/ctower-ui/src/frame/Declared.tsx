@@ -281,10 +281,45 @@ export function KnownAbsence({ value }: { readonly value: Known<unknown> }): Rea
     case "value":
       return null;
     case "none":
-      return <span title={value.why}>{value.why}</span>;
+      return <Absence why={value.why} />;
     case "unread":
       return <NotReached label="not reached" detail={value.reason} />;
   }
+}
+
+/**
+ * An absence, and its reason on demand.
+ *
+ * Two rules met at once here, and both were right. The craft rules forbid a
+ * reason that renders only in a native `title`, because no touch or keyboard
+ * user reaches it. The copy budget forbids the reason rendering by default,
+ * because a sentence per cell is what turned whole screens into walls of grey —
+ * eighteen rows of "no model recorded, so no harness can be derived" is not an
+ * operator surface.
+ *
+ * So the reason is REACHABLE but not RENDERED. `details`/`summary` is the whole
+ * mechanism: focusable, operable by keyboard and touch, and it needs no client
+ * bundle in a server component. The closed state is one glyph — the same open
+ * circle `ctowerctl` prints, which claims nothing about what is missing — and
+ * the reason is one press away.
+ */
+export function Absence({
+  why,
+  label = null,
+}: {
+  readonly why: string;
+  /** A short honest word shown beside the mark, where one exists. */
+  readonly label?: string | null;
+}): ReactElement {
+  return (
+    <details className="absence">
+      <summary aria-label={label === null ? "Why this is missing" : `${label} — why`}>
+        <StateGlyph name="open" />
+        {label === null ? null : <span className="absence-label">{label}</span>}
+      </summary>
+      <span className="absence-why">{why}</span>
+    </details>
+  );
 }
 
 /**
@@ -300,11 +335,10 @@ export function NotReached({
   readonly label: string;
   readonly detail: string;
 }): ReactElement {
-  return (
-    <span style={NOT_REACHED} title={detail}>
-      {label}
-    </span>
-  );
+  // the label alone is already honest — "not reached" claims nothing — so it
+  // stays visible; the reason behind it moves to the disclosure rather than a
+  // native title no touch user can open
+  return <Absence why={detail} label={label} />;
 }
 
 /**
