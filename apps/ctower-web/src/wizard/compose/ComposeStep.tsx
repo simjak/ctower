@@ -12,43 +12,46 @@ import {
 import { Field } from "../../ui/form";
 import { shortDigest } from "../bundle";
 import type { Draft } from "../bundle";
+import { PURPOSE } from "../mode";
 import { agentFacts, componentCounts, projectFacts } from "../read";
 import type { EntityFact } from "../read";
 import type { Seed } from "../useSeed";
 import { EntityRow } from "./EntityRow";
 
 /**
- * Step 1 — company details.
+ * Step 1 — what this company is.
  *
- * Three questions, in the order an operator asks them: what is this company
- * called, what does it deliver, and who works on it. Everything on this screen
- * is a fact the API returned; the two things the operator authors here are the
- * company's name and key, and which projects and agents are in.
+ * The title says which of the two things the operator is doing, because a
+ * tenant that already has a company is not creating one. The one line under it
+ * says what the screen is for, and there is no second line: the rest of the
+ * screen is facts.
  */
 export function ComposeStep({
   seed,
   draft,
   onDraft,
+  title,
 }: {
   readonly seed: Seed;
   readonly draft: Draft;
   readonly onDraft: (draft: Draft) => void;
+  readonly title: string;
 }): ReactElement {
-  const projects = projectFacts(draft.base);
-  const agents = agentFacts(draft.base);
-  const keep = (id: string, kept: boolean): void => {
-    const dropped = new Set(draft.dropped);
-    if (kept) {
-      dropped.delete(id);
+  const setRemoved = (id: string, removed: boolean): void => {
+    const next = new Set(draft.removed);
+    if (removed) {
+      next.add(id);
     } else {
-      dropped.add(id);
+      next.delete(id);
     }
-    onDraft({ ...draft, dropped });
+    onDraft({ ...draft, removed: next });
   };
 
   return (
     <>
-      <PageHead title="Company details" subtitle={<Provenance seed={seed} />} />
+      <PageHead title={title} subtitle={PURPOSE}>
+        <Provenance seed={seed} />
+      </PageHead>
 
       <div className="space-y-4">
         <Card>
@@ -87,20 +90,20 @@ export function ComposeStep({
 
         <EntityCard
           title="Projects"
-          facts={projects}
-          dropped={draft.dropped}
+          facts={projectFacts(draft.base)}
+          removed={draft.removed}
           subjectNoun="bindings"
           empty="No project is in this company yet."
-          onKeep={keep}
+          onRemove={setRemoved}
         />
 
         <EntityCard
           title="Agents"
-          facts={agents}
-          dropped={draft.dropped}
+          facts={agentFacts(draft.base)}
+          removed={draft.removed}
           subjectNoun="seats"
           empty="No agent is in this company yet."
-          onKeep={keep}
+          onRemove={setRemoved}
         />
 
         <Card>
@@ -145,27 +148,26 @@ export function ComposeStep({
 function EntityCard({
   title,
   facts,
-  dropped,
+  removed,
   subjectNoun,
   empty,
-  onKeep,
+  onRemove,
 }: {
   readonly title: string;
   readonly facts: readonly EntityFact[];
-  readonly dropped: ReadonlySet<string>;
+  readonly removed: ReadonlySet<string>;
   readonly subjectNoun: string;
   readonly empty: string;
-  readonly onKeep: (id: string, kept: boolean) => void;
+  readonly onRemove: (id: string, removed: boolean) => void;
 }): ReactElement {
-  const kept = facts.filter((fact) => !dropped.has(fact.id)).length;
+  const retiring = facts.filter((fact) => removed.has(fact.id)).length;
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <span className="flex-1" />
-        <Mono className="text-ink-3">
-          {kept} of {facts.length}
-        </Mono>
+        {retiring === 0 ? null : <Badge tone="warn">{retiring} retiring</Badge>}
+        <Mono className="text-ink-3">{facts.length - retiring} kept</Mono>
       </CardHeader>
       <CardBody className="space-y-2">
         {facts.length === 0 ? (
@@ -175,10 +177,10 @@ function EntityCard({
             <EntityRow
               key={fact.id}
               fact={fact}
-              kept={!dropped.has(fact.id)}
+              removed={removed.has(fact.id)}
               subjectNoun={subjectNoun}
-              onKeep={(next): void => {
-                onKeep(fact.id, next);
+              onRemove={(next): void => {
+                onRemove(fact.id, next);
               }}
             />
           ))
