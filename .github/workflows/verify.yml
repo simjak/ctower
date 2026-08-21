@@ -74,9 +74,107 @@ jobs:
           -r requirements/verify.txt
 
       - name: Install Linux Secret Service test runtime
-        run: >-
-          sudo apt-get update &&
-          sudo apt-get install --yes --no-install-recommends gnome-keyring
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          max_attempts=2
+          per_attempt_seconds=300
+          operation_timeout_seconds=660
+          max_backoff_seconds=30
+          operation_deadline=$((SECONDS + operation_timeout_seconds))
+          last_exit_code=1
+          last_failure_reason="not-started"
+
+          run_setup_attempt() {
+            local attempt="$1"
+            local remaining_seconds=$((operation_deadline - SECONDS))
+            local attempt_timeout_seconds="$per_attempt_seconds"
+
+            if (( remaining_seconds < attempt_timeout_seconds )); then
+              attempt_timeout_seconds="$remaining_seconds"
+            fi
+            if (( attempt_timeout_seconds <= 0 )); then
+              last_exit_code=124
+              last_failure_reason="operation-deadline-exhausted"
+              return 124
+            fi
+
+            local attempt_started_seconds="$SECONDS"
+            printf 'secret-service setup attempt=%d/%d timeout_seconds=%d\n' \
+              "$attempt" "$max_attempts" "$attempt_timeout_seconds"
+            if timeout --signal=TERM --kill-after=5s "${attempt_timeout_seconds}s" \
+              bash -c 'sudo apt-get update && sudo apt-get install --yes --no-install-recommends gnome-keyring'
+            then
+              return 0
+            else
+              last_exit_code=$?
+            fi
+
+            local attempt_elapsed_seconds=$((SECONDS - attempt_started_seconds))
+            if (( last_exit_code == 124 )); then
+              last_failure_reason="runner-timeout"
+              timeout_variant="cooperative"
+            elif (( last_exit_code == 137 && attempt_elapsed_seconds >= attempt_timeout_seconds )); then
+              last_failure_reason="runner-timeout"
+              timeout_variant="kill-after"
+            else
+              last_failure_reason="package-or-dependency-error"
+            fi
+
+            if [[ "$last_failure_reason" == "runner-timeout" ]]; then
+              printf 'secret-service setup attempt=%d classification=retryable reason=%s timeout_variant=%s exit_code=%d elapsed_seconds=%d wall_timeout_seconds=%d\n' \
+                "$attempt" "$last_failure_reason" "$timeout_variant" "$last_exit_code" \
+                "$attempt_elapsed_seconds" "$attempt_timeout_seconds" >&2
+            else
+              printf 'secret-service setup attempt=%d classification=terminal reason=%s exit_code=%d\n' \
+                "$attempt" "$last_failure_reason" "$last_exit_code" >&2
+            fi
+            return "$last_exit_code"
+          }
+
+          for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+            if run_setup_attempt "$attempt"; then
+              exit 0
+            else
+              attempt_exit_code=$?
+            fi
+
+            if [[ "$last_failure_reason" != "runner-timeout" ]]; then
+              printf 'secret-service setup stopped: classification=terminal reason=%s attempt_count=%d exit_code=%d\n' \
+                "$last_failure_reason" "$attempt" "$attempt_exit_code" >&2
+              exit "$attempt_exit_code"
+            fi
+
+            if (( attempt >= max_attempts )); then
+              printf 'secret-service setup exhausted: reason=%s attempt_count=%d max_attempts=%d exit_code=%d\n' \
+                "$last_failure_reason" "$attempt" "$max_attempts" "$attempt_exit_code" >&2
+              exit "$attempt_exit_code"
+            fi
+
+            remaining_seconds=$((operation_deadline - SECONDS))
+            if (( remaining_seconds <= 0 )); then
+              printf 'secret-service setup exhausted: reason=operation-deadline-exhausted attempt_count=%d max_attempts=%d exit_code=124\n' \
+                "$attempt" "$max_attempts" >&2
+              exit 124
+            fi
+
+            backoff_base_seconds=$((5 * (2 ** (attempt - 1))))
+            jitter_seconds=$((RANDOM % (backoff_base_seconds + 1)))
+            backoff_seconds=$((backoff_base_seconds + jitter_seconds))
+            if (( backoff_seconds > max_backoff_seconds )); then
+              backoff_seconds="$max_backoff_seconds"
+            fi
+            if (( backoff_seconds >= remaining_seconds )); then
+              printf 'secret-service setup exhausted: reason=operation-deadline-exhausted attempt_count=%d max_attempts=%d exit_code=124\n' \
+                "$attempt" "$max_attempts" >&2
+              exit 124
+            fi
+
+            printf 'secret-service setup retrying: classification=transient reason=%s attempt_count=%d backoff_seconds=%d jitter_seconds=%d\n' \
+              "$last_failure_reason" "$attempt" "$backoff_seconds" "$jitter_seconds"
+            sleep "$backoff_seconds"
+          done
 
       - name: Install checksum-verified command-line tools
         shell: bash
