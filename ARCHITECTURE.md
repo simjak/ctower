@@ -319,9 +319,9 @@ CT-I1-013 adds only login/callback/session/logout/auth-error routes and auth evi
 one configured, bounded GitLab Issue co-source loop inside that existing worker. The API composition and one
 control worker share one kernel artifact; Access, Record, Catalog, Integrations, Work, Proof, Attention, the limited
 generic Workflow evaluator, and Projections remain logical responsibilities behind Module Interfaces.
-No runnable browser surface or browser dogfood server is present in this cut. React/Vite product routes,
-the five surfaces, and product Playwright evidence begin as separately activated I2.4 work under D22/D31;
-the deferred `browser-e2e` suite is not current evidence.
+The retained `ctower-ui` shell is runnable only at `/setup` and contains no product reads, mutations, or
+browser dogfood controls. React/Vite product routes, the five surfaces, and product Playwright evidence begin
+as separately activated I2.4 work under D22/D31; the deferred `browser-e2e` suite is not current evidence.
 Service-per-noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients

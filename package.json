@@ -7,7 +7,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "typecheck": "pnpm --filter @ctower/client typecheck"
+    "typecheck": "pnpm --filter @ctower/ui typecheck && pnpm --filter @ctower/client typecheck"
   },
   "devDependencies": {
     "typescript": ">=5.9 <6"
