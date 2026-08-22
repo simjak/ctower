@@ -269,6 +269,14 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
     }
 
 
+def test_openapi_declares_exact_security_schemes() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    components = cast(dict[str, object], document["components"])
+    security_schemes = cast(dict[str, object], components["securitySchemes"])
+
+    assert set(security_schemes) == {"bearerAuth", "browserSession"}
+
+
 def test_project_scope_refusals_are_declared_for_every_project_qualified_read() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
