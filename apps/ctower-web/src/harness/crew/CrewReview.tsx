@@ -57,7 +57,7 @@ export function CrewReview({
             <Term label="project" value={body.project_key} />
             <Term label="seat" value={body.seat_key} />
             <Term label="can do" value={body.scopes.join(" · ")} />
-            <Term label="credential" value={body.credential_ref} />
+            <Term label="lives at" value={body.credential_ref} />
             <Term
               label="fingerprint"
               value={shortDigest(body.credential_digest)}

@@ -8,8 +8,8 @@ import { CrewReceipt } from "./crew/CrewReceipt";
 import { CrewReview, ready } from "./crew/CrewReview";
 import { DefineCrew } from "./crew/DefineCrew";
 import { blankDraft, unmet } from "./crew/draft";
-import { addressableProjects, crewsOf } from "./crew/roster";
-import type { Minted } from "./crew/roster";
+import { crewsOf, recordedProjects } from "./crew/roster";
+import type { Minted, ProjectOption } from "./crew/roster";
 import { Roster } from "./crew/Roster";
 import { useCrewAct } from "./crew/useCrewAct";
 import { useRevokeAct } from "./crew/useRevokeAct";
@@ -48,11 +48,12 @@ export function CrewPanel({
   }, []);
 
   const profiles = useMemo(() => profilesOf(bundle), [bundle]);
-  const projects = useMemo(() => addressableProjects(bundle), [bundle]);
+  const projects = useMemo(() => recordedProjects(bundle), [bundle]);
   const prefix = useMemo(() => crewPrefix(bundle), [bundle]);
   const crews = useMemo(() => crewsOf(bundle, minted), [bundle, minted]);
+  const first = projects.find((project) => project.addressable);
 
-  const act = useCrewAct(record, onRecorded, blankDraft(profiles[0]?.key ?? "", projects[0] ?? ""));
+  const act = useCrewAct(record, onRecorded, blankDraft(profiles[0]?.key ?? "", first?.key ?? ""));
   const revoke = useRevokeAct(record);
   const sending = act.sending;
 
@@ -108,7 +109,7 @@ export function CrewPanel({
   }
 
   const blocked = unmet(act.draft);
-  const missing = whatIsMissing(profiles.length, projects.length);
+  const missing = whatIsMissing(profiles.length, projects);
   const profile = profiles.find((option) => option.key === act.draft.profileKey);
 
   return (
@@ -145,16 +146,24 @@ export function CrewPanel({
  * What this company would have to gain before a crew can be defined at all.
  *
  * Both halves can be missing at once, and saying only the first would send an
- * operator to fix one thing and meet the other on the way back.
+ * operator to fix one thing and meet the other on the way back. A company that
+ * records projects none of which can carry an address is a third case, and it
+ * is the record's own shape rather than something to fix here.
  */
-function whatIsMissing(profiles: number, projects: number): string | null {
-  if (profiles === 0 && projects === 0) {
+function whatIsMissing(profiles: number, projects: readonly ProjectOption[]): string | null {
+  const addressable = projects.some((project) => project.addressable);
+  if (profiles === 0 && projects.length === 0) {
     return "A crew runs an agent profile and works in a project. This company records neither yet.";
   }
   if (profiles === 0) {
     return "No agent profile is recorded, and a crew runs one.";
   }
-  return projects === 0 ? "No project in this company can carry an address yet." : null;
+  if (projects.length === 0) {
+    return "This company records no project, and a crew works in one.";
+  }
+  return addressable
+    ? null
+    : "No project key here can carry an address: an address key has no dots.";
 }
 
 function Footer({ children }: { readonly children: ReactNode }): ReactElement {
