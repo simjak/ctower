@@ -86,29 +86,6 @@ class VerificationSupplyChainTests(unittest.TestCase):
         self.assertIn("--connect-timeout 15 --max-time 300", workflow)
         self.assertNotIn("npm install --global", workflow)
 
-    def test_the_verification_host_browser_is_chosen_by_the_javascript_lock(self) -> None:
-        """The one gate input that is not URL-and-digest pinned, and what pins it.
-
-        ``dogfood-inbox-controls`` (DECISIONS D42, renamed by D44) drives the dogfood
-        server in a browser, and Playwright publishes no per-build checksum for a
-        browser download, so the browser cannot join the fetch/sha256 list above.
-        What pins it instead is the resolved ``@playwright/test`` entry in
-        ``pnpm-lock.yaml``, which CI installs with ``--frozen-lockfile``: one
-        candidate resolves to exactly one browser revision. The install command
-        therefore names no version, download host, or channel of its own, and a
-        floating one would make the gate's browser drift between runs.
-        """
-        workflow = self._read(".github/workflows/verify.yml")
-        lock = self._read("pnpm-lock.yaml")
-
-        self.assertIn("run: pnpm exec playwright install --with-deps chromium", workflow)
-        self.assertNotIn("PLAYWRIGHT_DOWNLOAD_HOST", workflow)
-        self.assertNotIn("playwright install --channel", workflow)
-        self.assertRegex(
-            lock,
-            r"\n  '@playwright/test@\d+\.\d+\.\d+':\n    resolution: \{integrity: sha512-",
-        )
-
     def test_python_and_javascript_verification_locks_are_present(self) -> None:
         direct = [
             line
@@ -211,9 +188,6 @@ class VerificationSupplyChainTests(unittest.TestCase):
         self.assertTrue(python_check[1].startswith("{{python}} -m ruff check "))
         self.assertTrue(python_check[2].startswith("{{python}} -m mypy "))
         self.assertEqual(self._recipe_body(justfile, "workflow-check"), ["actionlint"])
-        self.assertTrue(
-            all(command.startswith("pnpm ") for command in self._recipe_body(justfile, "web-check"))
-        )
         self.assertIn("{{gitleaks}}", self._recipe_body(justfile, "secrets-history")[0])
         self.assertIn("@just secrets-history", self._recipe_body(justfile, "verify"))
 

@@ -35,10 +35,10 @@ is one open-to-close period on the same ticket.
 The workflow stage and the Board lane are separate facts. A blocked ticket keeps its stage. Changing an
 assignee does not change the ticket identity or erase proof.
 
-## How to use a ticket
+## Current read path
 
-On the local shadow browser, open `/board` and select a card. The ticket page shows the record that the
-browser can read. The browser does not create or edit tickets.
+The browser product ticket view is deferred to a separately activated future product-browser lane. The current
+supported read path is the protected CLI below; no browser route is implementation or evidence for this contract.
 
 From the command line, use:
 

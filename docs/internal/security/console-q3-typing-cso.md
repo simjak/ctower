@@ -155,8 +155,8 @@ call permits at most one injection.
 This verdict is not product activation, deployment approval, or evidence that Phase 1 is implemented on
 current main. The candidate console specification remains subordinate to `SPEC.md`; its canonical
 incorporation, stable-ticket activation, prerequisite ordering, implementation, and deployed proofs remain
-separate gates. In particular, typing MUST NOT attach to the current `apps/ctower-ui` terminal reader. That
-reader directly captures tmux through a server-side dogfood source and does not implement the candidate's
+separate gates. In particular, typing MUST NOT attach to the retired terminal-reader path. That historical
+reader directly captured tmux through a server-side dogfood source and did not implement the candidate's
 OIDC session, `ConsoleViewGrant`, session allowlist, restricted output custody, or SSE boundary.
 
 The build may proceed only by satisfying every mandatory control below. Missing or unknown evidence is a
@@ -173,8 +173,8 @@ prerequisite assumptions for the viewer server only.
 
 That update does not activate typing. CT-I1-021 contains no `ConsoleTypeGrant`, input route, input custody,
 final admission, mux write, or browser UI. Phase 2 must still satisfy CT-C01 through CT-C08 and every named
-test in this verdict as one separately activated exact candidate. The pre-existing `apps/ctower-ui` terminal
-reader remains outside both proof chains.
+test in this verdict as one separately activated exact candidate. The retired terminal-reader path remains
+outside both proof chains.
 
 ## Exact boundary and consequence
 
@@ -235,7 +235,8 @@ activate them in the owning manifest and preserve their exact security assertion
 Typing consumes the proven `CT-I1-013` same-origin human session/CSRF boundary and the candidate Phase-1
 view-grant, allowlist, restricted-output custody, bounded-SSE, private-network, and direct-path controls.
 Production verification of that foundation is a predecessor, as the candidate specification already
-requires. The current dogfood tmux capture is not that proof and cannot be adapted into a writable fallback.
+requires. The historical dogfood tmux capture is not that proof and cannot be adapted into a writable
+fallback.
 
 - `test_console_typing_requires_proven_phase1_foundation`
 - `test_console_type_enabled_composition_has_no_direct_tmux_or_generic_process_route`
@@ -350,14 +351,14 @@ be cited as deployed proof.
 
 Three assumptions must be stated more narrowly now:
 
-1. **“Phase 1 is live” is not a security-proof statement.** Current main's terminal surface was introduced
-   before the three rounds; its terminal component, tmux bridge, and closed read-command grammar remain
-   unchanged since `abd2f935189de359d2b22d302377f3d12e9c10a3`. It reads tmux directly on the server,
-   polls through page refresh, and is deliberately labelled read-only. It has no `ConsoleViewGrant`,
+1. **“Phase 1 is live” is not a security-proof statement.** The historical terminal surface was introduced
+   before the three rounds; its former terminal component, tmux bridge, and closed read-command grammar
+   remain described here as provenance, not current implementation. It read tmux directly on the server,
+   polled through page refresh, and was deliberately labelled read-only. It had no `ConsoleViewGrant`,
    `ConsoleTypeGrant`, `console_session_allowed`, console custody reader, or console input contract.
-2. **The dogfood server is not the product auth boundary.** D41–D45 keep `apps/ctower-ui` separate and
-   non-product; its browser receives no product session or authority. `SPEC.md` and the roadmap reserve the
-   product browser for I2.4 after full normative I1 exit and require it to consume `CT-I1-013`.
+2. **The retired dogfood server was not the product auth boundary.** Its old browser received no product
+   session or authority, and D75 retires that separate non-product boundary. `SPEC.md` and the roadmap
+   reserve the product browser for I2.4 after full normative I1 exit and require it to consume `CT-I1-013`.
 3. **The console proposal is not canonical current-main scope.** The exact candidate is still on draft PR
    #373 and says it is subordinate to `SPEC.md`. This Q3 artifact resolves the input security question; it
    does not silently merge the candidate, activate a stable CT ticket, satisfy its Phase-1 production
