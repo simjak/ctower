@@ -7,15 +7,14 @@ the denominator by scanning every authored and generated TypeScript module for
 network-capable constructs, then require each discovered site to sit in an
 approved policy holder. An unclassifiable site fails the gate.
 
-Three further discoveries run the same way, each fail-closed:
+Two further discoveries run the same way, each fail-closed: the generated
+client may be reached from an application only through a binder that hands it
+that application's bounded fetch and no credential, and no module under `apps/`
+may call a filesystem write.
 
-* an unreachable source must render as unreachable, never as empty, so a
-  `Reading` may only be inspected inside the read layer and the one component
-  that renders its non-present states;
-* this surface reads other repositories' live files, so no module under `apps/`
-  may call a filesystem write, and
-* every interim source renders text authored elsewhere, so each one must pass it
-  through the redaction list before a screen can see it.
+The interim-source and `Reading` rules that used to live here went with the
+phase-1 surface in #545; they named `apps/ctower-ui/src/read/**` directly and
+have nothing left to assert. What remains is what the surviving app claims.
 """
 
 from __future__ import annotations
@@ -51,17 +50,11 @@ _WRITE_PATTERN = re.compile(
     r"|unlink|unlinkSync|rmdir|rmSync|mkdir|mkdirSync|rename|renameSync|truncate"
     r"|chmod|chmodSync)\s*\("
 )
-_READING_PATTERN = re.compile(r"\.state\s*(?:===|!==)|\breading\.(?:value|failure|source)\b")
 _LINE_COMMENT = re.compile(r"//[^\n]*")
 _BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 
 # The approved holders. Each entry is a path and the reason it may hold the site.
 _NETWORK_POLICY_HOLDERS = {
-    "apps/ctower-ui/src/read/bounded.ts": (
-        "the boundary's single bounded-retry chokepoint: per-attempt timeout, "
-        "finite attempts and deadline, jittered capped backoff, typed predicate, "
-        "typed exhaustion"
-    ),
     "apps/ctower-web/src/api/bounded.ts": (
         "the wizard's single bounded-retry chokepoint, with the same policy; the "
         "generated client is constructed with the fetch it returns, so every "
@@ -73,15 +66,7 @@ _NETWORK_POLICY_HOLDERS = {
         "asserted separately below"
     ),
 }
-_READING_HOLDERS = (
-    "apps/ctower-ui/src/read/",
-    "apps/ctower-ui/src/frame/Declared.tsx",
-)
-_CHOKEPOINTS = (
-    "apps/ctower-ui/src/read/bounded.ts",
-    "apps/ctower-web/src/api/bounded.ts",
-)
-_CHOKEPOINT = _CHOKEPOINTS[0]
+_CHOKEPOINTS = ("apps/ctower-web/src/api/bounded.ts",)
 
 # The only application modules that may value-import the generated client, each
 # mapped to the chokepoint it must hand that client as its `fetch`. An entry
@@ -90,16 +75,6 @@ _CHOKEPOINT = _CHOKEPOINTS[0]
 _CLIENT_BINDERS = {
     "apps/ctower-web/src/api/client.ts": "./bounded",
 }
-_SOURCE_DIRECTORY = "apps/ctower-ui/src/read/sources/"
-# Helpers in the source directory that carry no foreign text of their own.
-_SOURCE_HELPERS = frozenset(
-    {
-        f"{_SOURCE_DIRECTORY}redact.ts",
-        f"{_SOURCE_DIRECTORY}paths.ts",
-        f"{_SOURCE_DIRECTORY}jsonl.ts",
-        f"{_SOURCE_DIRECTORY}maybe.ts",
-    }
-)
 
 # Every O10 property must remain visible in the chokepoint, by name.
 _REQUIRED_BOUNDS = (
@@ -218,35 +193,6 @@ class BrowserNetworkChokepointTests(unittest.TestCase):
             [],
             "a module under apps/ calls a filesystem write; this surface reads other "
             "repositories' live state and may never write, lock, rename or remove",
-        )
-
-    def test_every_interim_source_redacts_before_a_screen_sees_its_text(self) -> None:
-        sources = sorted(
-            path
-            for path in (_relative(item) for item in _sources())
-            if path.startswith(_SOURCE_DIRECTORY) and path not in _SOURCE_HELPERS
-        )
-        self.assertGreater(len(sources), 3, "the interim source scan found almost nothing")
-        imports_redaction = re.compile(r"from\s+\"\./redact\"")
-        missing = [
-            path for path in sources if imports_redaction.search(_code(_ROOT / path)) is None
-        ]
-        self.assertEqual(
-            missing,
-            [],
-            "an interim source renders text authored elsewhere without passing it through "
-            "the redaction list; a credential pasted into that source would reach the screen",
-        )
-
-    def test_readings_are_only_unwrapped_inside_the_declared_boundary(self) -> None:
-        offenders = sorted(
-            path for path in _matching(_READING_PATTERN) if not path.startswith(_READING_HOLDERS)
-        )
-        self.assertEqual(
-            offenders,
-            [],
-            "a surface inspected a Reading directly; unwrap it through frame/Declared.tsx so an "
-            "unreachable source can never be rendered as an empty one",
         )
 
 
