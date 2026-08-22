@@ -319,16 +319,10 @@ CT-I1-013 adds only login/callback/session/logout/auth-error routes and auth evi
 one configured, bounded GitLab Issue co-source loop inside that existing worker. The API composition and one
 control worker share one kernel artifact; Access, Record, Catalog, Integrations, Work, Proof, Attention, the limited
 generic Workflow evaluator, and Projections remain logical responsibilities behind Module Interfaces.
-React/Vite product routes, the five surfaces, and product Playwright evidence begin at I2.4 under D22/D31.
-The separate `ctower-ui` dogfood server permitted by D41, D44 and D45 is not a product surface: it holds the
-API bearer only on its server side and exposes two bounded, idempotent calls to the existing Inbox send and
-promotion endpoints. Its browser submits message text and the answer it last received — the recipient is an
-identity and is resolved server-side, and the only field read back out of that previous answer is the command
-identity a still-unconfirmed send retries under. A `durability_pending` answer is rendered as an unsent
-message, never as a sent one. It adds no browser authority, product route, record-tier connection, or I1/I2.4
-completion claim. D42 as amended by D44 activates one required suite for that boundary,
-`dogfood-inbox-controls`, which drives it in a headless browser on ephemeral loopback ports; the product
-`browser-e2e` suite stays deferred to CT-I2-005.
+The former `ctower-ui` runtime and its `/setup` shell are removed under D75; only inert design/reference files
+remain under its retained subtree. The `apps/ctower-web` workspace slot is reserved for the separate fresh
+browser-app lane; React/Vite product routes, the five surfaces, and product Playwright evidence begin as
+separately activated I2.4 work under D22/D31; the deferred `browser-e2e` suite is not current evidence.
 Service-per-noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients

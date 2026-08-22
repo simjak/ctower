@@ -11,14 +11,9 @@ prompt on screen. The terminal read shows the current pane without giving the br
 Terminal text is not ctower authority. It can be incomplete, wrapped by the terminal width, or gone when a
 session ends. It does not prove that a stage passed or that a ticket is complete.
 
-## How to use it
+## Current status
 
-Open `/team/<seat>` to see one terminal tab for each live crew in that seat. Open
-`/crew/<crew-name>` to see one crew and its terminal.
-
-The page shows when the pane was captured. It also states whether text was redacted before display.
-**Redacted** means that secret-like text was removed from the rendered copy. If the crew is not running,
-the page says that no live pane was found. If the source cannot be reached, the page reports that failure.
-
-The view polls for a new capture. It cannot type, steer, stop, or restart work. Use the recorded ticket and
-session facts when you need history. Use the terminal only for live observation.
+The former browser terminal-read routes are retired. The separately activated CT-I1-021 console viewer
+server foundation is read-only and does not itself provide a product browser route, typing, or terminal
+control. Missing, stale, redacted, or unavailable live output must remain explicit; terminal text is never
+proof of a passed stage or completed ticket.

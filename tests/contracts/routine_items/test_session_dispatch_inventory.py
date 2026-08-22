@@ -18,13 +18,6 @@ _REMOVED_FILES = (
     "apps/ctowerctl/src/ctowerctl/_beat_dispatch_commands.py",
 )
 
-_UI_REMOVED_FILES = (
-    "apps/ctower-ui/src/app/heartbeats/page.tsx",
-    "apps/ctower-ui/src/read/beatRegistry.ts",
-    "apps/ctower-ui/src/read/sources/cadenceHealth.ts",
-)
-
-
 _REGISTRY_DENOMINATOR = 17
 _ITEM_PATH_REFERENCES = 10
 
@@ -62,34 +55,3 @@ def test_session_dispatch_inventory_names_no_obsolete_target_symbols() -> None:
         if needle in path.read_text(encoding="utf-8")
     ]
     assert violations == []
-
-
-def test_ui_has_no_removed_session_dispatch_paths() -> None:
-    ui_sources = (ROOT / "apps/ctower-ui/src", ROOT / "apps/ctower-ui/README.md")
-    forbidden = (
-        "beat-routines",
-        "beat-dispatches",
-        "targetSession",
-        "BeatRoutineRead",
-        "BeatDispatchRead",
-        "cadenceRegistry",
-        '"/heartbeats"',
-    )
-    paths = tuple(
-        path
-        for source_root in ui_sources
-        for path in (
-            tuple(source_root.rglob("*.ts")) + tuple(source_root.rglob("*.tsx"))
-            if source_root.is_dir()
-            else (source_root,)
-        )
-    )
-    violations = [
-        f"{path}:{needle}"
-        for path in paths
-        for needle in forbidden
-        if needle in path.read_text(encoding="utf-8")
-    ]
-    assert violations == []
-    for relative in _UI_REMOVED_FILES:
-        assert not (ROOT / relative).exists(), relative
