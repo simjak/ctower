@@ -3336,3 +3336,86 @@ the next available identifier so the append-only ledger has no duplicate authori
    the resulting suite unchanged. This decision sharpens D72 and supersedes
    nothing; it adds no route, principal, credential, environment variable, flag,
    migration, or gate waiver.
+
+## D75 — Retire the separate ctower-ui Inbox dogfood boundary (product + architecture, 2026-08-21, R3129)
+
+The R3129 teardown removes the separate, non-product `ctower-ui` runtime and its
+`/setup` shell. The approved design/reference files remain as inert reference
+material under `apps/ctower-ui/design-reference/**`; they are not an application,
+package, route, browser boundary, or evidence source. The future `ctower-web`
+browser lane keeps its separate workspace slot and is activated only by its own
+reviewed I2.4 work.
+
+1. **The dogfood exception is closed.** This decision supersedes only the clauses
+   in D41, D42, D44, D45, and D55 that authorize the `ctower-ui` runtime,
+   server-mediated Inbox promotion/send/compose controls, or the required
+   `dogfood-inbox-controls` suite. Those historical decisions remain unchanged
+   as append-only provenance; none is current permission to restore the runtime
+   or suite.
+2. **The current I1 evidence boundary is API/CLI.** Native Inbox delivery/read,
+   notification, and promotion behavior is exercised through the generated
+   client and protected CLI. No browser dogfood control or browser suite is
+   required or active. The deferred `browser-e2e` product evidence remains owned
+   by CT-I2-005/I2.4 and is not supplied by the retired boundary.
+3. **No future product permission is implied.** A later product browser may add
+   a server-mediated UI channel only through the separately activated I2.4
+   contract, acceptance evidence, and security boundary. This retirement does
+   not turn the retained reference files or the empty workspace slot into a
+   product route, compatibility path, or current implementation.
+4. **The closure is mechanically guarded.** The repository teardown regression
+   checks the removed roots, retained reference ownership, fresh-app slot,
+   retired suite/gate wiring, root ignore rules, and current canonical/security
+   documents. It adds no environment variable, feature flag, migration, or gate
+   waiver.
+
+Rejected alternatives: keeping an empty or server-mediated shell so historical
+dogfood claims continued to look executable; retaining the suite after deleting
+its only boundary; or rewriting D41/D42/D44/D45/D55 instead of recording this
+supersession. Each would either preserve a dead current contract or violate the
+append-only decision canon.
+
+## D76 — Runner ownership and bounded chat/steer projection preserve the earned seam (architecture + authority, 2026-08-21)
+
+The I2 runner and operator chat/steer work is now named in `SPEC.md` as CT-I2-013
+and CT-I2-014. This entry records the boundary those rows must preserve. It is a
+bounded decision about ownership and proof, not an activation of either row, and
+it supersedes nothing.
+
+1. **The runner has one owner.** CT-I2-013 delivers one long-running,
+   registry-driven owner per configured target through the systemd delivery
+   shape. Desired-state reconciliation, liveness observation, typed collection,
+   generated-client writeback, and checkpoint/park/reap teardown are one service
+   responsibility. A second reconciler, cron loop, ad-hoc process launcher, or
+   service-per-noun split is not an alternate implementation. The runner remains
+   a replaceable client: it never connects to Record/Postgres and never authors
+   protected verdict, resolution, freeze, or effect truth.
+2. **The merged seam remains the only dispatch route.** A binding resolves its
+   effective harness, supervisor, target, workspace, telemetry, build, and
+   credential-pool revisions; the five merged verbs are the only seam vocabulary;
+   and the current normalized plan passes CommandGuard at the final local
+   process boundary. Unknown, mismatched, revoked, stale, or unfenced inputs
+   perform zero process action. `writeback` uses the seat's own project-seat
+   credential through generated authenticated APIs, while credentials remain
+   references and typed state rather than values.
+3. **The chat/steer surface is deliberately smaller than a cockpit.** CT-I2-014
+   may expose only the proposal's justified crew/liveness/spec reads, typed
+   transcript read/stream, composer input, and steer/ACK operation families.
+   Registration, guard dry-run, credential mint/reference/keep-or-evict,
+   workspace changes, pull-request creation, and generic control endpoints are
+   outside the row. OpenAPI, generated clients, contract counters, and reference
+   documentation must close together; responses make command identity, cursor
+   gaps, refusal reasons, source watermarks, and pending-versus-folded durability
+   visible without credential values.
+4. **Proposal material is not authority.** The sealed harness-adapter seam and
+   operator-cockpit design are sources for the two rows, not new normative
+   requirements or activation evidence. The transcript fact vocabulary, the
+   operator-principal path that drives steer, the managed credential-store
+   boundary, generated ladder authority, and saturation-policy owner remain
+   explicit prerequisites. CT-I2-013/014 must refuse to guess them and must not
+   resequence the I2 dependency chain without a later decision.
+5. **The public-page boundary is absolute.** These rows authorize internal
+   contract/specification work only. No public product page, navigation entry,
+   browser route, or browser credential authority may claim chat/steer behavior
+   until the owning implementation and its browser gate are active. This entry
+   adds no route, principal, credential, environment variable, feature flag,
+   migration, gate waiver, or implementation claim.

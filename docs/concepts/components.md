@@ -318,22 +318,22 @@ Where a crew's work would physically happen, bound to the work rather than to th
 
 ## Group 7 — Surfaces
 
-The current API/CLI are the authoritative command surfaces. The local browser is a development
-shadow surface that reads record-backed state and exposes only the narrow controls that exist. A
-surface never owns a second copy of work. The table labels read surfaces and target surfaces
-separately; an unbuilt surface is not implied by a route name or a mockup.
+The current API/CLI are the authoritative command surfaces. No runnable browser surface is present
+in this cut; browser realization remains separately activated work. A surface never owns a second
+copy of work. The table labels read surfaces and target surfaces separately; an unbuilt surface is
+not implied by a route name or a mockup.
 
 | Surface | Status | What it is for | Software | Accounting |
 |---|---|---|---|---|
 | Board | **Status: BUILT — read-only projection** | Work by stage | Where each feature is | Where each entity's close is |
-| Requests view | **Status: BUILT — Request record/read contract and the dedicated read-only shadow Requests surface (`apps/ctower-ui/src/app/requests`, in the navigation rail; the five primary surfaces stay closed)** | What was asked, and its outcome | The backlog of asks | The finance team's inbox of requests |
-| Inbox | **Status: BUILT — development controls** | Work items addressed to you | "Review this change" | "Approve this payment run" |
-| Chat | **Status: BUILT — two-person Inbox thread** | Talking to a commander where the work is | "Why is this ticket blocked?" | "Why is this invoice held?" |
-| File explorer | **Status: BUILT — read-only shadow surface** | Finding the artefacts | The repository tree | Working papers and supporting documents |
+| Requests view | **Status: NOT BUILT — API/CLI contract exists; browser view deferred** | What was asked, and its outcome | The backlog of asks | The finance team's inbox of requests |
+| Inbox | **Status: NOT BUILT — browser controls removed; API/CLI remains authoritative** | Work items addressed to you | "Review this change" | "Approve this payment run" |
+| Chat | **Status: NOT BUILT — browser surface deferred** | Talking to a commander where the work is | "Why is this ticket blocked?" | "Why is this invoice held?" |
+| File explorer | **Status: NOT BUILT — browser surface deferred** | Finding the artefacts | The repository tree | Working papers and supporting documents |
 | File editor | **Status: NOT BUILT — SPECIFIED ONLY** | Changing an artefact in place | Editing code or a document | Editing a schedule or a reconciliation |
 | Terminal | **Status: NOT BUILT — SPECIFIED ONLY** | Running something as an operator surface | Running the tests | Running a reconciliation script |
-| Metrics | **Status: BUILT — shadow route; metric definitions are Status: NOT BUILT — SPECIFIED ONLY** | How the work behaves over time | Time per stage, review rounds per ticket | Days to close, corrections per cycle |
-| UI and CLI | **Status: BUILT — CLI/API plus narrow shadow UI** | Look at or script the operations that are actually implemented | — | — |
+| Metrics | **Status: NOT BUILT — browser surface deferred; metric definitions are Status: NOT BUILT — SPECIFIED ONLY** | How the work behaves over time | Time per stage, review rounds per ticket | Days to close, corrections per cycle |
+| UI and CLI | **Status: BUILT — CLI/API; browser surface intentionally absent** | Look at or script the operations that are actually implemented | — | — |
 
 The Console viewer server foundation is **Status: BUILT — private, read-only server boundary**. It
 does not provide a product browser terminal, safe renderer, terminal input, or a command runner.

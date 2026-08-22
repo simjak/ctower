@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.24 |
+| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.26 |
 | Decision history | [`docs/internal/DECISIONS.md`](docs/internal/DECISIONS.md) |
-| Last reviewed | 2026-08-14 |
+| Last reviewed | 2026-08-21 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -319,16 +319,10 @@ CT-I1-013 adds only login/callback/session/logout/auth-error routes and auth evi
 one configured, bounded GitLab Issue co-source loop inside that existing worker. The API composition and one
 control worker share one kernel artifact; Access, Record, Catalog, Integrations, Work, Proof, Attention, the limited
 generic Workflow evaluator, and Projections remain logical responsibilities behind Module Interfaces.
-React/Vite product routes, the five surfaces, and product Playwright evidence begin at I2.4 under D22/D31.
-The separate `ctower-ui` dogfood server permitted by D41, D44 and D45 is not a product surface: it holds the
-API bearer only on its server side and exposes two bounded, idempotent calls to the existing Inbox send and
-promotion endpoints. Its browser submits message text and the answer it last received — the recipient is an
-identity and is resolved server-side, and the only field read back out of that previous answer is the command
-identity a still-unconfirmed send retries under. A `durability_pending` answer is rendered as an unsent
-message, never as a sent one. It adds no browser authority, product route, record-tier connection, or I1/I2.4
-completion claim. D42 as amended by D44 activates one required suite for that boundary,
-`dogfood-inbox-controls`, which drives it in a headless browser on ephemeral loopback ports; the product
-`browser-e2e` suite stays deferred to CT-I2-005.
+The former `ctower-ui` runtime and its `/setup` shell are removed under D75; only inert design/reference files
+remain under its retained subtree. The `apps/ctower-web` workspace slot is reserved for the separate fresh
+browser-app lane; React/Vite product routes, the five surfaces, and product Playwright evidence begin as
+separately activated I2.4 work under D22/D31; the deferred `browser-e2e` suite is not current evidence.
 Service-per-noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients
@@ -344,8 +338,8 @@ Service-per-noun units such as a separate reconciler are not implied.
   |                                                      |         |
   | Postgres + objects + vault refs + off-host durability |         |
   |                                                      |         |
-  | ctower-runner -- local process Adapter                |         |
-  |               \- local tmux Adapter                  |         |
+  | ctower-runner.service -- registry owner/reconciler             |
+  |               \- local process/tmux Adapters                   |
   |                                                               |
   | ctower-release-supervisor.service  [root-owned, separate]      |
   |              | allowlisted install/switch/restart/rollback     |
@@ -354,13 +348,26 @@ Service-per-noun units such as a separate reconciler are not implied.
   +---------------------------------------------------------------+
 ```
 
-`ctower-runner` is a protocol client with no record-tier credential. The root release supervisor stays
+`ctower-runner` is one long-running, registry-driven protocol client with no record-tier credential. Its
+systemd delivery owns desired-to-observed reconciliation, independent liveness cycles, typed collection,
+generated-client writeback, and checkpoint/park/reap teardown for the local process and tmux Adapters; it
+never connects to Record/Postgres or authors protected control-plane truth. The root release supervisor stays
 alive while ctower upgrades itself, independently verifies artifact bytes, signatures/attestations,
 subjects, and trusted builder/workflow identity, and writes a hash-chained receipt journal. The one live
 `systemd-vps/v1` integration plus its fault-injection implementation is an internal Effects boundary, not
 a generalized provider Seam. Before any local Harness or Supervisor Adapter launches, invokes, or submits
 an arbitrary harness command, it must enforce Runtime's current CommandGuard decision over the normalized
 plan and targets.
+
+The target chat/steer HTTP contract is a bounded client surface, not a second control plane: crew/liveness/spec
+reads, typed transcript read/stream, composer input, and steer/ACK are the admitted G1–G4 operation families,
+including the HarnessSpec read, joined by the record-backed G10, G11, and G12 reads. R3129 adds exactly three
+setup writes — `registerHarness`, `submitHarnessSurvey`, and `bindHarnessCredentialReference` — as HTTP faces over
+existing kernel ceremonies; they add no new authority and no new seam capability. The proposal-stage cockpit gap
+list's G5–G9 (including G8b) remain outside this bounded admission. Authored OpenAPI, generated clients, contract
+counters, and reference documentation close together; responses carry command identity, cursor/gap/refusal facts,
+source watermarks, and pending-versus-folded durability without credential values. No public product page, browser
+route, or browser credential authority is implied until the owning I2 implementation and browser gate are active.
 
 ## Deep Modules and dependency direction
 

@@ -19,7 +19,6 @@ exclude = [
   "generated/**",
   "node_modules/**",
   "**/node_modules/**",
-  "**/.next/**",
   "tests/repository/fixtures/**",
 ]
 protected_roots = ["apps", "packages", "tools", "tests"]
@@ -88,11 +87,6 @@ allowed_dependencies = []
 name = "repository-tests"
 paths = ["tests/repository/**"]
 allowed_dependencies = ["process-execution-tools", "repository-policy"]
-
-[[ownership]]
-name = "dogfood-tests"
-paths = ["tests/dogfood/**"]
-allowed_dependencies = []
 
 [[ownership]]
 name = "compatibility-tools"
@@ -285,6 +279,16 @@ paths = ["apps/ctower-api/src/**"]
 allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "process-execution-tools"]
 
 [[ownership]]
+name = "ui-design-reference"
+paths = ["apps/ctower-ui/design-reference/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "web"
+paths = ["apps/ctower-web/**"]
+allowed_dependencies = []
+
+[[ownership]]
 name = "development-runtime-tests"
 paths = ["tests/development_runtime/**"]
 allowed_dependencies = [
@@ -333,13 +337,3 @@ paths = [
   "tests/modules/workflow/**",
 ]
 allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-console", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-pools", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
-
-[[ownership]]
-name = "web"
-paths = ["apps/ctower-web/**"]
-allowed_dependencies = []
-
-[[ownership]]
-name = "phase-1-ui"
-paths = ["apps/ctower-ui/**"]
-allowed_dependencies = []
