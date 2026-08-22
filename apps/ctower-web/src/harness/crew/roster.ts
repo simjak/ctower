@@ -30,15 +30,14 @@ export interface CrewRow {
 
 const PROFILE_SLOT = "agent_profile";
 const PROJECT_KIND = "project";
-const PROJECT_SUBJECT = "project:";
 
 /**
  * The key an address can be issued against.
  *
- * `SeatCredentialIssueRequest.project_key` is narrower than either place the
- * company record names a project — no dots — so a project this company records
- * may still be unable to carry a seat. That is the record's own shape and the
- * screen shows it rather than dropping the row.
+ * `SeatCredentialIssueRequest.project_key` is narrower than a project's own key
+ * — no dots — so a project this company records may still be unable to carry a
+ * seat. That is the record's shape, and the screen shows it rather than dropping
+ * the row or reaching somewhere else for a key that would fit.
  */
 const ADDRESSABLE = /^[a-z][a-z0-9-]{2,63}$/;
 
@@ -67,29 +66,35 @@ export function crewsOf(
 }
 
 /**
- * Every project this company records, as the record spells it.
+ * The projects this company declares, each under the key it declares itself by.
  *
- * A company names a project in two places and they are not the same string: a
- * `project` component carries the document's key, and a `project:` subject
- * carries the key work is filed under. A project created on this screen's own
- * harness exists only as the first, so reading either one alone hides projects
- * that are really there — which is how a company with a brand new project ends
- * up being told it has none.
+ * One source, and it is the only one that is a project's own statement of its
+ * key: a `project` component's authored `key` field. Nothing here is taken apart
+ * from a subject. A `project:` assignment subject reads like it carries a
+ * project key and it must not be mined for one — the authored contract's
+ * position on that is explicit for the fields it does declare (`seat_key` and
+ * `role_key` are "never inferred from subject or display text"), and a subject
+ * is a subject.
  *
- * Neither is checked by ctower. `issueSeatCredential` stores `project_key` on
- * the seat and validates nothing else about it, so this list is what the record
- * says exists and not a promise that an address will reach anything.
+ * The cost of holding that line is real and is left visible rather than papered
+ * over: a company whose projects are declared under dotted keys has no project
+ * that can carry an address, and the screen says exactly that. See the defect
+ * report in `coordination/designer-harness-crew.defect-assignment-join.md` —
+ * the assignment fields that would carry this properly are declared by
+ * `company-bundle.schema.json` and are absent from the HTTP contract, so no
+ * browser can read or write them.
  */
 export function recordedProjects(document: CompanyBundleDocument): readonly ProjectOption[] {
   const declared = document.resources
     .filter((resource) => resource.component.kind === PROJECT_KIND)
-    .map((resource) => resource.component.key);
-  const filedUnder = document.assignments
-    .filter((assignment) => assignment.subject.startsWith(PROJECT_SUBJECT))
-    .map((assignment) => assignment.subject.slice(PROJECT_SUBJECT.length));
-  return [...new Set([...declared, ...filedUnder])]
-    .sort()
-    .map((key) => ({ key, addressable: ADDRESSABLE.test(key) }));
+    .map((resource) => authoredKey(resource.payload) ?? resource.component.key);
+  return [...new Set(declared)].sort().map((key) => ({ key, addressable: ADDRESSABLE.test(key) }));
+}
+
+/** `ctower.project/v1` carries its own `key`; the component's is the fallback. */
+function authoredKey(payload: Readonly<Record<string, unknown>>): string | null {
+  const key = payload.key;
+  return typeof key === "string" && key !== "" ? key : null;
 }
 
 function splitSubject(subject: string): { readonly prefix: string; readonly name: string } {

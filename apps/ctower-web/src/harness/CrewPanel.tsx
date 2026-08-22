@@ -159,11 +159,11 @@ function whatIsMissing(profiles: number, projects: readonly ProjectOption[]): st
     return "No agent profile is recorded, and a crew runs one.";
   }
   if (projects.length === 0) {
-    return "This company records no project, and a crew works in one.";
+    return "This company declares no project, and a crew works in one.";
   }
   return addressable
     ? null
-    : "No project key here can carry an address: an address key has no dots.";
+    : "Every project here is declared under a key an address cannot carry: an address key has no dots.";
 }
 
 function Footer({ children }: { readonly children: ReactNode }): ReactElement {
