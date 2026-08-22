@@ -1,152 +1,161 @@
-import { useMemo, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { useCallback, useState } from "react";
 import type { ReactElement } from "react";
 import type { BoardCard, BoardView, CompanyBundleDocument } from "@ctower/client";
 import type { Answer } from "../api/client";
 import { Button, Chip, PageHead } from "../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
-import { CardTile } from "./CardTile";
-import { Filters } from "./Filters";
-import { atPriority, columnsOf, freshnessOf, PRIORITIES, projectsOf } from "./lanes";
-import type { PriorityChoice } from "./lanes";
+import { Column } from "./Column";
+import { columnsOf, freshnessOf, projectsOf } from "./lanes";
+import type { Project } from "./lanes";
+import { ProjectField } from "./ProjectField";
 import { TicketPanel } from "./TicketPanel";
 import { useBoard } from "./useBoard";
 
 /**
- * The Board: six lanes of real work, and what is behind one card.
+ * The Board. Six lanes, the cards the projection holds, and nothing else.
  *
- * The page holds exactly one selection. Opening a card does not navigate and
- * does not animate: the panel takes the space to the right of the lanes and the
- * six columns narrow to share what is left, instantly, because `DESIGN.md`
- * spends motion only when real work moves and a layout is not work.
+ * The page is still. It reads once when the project changes and once more when
+ * the operator asks it to, because `DESIGN.md` reserves motion for real work
+ * moving and a board that repaints on a timer moves when nothing has. The
+ * project lives in the address, so a board is a link — the same board opens for
+ * whoever the operator sends it to.
  */
-export function BoardPage({
-  definition,
-}: {
-  readonly definition: CompanyBundleDocument;
-}): ReactElement {
-  const projects = useMemo(() => projectsOf(definition), [definition]);
-  const [projectKey, setProjectKey] = useState<string | null>(projects[0]?.key ?? null);
-  const [priority, setPriority] = useState<PriorityChoice>("any");
-  const [openTicket, setOpenTicket] = useState<string | null>(null);
-  const board = useBoard(projectKey);
+export function BoardPage({ company }: { readonly company: CompanyBundleDocument }): ReactElement {
+  const projects = projectsOf(company);
+  const [projectKey, setProjectKey] = useState<string | null>(() => opensOn(projects));
+  const [reloadKey, setReloadKey] = useState(0);
+  const [open, setOpen] = useState<BoardCard | null>(null);
+  const board = useBoard(projectKey, reloadKey);
 
-  if (projectKey === null) {
-    return (
-      <>
-        <PageHead title="Board" />
-        <p className="m-0 py-6 text-sm text-muted">
-          This company names no project yet. Add one on the Company page.
-        </p>
-      </>
-    );
-  }
-
-  const cards = board.kind === "answered" ? board.value.cards : [];
-  const kept = atPriority(cards, priority);
-  const open = kept.find((card) => card.ticket_id === openTicket) ?? null;
+  const choose = useCallback((key: string): void => {
+    setOpen(null);
+    setProjectKey(key);
+    rememberProject(key);
+  }, []);
 
   return (
     <>
-      <PageHead title="Board" subtitle={<Standing board={board} kept={kept.length} />} />
-      <Filters
-        projects={projects}
-        projectKey={projectKey}
-        onProject={(key): void => {
-          setProjectKey(key);
-          setOpenTicket(null);
-        }}
-        priority={priority}
-        onPriority={setPriority}
-        counts={board.kind === "answered" ? countsOf(board.value.cards) : null}
-      />
-      {board.kind === "answered" ? (
-        <div
-          className={
-            open === null
-              ? "grid gap-3"
-              : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start"
-          }
+      <PageHead title="Board" subtitle={<Standing board={board} projectKey={projectKey} />}>
+        <ProjectField projectKey={projectKey} projects={projects} onChoose={choose} />
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={projectKey === null}
+          onClick={(): void => {
+            setReloadKey((count) => count + 1);
+          }}
         >
-          <Lanes
-            cards={kept}
-            empty={cards.length}
-            openTicket={openTicket}
-            onOpen={setOpenTicket}
-            onAnyPriority={(): void => {
-              setPriority("any");
-            }}
-          />
-          {open === null ? null : (
-            <TicketPanel
-              projectKey={projectKey}
-              card={open}
-              onClose={(): void => {
-                setOpenTicket(null);
-              }}
-            />
-          )}
-        </div>
+          <RotateCw /> Read again
+        </Button>
+      </PageHead>
+
+      {projectKey === null ? (
+        <Unopened projects={projects} onChoose={choose} />
       ) : (
-        <Unanswered board={board} />
+        <Lanes board={board} selectedId={open?.ticket_id ?? null} onOpen={setOpen} />
+      )}
+
+      {open === null || projectKey === null ? null : (
+        <TicketPanel
+          card={open}
+          projectKey={projectKey}
+          onClose={(): void => {
+            setOpen(null);
+          }}
+        />
       )}
     </>
   );
 }
 
-/** The six columns, or the one sentence that says why there are no cards in them. */
-function Lanes({
-  cards,
-  empty,
-  openTicket,
-  onOpen,
-  onAnyPriority,
+/**
+ * No project yet, and the one action that fixes it sits next to the sentence
+ * that says so. The choices are the definition's own projects; a company whose
+ * definition names none gets the sentence and the field, because there is
+ * nothing real to offer and a made-up suggestion would be worse than none.
+ */
+function Unopened({
+  projects,
+  onChoose,
 }: {
-  readonly cards: readonly BoardCard[];
-  /** How many cards the read answered before the filter narrowed them. */
-  readonly empty: number;
-  readonly openTicket: string | null;
-  readonly onOpen: (ticketId: string) => void;
-  readonly onAnyPriority: () => void;
+  readonly projects: readonly Project[];
+  readonly onChoose: (key: string) => void;
 }): ReactElement {
-  if (empty === 0) {
-    return <p className="m-0 py-6 text-sm text-muted">This project has no tickets yet.</p>;
+  return (
+    <div className="py-6">
+      <p className="m-0 text-sm text-muted">
+        Name the project this board reads, and it opens on that project&rsquo;s work.
+      </p>
+      {projects.length === 0 ? null : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {projects.map((project) => (
+            <Button
+              key={project.key}
+              variant="ghost"
+              size="sm"
+              onClick={(): void => {
+                onChoose(project.key);
+              }}
+            >
+              {project.name}
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Lanes({
+  board,
+  selectedId,
+  onOpen,
+}: {
+  readonly board: Answer<BoardView>;
+  readonly selectedId: string | null;
+  readonly onOpen: (card: BoardCard) => void;
+}): ReactElement {
+  switch (board.kind) {
+    case "asking":
+      return <Asking what="Reading this board" />;
+    case "refused":
+      return (
+        <Refused
+          problem={board.problem}
+          action="No cards were read. Check the project key and ask again."
+        />
+      );
+    case "unreachable":
+      return (
+        <Unreachable
+          detail={board.detail}
+          action="This is not an empty board; it is a board that was not read. Ask again."
+        />
+      );
+    case "malformed":
+      return <Malformed detail={board.detail} />;
+    case "answered":
+      return <Grid view={board.value} selectedId={selectedId} onOpen={onOpen} />;
   }
-  if (cards.length === 0) {
-    return (
-      <div className="py-6">
-        <p className="m-0 text-sm text-muted">No ticket on this board carries that priority.</p>
-        <Button size="sm" className="mt-2" onClick={onAnyPriority}>
-          Show any priority
-        </Button>
-      </div>
-    );
+}
+
+function Grid({
+  view,
+  selectedId,
+  onOpen,
+}: {
+  readonly view: BoardView;
+  readonly selectedId: string | null;
+  readonly onOpen: (card: BoardCard) => void;
+}): ReactElement {
+  if (view.cards.length === 0) {
+    return <p className="m-0 py-6 text-sm text-muted">This project holds no tickets yet.</p>;
   }
   return (
-    // Six equal shares of whatever width there is, and never a scrollbar. The
-    // shell caps content at 1200px and a detail panel takes a third of it, so
-    // the alternative was a track that scrolls and slices a card in half at the
-    // panel's edge — which reads as a broken column, not as more board. A lane
-    // the operator cannot see is a lane he stops counting.
-    <div className="grid grid-cols-6 gap-2.5">
-      {columnsOf(cards).map((column) => (
-        <section key={column.lane} className="min-w-0">
-          <header className="mb-2 flex items-baseline gap-2 border-b border-line pb-1.5">
-            <h2 className="m-0 text-xs font-semibold tracking-[-0.01em]">{column.label}</h2>
-            <span className="text-2xs text-muted">{column.cards.length}</span>
-          </header>
-          <ul className="m-0 grid list-none gap-2 p-0">
-            {column.cards.map((card) => (
-              <CardTile
-                key={card.ticket_id}
-                card={card}
-                selected={card.ticket_id === openTicket}
-                onOpen={(): void => {
-                  onOpen(card.ticket_id);
-                }}
-              />
-            ))}
-          </ul>
-        </section>
+    <div className="grid grid-cols-6 gap-2">
+      {columnsOf(view.cards).map((column) => (
+        <Column key={column.lane} column={column} selectedId={selectedId} onOpen={onOpen} />
       ))}
     </div>
   );
@@ -155,62 +164,72 @@ function Lanes({
 /**
  * What the head says about the read, and only what is known.
  *
- * A projection that has not caught up says so. `STATE_UNKNOWN` is not "current",
- * and a stale count presented as the truth is the one thing a board must never
- * do.
+ * `STATE_UNKNOWN` is not `current` and never renders as one, and a projection
+ * that has not folded everything the record holds says it is catching up rather
+ * than presenting its count as complete. The two watermarks are record
+ * positions, so they stay in the hover instead of being drawn as a number of
+ * tickets they are not.
  */
 function Standing({
   board,
-  kept,
+  projectKey,
 }: {
   readonly board: Answer<BoardView>;
-  readonly kept: number;
-}): ReactElement | null {
-  if (board.kind !== "answered") {
-    return null;
+  readonly projectKey: string | null;
+}): ReactElement {
+  if (projectKey === null) {
+    return <Chip>no project</Chip>;
   }
-  const freshness = freshnessOf(board.value);
+  switch (board.kind) {
+    case "asking":
+      return <Chip>reading</Chip>;
+    case "refused":
+      return <Chip tone="danger">{board.problem.code}</Chip>;
+    case "unreachable":
+      return <Chip>not read</Chip>;
+    case "malformed":
+      return <Chip tone="amber">contract</Chip>;
+    case "answered":
+      return <Counted view={board.value} />;
+  }
+}
+
+function Counted({ view }: { readonly view: BoardView }): ReactElement {
+  const freshness = freshnessOf(view);
   return (
     <>
-      <span>
-        {String(kept)} of {String(board.value.cards.length)} cards
-      </span>
-      {freshness.kind === "current" ? null : (
-        <Chip tone="amber">{freshness.kind === "behind" ? freshness.detail : "State unknown"}</Chip>
-      )}
+      <Chip>
+        {view.cards.length} {view.cards.length === 1 ? "card" : "cards"}
+      </Chip>
+      {freshness.kind === "current" ? <Chip tone="ok">current</Chip> : null}
+      {freshness.kind === "behind" ? (
+        <Chip tone="amber" title={freshness.detail}>
+          catching up
+        </Chip>
+      ) : null}
+      {freshness.kind === "unknown" ? <Chip>not known</Chip> : null}
     </>
   );
 }
 
-function Unanswered({ board }: { readonly board: Answer<BoardView> }): ReactElement | null {
-  switch (board.kind) {
-    case "asking":
-      return <Asking what="Reading this board" />;
-    case "refused":
-      return (
-        <Refused
-          problem={board.problem}
-          action="Nothing was read. Choose a project to ask again."
-        />
-      );
-    case "unreachable":
-      return (
-        <Unreachable
-          detail={board.detail}
-          action="This is not an empty board; it is a board that was not read."
-        />
-      );
-    case "malformed":
-      return <Malformed detail={board.detail} />;
-    case "answered":
-      return null;
+/**
+ * Which project the board opens on.
+ *
+ * The address wins, so a board is a link. Failing that, a company whose
+ * definition names exactly one project has no question to ask and the board
+ * opens on it; a company that names several is asked, because picking the
+ * alphabetically first one would be a guess dressed as a default.
+ */
+function opensOn(projects: readonly Project[]): string | null {
+  const asked = new URLSearchParams(window.location.search).get("project");
+  if (asked !== null && asked !== "") {
+    return asked;
   }
+  return projects.length === 1 ? (projects[0]?.key ?? null) : null;
 }
 
-function countsOf(cards: readonly BoardCard[]): Readonly<Record<PriorityChoice, number>> {
-  const counts: Record<PriorityChoice, number> = { any: cards.length, P0: 0, P1: 0, P2: 0 };
-  for (const choice of PRIORITIES) {
-    counts[choice] = atPriority(cards, choice).length;
-  }
-  return counts;
+function rememberProject(key: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("project", key);
+  window.history.replaceState(null, "", url);
 }

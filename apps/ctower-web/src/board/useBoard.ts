@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react";
-import type { BoardView, TicketResource } from "@ctower/client";
+import type { BoardView, TicketResource, TimelineResponse } from "@ctower/client";
 import { ask, ASKING, reads } from "../api/client";
 import type { Answer } from "../api/client";
 
 /**
  * The board read, and the ticket read behind a card.
  *
- * Both are `GET`s asked once per subject and neither polls. `DESIGN.md` reserves
- * motion for real work moving; a board that repaints itself on a timer is a
- * screen that moves when nothing has. New facts arrive when the operator asks.
- *
- * `project_key` is a required parameter of the board read, so choosing a project
- * is not a filter over one answer — it is a different answer, at its own
- * watermark. That is why it lives here and the priority filter does not.
+ * Both are `GET`s asked once per subject, and neither polls. `DESIGN.md`
+ * reserves motion for real work moving; a board that repaints itself on a timer
+ * is a screen that moves when nothing has, and it would also make every
+ * screenshot of it a different screenshot. New facts arrive when the operator
+ * asks for them.
  */
-export function useBoard(projectKey: string | null): Answer<BoardView> {
+export function useBoard(projectKey: string | null, reloadKey: number): Answer<BoardView> {
   const [board, setBoard] = useState<Answer<BoardView>>(ASKING);
 
   useEffect(() => {
@@ -33,21 +31,33 @@ export function useBoard(projectKey: string | null): Answer<BoardView> {
     return (): void => {
       live = false;
     };
-  }, [projectKey]);
+  }, [projectKey, reloadKey]);
 
   return board;
 }
 
-export function useTicket(projectKey: string, ticketId: string): Answer<TicketResource> {
+/** What a card's detail is made of: the ticket itself, and its recorded history. */
+export interface TicketReads {
+  readonly ticket: Answer<TicketResource>;
+  readonly timeline: Answer<TimelineResponse>;
+}
+
+export function useTicket(projectKey: string, ticketId: string): TicketReads {
   const [ticket, setTicket] = useState<Answer<TicketResource>>(ASKING);
+  const [timeline, setTimeline] = useState<Answer<TimelineResponse>>(ASKING);
 
   useEffect(() => {
     let live = true;
     setTicket(ASKING);
+    setTimeline(ASKING);
     const load = async (): Promise<void> => {
-      const answer = await ask(() => reads.getTicket({ projectKey, ticketId }));
+      const [read, history] = await Promise.all([
+        ask(() => reads.getTicket({ projectKey, ticketId })),
+        ask(() => reads.getTicketTimeline({ projectKey, ticketId })),
+      ]);
       if (live) {
-        setTicket(answer);
+        setTicket(read);
+        setTimeline(history);
       }
     };
     void load();
@@ -56,5 +66,5 @@ export function useTicket(projectKey: string, ticketId: string): Answer<TicketRe
     };
   }, [projectKey, ticketId]);
 
-  return ticket;
+  return { ticket, timeline };
 }
