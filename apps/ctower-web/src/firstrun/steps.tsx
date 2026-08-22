@@ -99,17 +99,12 @@ export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): 
               onAnswers({ ...answers, adapter: entry.key });
             }}
             className={cn(
-              "relative cursor-pointer rounded-md border px-4 pt-6 pb-4 text-center",
+              "cursor-pointer rounded-md border px-4 py-4 text-center",
               answers.adapter === entry.key
                 ? "border-amber bg-amber/10"
                 : "border-line bg-card hover:bg-raised"
             )}
           >
-            {entry.recommended ? (
-              <Chip tone="amber" className="absolute -top-2.5 right-3">
-                Recommended
-              </Chip>
-            ) : null}
             <span className="block text-sm font-semibold text-fg">{entry.label}</span>
             <span className="mt-1 block text-xs text-muted">{entry.blurb}</span>
           </button>
