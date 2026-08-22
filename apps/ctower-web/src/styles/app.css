@@ -1,0 +1,178 @@
+/* The token layer, and it is `DESIGN.md` verbatim.
+   ─────────────────────────────────────────────────────────────────────────
+   Every value below is the approved system's own, under the approved system's
+   own names, so a drift between this sheet and that file is visible by reading
+   the two side by side. Nothing here is a taste; taste was settled in the
+   consultation and lives in `DESIGN.md`.
+
+   One token source, Tailwind v4, no config file. The custom properties live in
+   ordinary `:root` rules because a theme retunes them at runtime, and
+   `@theme inline` only references them so a utility resolves to the live value.
+
+   Three laws this sheet enforces that a call site cannot opt out of:
+
+   1. No blue exists. There is no token for it.
+   2. Amber is a fill, never a word on light. `--amber` backs a surface and
+      carries `--on-amber`; `--amber-ink` is the only token that may be an
+      amber-coloured word, and on light it is `#7C3A00` for exactly that reason.
+   3. Stillness. There is no duration token spent on hover, because hover
+      choreography is not real work moving. */
+
+@import "tailwindcss";
+
+/* The theme is a class on the document element, set before first paint by the
+   inline script in `index.html`. */
+@custom-variant dark (&:where(:root.theme-dark, :root.theme-dark *));
+
+:root {
+  color-scheme: light;
+
+  --ink: #0a0a0a;
+  --paper: #fafaf7;
+  --surface: #ffffff;
+  --line: #e7e5e0;
+  --muted: #6b6b66;
+
+  /* THE accent. One ramp, and the only colour that means "interactive". */
+  --amber: #f59e0b;
+  --amber-strong: #ea580c;
+  /* The one amber that may be a word or a glyph on this surface. */
+  --amber-ink: #7c3a00;
+  /* The ink that sits on an amber fill. */
+  --on-amber: #1a1206;
+
+  /* Narrow, and spent nowhere else: proven, and dead. */
+  --ok: #16a34a;
+  --danger: #dc2626;
+
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --card: var(--surface);
+  /* A quiet fill for a row under the pointer. Derived, never a fifth grey. */
+  --raised: color-mix(in srgb, var(--fg) 4%, transparent);
+
+  --r-sm: 4px;
+  --r-md: 8px;
+
+  --font-ui: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-machine: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Reserved motion: one duration, spent only when real work moves. */
+  --motion-state: 180ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root.theme-dark {
+  color-scheme: dark;
+
+  --bg: #111110;
+  --fg: #f5f5f2;
+  --card: #1a1a18;
+  --line: #2a2a27;
+  --muted: #8a8a84;
+  --amber-ink: #fcd34d;
+  --raised: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-state: 0ms;
+  }
+}
+
+@theme inline {
+  /* The scale is closed: seven sizes, and nothing larger than 28 exists. */
+  --text-*: initial;
+  --text-2xs: 12px;
+  --text-xs: 12.5px;
+  --text-sm: 13.5px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  --radius-*: initial;
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+
+  --font-*: initial;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-machine);
+
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-raised: var(--raised);
+
+  --color-amber: var(--amber);
+  --color-amber-strong: var(--amber-strong);
+  --color-amber-ink: var(--amber-ink);
+  --color-on-amber: var(--on-amber);
+
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.45;
+    /* Every number on this surface is tabular; a count that jitters as it
+       updates is a count an operator stops trusting. */
+    font-feature-settings: "tnum";
+  }
+
+  /* One focus treatment, on everything focusable. */
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* What machines own: keys, digests, ports, refs, diffs. */
+  .mono {
+    font-family: var(--font-machine);
+    font-size: var(--text-xs);
+  }
+
+  /* The state chip. Its border carries the state and its fill is a tint of the
+     same seed, so both themes derive from one value. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: var(--text-2xs);
+    white-space: nowrap;
+    color: var(--muted);
+  }
+
+  .chip-amber {
+    border-color: var(--amber);
+    color: var(--amber-ink);
+    background: color-mix(in srgb, var(--amber) 12%, transparent);
+  }
+
+  .chip-ok {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+
+  .chip-danger {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+}

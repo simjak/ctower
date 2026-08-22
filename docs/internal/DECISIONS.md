@@ -3419,3 +3419,27 @@ it supersedes nothing.
    until the owning implementation and its browser gate are active. This entry
    adds no route, principal, credential, environment variable, feature flag,
    migration, gate waiver, or implementation claim.
+
+## D77 — The operator's rebuild order activates the ctower-web first-run surface as a narrow carve-out ahead of I2.4
+
+The operator ordered the UI rebuilt from scratch feature by feature (R3129, 2026-08-21,
+with amendments preserving the mockups and reducing the old app to demolition), approved
+the design system as law the same day (apps/ctower-web/DESIGN.md, via design
+consultation), and on 2026-08-22 walked the five-step first-run wizard end to end and
+approved it as feature 1. #545 executed the demolition half of R3129 with its own guard
+test; this entry records the construction half's authority.
+
+Scope of the carve-out, exactly: the first-run wizard (five steps, one real
+validate+plan+apply), the org switcher, the one-page Company editor, and the shell whose
+other destinations render honestly unbuilt. Every read and write goes through the
+generated client against already-active operations; the only authored-contract change is
+the CompanyComponent `supersedes` reference becoming nullable, because a first-run
+component has no predecessor. No new HTTP operation, no new surface, no new ingress.
+
+What this entry does NOT do: it does not activate CT-I2-005/I2.4 (Home, product Board,
+contextual Ticket, Fleet/Analytics deepening remain deferred); it does not reactivate
+any browser-e2e or dogfood suite (D75 stands); it does not move `active_phase` or any
+`phase_order` entry — the backend ticket ladder is untouched. Each subsequent ctower-web
+feature lands only behind the operator's explicit walk-and-approve, under the same
+review and release gates as every other change, until CT-I2-005 activation supersedes
+this carve-out.
