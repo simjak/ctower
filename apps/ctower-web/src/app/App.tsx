@@ -5,6 +5,7 @@ import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
+import { HarnessPage } from "../harness/HarnessPage";
 import { Overlay } from "../firstrun/Overlay";
 import { InboxPage } from "../inbox/InboxPage";
 import { RequestsPage } from "../requests/RequestsPage";
@@ -185,8 +186,9 @@ function Here({
       return <AdminPage />;
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
-    case "lanes":
     case "harnesses":
+      return <HarnessPage recorded={seed.result.bundle} onApplied={onApplied} />;
+    case "lanes":
     case "projects":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
