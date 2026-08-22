@@ -59,7 +59,7 @@ export function DefineCrew({
           <Field label="Profile" hint="The agent profile this crew runs. It must already exist.">
             <Select
               value={draft.profileKey}
-              disabled={profiles.length === 0}
+              empty="No agent profile is recorded"
               options={profiles.map((profile) => ({ value: profile.key, label: profile.key }))}
               onChange={(event): void => {
                 onDraft({ ...draft, profileKey: event.target.value });
@@ -96,7 +96,7 @@ function AddressHalf({
         <Field label="Project" hint="The project's own key, which is not its document key.">
           <Select
             value={draft.projectKey}
-            disabled={projects.length === 0}
+            empty="No project can carry an address"
             options={projects.map((key) => ({ value: key, label: key }))}
             onChange={(event): void => {
               onDraft({ ...draft, projectKey: event.target.value });
