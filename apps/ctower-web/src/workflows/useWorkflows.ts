@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CompanyBundleCommandResult, CompanyBundleDocument } from "@ctower/client";
 import type { Answer } from "../api/client";
-import { useApply } from "../wizard/apply/useApply";
+import { useApply } from "../wizard/useApply";
 import { standingOf } from "../wizard/standing";
 import type { Standing } from "../wizard/standing";
 import { boundProjects, documentWith } from "./compose";
