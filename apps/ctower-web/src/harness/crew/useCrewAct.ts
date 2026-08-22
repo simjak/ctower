@@ -3,13 +3,14 @@ import type {
   CompanyBundleCommandResult,
   CompanyBundleDocument,
   CompanyBundlePlan,
+  DurabilityState,
   SeatCredentialIssueRequest,
   SeatCredentialReceipt,
 } from "@ctower/client";
-import { ask, ASKING, commands, computations } from "../../api/client";
+import { ask, ASKING, commands, computations, resendable } from "../../api/client";
 import type { Answer } from "../../api/client";
 import { canonicalDigest } from "../../mint/digest";
-import { commandKeyFor } from "../../wizard/apply/commandKey";
+import { commandKeyFor } from "../../api/commandKey";
 import { bindingFor, boundAlready, withBinding } from "./binding";
 import type { ProfileOption } from "./binding";
 import { blankDraft, issueBody, referenceFor } from "./draft";
@@ -219,25 +220,14 @@ function stageOf(
 }
 
 /**
- * Whether sending the same command again is the honest next move: the API was
- * not reached, its answer could not be read, or it took the command and has not
- * confirmed it is durable. A refusal is none of those — ctower read it and said
- * no — so it offers nothing.
+ * Nothing sent is not something to resend. Everything else is the shared rule:
+ * the API was not reached, its answer could not be read, or it took the command
+ * and has not confirmed it is durable. A refusal is none of those.
  */
-function resendable(answer: Answer<{ readonly durability_state?: string }> | null): boolean {
-  if (answer === null) {
-    return false;
-  }
-  switch (answer.kind) {
-    case "asking":
-    case "refused":
-      return false;
-    case "unreachable":
-    case "malformed":
-      return true;
-    case "answered":
-      return answer.value.durability_state !== "accepted";
-  }
+function resendableAnswer(
+  answer: Answer<{ readonly durability_state: DurabilityState }> | null
+): boolean {
+  return answer !== null && resendable(answer);
 }
 
 /**
@@ -256,13 +246,13 @@ function retryFor(
     return null;
   }
   if (address !== null) {
-    return resendable(address)
+    return resendableAnswer(address)
       ? (): void => {
           void sendAddress(sending);
         }
       : null;
   }
-  return resendable(bound) ? run : null;
+  return resendableAnswer(bound) ? run : null;
 }
 
 function accepted(written: Answer<CompanyBundleCommandResult>): boolean {

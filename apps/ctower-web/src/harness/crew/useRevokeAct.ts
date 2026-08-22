@@ -3,7 +3,7 @@ import type { SeatCredentialReceipt } from "@ctower/client";
 import { ask, ASKING, commands } from "../../api/client";
 import type { Answer } from "../../api/client";
 import { canonicalDigest } from "../../mint/digest";
-import { commandKeyFor } from "../../wizard/apply/commandKey";
+import { commandKeyFor } from "../../api/commandKey";
 import type { Minted } from "./roster";
 
 /**
