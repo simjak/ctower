@@ -15,7 +15,9 @@ import type { Standing } from "../wizard/standing";
 import { useApply } from "../wizard/useApply";
 import { AgentsPanel } from "./AgentsPanel";
 import { CrewPanel } from "./CrewPanel";
+import { FilesPanel } from "./FilesPanel";
 import { ProjectsPanel } from "./ProjectsPanel";
+import { WorkspacesPanel } from "./WorkspacesPanel";
 
 /**
  * The harness screen: where an operator sets the work up.
@@ -28,7 +30,10 @@ import { ProjectsPanel } from "./ProjectsPanel";
  * page owns the ceremony once and every tab hands it a document.
  *
  * The tabs are a plain array, declared where the panels' own props are already
- * in scope, so a surface that lands later is one line and nothing else.
+ * in scope, so a surface that lands later is one line and nothing else. Three
+ * lanes built into this array and it is the only registry: one title, one
+ * subtitle, one tab list. A tab that keeps its own read or its own ceremony
+ * does so inside its panel and never grows a second head on this page.
  */
 export function HarnessPage({
   recorded,
@@ -72,6 +77,8 @@ export function HarnessPage({
       label: "Crew",
       element: <CrewPanel recorded={recorded} onRecorded={onApplied} />,
     },
+    { key: "files", label: "Agent files", element: <FilesPanel /> },
+    { key: "workspaces", label: "Workspaces", element: <WorkspacesPanel /> },
     // One line per surface, and nothing else in this array.
   ];
   const current = tabs.find((tab) => tab.key === here) ?? tabs[0];
@@ -85,8 +92,14 @@ export function HarnessPage({
   );
 }
 
-/** The one line that says what this screen is for. One line, and no second one. */
-const PURPOSE = "Set up the work: the projects and the agents this company runs.";
+/**
+ * The one line that says what this screen is for. One line, and no second one.
+ *
+ * It names what an operator can actually do here and stops. Workspaces are on
+ * this screen to say they are not built yet, so putting them in the sentence
+ * that promises the work would be the pretending `DESIGN.md` forbids.
+ */
+const PURPOSE = "Set up the work: the projects, agents, crews and files this company runs.";
 
 /**
  * What a component authored on this screen records about where it came from.
