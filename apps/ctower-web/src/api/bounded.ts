@@ -33,6 +33,8 @@
  * Only exhaustion and a refused rule leave here as errors.
  */
 
+import { recordExhaustion } from "./observe";
+
 export type FailureClass = "transient" | "permanent";
 
 export interface ClassifiedFailure {
@@ -75,7 +77,13 @@ export class ReadRefused extends Error {
   }
 }
 
-/** Every attempt was spent and none of them answered. */
+/**
+ * Every attempt was spent and none of them answered.
+ *
+ * Built only through `exhausted()` below, so that counting and logging cannot
+ * be skipped by an exit that forgets — O10 requires exhaustion to be observed,
+ * not just thrown.
+ */
 export class ReadExhausted extends Error {
   public constructor(
     public readonly attempts: number,
@@ -85,6 +93,18 @@ export class ReadExhausted extends Error {
     super(`no answer after ${String(attempts)} attempts: ${last.detail}`);
     this.name = "ReadExhausted";
   }
+}
+
+/** The one constructor for exhaustion: observe, then throw. */
+function exhausted(attempts: number, elapsedMs: number, last: ClassifiedFailure): ReadExhausted {
+  recordExhaustion({
+    attempts,
+    elapsedMs,
+    failureClass: last.failureClass,
+    detail: last.detail,
+    status: last.status,
+  });
+  return new ReadExhausted(attempts, elapsedMs, last);
 }
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -120,7 +140,7 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
       // whichever of `attemptTimeoutMs` and the remaining deadline is smaller.
       const budget = Math.min(BOUNDS.attemptTimeoutMs, BOUNDS.maxElapsedMs - since(startedAt));
       if (budget <= 0) {
-        throw new ReadExhausted(attempt - 1, Math.round(since(startedAt)), last);
+        throw exhausted(attempt - 1, Math.round(since(startedAt)), last);
       }
       const answer = await attemptOnce(request, budget);
       if (answer.response !== null) {
@@ -129,12 +149,12 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
       last = answer.failure;
       const remaining = BOUNDS.maxElapsedMs - since(startedAt);
       if (attempt === BOUNDS.maxAttempts || remaining <= 0) {
-        throw new ReadExhausted(attempt, Math.round(since(startedAt)), last);
+        throw exhausted(attempt, Math.round(since(startedAt)), last);
       }
       await sleep(Math.min(backoffFor(attempt), remaining));
     }
 
-    throw new ReadExhausted(BOUNDS.maxAttempts, Math.round(since(startedAt)), last);
+    throw exhausted(BOUNDS.maxAttempts, Math.round(since(startedAt)), last);
   };
 }
 
