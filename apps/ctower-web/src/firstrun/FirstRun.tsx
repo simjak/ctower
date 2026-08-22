@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import type { CompanyBundleDocument } from "@ctower/client";
 import { ask, commands, computations } from "../api/client";
 import type { Answer } from "../api/client";
-import { commandKeyFor } from "../wizard/apply/commandKey";
+import { commandKeyFor } from "../api/commandKey";
 import { BLANK, bundleOf } from "./answers";
 import type { Answers } from "./answers";
 import type { FirstRunOutcome } from "./outcome";
