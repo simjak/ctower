@@ -36,7 +36,7 @@ export const DESTINATIONS: readonly Destination[] = [
   { key: "company", label: "Company", group: "TEAM", built: true },
   { key: "harnesses", label: "Harnesses", group: "RUNTIME", built: false },
   { key: "projects", label: "Projects", group: "RUNTIME", built: false },
-  { key: "admin", label: "Admin", group: "SYSTEM", built: false },
+  { key: "admin", label: "Admin", group: "SYSTEM", built: true },
 ];
 
 export const GROUPS: readonly GroupName[] = ["LIVE", "WORK", "TEAM", "RUNTIME", "SYSTEM"];
