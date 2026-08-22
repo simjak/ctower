@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
+import { AdminPage } from "../admin/AdminPage";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
@@ -121,7 +122,10 @@ export function App(): ReactElement {
  *
  * Every built destination reads the same company the shell already holds, so
  * none of them re-asks for it and none can disagree with the rail about which
- * tower this is.
+ * tower this is. The rail only offers a destination it has marked built, so an
+ * unbuilt key never actually arrives here; naming one costs a line and keeps
+ * the guarantee that this file has to say which screen a destination is before
+ * the rail can call it built.
  */
 function Here({
   here,
@@ -148,13 +152,14 @@ function Here({
       return <RequestsPage />;
     case "inbox":
       return <InboxPage />;
+    case "admin":
+      return <AdminPage />;
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "lanes":
     case "board":
     case "crews":
     case "harnesses":
-    case "admin":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
 }

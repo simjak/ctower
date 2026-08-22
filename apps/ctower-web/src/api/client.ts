@@ -42,6 +42,17 @@ export const computations = clientFor({
 export const commands = clientFor({ kind: "keyed-command" });
 
 /**
+ * The console allowance records a fact and the authored contract gives it no
+ * idempotency key, so this client sends it once and never again. A resend would
+ * be a second allowance, and nothing in the answer would tell the operator
+ * which of the two the tower kept.
+ */
+export const singleShotCommands = clientFor({
+  kind: "unrepeatable-command",
+  reason: "the contract declares no idempotency key, so a resend is a second act",
+});
+
+/**
  * What a call produced. Four outcomes, and none of them collapses into
  * another: an answer, a typed refusal, silence, and an answer this client
  * cannot read. The last one exists because the alternative is a screen that
