@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.32.0](https://github.com/simjak/ctower/compare/v0.31.0...v0.32.0) (2026-08-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove the ctower UI surfaces (R3129 rebuild-from-scratch) ([#545](https://github.com/simjak/ctower/issues/545))
+
+### Features
+
+* **web:** the five-step first-run wizard, org switcher, and one-page company (feature 1) ([#548](https://github.com/simjak/ctower/issues/548)) ([6d07e29](https://github.com/simjak/ctower/commit/6d07e29e1e4f047be18271c5d3e5c5d537d126ba))
+
+
+### Bug Fixes
+
+* **contracts:** restore securitySchemes closed set and correct AC-CON ownership ([#474](https://github.com/simjak/ctower/issues/474) [#475](https://github.com/simjak/ctower/issues/475)) ([#547](https://github.com/simjak/ctower/issues/547)) ([785d778](https://github.com/simjak/ctower/commit/785d778fd69a867cb2f9fed5a9cc1e9de40946ed))
+* **release:** ctower stays on 0.x until the full UI is built (T-015) ([#550](https://github.com/simjak/ctower/issues/550)) ([f0f1d04](https://github.com/simjak/ctower/commit/f0f1d048fcb9b2d35afd2a97320b6aab2ad79930))
+* **release:** restore canonical short-hash links (R3124) ([#544](https://github.com/simjak/ctower/issues/544)) ([b440f75](https://github.com/simjak/ctower/commit/b440f759ab7f8c6ad570648bb069e7af7389f3cb))
+
+
+### Miscellaneous Chores
+
+* remove the ctower UI surfaces (R3129 rebuild-from-scratch) ([#545](https://github.com/simjak/ctower/issues/545)) ([0c2d583](https://github.com/simjak/ctower/commit/0c2d5831f7121c6955069a28a96fbdcc4562bacf))
+
 ## [0.31.0](https://github.com/simjak/ctower/compare/v0.30.0...v0.31.0) (2026-08-21)
 
 
