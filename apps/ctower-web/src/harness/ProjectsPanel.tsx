@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import type { CompanyBundleDocument } from "@ctower/client";
 import { resourceOf } from "../mint/component";
+import { cn } from "../ui/cn";
 import { Button, Card, CardBody, CardHeader, CardTitle, Input, Mono } from "../ui/primitives";
 import { Field } from "../ui/form";
 import { EntityRow } from "../wizard/compose/EntityRow";
@@ -19,7 +20,14 @@ import type { Authoring } from "./HarnessPage";
  * that contract requires — including the goal, which is why it is chosen from
  * the goals the company already has rather than typed.
  */
-export function ProjectsPanel({ authoring }: { readonly authoring: Authoring }): ReactElement {
+export function ProjectsPanel({
+  authoring,
+  current,
+}: {
+  readonly authoring: Authoring;
+  /** The project the rail's switcher is pointed at, marked in the list below. */
+  readonly current: string | null;
+}): ReactElement {
   const goals = choicesOf(authoring.recorded, "goal");
   const [draft, setDraft] = useState<Draft>(() => ({
     ...BLANK,
@@ -47,7 +55,18 @@ export function ProjectsPanel({ authoring }: { readonly authoring: Authoring }):
               No project is in this company yet. Add the first one below.
             </p>
           ) : (
-            facts.map((fact) => <EntityRow key={fact.id} fact={fact} subjectNoun="binding" />)
+            facts.map((fact) => (
+              // The one the rail is pointed at wears the rail's own amber edge,
+              // so switching in the sidebar is visible where the projects are.
+              <div
+                key={fact.id}
+                aria-current={fact.key === current ? "true" : undefined}
+                className={cn("rounded-md", fact.key === current ? "ring-1 ring-amber" : null)}
+              >
+                <EntityRow fact={fact} subjectNoun="binding" />
+                {fact.key === current ? <span className="sr-only">current project</span> : null}
+              </div>
+            ))
           )}
         </CardBody>
       </Card>
