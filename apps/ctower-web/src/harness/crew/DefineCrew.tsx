@@ -2,9 +2,10 @@ import type { ReactElement } from "react";
 import { Card, CardBody, CardHeader, CardTitle, Input, Mono } from "../../ui/primitives";
 import { Field } from "../../ui/form";
 import type { ProfileOption } from "./binding";
-import { SCOPES, seatOf } from "./draft";
+import { REFERENCE_CLASSES, SCOPES } from "./draft";
 import type { CrewDraft } from "./draft";
 import { ScopeChoice, Select } from "./fields";
+import type { ProjectOption } from "./roster";
 
 /**
  * One form, and it is deliberately two halves.
@@ -13,10 +14,11 @@ import { ScopeChoice, Select } from "./fields";
  * pretending otherwise would hide the thing an operator most needs to know when
  * one of them refuses. So the screen names both halves and asks for them once.
  *
- * The credential is a reference and a fingerprint. There is no field for a
- * secret because there is no place for one: `SeatCredentialIssueRequest` carries
- * neither, the record stores neither, and this browser is not where a credential
- * should ever be typed.
+ * The credential is a reference and a fingerprint. There is no field a secret
+ * would fit in: the class comes from the contract's own closed set, the rest has
+ * to be shaped like a path, and a credential value is neither. `credential_ref`
+ * on the wire would take one — that is what makes composing it here the job of
+ * the screen rather than a note in the hint.
  */
 export function DefineCrew({
   draft,
@@ -29,7 +31,7 @@ export function DefineCrew({
   readonly onDraft: (draft: CrewDraft) => void;
   readonly prefix: string;
   readonly profiles: readonly ProfileOption[];
-  readonly projects: readonly string[];
+  readonly projects: readonly ProjectOption[];
 }): ReactElement {
   return (
     <div className="space-y-4">
@@ -81,7 +83,7 @@ function AddressHalf({
 }: {
   readonly draft: CrewDraft;
   readonly onDraft: (draft: CrewDraft) => void;
-  readonly projects: readonly string[];
+  readonly projects: readonly ProjectOption[];
 }): ReactElement {
   return (
     <Card>
@@ -89,25 +91,30 @@ function AddressHalf({
         <CardTitle>The address</CardTitle>
         <span className="flex-1" />
         <Mono className="text-muted">
-          {draft.projectKey} / {seatOf(draft) === "" ? "…" : seatOf(draft)}
+          {draft.projectKey === "" ? "…" : draft.projectKey} /{" "}
+          {draft.seatKey === "" ? "…" : draft.seatKey}
         </Mono>
       </CardHeader>
       <CardBody className="grid gap-5 sm:grid-cols-2">
-        <Field label="Project" hint="The project's own key, which is not its document key.">
+        <Field label="Project" hint="The project this crew works in, as the record names it.">
           <Select
             value={draft.projectKey}
-            empty="No project can carry an address"
-            options={projects.map((key) => ({ value: key, label: key }))}
+            empty="This company records no project"
+            options={projects.map((project) => ({
+              value: project.key,
+              label: project.addressable ? project.key : `${project.key} — no address possible`,
+              unavailable: !project.addressable,
+            }))}
             onChange={(event): void => {
               onDraft({ ...draft, projectKey: event.target.value });
             }}
           />
         </Field>
-        <Field label="Seat" hint="The address's own name. It need not match the crew's.">
+        <Field label="Seat" hint="The seat this address is for. It is never taken from a name.">
           <Input
             className="font-mono"
             value={draft.seatKey}
-            placeholder={draft.name === "" ? "engineer-3" : draft.name}
+            placeholder="engineer-3"
             spellCheck={false}
             onChange={(event): void => {
               onDraft({ ...draft, seatKey: event.target.value });
@@ -125,17 +132,33 @@ function AddressHalf({
             />
           </Field>
         </div>
-        <Field label="Credential reference" hint="Where the credential lives. ctower stores this.">
-          <Input
-            className="font-mono"
-            value={draft.credentialRef}
-            placeholder="secret-service:acme/seat/engineer-3"
-            spellCheck={false}
-            onChange={(event): void => {
-              onDraft({ ...draft, credentialRef: event.target.value });
-            }}
-          />
-        </Field>
+        <div className="sm:col-span-2">
+          <Field
+            label="Where the credential lives"
+            hint="The place, never the credential. A path, in one of the classes ctower knows."
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <Select
+                className="w-44 shrink-0"
+                value={draft.refClass}
+                empty=""
+                options={REFERENCE_CLASSES.map((held) => ({ value: held, label: held }))}
+                onChange={(event): void => {
+                  onDraft({ ...draft, refClass: classOf(event.target.value, draft.refClass) });
+                }}
+              />
+              <Input
+                className="font-mono"
+                value={draft.refLocator}
+                placeholder="acme/seat/engineer-3"
+                spellCheck={false}
+                onChange={(event): void => {
+                  onDraft({ ...draft, refLocator: event.target.value });
+                }}
+              />
+            </div>
+          </Field>
+        </div>
         <Field label="Fingerprint" hint="The credential's sha256, published by whoever holds it.">
           <Input
             className="font-mono"
@@ -150,4 +173,9 @@ function AddressHalf({
       </CardBody>
     </Card>
   );
+}
+
+/** A class is one of the contract's own, or the draft keeps the one it had. */
+function classOf(chosen: string, held: CrewDraft["refClass"]): CrewDraft["refClass"] {
+  return REFERENCE_CLASSES.find((known) => known === chosen) ?? held;
 }
