@@ -8,6 +8,8 @@ import { HarnessPage } from "../harness/HarnessPage";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
+import { ProjectSwitcher, projectChoices, useCurrentProject } from "../shell/ProjectSwitcher";
+import type { ProjectChoice } from "../shell/ProjectSwitcher";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
@@ -36,6 +38,8 @@ export function App(): ReactElement {
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
   const [here, setHere] = useState<DestinationKey>("company");
+  const projects = projectsOf(seed);
+  const { current, choose } = useCurrentProject(projects);
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
@@ -87,6 +91,19 @@ export function App(): ReactElement {
         lockReason={seed.kind === "answered" ? null : "Still reading this company"}
         onGo={setHere}
         org={orgOf(seed)}
+        project={
+          <ProjectSwitcher
+            projects={projects}
+            current={current}
+            onChoose={choose}
+            // A project is made on the harness screen, and that screen opens on
+            // its Projects tab. One place authors a project, and this is the
+            // way to it rather than a second form in the rail.
+            onAdd={(): void => {
+              setHere("harnesses");
+            }}
+          />
+        }
         status={statusFor(seed.kind, previewing)}
       >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
@@ -101,7 +118,12 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Page here={here} seed={seed.value} onApplied={created} />
+          <Page
+            here={here}
+            seed={seed.value}
+            project={current?.key ?? null}
+            onApplied={created}
+          />
         ) : null}
       </Shell>
     </TooltipScope>
@@ -118,14 +140,17 @@ export function App(): ReactElement {
 function Page({
   here,
   seed,
+  project,
   onApplied,
 }: {
   readonly here: DestinationKey;
   readonly seed: Extract<Seed, { kind: "exported" }>;
+  /** The project key the rail is pointed at, when this company has one. */
+  readonly project: string | null;
   readonly onApplied: () => void;
 }): ReactElement {
   if (here === "harnesses") {
-    return <HarnessPage recorded={seed.result.bundle} onApplied={onApplied} />;
+    return <HarnessPage recorded={seed.result.bundle} project={project} onApplied={onApplied} />;
   }
   return <CompanyPage seed={seed} onApplied={onApplied} />;
 }
@@ -137,6 +162,14 @@ function Page({
  * out: locked and first-run are different facts, and one was being inferred
  * from the other.
  */
+/** The projects that company records, once the read has produced them. */
+function projectsOf(seed: ReturnType<typeof seedForPreview>): readonly ProjectChoice[] {
+  if (seed.kind !== "answered" || seed.value.kind !== "exported") {
+    return [];
+  }
+  return projectChoices(seed.value.result.bundle);
+}
+
 /** The company, once the read has actually produced one. */
 function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
   if (seed.kind !== "answered" || seed.value.kind !== "exported") {
