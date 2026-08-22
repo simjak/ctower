@@ -7,6 +7,7 @@ import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { InboxPage } from "../inbox/InboxPage";
+import { ProjectsPage } from "../projects/ProjectsPage";
 import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
 import { destinationFromSearch } from "../shell/destinations";
@@ -136,7 +137,7 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Here here={here} seed={seed.value} onApplied={created} />
+          <Here here={here} seed={seed.value} onApplied={created} onGo={go} />
         ) : null}
       </Shell>
     </TooltipScope>
@@ -163,10 +164,13 @@ function Here({
   here,
   seed,
   onApplied,
+  onGo,
 }: {
   readonly here: DestinationKey;
   readonly seed: Extract<Seed, { readonly kind: "exported" }>;
   readonly onApplied: () => void;
+  /** Projects sends the operator to the one place a project is authored. */
+  readonly onGo: (key: DestinationKey) => void;
 }): ReactElement {
   switch (here) {
     case "requests":
@@ -181,13 +185,21 @@ function Here({
       return <BoardPage company={seed.result.bundle} />;
     case "workflows":
       return <WorkflowsPage seed={seed.result} onApplied={onApplied} />;
+    case "projects":
+      return (
+        <ProjectsPage
+          result={seed.result}
+          onGoCompany={(): void => {
+            onGo("company");
+          }}
+        />
+      );
     case "admin":
       return <AdminPage />;
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "lanes":
     case "harnesses":
-    case "projects":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
 }
