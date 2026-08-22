@@ -36,6 +36,10 @@ export function ThreadList({
         onClick={onCompose}
         className={cn(
           "flex w-full cursor-pointer items-center gap-2 border-b border-line px-3 py-2.5 text-left text-sm",
+          // The list clips its own corners, so a ring drawn outside these rows
+          // is clipped with them. It goes inside instead: every focusable on
+          // this page has to be able to show the one the law asks for.
+          "focus-visible:-outline-offset-2",
           openId === null ? "bg-amber/14 font-semibold" : "hover:bg-raised"
         )}
       >
@@ -75,6 +79,7 @@ function Row({
       }}
       className={cn(
         "block w-full cursor-pointer border-b border-line px-3 py-2.5 text-left last:border-b-0",
+        "focus-visible:-outline-offset-2",
         open ? "border-r-2 border-r-amber bg-amber/14" : "hover:bg-raised"
       )}
     >
