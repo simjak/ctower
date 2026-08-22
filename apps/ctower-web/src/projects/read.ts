@@ -47,18 +47,17 @@ export interface ProjectDocument {
 }
 
 /**
- * Every project scope in the bundle, in key order.
+ * Every project scope in the bundle, in the order the export gave them.
  *
- * The order is this screen's and not the record's, because the record does not
- * have one: a bundle carries its resources in whatever order the export emitted
- * them, the contract declares no ordering over them, and the distinct scopes are
- * a set derived from that list rather than anything the company authored. Two
- * exports of the same company may therefore disagree about which project is
- * first. Sorting by key is the one order that does not, so a project sits where
- * the operator last saw it.
+ * The record has an order and this screen does not overrule it. `SPEC.md`
+ * (§ CompanyBundle, "export is normalized and deterministic") makes the export
+ * order part of the answer rather than an accident of transport: the kernel
+ * sorts resources by kind, key, revision and digest before an apply is stored,
+ * and the export replays that stored sequence. So a scope appears here where the
+ * company's own record puts it, and two reads of one bundle always agree.
  *
- * Ordering is all this does. Nothing is filtered: every non-null scope renders,
- * and the sort decides where a row sits, never whether it exists.
+ * Nothing is filtered and nothing is re-ranked: every non-null scope renders,
+ * once, in that order.
  */
 export function projectScopes(document: CompanyBundleDocument): readonly ProjectScope[] {
   const keys = new Set(
@@ -66,19 +65,20 @@ export function projectScopes(document: CompanyBundleDocument): readonly Project
       .map((resource) => resource.component.scope.project)
       .filter((key): key is string => key !== null)
   );
-  return [...keys].sort().map((key) => ({
+  return [...keys].map((key) => ({
     key,
     resources: document.resources.filter((resource) => resource.component.scope.project === key),
   }));
 }
 
 /**
- * A scope's components counted by kind, the largest group first and ties broken
- * by name.
+ * A scope's components counted by kind, in the order the export gave the kinds.
  *
- * Also this screen's order rather than the record's, and for the same reason:
- * the bundle declares no order over kinds either. Every kind present is counted
- * and drawn, so the sort moves rows and drops none.
+ * Same rule as `projectScopes`: the export is ordered by kind first, so the
+ * groups arrive already grouped and already sequenced, and counting them keeps
+ * that sequence. Ranking them by size would be a second answer to a question the
+ * record has already answered, and picking a different order for an operator's
+ * eye is an authored decision, not one this screen may make on its own.
  */
 export function kindCounts(resources: readonly CompanyBundleResource[]): readonly KindCount[] {
   const counts = new Map<ComponentKind, number>();
@@ -86,9 +86,11 @@ export function kindCounts(resources: readonly CompanyBundleResource[]): readonl
     const kind = resource.component.kind;
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }
-  return [...counts.entries()]
-    .map(([kind, count]) => ({ kind, label: kind.replace(/_/g, " "), count }))
-    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+  return [...counts.entries()].map(([kind, count]) => ({
+    kind,
+    label: kind.replace(/_/g, " "),
+    count,
+  }));
 }
 
 export function projectDocuments(document: CompanyBundleDocument): readonly ProjectDocument[] {
