@@ -97,33 +97,106 @@ export function capabilityChoices(document: CompanyBundleDocument): readonly Cap
     .toSorted((left, right) => left.key.localeCompare(right.key));
 }
 
+/** The `key@revision` string a payload names one exact revision by. */
+function pointerOf(component: { readonly key: string; readonly revision: number }): string {
+  return `${component.key}@${String(component.revision)}`;
+}
+
 /**
- * What else this edit moves: every component that pins this one, walked to a
- * fixed point. A dependency pin is exact, so a new revision of a file is a new
- * revision of everything that names it — the operator reads that here, before
- * the plan, rather than meeting it as a refusal.
+ * Everything one edit moves: this file, and every component that names it,
+ * walked to a fixed point.
+ *
+ * A component names another in two places and **both** go stale.
+ * `compatibility.requires` is the declared pin the registry checks. The payload
+ * carries the same dependency again as a `key@revision` string — an agent
+ * profile's `persona_ref` is what every screen resolves an agent's name
+ * through — and the registry does not check that one.
+ *
+ * So reading `requires` alone is not enough, and the cost of believing it is
+ * the whole point of this screen: a definition whose profile was minted with an
+ * empty `requires` keeps its agent on the revision the operator just replaced.
+ * The edit is accepted, the digest moves, and the agent does not change. Both
+ * are read here, so both move together in one command.
+ */
+export function closureOf(
+  document: CompanyBundleDocument,
+  edited: CompanyBundleResource
+): readonly CompanyBundleResource[] {
+  let moving = new Map<string, CompanyBundleResource>([[idOf(edited.component), edited]]);
+  let counted = 0;
+  while (moving.size !== counted) {
+    counted = moving.size;
+    moving = grown(document, moving);
+  }
+  return document.resources.filter((candidate) => moving.has(idOf(candidate.component)));
+}
+
+/** One pass: every component that names something already moving joins it. */
+function grown(
+  document: CompanyBundleDocument,
+  moving: ReadonlyMap<string, CompanyBundleResource>
+): Map<string, CompanyBundleResource> {
+  const pointers = new Set([...moving.values()].map((resource) => pointerOf(resource.component)));
+  const next = new Map(moving);
+  document.resources
+    .filter(
+      (candidate) =>
+        candidate.component.compatibility.requires.some((required) => moving.has(idOf(required))) ||
+        namesOne(candidate.payload, pointers)
+    )
+    .forEach((candidate) => next.set(idOf(candidate.component), candidate));
+  return next;
+}
+
+/** Whether a payload names one of these revisions anywhere inside itself. */
+export function namesOne(value: unknown, pointers: ReadonlySet<string>): boolean {
+  if (typeof value === "string") {
+    return pointers.has(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some((item: unknown) => namesOne(item, pointers));
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.values(value).some((item: unknown) => namesOne(item, pointers));
+  }
+  return false;
+}
+
+/**
+ * What else this edit moves. A dependency is exact, so a new revision of a file
+ * is a new revision of everything that names it — the operator reads that here,
+ * before the plan, rather than meeting it as a surprise.
  */
 export function dependentsOf(
   document: CompanyBundleDocument,
   resource: CompanyBundleResource
 ): readonly CompanyBundleResource[] {
-  const moving = new Set<string>([idOf(resource.component)]);
-  let found = true;
-  while (found) {
-    found = false;
-    for (const candidate of document.resources) {
-      const pins = candidate.component.compatibility.requires.some((required) =>
-        moving.has(idOf(required))
-      );
-      if (pins && !moving.has(idOf(candidate.component))) {
-        moving.add(idOf(candidate.component));
-        found = true;
-      }
-    }
-  }
+  return closureOf(document, resource).filter(
+    (candidate) => idOf(candidate.component) !== idOf(resource.component)
+  );
+}
+
+/**
+ * Components sitting on an *earlier* revision of this file.
+ *
+ * These do not move: they name a revision this edit does not touch, and
+ * re-aiming a pin the operator did not author would be this screen deciding
+ * something on its own. They are named instead, because an agent left behind on
+ * an old persona is exactly what looks like "my edit did nothing".
+ */
+export function staleNamersOf(
+  document: CompanyBundleDocument,
+  resource: CompanyBundleResource
+): readonly CompanyBundleResource[] {
+  const earlier = new Set(
+    Array.from(
+      { length: resource.component.revision - 1 },
+      (_, index) => `${resource.component.key}@${String(index + 1)}`
+    )
+  );
   return document.resources.filter(
     (candidate) =>
-      moving.has(idOf(candidate.component)) &&
-      idOf(candidate.component) !== idOf(resource.component)
+      idOf(candidate.component) !== idOf(resource.component) &&
+      namesOne(candidate.payload, earlier)
   );
 }

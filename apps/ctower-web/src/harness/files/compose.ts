@@ -6,7 +6,7 @@ import type {
   VersionedComponent,
 } from "@ctower/client";
 import { canonicalDigest } from "../../mint/digest";
-import { idOf, isFileKind, strings, text } from "./read";
+import { closureOf, idOf, isFileKind, strings, text } from "./read";
 import type { FileKind } from "./read";
 
 /**
@@ -96,28 +96,17 @@ export function documentWith(base: CompanyBundleDocument, draft: FileDraft): Com
 /**
  * Everything this edit moves, with the bytes each one ends up carrying.
  *
- * The set is the edited file plus every component that pins something already
- * moving, walked to a fixed point; a component moves at most once, so the loop
- * settles. Each moved payload has its `key@revision` pointers re-aimed at what
- * those components now are, which is why a digest is computed here rather than
+ * The set is `closureOf` — the edited file plus every component that names it,
+ * through its declared pins *and* through the `key@revision` pointers its
+ * payload carries. Each moved payload has those pointers re-aimed at what those
+ * components now are, which is why a digest is computed here rather than
  * carried: an agent profile that now speaks as revision 2 is different bytes.
  */
 function movesFor(base: CompanyBundleDocument, draft: FileDraft): ReadonlyMap<string, Move> {
   const edited = idOf(draft.base.component);
-  const moving = new Map<string, CompanyBundleResource>([[edited, draft.base]]);
-  let found = true;
-  while (found) {
-    found = false;
-    for (const resource of base.resources) {
-      const pins = resource.component.compatibility.requires.some((required) =>
-        moving.has(idOf(required))
-      );
-      if (pins && !moving.has(idOf(resource.component))) {
-        moving.set(idOf(resource.component), resource);
-        found = true;
-      }
-    }
-  }
+  const moving = new Map<string, CompanyBundleResource>(
+    closureOf(base, draft.base).map((resource) => [idOf(resource.component), resource])
+  );
 
   const renames = renamesFor(moving);
   const moves = new Map<string, Move>();
@@ -162,14 +151,16 @@ function renamesFor(
   return renames;
 }
 
-/** One payload with every `key@revision` string it holds re-aimed. */
+/**
+ * One payload with every `key@revision` string it holds re-aimed, wherever it
+ * holds it. A pointer is a string, and a payload is free to nest one inside an
+ * object or a list, so the whole value is walked rather than its top level.
+ */
 function reaimed(
   payload: Readonly<Record<string, unknown>>,
   renames: ReadonlyMap<string, string>
 ): Readonly<Record<string, unknown>> {
-  return Object.fromEntries(
-    Object.entries(payload).map(([field, value]) => [field, reaimedValue(value, renames)])
-  );
+  return reaimedValue(payload, renames) as Readonly<Record<string, unknown>>;
 }
 
 function reaimedValue(value: unknown, renames: ReadonlyMap<string, string>): unknown {
@@ -178,6 +169,14 @@ function reaimedValue(value: unknown, renames: ReadonlyMap<string, string>): unk
   }
   if (Array.isArray(value)) {
     return value.map((item: unknown) => reaimedValue(item, renames));
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([field, held]: [string, unknown]) => [
+        field,
+        reaimedValue(held, renames),
+      ])
+    );
   }
   return value;
 }
