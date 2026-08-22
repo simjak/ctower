@@ -10,7 +10,7 @@ import { Button, Chip } from "../ui/primitives";
  * locked — there is nothing behind it to look at, and showing a rail full of
  * things that cannot be reached is noise at the one moment the operator should
  * be answering a single question. So it is a full-screen overlay, the way
- * paperclip does it.
+ * the reference console does it.
  *
  * The close control exists only when a preview is being forced: on a real first
  * run there is nowhere to close to.

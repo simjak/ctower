@@ -13,7 +13,8 @@ const MARK: Readonly<Record<Level, "done" | "warn" | "dead">> = {
 /**
  * One render for every list of checks this product will ever show.
  *
- * Paperclip's environment probe and ctower's registry answer the same shape —
+ * The reference console's environment probe and ctower's registry answer the
+ * same shape —
  * a code, a level, a message — so they draw the same way and an operator learns
  * the vocabulary once. The chip is the worst level in the list, because a list
  * that is four greens and one red is a red.

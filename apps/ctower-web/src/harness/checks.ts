@@ -1,7 +1,7 @@
 import type { BundleCheck } from "@ctower/client";
 
 /**
- * The check-list shape, adopted from paperclip's `testEnvironment`.
+ * The check-list shape, adopted from the reference console's `testEnvironment`.
  *
  * A row is `{code, level, message, hint}` and the status of a list is its worst
  * level. That is the whole rule, and it is worth adopting because it composes:

@@ -12,12 +12,12 @@ export interface Org {
 /**
  * The company, at the top of the rail, with the way to another one under it.
  *
- * Paperclip's shape, with two of its rows deliberately absent: there is no
+ * The reference console's shape, with two of its rows deliberately absent: there is no
  * invite and no sign out, because a tailnet-private console has one reader and
  * neither verb exists for them yet. Drawing either would be offering a control
  * over a thing that is not there.
  *
- * The chip is the company key rather than a short prefix. Paperclip shows a
+ * The chip is the company key rather than a short prefix. That console shows a
  * ticket prefix because it has one; ctower's record does not carry one, and the
  * key is the real thing that identifies this company.
  */

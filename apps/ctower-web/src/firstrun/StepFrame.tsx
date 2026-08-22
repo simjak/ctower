@@ -6,7 +6,7 @@ import { cn } from "../ui/cn";
 /**
  * One question, full screen.
  *
- * Paperclip's structure exactly: thin progress bars over an icon tile, a big
+ * The reference console's structure exactly: thin progress bars over an icon tile, a big
  * title, one line under it, the question, and an obvious way forward. The skin
  * is ctower's — the filled bars are the amber ramp, the primary is the amber
  * fill, and nothing moves.

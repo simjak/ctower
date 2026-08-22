@@ -1,7 +1,7 @@
 /**
  * Adapter configuration, declared rather than coded.
  *
- * Paperclip's `getConfigSchema()` is the mechanic being adopted: an adapter
+ * The reference console's `getConfigSchema()` is the mechanic being adopted: an adapter
  * declares its fields and the UI renders them generically, so there is no React
  * per harness and a new adapter needs no UI change at all.
  *

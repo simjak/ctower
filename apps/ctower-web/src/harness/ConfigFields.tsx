@@ -6,7 +6,7 @@ import type { FieldSchema } from "./schema";
 /**
  * One renderer for every adapter's settings, forever.
  *
- * This is paperclip's mechanic: an adapter declares `{key,label,type,options,
+ * This is the reference console's mechanic: an adapter declares `{key,label,type,options,
  * hint,group}` and the UI draws it. There is no React per harness, so a new
  * adapter — or a new field on an existing one — needs no change here.
  *

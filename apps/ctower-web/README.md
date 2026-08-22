@@ -18,9 +18,10 @@ does, not after the call behind it.
 | Review changes | `planCompanyBundle` | the real diff — adds, changes, removes |
 | Apply | `applyCompanyBundle` | gated: it runs with the operator's own authority (D30) |
 
-## The stack, and what ports from paperclip
+## The stack, and what ports from the reference console
 
-React + Vite + Tailwind v4, the stack shape of `/srv/projects/paperclip-eval/ui`.
+React + Vite + Tailwind v4, the stack shape of the reference console vendored
+beside this repository.
 Per `docs/internal/design/operator-cockpit.md` D8 the port is **the token layer
 only**: the tokens, the component vocabulary and the copy rules cross, the data
 layer does not. The values are `DESIGN.md`'s, which the operator approved.
