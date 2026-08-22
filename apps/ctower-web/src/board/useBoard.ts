@@ -6,15 +6,13 @@ import type { Answer } from "../api/client";
 /**
  * The board read, and the ticket read behind a card.
  *
- * Both are `GET`s asked once per subject and neither polls. `DESIGN.md` reserves
- * motion for real work moving; a board that repaints itself on a timer is a
- * screen that moves when nothing has. New facts arrive when the operator asks.
- *
- * `project_key` is a required parameter of the board read, so choosing a project
- * is not a filter over one answer — it is a different answer, at its own
- * watermark. That is why it lives here and the priority filter does not.
+ * Both are `GET`s asked once per subject, and neither polls. `DESIGN.md`
+ * reserves motion for real work moving; a board that repaints itself on a timer
+ * is a screen that moves when nothing has, and it would also make every
+ * screenshot of it a different screenshot. New facts arrive when the operator
+ * asks for them.
  */
-export function useBoard(projectKey: string | null): Answer<BoardView> {
+export function useBoard(projectKey: string | null, reloadKey: number): Answer<BoardView> {
   const [board, setBoard] = useState<Answer<BoardView>>(ASKING);
 
   useEffect(() => {
@@ -33,11 +31,21 @@ export function useBoard(projectKey: string | null): Answer<BoardView> {
     return (): void => {
       live = false;
     };
-  }, [projectKey]);
+  }, [projectKey, reloadKey]);
 
   return board;
 }
 
+/**
+ * What only the record knows about a card.
+ *
+ * This hook used to ask `getTicketTimeline` alongside `getTicket`, and the
+ * panel drew both. The audit read answers the timeline's four event kinds and
+ * five more, so the timeline read has no question left of its own and is no
+ * longer asked — an unread read is a request an operator's tower serves for
+ * nothing. The audit read owns the history and lives in `audit/useAudit.ts`,
+ * because it pages and this one does not.
+ */
 export function useTicket(projectKey: string, ticketId: string): Answer<TicketResource> {
   const [ticket, setTicket] = useState<Answer<TicketResource>>(ASKING);
 
