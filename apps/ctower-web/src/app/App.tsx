@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
+import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { Shell } from "../shell/Shell";
@@ -25,6 +26,10 @@ import { previewFromLocation, seedForPreview } from "./preview";
  * With no company there is no shell to show. Every destination would be locked,
  * and a rail full of unreachable things is noise at the one moment the operator
  * should be answering a single question, so the wizard takes the whole screen.
+ *
+ * With a company there are built destinations, and which one is drawn is the
+ * rail's own state — there is no router and no URL, because the shell is one
+ * page and a second copy of the map is a second thing to keep true.
  */
 export function App(): ReactElement {
   const [admitted, setAdmitted] = useState(sessionToken() !== null);
@@ -99,7 +104,11 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          here === "board" ? (
+            <BoardPage definition={seed.value.result.bundle} />
+          ) : (
+            <CompanyPage seed={seed.value} onApplied={created} />
+          )
         ) : null}
       </Shell>
     </TooltipScope>

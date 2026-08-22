@@ -30,7 +30,7 @@ export interface Destination {
 export const DESTINATIONS: readonly Destination[] = [
   { key: "lanes", label: "Lanes", group: "LIVE", built: false },
   { key: "inbox", label: "Inbox", group: "LIVE", built: false },
-  { key: "board", label: "Board", group: "WORK", built: false },
+  { key: "board", label: "Board", group: "WORK", built: true },
   { key: "requests", label: "Requests", group: "WORK", built: false },
   { key: "crews", label: "Crews", group: "TEAM", built: false },
   { key: "company", label: "Company", group: "TEAM", built: true },
