@@ -55,3 +55,17 @@ scans complete reachable history and proves currently required suites, branch co
 Both gates invoke an installed Gitleaks binary without gate-time network access or compilation. Never weaken a gate with an
 inline ignore; use one exact, independently approved, maximum-30-day exception in
 `tools/checks/exceptions.yaml` when the rule is waivable.
+
+## THE SOFTWARE FACTORY IS LAW (operator, 2026-08-22 — fleet-wide, binding on every seat)
+
+The full law lives in mission-control `AGENTS.md` §1b + `factory/{workflow,ticket,crew,skills-map}.md`.
+The short form every crew in THIS repo follows:
+1. **Every task is a TICKET** (a file in `tickets/` until ctower carries it) following the
+   declared workflow: think → plan/design → implement → QA → review → docs → ship → release →
+   QA-staging/e2e → QA-production → close, with loop-backs.
+2. **No task proceeds without PLAN/DESIGN passing; no IMPLEMENT without its spec file.**
+   Security designs must be structural/allowlist — denylist designs are rejected at design.
+3. **The ticket hands over between seats** (custody episodes): author ≠ reviewer, builder ≠ QA.
+   Commanders orchestrate only — never code, QA, credential mints, or release mechanics.
+4. **Per-stage evidence slots block exit**; each stage's mandatory skill produces its evidence.
+   Review ≤3 rounds, always. `skills_used` records skill@stage on the ticket.
