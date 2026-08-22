@@ -12,7 +12,7 @@ import { canonicalDigest } from "../../mint/digest";
 import { commandKeyFor } from "../../wizard/apply/commandKey";
 import { bindingFor, boundAlready, withBinding } from "./binding";
 import type { ProfileOption } from "./binding";
-import { blankDraft, issueBody } from "./draft";
+import { blankDraft, issueBody, referenceFor } from "./draft";
 import type { CrewDraft } from "./draft";
 import type { Minted } from "./roster";
 
@@ -119,7 +119,14 @@ export function useCrewAct(
   const openReview = useCallback(
     (document: CompanyBundleDocument, profile: ProfileOption, subject: string): void => {
       const mine = supersede();
-      const body = issueBody(draft, subject);
+      // No reference, no command: the review is where the address request is
+      // frozen, and there is nothing honest to freeze for a place ctower would
+      // be told is a credential.
+      const reference = referenceFor(draft);
+      if (reference === null) {
+        return;
+      }
+      const body = issueBody(draft, subject, reference);
       const binding = bindingFor(profile, subject);
       setArmed(false);
       setBound(null);

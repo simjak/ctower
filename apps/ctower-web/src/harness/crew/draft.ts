@@ -28,6 +28,19 @@ import type {
  */
 export type ReferenceClass = SecretBindingReference["reference_class"];
 
+/**
+ * A place a credential lives, and the only string this screen will put in
+ * `credential_ref`.
+ *
+ * It is a brand rather than a `string` because a check that can be skipped is
+ * not a boundary. `referenceFor` is the one function that mints one, it mints
+ * nothing from a locator outside the allowlist, and `issueBody` cannot be
+ * called without one — so there is no path from a typed value to the wire, and
+ * no future caller can add one by forgetting to validate.
+ */
+declare const REFERENCE: unique symbol;
+export type CredentialReference = string & { readonly [REFERENCE]: true };
+
 export interface CrewDraft {
   readonly name: string;
   readonly profileKey: string;
@@ -53,12 +66,22 @@ const SEAT = /^[a-z][a-z0-9._-]{1,95}$/;
 const PROJECT = /^[a-z][a-z0-9-]{2,63}$/;
 const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
 /**
- * A locator names a place inside its class: lower-case segments, separated, at
- * least two of them. A credential value is a single opaque token — hex, base64,
- * a signed blob — and none of those are that shape, so this is a wall rather
- * than a warning about the one thing that must never reach the record.
+ * A locator names a place inside its class: lower case, at least two separated
+ * segments, no segment longer than 31 characters, 64 characters in all.
+ *
+ * Every part of that is load-bearing against the one thing that must never
+ * reach the record. A credential value is a single opaque token, so the
+ * separator rule stops a bare one; base64, base64url, JWTs and `sk-` keys carry
+ * upper case, so the case rule stops those; and the segment and total lengths
+ * stop the obvious dodge of cutting a long token in half with a slash — 32 hex
+ * characters do not fit in a segment and 64 do not fit in a locator.
+ *
+ * What it cannot do is prove that a short, lower-case, path-shaped string is not
+ * a secret somebody went out of their way to format as one. No syntax can, and
+ * guessing at entropy would be a denylist. This is the structural half; the
+ * review showing the class and the place separately is the other half.
  */
-const LOCATOR = /^[a-z0-9][a-z0-9._-]{0,47}(\/[a-z0-9][a-z0-9._-]{0,47}){1,5}$/;
+const LOCATOR = /^(?=.{5,64}$)[a-z0-9][a-z0-9._-]{0,30}(\/[a-z0-9][a-z0-9._-]{0,30}){1,5}$/;
 
 export function blankDraft(profileKey: string, projectKey: string): CrewDraft {
   return {
@@ -73,9 +96,17 @@ export function blankDraft(profileKey: string, projectKey: string): CrewDraft {
   };
 }
 
-/** The reference ctower records: the class it belongs to, then the place in it. */
-export function credentialReference(draft: CrewDraft): string {
-  return `${draft.refClass}:${draft.refLocator}`;
+/**
+ * The reference ctower records: the class it belongs to, then the place in it.
+ *
+ * Null for anything the allowlist does not recognise as a place, which is the
+ * whole point — a credential value has no reference to compose.
+ */
+export function referenceFor(draft: CrewDraft): CredentialReference | null {
+  if (!LOCATOR.test(draft.refLocator)) {
+    return null;
+  }
+  return `${draft.refClass}:${draft.refLocator}` as CredentialReference;
 }
 
 /**
@@ -114,10 +145,14 @@ export function unmet(draft: CrewDraft): string | null {
  * carries the name the company record already knows it by rather than a second
  * label invented at the boundary.
  */
-export function issueBody(draft: CrewDraft, subject: string): SeatCredentialIssueRequest {
+export function issueBody(
+  draft: CrewDraft,
+  subject: string,
+  reference: CredentialReference
+): SeatCredentialIssueRequest {
   return {
     credential_digest: draft.fingerprint,
-    credential_ref: credentialReference(draft),
+    credential_ref: reference,
     display_name: subject,
     project_key: draft.projectKey,
     scopes: draft.scopes,
