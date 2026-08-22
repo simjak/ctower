@@ -1362,3 +1362,98 @@ weaken CP3-D, the dual-write prohibition, minimal carry-forward, INV-19/44/62 in
 documentation/landing-boundary work of D32. It preserves D27, D28, D30, D31, and D32. The SPEC change is
 docs-only through the docs gate; engine evaluation rides CT-I2-006 in increment order, and the
 mission-control reporter is a separate ticket when the pack lands.
+
+## D35 — Assignment model visibility is substrate truth, not self-report (locked 2026-08-04, operator R2768)
+
+Issue #257 and mission-control R2768 (record ticket `019fc8aa-02a8-714b-b899-481af3fcf7e4`) lock the model
+and harness visibility story for assigned crews. A **seat** is the durable principal; a **crew** is one
+engagement of that seat and never becomes a principal. This decision preserves D30's project-seat grant
+model, D33's recorded work-session facts, D34's reporter/refusal discipline, INV-09 custody, INV-15 session
+non-identity, INV-69 project grants, and INV-73's one-Actor model.
+
+**Two-step anchor.** Before CT-I1-009/R2761 project-seat principal records exist, dispatch-time assignment
+stamps come from mission-control `crew-log` plus Hermes gateway/provider logs through a bridge reporter.
+After project-seat principals land, the same assignment stamp shape promotes to the seat principal/project
+grant anchor. Historical bridge facts stay readable; the crew remains engagement identity and evented facts,
+not a new principal object.
+
+**Events, not a field.** The dispatch stamp is immutable. Later fallback or degradation appends
+`model_changed` on the assignment with `from`, `to`, `observed_at`, `source`, and probe evidence. The
+current effective model is a fold over those events; no implementation may overwrite a mutable model field
+and erase the degradation that the operator needs to see.
+
+**Substrate-reported only.** The only accepted sources are mission-control crew-log and Hermes
+gateway/provider logs. Seat or crew self-report is refused, because a forced model can report itself as the
+primary. The reporter uses the R2764/D34 pattern and fails loudly by exact name, including
+`substrate-unobservable:<probe>`, rather than turning missing substrate into silence or green state.
+
+**G5 seam.** Assignment stamps are dispatch-time facts. D33/#258 recorded work sessions are execution-time
+facts whose merged code already records `ticket_id`, `seat_key`, `crew_name`, `harness_ref`, `model_ref`,
+`worktree_ref`, and `branch_ref`. The exact durable join is the Work assignment key
+`(ticket_id, assignment_kind, scope_ref, interval_sequence)` when it is carried end to end; until then the
+cross-check uses the dispatch tuple under interval containment. A mismatch creates visible evidence and
+rewrites neither side.
+
+**R2765 parity.** Acceptance names both planes: `ctl ticket assignments` must show the dispatch stamp plus
+append-only model-change history, and the Board card must show the assignment-visibility chip with current
+model plus a degraded marker when the latest event differs from the dispatch stamp.
+
+**R2781 harness independence.** Harness is an open enum on assignment stamps, `model_changed` events, and
+session facts. `claude-code`, `hermes`, `codex`, and `qwen-code` are baseline known values, not the closed
+universe. Unknown harness values are carried and displayed exactly as observed, included in cross-checks, and
+never rejected or collapsed to `other`. This also names the Harness Independence invariant: no custody,
+event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape.
+Reporter facts come from substrate-visible tmux/process metadata where authorized, crew-log, gateway logs,
+and provider logs; they do not parse Claude Code, Hermes, Codex, Qwen Code, or future harness-private session
+internals to infer custody, status, model changes, or costs.
+
+Rejected alternatives:
+
+- A mutable `current_model` assignment field that overwrites the original dispatch truth.
+- A crew principal object separate from the seat principal/project grant model.
+- Seat, crew, prompt, terminal, or model self-report as evidence of actual harness/model.
+- A reporter that treats missing crew-log or gateway substrate as absent data rather than
+  `substrate-unobservable:<probe>`.
+- Implementing only CLI or only UI visibility and calling parity satisfied.
+- A closed harness enum, an `other` harness bucket, or any harness-specific session/transcript parser hidden
+  behind a generic reporter interface.
+
+## D36 — D30 clause 5 corrected: Ticket IDs are UUIDv7, not ULID (2026-08-04, gh#210)
+
+Issue #210 (found at digest `0c28bc203a55565dd9b193cb2b8f2422cd19d33f` during PR #195 review round 2)
+flagged that `DECISIONS.md:1106` (D30 clause 5, as locked) reads "Ticket IDs remain instance-global ULIDs"
+while `SPEC.md` states UUIDv7 in nine places (INV-06, INV-71, AC-PORT-06, and six others) and every
+authored `format: uuid` JSON Schema contract agrees. Both document sides were correct on their own terms
+— D30 was correctly left unedited as an accepted decision, and SPEC.md was correctly reconciled with the
+authored contracts — but nothing recorded *why* the wording diverges, or which side reflects reality.
+
+**The ruling fact is code.** No ULID generator, library, or schema pattern exists anywhere in this
+repository. Every ticket, event, credential, session, run, and outbox identifier — Kernel-wide — is built
+by one shared constructor:
+
+- `packages/ctower-kernel/src/ctower_kernel/record/_uuid.py:12` — `def uuid7(now: datetime) -> UUID`,
+  "Shared UUIDv7 construction for Record-owned identities," building an RFC 9562 UUIDv7 bit pattern from
+  the supplied authoritative time plus 74 bits of `secrets.randbits`.
+- Every Kernel module that mints a Ticket ID calls this constructor (or a local `_uuid7` copy of the same
+  RFC 9562 shape) exclusively — for example `record/_ticket_sql.py:63`, `record/_intake_sql.py:516`, and
+  `migration/_ticket_operation_sql.py:51` — and a repository-wide search for `ulid` (case-insensitive)
+  across `.py`/`.ts`/`.tsx` finds zero generators, zero imports, and zero schema declarations; its only
+  three hits are UI comments (`apps/ctower-ui/src/read/sources/seatNames.ts:6,10,21`) using "ULID" as
+  loose prose for a long identifier, not a distinct encoding.
+- Every ticket-identity JSON Schema — e.g. `contracts/domain/task-management/board-view.schema.json:48`
+  (`"ticket_id": {"type": "string", "format": "uuid"}`) — declares `format: uuid`; none declares a ULID
+  pattern.
+
+**This entry preserves D30 in full and supersedes only clause 5's word "ULID."** Clause 5 is read going
+forward as: *"Ticket IDs remain instance-global UUIDv7 values."* Clause 5's substantive property —
+permanent, instance-global identity, with `(tenant, project, source kind, source ref)` staying the
+separate project-scoped identity plane and no cross-project reuse or renumbering — is unchanged; only the
+encoding noun was wrong, and it was wrong from D30's own lock date, not as of any later migration. No
+identifier migration is approved, proposed, or implied. Closes gh#210.
+
+Rejected alternatives:
+
+- Editing D30 clause 5 in place — DECISIONS.md is append-only; an accepted clause is superseded, never
+  rewritten.
+- Changing SPEC.md, ARCHITECTURE.md, or any contract to say ULID — the code evidence above shows that
+  would move every one of those documents away from implementation truth, not toward it.
