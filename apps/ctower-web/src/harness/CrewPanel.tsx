@@ -108,18 +108,13 @@ export function CrewPanel({
   }
 
   const blocked = unmet(act.draft);
+  const missing = whatIsMissing(profiles.length, projects.length);
   const profile = profiles.find((option) => option.key === act.draft.profileKey);
 
   return (
     <div className="space-y-4">
       <Roster crews={crews} revoke={revoke} />
-      {profiles.length > 0 && projects.length > 0 ? null : (
-        <p className="m-0 text-sm text-muted">
-          {profiles.length === 0
-            ? "No agent profile is recorded, and a crew runs one."
-            : "No project in this company can carry an address yet."}
-        </p>
-      )}
+      {missing === null ? null : <p className="m-0 text-sm text-muted">{missing}</p>}
       <DefineCrew
         draft={act.draft}
         onDraft={act.setDraft}
@@ -144,6 +139,22 @@ export function CrewPanel({
       </Footer>
     </div>
   );
+}
+
+/**
+ * What this company would have to gain before a crew can be defined at all.
+ *
+ * Both halves can be missing at once, and saying only the first would send an
+ * operator to fix one thing and meet the other on the way back.
+ */
+function whatIsMissing(profiles: number, projects: number): string | null {
+  if (profiles === 0 && projects === 0) {
+    return "A crew runs an agent profile and works in a project. This company records neither yet.";
+  }
+  if (profiles === 0) {
+    return "No agent profile is recorded, and a crew runs one.";
+  }
+  return projects === 0 ? "No project in this company can carry an address yet." : null;
 }
 
 function Footer({ children }: { readonly children: ReactNode }): ReactElement {

@@ -13,10 +13,13 @@ import { Checkbox } from "../../ui/form";
  */
 export function Select({
   options,
+  empty,
   className,
   ...props
 }: ComponentProps<"select"> & {
   readonly options: readonly { readonly value: string; readonly label: string }[];
+  /** What the control says when the record offers it nothing to choose from. */
+  readonly empty: string;
 }): ReactElement {
   return (
     <select
@@ -25,13 +28,20 @@ export function Select({
         "disabled:cursor-not-allowed disabled:text-muted",
         className
       )}
+      disabled={options.length === 0}
       {...props}
     >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
+      {/* A blank dropdown reads as a control that has not loaded. One that has
+          nothing to offer says so, because that is the honest state. */}
+      {options.length === 0 ? (
+        <option value="">{empty}</option>
+      ) : (
+        options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))
+      )}
     </select>
   );
 }
