@@ -53,7 +53,10 @@ export function Workspace({
         role="tabpanel"
         id={`workspace-panel-${tab}`}
         aria-labelledby={`workspace-tab-${tab}`}
-        className="min-h-0 flex-1 overflow-y-auto"
+        // A scroll container that is not a positioning context lets any
+        // absolutely-positioned descendant resolve against the document and
+        // escape the clip. This one holds a list, so it says so once here.
+        className="relative min-h-0 flex-1 overflow-y-auto"
       >
         {tab === "work" ? (
           <Work projectKey={projectKey} sessions={sessions} />
@@ -190,10 +193,14 @@ function Fact({
   readonly label: string;
   readonly children: ReactNode;
 }): ReactElement {
+  // Label over value rather than beside it. A branch or worktree ref is longer
+  // than the column a two-up split leaves in a 304px pane, and the break lands
+  // mid-word — `/srv/projects/ctowe` / `r/.worktrees/…` is a path an operator
+  // has to reassemble by eye before they can read it.
   return (
-    <div className="flex items-baseline gap-2 py-0.5">
-      <dt className="w-24 shrink-0 text-2xs text-muted">{label}</dt>
-      <dd className="m-0 min-w-0 flex-1 break-all">
+    <div className="py-1">
+      <dt className="text-2xs text-muted">{label}</dt>
+      <dd className="m-0 break-all">
         {children === null ? (
           <span className="text-2xs text-muted">none recorded</span>
         ) : (

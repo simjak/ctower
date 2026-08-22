@@ -60,7 +60,11 @@ export function Shell({
           <div
             className={cn(
               "mx-auto flex max-w-[1200px] flex-col px-6 py-5",
-              fill && "h-[calc(100dvh-52px)]"
+              // A workspace owns the viewport and scrolls inside its own panes.
+              // Without the clip here the panes still clip visually, but the
+              // document itself stays scrollable and the operator can drag the
+              // whole console up into blank space below it.
+              fill && "h-[calc(100dvh-52px)] overflow-hidden"
             )}
           >
             {children}
