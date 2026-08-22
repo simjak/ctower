@@ -5,6 +5,7 @@ import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { ProjectsPage } from "../projects/ProjectsPage";
+import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
@@ -101,7 +102,7 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Destination here={here} seed={seed.value} onApplied={created} onGo={setHere} />
+          <Here here={here} seed={seed.value} onApplied={created} onGo={setHere} />
         ) : null}
       </Shell>
     </TooltipScope>
@@ -109,13 +110,19 @@ export function App(): ReactElement {
 }
 
 /**
- * Which screen the rail is pointing at.
+ * The screen the rail is pointing at.
+ *
+ * Every destination is named, and the unbuilt ones are named together: the rail
+ * refuses to move to one, so their branch is unreachable and says so instead of
+ * standing in for a page the operator did not ask for. Naming them costs a line
+ * and buys the guarantee that a destination cannot become built without this
+ * file being made to say which screen it is.
  *
  * Every built destination reads the same company the shell already holds, so
  * none of them re-asks for it and none can disagree with the rail about which
  * tower this is.
  */
-function Destination({
+function Here({
   here,
   seed,
   onApplied,
@@ -126,17 +133,28 @@ function Destination({
   readonly onApplied: () => void;
   readonly onGo: (key: DestinationKey) => void;
 }): ReactElement {
-  if (here === "projects") {
-    return (
-      <ProjectsPage
-        result={seed.result}
-        onGoCompany={(): void => {
-          onGo("company");
-        }}
-      />
-    );
+  switch (here) {
+    case "projects":
+      return (
+        <ProjectsPage
+          result={seed.result}
+          onGoCompany={(): void => {
+            onGo("company");
+          }}
+        />
+      );
+    case "requests":
+      return <RequestsPage />;
+    case "company":
+      return <CompanyPage seed={seed} onApplied={onApplied} />;
+    case "lanes":
+    case "inbox":
+    case "board":
+    case "crews":
+    case "harnesses":
+    case "admin":
+      return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
-  return <CompanyPage seed={seed} onApplied={onApplied} />;
 }
 
 /**
