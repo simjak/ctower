@@ -14,7 +14,7 @@ operator's explicit approval.
 
 ## Architecture of the surface (binds IA, not just pixels)
 - **One app, one shell.** Permanent left sidebar with exactly five groups:
-  LIVE (Lanes, Inbox) · WORK (Board, Requests) · TEAM (Crews, Company) ·
+  LIVE (Lanes, Inbox) · WORK (Board, Workflows, Requests) · TEAM (Crews, Company) ·
   RUNTIME (Harnesses, Projects) · SYSTEM (Admin).
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
@@ -97,3 +97,6 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-21 | Mission is one screen and skippable | It authors a goal document when given; a company with no stated mission is a real state, not an incomplete one |
 | 2026-08-21 | The org switcher sits at the sidebar top: current org + prefix chip, "Create new organization…" honest-unbuilt | The reference console's pattern; no invite and no sign-out for a tailnet-private v1 |
 | 2026-08-21 | The browser mints component digests itself (RFC 8785 + SHA-256, not `crypto.subtle`) | Every wizard step authors a real component and the registry recomputes the digest; proven against the live API at 5 of 5 checks |
+| 2026-08-22 | Workflows joins WORK, between Board and Requests | The operator's workflow mockup puts it in the sidebar and the T-004 brief issues the page; it is where work's shape is declared, so it sits beside where work is watched |
+| 2026-08-22 | The six marks draw nowhere on the Workflows page | A workflow's publication state and a component's lifecycle are closed sets of the record's own, not members of the CLI glyph vocabulary; borrowing the done glyph for `published` would assert a proven-ness the record never claimed. Chips carry them instead |
+| 2026-08-22 | `Select` enters the component vocabulary | Every set this console offers is closed by the authored contract, so the control that offers one is the native control that already has a keyboard and a screen reader |

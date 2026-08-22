@@ -9,7 +9,7 @@ import { AuthorityGate } from "./AuthorityGate";
 import { PlanDiff } from "./PlanDiff";
 import { Receipt } from "./Receipt";
 import { movedCount } from "./actions";
-import type { Standing } from "../useCompany";
+import type { Standing } from "../standing";
 
 /**
  * Review and apply, as one thing.
@@ -28,6 +28,7 @@ export function ReviewPanel({
   onApply,
   onRetry,
   onBack,
+  backLabel,
 }: {
   readonly review: Answer<Standing>;
   readonly applied: Answer<CompanyBundleCommandResult> | null;
@@ -37,9 +38,11 @@ export function ReviewPanel({
   /** Absent when there is nothing to send again; the receipt then offers none. */
   readonly onRetry: (() => void) | null;
   readonly onBack: () => void;
+  /** Where "back" goes, named by the screen this ceremony was entered from. */
+  readonly backLabel: string;
 }): ReactElement {
   if (applied !== null) {
-    return <Receipt applied={applied} onRetry={onRetry} onBack={onBack} />;
+    return <Receipt applied={applied} onRetry={onRetry} onBack={onBack} backLabel={backLabel} />;
   }
 
   return (
@@ -48,7 +51,7 @@ export function ReviewPanel({
       <Body review={review} armed={armed} onArm={onArm} />
       <footer className="mt-6 flex items-center gap-2 border-t border-line pt-4">
         <Button variant="quiet" onClick={onBack}>
-          <ArrowLeft /> Back to the definition
+          <ArrowLeft /> {backLabel}
         </Button>
         <span className="flex-1" />
         {review.kind === "answered" && movedCount(review.value.plan.actions) > 0 ? (
@@ -122,9 +125,20 @@ function Planned({
   );
 }
 
-function Summary({ review }: { readonly review: Answer<Standing> }): ReactElement {
-  if (review.kind !== "answered") {
+/**
+ * The head's own line, and it may only say what has happened.
+ *
+ * A refusal is not a question still out. This said "Asking the registry" above
+ * a rendered refusal, which reads as a screen that has not heard back from a
+ * registry that has already answered — so the line exists while the call is
+ * out, and after that the body carries the fact.
+ */
+function Summary({ review }: { readonly review: Answer<Standing> }): ReactElement | null {
+  if (review.kind === "asking") {
     return <span>Asking the registry</span>;
+  }
+  if (review.kind !== "answered") {
+    return null;
   }
   const plan = review.value.plan;
   const moved = movedCount(plan.actions);

@@ -15,6 +15,7 @@ import type { Org } from "../shell/OrgSwitcher";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
+import { WorkflowsPage } from "../workflows/WorkflowsPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
 import type { Seed } from "../wizard/useSeed";
@@ -159,6 +160,8 @@ function Here({
       return <InboxPage />;
     case "board":
       return <BoardPage definition={seed.result.bundle} />;
+    case "workflows":
+      return <WorkflowsPage seed={seed.result} onApplied={onApplied} />;
     case "admin":
       return <AdminPage />;
     case "company":

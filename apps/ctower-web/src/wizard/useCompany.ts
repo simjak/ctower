@@ -1,31 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  CompanyBundleCommandResult,
-  CompanyBundleDocument,
-  CompanyBundlePlan,
-  CompanyBundleValidationResult,
-} from "@ctower/client";
-import { ask, commands, computations } from "../api/client";
+import type { CompanyBundleCommandResult } from "@ctower/client";
 import type { Answer } from "../api/client";
-import { commandKeyFor } from "./apply/commandKey";
+import { useApply } from "./apply/useApply";
 import { documentOf, draftFrom, EMPTY_TEMPLATE, editCount } from "./bundle";
 import type { Draft } from "./bundle";
+import { standingOf } from "./standing";
+import type { Standing } from "./standing";
 import type { Seed } from "./useSeed";
-
-/**
- * What the registry says about one exact document.
- *
- * The document is part of the answer and not a lookup, because a plan is only
- * meaningful about the bytes it was computed from. Apply is handed a `Standing`
- * and sends `standing.document`, so the thing recorded is always the thing that
- * was read — never whatever the editor happens to hold when the button is
- * pressed.
- */
-export interface Standing {
-  readonly document: CompanyBundleDocument;
-  readonly validation: CompanyBundleValidationResult;
-  readonly plan: CompanyBundlePlan;
-}
 
 export type Mode = "definition" | "review";
 
@@ -44,11 +25,6 @@ export interface Company {
   readonly setArmed: (armed: boolean) => void;
   readonly applied: Answer<CompanyBundleCommandResult> | null;
   readonly apply: (standing: Standing) => void;
-  /**
-   * Send the same command again, under the same idempotency key. Present only
-   * once something has been sent and did not come back accepted — which is the
-   * retry the receipt promises when the answer is "not known" or "not durable".
-   */
   readonly retry: (() => void) | null;
 }
 
@@ -78,9 +54,8 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
   const [mode, setMode] = useState<Mode>("definition");
   const [review, setReview] = useState<Answer<Standing>>(ASKING);
   const [armed, setArmed] = useState(false);
-  const [applied, setApplied] = useState<Answer<CompanyBundleCommandResult> | null>(null);
-  const [sent, setSent] = useState<Standing | null>(null);
   const generation = useRef(0);
+  const applying = useApply(generation, onApplied);
 
   const supersede = useCallback((): number => {
     generation.current += 1;
@@ -104,6 +79,8 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
     })();
   }, [recorded, supersede]);
 
+  const { forget } = applying;
+
   const setDraft = useCallback(
     (next: Draft): void => {
       supersede();
@@ -111,10 +88,9 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
       setMode("definition");
       setReview(ASKING);
       setArmed(false);
-      setApplied(null);
-      setSent(null);
+      forget();
     },
-    [supersede]
+    [forget, supersede]
   );
 
   const openReview = useCallback((): void => {
@@ -122,16 +98,15 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
     const document = documentOf(draft);
     setMode("review");
     setReview(ASKING);
-    setApplied(null);
     setArmed(false);
-    setSent(null);
+    forget();
     void (async (): Promise<void> => {
       const answer = await standingOf(document);
       if (generation.current === mine) {
         setReview(answer);
       }
     })();
-  }, [draft, supersede]);
+  }, [draft, forget, supersede]);
 
   /** Leaving clears the receipt; a stale one must not greet the next review. */
   const closeReview = useCallback((): void => {
@@ -139,58 +114,8 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
     setMode("definition");
     setReview(ASKING);
     setArmed(false);
-    setApplied(null);
-    setSent(null);
-  }, [supersede]);
-
-  /**
-   * One command, and the exact document it was reviewed against. The
-   * idempotency key comes from the plan digest, so a retry of this standing is
-   * the same command and can never write twice.
-   */
-  const send = useCallback(
-    (standing: Standing): void => {
-      const mine = generation.current;
-      setApplied(ASKING);
-      void (async (): Promise<void> => {
-        const answer = await ask(() =>
-          commands.applyCompanyBundle({
-            IdempotencyKey: commandKeyFor(standing.plan.plan_digest),
-            body: {
-              bundle: standing.document,
-              expected_active_version: standing.plan.base_version,
-              plan_digest: standing.plan.plan_digest,
-            },
-          })
-        );
-        if (generation.current !== mine) {
-          return;
-        }
-        setApplied(answer);
-        // Only acceptance changed what is recorded. `durability_pending` did not,
-        // so nothing is re-read on it and the retry stays offered.
-        if (answer.kind === "answered" && answer.value.durability_state === "accepted") {
-          onApplied();
-        }
-      })();
-    },
-    [onApplied]
-  );
-
-  const apply = useCallback(
-    (standing: Standing): void => {
-      setSent(standing);
-      send(standing);
-    },
-    [send]
-  );
-
-  const retry =
-    sent === null || applied === null || !resendable(applied)
-      ? null
-      : (): void => {
-          send(sent);
-        };
+    forget();
+  }, [forget, supersede]);
 
   return {
     draft,
@@ -203,47 +128,8 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
     closeReview,
     armed,
     setArmed,
-    applied,
-    apply,
-    retry,
-  };
-}
-
-/**
- * Whether sending the same command again is the honest next move.
- *
- * A refusal is not: ctower read the command and said no, and re-sending it
- * asks the same question of the same answer. The other three are — the API was
- * not reached, its answer could not be read, or it took the command and has not
- * confirmed it is durable. In every one of those the operator does not know
- * what was written, and the shared idempotency key is what makes finding out
- * safe.
- */
-function resendable(applied: Answer<CompanyBundleCommandResult>): boolean {
-  switch (applied.kind) {
-    case "asking":
-    case "refused":
-      return false;
-    case "unreachable":
-    case "malformed":
-      return true;
-    case "answered":
-      return applied.value.durability_state !== "accepted";
-  }
-}
-
-/** Check and plan one document, and stop at the first thing that is not an answer. */
-async function standingOf(bundle: CompanyBundleDocument): Promise<Answer<Standing>> {
-  const validation = await ask(() => computations.validateCompanyBundle({ body: { bundle } }));
-  if (validation.kind !== "answered") {
-    return validation;
-  }
-  const plan = await ask(() => computations.planCompanyBundle({ body: { bundle } }));
-  if (plan.kind !== "answered") {
-    return plan;
-  }
-  return {
-    kind: "answered",
-    value: { document: bundle, validation: validation.value, plan: plan.value },
+    applied: applying.applied,
+    apply: applying.apply,
+    retry: applying.retry,
   };
 }
