@@ -28,10 +28,8 @@ export interface Fact {
 
 export interface AuditRow {
   readonly id: string;
-  /** `2026-08-22`, the heading rows are grouped under. */
-  readonly day: string;
-  /** `10:13:05`, UTC, because every stamp the record keeps is. */
-  readonly time: string;
+  /** The recorded instant, verbatim; the panel decides how to draw it. */
+  readonly at: string;
   readonly headline: string;
   /** The reason, the comment, the title — quoted from the payload or absent. */
   readonly detail: string | null;
@@ -44,8 +42,7 @@ export function rowOf(event: AuditEvent): AuditRow {
   const said = saidOf(event);
   return {
     id: event.event_id,
-    day: event.occurred_at.slice(0, 10),
-    time: event.occurred_at.slice(11, 19),
+    at: event.occurred_at,
     headline: said.headline,
     detail: said.detail,
     chip: said.chip,

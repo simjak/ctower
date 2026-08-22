@@ -1,92 +1,134 @@
-import { Tabs } from "radix-ui";
-import type { ReactElement } from "react";
+import { X } from "lucide-react";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import type { ReactElement, ReactNode } from "react";
 import type { BoardCard, TicketResource } from "@ctower/client";
-import { AuditTab } from "../audit/AuditTab";
-import { cn } from "../ui/cn";
+import type { Answer } from "../api/client";
+import { AuditFeed } from "../audit/AuditFeed";
+import { Hint } from "../ui/form";
 import { Button, Chip, Mono } from "../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
-import type { Answer } from "../api/client";
+import { cardElementId } from "./CardTile";
+import { instant } from "./history";
+import { laneLabel } from "./lanes";
 import { useTicket } from "./useBoard";
 
 /**
- * What is behind a card, on two reads that answer different questions.
+ * What one card is, read out of the record.
  *
- * `Ticket` is the ticket as it stands right now. `Work` is how it got there —
- * the audit read, which carries the intents, the proof moves and the crew
- * sessions the timeline read does not. They are two tabs and not one list
- * because they are two different questions, and stacking them would make the
- * standing facts scroll away under the history.
+ * Read-only, and that is a product decision rather than an unfinished one: a
+ * transition is a command with its own authority, its own idempotency and its
+ * own refusals, and it arrives with those. Nothing on this panel writes.
  *
- * Nothing here writes. Transitions belong to the ticket lane; this panel reads.
+ * The card the operator clicked already carries a title, a lane and a priority,
+ * so those are drawn from it immediately and the two reads fill in what only
+ * the record knows. A read that is still out says so; a read that was refused
+ * renders as a refusal, in the registry's own words.
  */
 export function TicketPanel({
-  projectKey,
   card,
+  projectKey,
   onClose,
 }: {
-  readonly projectKey: string;
   readonly card: BoardCard;
+  readonly projectKey: string;
   readonly onClose: () => void;
 }): ReactElement {
   const ticket = useTicket(projectKey, card.ticket_id);
 
   return (
-    <aside className="sticky top-18 overflow-hidden rounded-md border border-line bg-card">
-      <header className="flex items-start gap-3 border-b border-line px-4 py-3">
-        <div className="min-w-0 flex-1">
-          {card.display_key === null ? null : (
-            <Mono className="block text-muted">{card.display_key}</Mono>
-          )}
-          <h2 className="m-0 mt-0.5 text-md leading-snug font-semibold">{card.title}</h2>
-        </div>
-        <Button size="sm" variant="quiet" onClick={onClose} aria-label="Close this ticket">
-          Close
-        </Button>
-      </header>
-      <Tabs.Root defaultValue="ticket">
-        <Tabs.List className="flex gap-1 border-b border-line px-3" aria-label="This ticket">
-          <Tab value="ticket">Ticket</Tab>
-          <Tab value="work">Work</Tab>
-        </Tabs.List>
-        <Tabs.Content value="ticket" className="px-4 py-3">
-          <TicketFacts card={card} ticket={ticket} />
-        </Tabs.Content>
-        <Tabs.Content value="work" className="max-h-[60dvh] overflow-y-auto py-1">
-          <AuditTab projectKey={projectKey} ticketId={card.ticket_id} />
-        </Tabs.Content>
-      </Tabs.Root>
-    </aside>
+    <DialogPrimitive.Root
+      open
+      onOpenChange={(next): void => {
+        if (!next) {
+          onClose();
+        }
+      }}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-20 bg-[color-mix(in_srgb,var(--ink)_28%,transparent)]" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          // Closing puts the keyboard back on the card it was opened from.
+          // Without this the panel has no trigger to restore to and `Escape`
+          // drops focus on the document, which sends a keyboard operator back
+          // to the top of the shell to find their place again.
+          onCloseAutoFocus={(event): void => {
+            event.preventDefault();
+            window.document.getElementById(cardElementId(card.ticket_id))?.focus();
+          }}
+          className="fixed inset-y-0 right-0 z-30 flex w-[440px] max-w-[92vw] flex-col border-l border-line bg-card outline-none"
+        >
+          <header className="flex items-start gap-3 border-b border-line px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                {card.display_key === null ? null : (
+                  <Mono className="text-muted">{card.display_key}</Mono>
+                )}
+                <Chip tone={card.priority === "P0" ? "amber" : "neutral"}>{card.priority}</Chip>
+              </div>
+              <DialogPrimitive.Title className="m-0 text-md leading-snug font-semibold">
+                {card.title}
+              </DialogPrimitive.Title>
+            </div>
+            <DialogPrimitive.Close asChild>
+              <Button variant="quiet" size="sm" aria-label="Close">
+                <X />
+              </Button>
+            </DialogPrimitive.Close>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            <Section title="This ticket">
+              <Recorded card={card} ticket={ticket} />
+            </Section>
+            {/* This section used to read `getTicketTimeline`, and carried a
+                comment saying so: the timeline answers the ticket's own events
+                and its workflow's, while "a blocker and an admission are
+                recorded on a third stream and are not in it", so a section
+                headed History quietly omitted them. `listTicketAuditEvents`
+                answers all three streams — nine event kinds where the timeline
+                had four — so the section now reads that instead of standing
+                beside it. Two overlapping histories on one panel would be two
+                answers to one question, and the smaller one was the one that
+                had to say what it was missing. */}
+            <Section title="Work" hint="Every act the record kept against this ticket.">
+              <AuditFeed projectKey={projectKey} ticketId={card.ticket_id} />
+            </Section>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
-function Tab({
-  value,
+function Section({
+  title,
+  hint,
   children,
 }: {
-  readonly value: string;
-  readonly children: string;
+  readonly title: string;
+  readonly hint?: string;
+  readonly children: ReactNode;
 }): ReactElement {
   return (
-    <Tabs.Trigger
-      value={value}
-      className={cn(
-        "-mb-px cursor-pointer border-b-2 border-transparent px-2 py-2 text-sm text-muted",
-        "data-[state=active]:border-amber data-[state=active]:font-semibold data-[state=active]:text-fg"
-      )}
-    >
+    <section className="mb-5 last:mb-0">
+      <div className="mb-2 flex items-center gap-1.5">
+        <h3 className="m-0 text-2xs leading-none font-medium text-muted">{title}</h3>
+        {hint === undefined ? null : <Hint text={hint} />}
+      </div>
       {children}
-    </Tabs.Trigger>
+    </section>
   );
 }
 
 /**
- * The standing facts, from the ticket read and from the card's own projection.
+ * The card's own facts, then the ticket read's.
  *
- * The two are kept apart on purpose. `durability_state` is the ticket read's,
- * and it is drawn because a command that is committed but not yet durable is a
- * real state an operator will otherwise mistake for a stale screen.
+ * `getBoard` and `getTicket` answer about the same ticket from two sides — the
+ * projection and the record — so the panel says which side each line came from
+ * by only ever drawing a field once, from the read that owns it.
  */
-function TicketFacts({
+function Recorded({
   card,
   ticket,
 }: {
@@ -94,99 +136,86 @@ function TicketFacts({
   readonly ticket: Answer<TicketResource>;
 }): ReactElement {
   return (
-    <div>
-      <dl className="m-0 grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
-        <Row label="Lane">
-          <span className="text-sm">{card.lane.replace(/_/g, " ")}</span>
-        </Row>
-        <Row label="Priority">
-          <Chip tone={card.priority === "P0" ? "amber" : "neutral"}>{card.priority}</Chip>
-        </Row>
-        {card.stage_label === null ? null : (
-          <Row label="Stage">
-            <Mono className="text-muted">{card.stage_label}</Mono>
-          </Row>
-        )}
-        {card.blocker_reason === null ? null : (
-          <Row label="Blocked by">
-            <span className="text-sm">{card.blocker_reason}</span>
-          </Row>
-        )}
-        <Row label="Custodian">
-          <Mono className="break-words text-muted">{card.custodian_id}</Mono>
-        </Row>
-        {card.applied_labels.length === 0 ? null : (
-          <Row label="Labels">
-            <span className="flex flex-wrap gap-1">
-              {card.applied_labels.map((label) => (
-                <Chip key={label.label_key}>{label.label}</Chip>
-              ))}
-            </span>
-          </Row>
-        )}
-        {card.change_references.map((reference) => (
-          <Row key={reference.reference} label="Change">
-            <Mono className="break-words text-muted">{reference.reference}</Mono>
-          </Row>
-        ))}
-      </dl>
-      <Standing ticket={ticket} />
+    <div className="space-y-1.5">
+      {/* Lane and stage are two different facts and they are labelled, not
+          chipped: `complete` and `close` side by side as bare chips read as one
+          state said twice, and the panel covers the column that would otherwise
+          answer where this card sits. */}
+      <Said label="Lane" value={laneLabel(card.lane)} />
+      {card.stage_label === null ? null : <Line label="Stage" value={card.stage_label} />}
+      <Line label="Custodian" value={card.custodian_id} />
+      {card.assignee_id === null ? null : <Line label="Assignee" value={card.assignee_id} />}
+      {card.blocker_reason === null ? null : (
+        <Said label="Blocked by" value={card.blocker_reason} />
+      )}
+      <Detail ticket={ticket} />
     </div>
   );
 }
 
-/**
- * The three facts only the ticket read carries, and the state of that read.
- *
- * It sits under the card's own facts rather than among them, because a refusal
- * on this read is a refusal about the ticket and not about the row it would have
- * filled — a state squeezed into a definition cell reads as a missing value.
- */
-function Standing({ ticket }: { readonly ticket: Answer<TicketResource> }): ReactElement {
+function Detail({ ticket }: { readonly ticket: Answer<TicketResource> }): ReactElement {
   switch (ticket.kind) {
     case "asking":
       return <Asking what="Reading this ticket" />;
     case "refused":
-      return (
-        <div className="mt-3">
-          <Refused problem={ticket.problem} action="Reopen the card to ask again." />
-        </div>
-      );
+      return <Refused problem={ticket.problem} action="Nothing else about it was read." />;
     case "unreachable":
-      return (
-        <div className="mt-3">
-          <Unreachable detail={ticket.detail} action="Reopen the card to ask again." />
-        </div>
-      );
+      return <Unreachable detail={ticket.detail} action="Close and open it again to ask again." />;
     case "malformed":
-      return (
-        <div className="mt-3">
-          <Malformed detail={ticket.detail} />
-        </div>
-      );
+      return <Malformed detail={ticket.detail} />;
     case "answered":
       return (
-        <dl className="m-0 mt-1.5 grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
-          <Row label="Raised">
-            <Mono className="text-muted">
-              {ticket.value.created_at.slice(0, 19).replace("T", " ")}
-            </Mono>
-          </Row>
-          <Row label="Source">
-            <Mono className="break-words text-muted">
-              {ticket.value.source.kind} · {ticket.value.source.ref}
-            </Mono>
-          </Row>
-          <Row label="Recorded">
-            {ticket.value.durability_state === "accepted" ? (
-              <Chip tone="ok">Durable</Chip>
-            ) : (
-              <Chip tone="amber">Pending</Chip>
-            )}
-          </Row>
-        </dl>
+        <>
+          <Line
+            label="Raised"
+            value={instant(ticket.value.created_at)}
+            title={ticket.value.created_at}
+          />
+          <Line
+            label="Came from"
+            value={`${ticket.value.source.kind} · ${ticket.value.source.ref}`}
+          />
+          <Line label="Version" value={String(ticket.value.version)} />
+          {ticket.value.durability_state === "accepted" ? null : (
+            <div className="pt-1">
+              <Chip tone="amber">not yet durable</Chip>
+            </div>
+          )}
+        </>
       );
   }
+}
+
+/**
+ * One recorded fact. `Line` is the machine's — a key, an identifier, a
+ * reference, an instant — and `Said` is a person's. A sentence somebody typed
+ * set in the machine typeface reads as though ctower generated it, and a
+ * blocker's reason is the one line on this panel a human actually wrote.
+ */
+function Line({
+  label,
+  value,
+  title,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly title?: string;
+}): ReactElement {
+  return (
+    <Row label={label}>
+      <Mono className="min-w-0 flex-1 truncate text-fg" title={title ?? value}>
+        {value}
+      </Mono>
+    </Row>
+  );
+}
+
+function Said({ label, value }: { readonly label: string; readonly value: string }): ReactElement {
+  return (
+    <Row label={label}>
+      <span className="min-w-0 flex-1 text-sm text-fg">{value}</span>
+    </Row>
+  );
 }
 
 function Row({
@@ -194,12 +223,12 @@ function Row({
   children,
 }: {
   readonly label: string;
-  readonly children: ReactElement | readonly ReactElement[];
+  readonly children: ReactNode;
 }): ReactElement {
   return (
-    <div className="contents">
-      <dt className="pt-0.5 text-2xs text-muted">{label}</dt>
-      <dd className="m-0 min-w-0">{children}</dd>
+    <div className="flex items-baseline gap-3">
+      <span className="w-24 shrink-0 text-xs text-muted">{label}</span>
+      {children}
     </div>
   );
 }

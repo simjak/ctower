@@ -105,7 +105,7 @@ export function App(): ReactElement {
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
           here === "board" ? (
-            <BoardPage definition={seed.value.result.bundle} />
+            <BoardPage company={seed.value.result.bundle} />
           ) : (
             <CompanyPage seed={seed.value} onApplied={created} />
           )
