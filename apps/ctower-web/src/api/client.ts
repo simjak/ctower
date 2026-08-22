@@ -1,5 +1,5 @@
 import { CtowerClient, CtowerProblemError } from "@ctower/client";
-import type { Problem } from "@ctower/client";
+import type { DurabilityState, Problem } from "@ctower/client";
 import { boundedFetch, ReadExhausted, ReadRefused, SessionRefused } from "./bounded";
 import type { RetryRule } from "./bounded";
 import { telemetry } from "./telemetry";
@@ -42,6 +42,17 @@ export const computations = clientFor({
 export const commands = clientFor({ kind: "keyed-command" });
 
 /**
+ * The console allowance records a fact and the authored contract gives it no
+ * idempotency key, so this client sends it once and never again. A resend would
+ * be a second allowance, and nothing in the answer would tell the operator
+ * which of the two the tower kept.
+ */
+export const singleShotCommands = clientFor({
+  kind: "unrepeatable-command",
+  reason: "the contract declares no idempotency key, so a resend is a second act",
+});
+
+/**
  * What a call produced. Four outcomes, and none of them collapses into
  * another: an answer, a typed refusal, silence, and an answer this client
  * cannot read. The last one exists because the alternative is a screen that
@@ -77,6 +88,29 @@ const DECODE_PREFIX = "Invalid ctower JSON response";
 
 function isDecodeFailure(error: unknown): error is SyntaxError {
   return error instanceof SyntaxError && error.message.startsWith(DECODE_PREFIX);
+}
+
+/**
+ * Whether sending the same command again is the honest next move.
+ *
+ * A refusal is not: ctower read the command and said no, and re-sending it
+ * asks the same question of the same answer. The other three are — the API was
+ * not reached, its answer could not be read, or it took the command and has not
+ * confirmed it is durable. In every one of those the operator does not know
+ * what was written, and the shared idempotency key is what makes finding out
+ * safe.
+ */
+export function resendable(sent: Answer<{ readonly durability_state: DurabilityState }>): boolean {
+  switch (sent.kind) {
+    case "asking":
+    case "refused":
+      return false;
+    case "unreachable":
+    case "malformed":
+      return true;
+    case "answered":
+      return sent.value.durability_state !== "accepted";
+  }
 }
 
 export async function ask<T>(call: () => Promise<T>): Promise<Answer<T>> {

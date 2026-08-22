@@ -3,7 +3,7 @@ import type { Answer } from "../api/client";
 import { Chip, Mono } from "../ui/primitives";
 import { shortDigest } from "./bundle";
 import { movedCount } from "./review/actions";
-import type { Standing } from "./useCompany";
+import type { Standing } from "./standing";
 
 /**
  * Where the four-step ceremony went.

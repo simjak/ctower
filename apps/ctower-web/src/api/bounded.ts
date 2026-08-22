@@ -67,7 +67,8 @@ export interface ClassifiedFailure {
 export type RetryRule =
   | { readonly kind: "safe-read" }
   | { readonly kind: "pure-command"; readonly reason: string }
-  | { readonly kind: "keyed-command" };
+  | { readonly kind: "keyed-command" }
+  | { readonly kind: "unrepeatable-command"; readonly reason: string };
 
 export interface Bounds {
   readonly attemptTimeoutMs: number;
@@ -151,6 +152,7 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
     refuseUnlessRuleHolds(rule, request);
     admit(request);
 
+    const maxAttempts = attemptsFor(rule);
     const startedAt = performance.now();
     let last: ClassifiedFailure = {
       failureClass: "transient",
@@ -158,7 +160,7 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
       status: null,
     };
 
-    for (let attempt = 1; attempt <= BOUNDS.maxAttempts; attempt += 1) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       // The deadline binds the attempt, not just the gap between attempts. An
       // attempt that starts with 10ms left may not install a 8s timeout and run
       // past the wall bound this policy advertises, so the per-attempt budget is
@@ -174,13 +176,13 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
       }
       last = answer.failure;
       const remaining = BOUNDS.maxElapsedMs - since(startedAt);
-      if (attempt === BOUNDS.maxAttempts || remaining <= 0) {
+      if (attempt === maxAttempts || remaining <= 0) {
         throw exhausted(attempt, Math.round(since(startedAt)), last);
       }
       await sleep(Math.min(backoffFor(attempt), remaining));
     }
 
-    throw exhausted(BOUNDS.maxAttempts, Math.round(since(startedAt)), last);
+    throw exhausted(maxAttempts, Math.round(since(startedAt)), last);
   };
 }
 
@@ -282,7 +284,30 @@ function refuseUnlessRuleHolds(rule: RetryRule, request: Request): void {
         throw new ReadRefused("a command may not be retried without one idempotency key");
       }
       return;
+    case "unrepeatable-command":
+      // The mirror of the keyed rule. A command that *does* carry a key has a
+      // retry available to it and must claim it, rather than spending its one
+      // attempt under a rule written for commands the contract gives no key.
+      if (request.headers.has("Idempotency-Key")) {
+        throw new ReadRefused("a keyed command may not be sent as an unrepeatable one");
+      }
+      return;
   }
+}
+
+/**
+ * How many attempts this rule may spend.
+ *
+ * O10 requires `maxAttempts` to be finite, and one is finite. A command the
+ * authored contract gives no idempotency key cannot be retried at all: the
+ * second send is a second act, the tower would record it as one, and the
+ * operator would have no way to tell the two apart afterwards. So the bound
+ * that keeps that command honest is the smallest one there is, and a transient
+ * failure leaves here as exhaustion after a single attempt rather than as a
+ * silent duplicate.
+ */
+function attemptsFor(rule: RetryRule): number {
+  return rule.kind === "unrepeatable-command" ? 1 : BOUNDS.maxAttempts;
 }
 
 /** Full jitter, capped. */

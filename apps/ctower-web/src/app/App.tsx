@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
+import { AdminPage } from "../admin/AdminPage";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
+import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
+import { InboxPage } from "../inbox/InboxPage";
+import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
+import { destinationFromSearch } from "../shell/destinations";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
+import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
+import { Cockpit } from "../cockpit/Cockpit";
 import { CompanyPage } from "../wizard/CompanyPage";
+import { WorkflowsPage } from "../workflows/WorkflowsPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
+import type { Seed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
@@ -25,6 +34,12 @@ import { previewFromLocation, seedForPreview } from "./preview";
  * With no company there is no shell to show. Every destination would be locked,
  * and a rail full of unreachable things is noise at the one moment the operator
  * should be answering a single question, so the wizard takes the whole screen.
+ *
+ * With a company there are built destinations, and which one is drawn is the
+ * address: `?at=…` is where the operator is, so a screen is a link, a reload
+ * comes back to it and Back means back. There is still no router — the map in
+ * `destinations.ts` is the only map, and this reads the address against it
+ * rather than keeping a second copy of it.
  */
 export function App(): ReactElement {
   const [admitted, setAdmitted] = useState(sessionToken() !== null);
@@ -33,10 +48,31 @@ export function App(): ReactElement {
   const preview = previewFromLocation(window.location.search);
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
-  const [here, setHere] = useState<DestinationKey>("company");
+  // The address is where the operator is, so a screen is a link and a reload
+  // comes back to it. It only ever names a destination that is actually built.
+  const [here, setHere] = useState<DestinationKey>(
+    () => destinationFromSearch(window.location.search) ?? "company"
+  );
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
+  }, []);
+
+  const go = useCallback((key: DestinationKey): void => {
+    window.history.pushState(null, "", `?at=${key}`);
+    setHere(key);
+  }, []);
+
+  // Back and Forward move the shell, not just the page inside it, so the
+  // address and what is drawn cannot disagree about where the operator is.
+  useEffect((): (() => void) => {
+    const walked = (): void => {
+      setHere(destinationFromSearch(window.location.search) ?? "company");
+    };
+    window.addEventListener("popstate", walked);
+    return (): void => {
+      window.removeEventListener("popstate", walked);
+    };
   }, []);
 
   // A restarted server mints a new token, so the one this tab holds stops
@@ -83,9 +119,10 @@ export function App(): ReactElement {
       <Shell
         here={here}
         lockReason={seed.kind === "answered" ? null : "Still reading this company"}
-        onGo={setHere}
+        onGo={go}
         org={orgOf(seed)}
         status={statusFor(seed.kind, previewing)}
+        fill={here === "crews"}
       >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
         {seed.kind === "refused" ? (
@@ -99,11 +136,60 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          <Here here={here} seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>
   );
+}
+
+/**
+ * The screen the rail is pointing at.
+ *
+ * Every destination is named, and the unbuilt ones are named together: the rail
+ * refuses to move to one, so their branch is unreachable and says so instead of
+ * standing in for a page the operator did not ask for. Naming them costs a line
+ * and buys the guarantee that a destination cannot become built without this
+ * file being made to say which screen it is.
+ *
+ * Every built destination reads the same company the shell already holds, so
+ * none of them re-asks for it and none can disagree with the rail about which
+ * tower this is. The rail only offers a destination it has marked built, so an
+ * unbuilt key never actually arrives here; naming one costs a line and keeps
+ * the guarantee that this file has to say which screen a destination is before
+ * the rail can call it built.
+ */
+function Here({
+  here,
+  seed,
+  onApplied,
+}: {
+  readonly here: DestinationKey;
+  readonly seed: Extract<Seed, { readonly kind: "exported" }>;
+  readonly onApplied: () => void;
+}): ReactElement {
+  switch (here) {
+    case "requests":
+      return <RequestsPage />;
+    case "inbox":
+      return <InboxPage />;
+    case "crews":
+      return <Cockpit document={seed.result.bundle} />;
+    case "tickets":
+      return <TicketsPage document={seed.result.bundle} />;
+    case "board":
+      return <BoardPage company={seed.result.bundle} />;
+    case "workflows":
+      return <WorkflowsPage seed={seed.result} onApplied={onApplied} />;
+    case "admin":
+      return <AdminPage />;
+    case "company":
+      return <CompanyPage seed={seed} onApplied={onApplied} />;
+    case "lanes":
+    case "harnesses":
+    case "projects":
+      return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
+  }
 }
 
 /**

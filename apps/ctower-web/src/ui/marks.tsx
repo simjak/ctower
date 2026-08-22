@@ -51,7 +51,13 @@ export function Mark({
   readonly className?: string;
 }): ReactElement {
   return (
-    <span className={cn("mono inline-block w-[1.4em] shrink-0", INK[name], className)}>
+    // `relative` is load-bearing, not decoration. The screen-reader word is
+    // `position: absolute`, and with no positioned ancestor it resolves against
+    // the initial containing block — so a mark inside a scrolling pane lays its
+    // hidden word out against the document instead, and every row past the fold
+    // extends the page's own scroll box. Anchoring it to the mark keeps it
+    // inside whatever clips the mark.
+    <span className={cn("mono relative inline-block w-[1.4em] shrink-0", INK[name], className)}>
       <span aria-hidden>{GLYPH[name]}</span>
       <span className="sr-only">{WORD[name]}</span>
     </span>
