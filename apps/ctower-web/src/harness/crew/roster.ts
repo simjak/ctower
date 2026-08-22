@@ -29,17 +29,24 @@ export interface CrewRow {
 }
 
 const PROFILE_SLOT = "agent_profile";
+const PROJECT_KIND = "project";
 const PROJECT_SUBJECT = "project:";
 
 /**
  * The key an address can be issued against.
  *
- * `SeatCredentialIssueRequest.project_key` is narrower than an assignment
- * subject — no dots, no underscores — so a project the company records may still
- * be unable to carry a seat. Offering one would be offering an address ctower
- * refuses at the boundary.
+ * `SeatCredentialIssueRequest.project_key` is narrower than either place the
+ * company record names a project — no dots — so a project this company records
+ * may still be unable to carry a seat. That is the record's own shape and the
+ * screen shows it rather than dropping the row.
  */
 const ADDRESSABLE = /^[a-z][a-z0-9-]{2,63}$/;
+
+export interface ProjectOption {
+  readonly key: string;
+  /** Whether `SeatCredentialIssueRequest.project_key` accepts this key at all. */
+  readonly addressable: boolean;
+}
 
 export function crewsOf(
   document: CompanyBundleDocument,
