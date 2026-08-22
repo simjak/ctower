@@ -31,10 +31,13 @@ import { ProjectsPanel } from "./ProjectsPanel";
  */
 export function HarnessPage({
   recorded,
+  project,
   onApplied,
 }: {
   /** The active bundle, exactly as `exportCompanyBundle` returned it. */
   readonly recorded: CompanyBundleDocument;
+  /** The project key the rail's switcher is pointed at, if this company has one. */
+  readonly project: string | null;
   /** An accepted apply changed what is recorded; the app re-reads it. */
   readonly onApplied: () => void;
 }): ReactElement {
@@ -60,7 +63,7 @@ export function HarnessPage({
     {
       key: "projects",
       label: "Projects",
-      element: <ProjectsPanel authoring={ceremony.authoring} />,
+      element: <ProjectsPanel authoring={ceremony.authoring} current={project} />,
     },
     { key: "agents", label: "Agents", element: <AgentsPanel authoring={ceremony.authoring} /> },
     // One line per surface, and nothing else in this array.
