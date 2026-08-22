@@ -1,21 +1,30 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactElement } from "react";
-import type { CompanyBundleDocument, CompanyBundleValidationResult } from "@ctower/client";
+import type { CompanyBundleDocument } from "@ctower/client";
 import { ask, commands, computations } from "../api/client";
 import type { Answer } from "../api/client";
 import { commandKeyFor } from "../wizard/apply/commandKey";
 import { BLANK, bundleOf } from "./answers";
 import type { Answers } from "./answers";
+import type { FirstRunOutcome } from "./outcome";
 import { ReviewStep } from "./ReviewStep";
 import { AgentStep, HarnessStep, MissionStep, NameStep } from "./steps";
 
 /**
  * First run: five steps, one question each, and one command at the end.
  *
- * The order follows the runtime rather than the org chart — the harness is
- * chosen before the staff, because the agent is created *on* it. Each step
- * collects an answer and nothing more; the bundle is assembled once, at the
- * end, and checked, planned and applied as one act.
+ * Two rules govern every asynchronous act here, and both exist because the
+ * screen can change while the network is thinking.
+ *
+ * **Generation.** Every navigation and every answer edit bumps a generation.
+ * A response whose generation is stale is discarded — it can neither advance a
+ * step nor authorize a command. Without it, a slow key check could wave through
+ * a key the operator edited after pressing Next, and a Back during apply could
+ * leave an obsolete bundle applying behind the screen.
+ *
+ * **Fail closed.** Advancing requires a positive answer. Silence, a contract
+ * fault, or any refusal keeps the operator where they are with the reason on
+ * screen; nothing is treated as permission by default.
  */
 export function FirstRun({
   onCreated,
@@ -25,58 +34,81 @@ export function FirstRun({
   readonly previewing: boolean;
 }): ReactElement {
   const [step, setStep] = useState(1);
-  const [answers, setAnswers] = useState<Answers>(BLANK);
-  const [outcome, setOutcome] = useState<Answer<unknown> | null>(null);
-  const [validation, setValidation] = useState<CompanyBundleValidationResult | null>(null);
+  const [answers, setAnswersState] = useState<Answers>(BLANK);
+  const [applied, setApplied] = useState<FirstRunOutcome | null>(null);
   const [keyCheck, setKeyCheck] = useState<Answer<unknown> | null>(null);
+  const generation = useRef(0);
+
+  /** Everything in flight becomes stale the moment anything changes. */
+  const supersede = (): number => {
+    generation.current += 1;
+    return generation.current;
+  };
+
+  const setAnswers = (next: Answers): void => {
+    supersede();
+    setKeyCheck(null);
+    setApplied(null);
+    setAnswersState(next);
+  };
 
   const go = (next: number): void => {
-    setOutcome(null);
-    setValidation(null);
+    supersede();
+    setKeyCheck(null);
+    setApplied(null);
     setStep(next);
   };
 
+  const busy = keyCheck?.kind === "asking" || applied?.kind === "asking";
+
   /**
-   * The key is checked here, against the live registry, before the operator can
-   * walk four more screens on it.
-   *
-   * A company key must equal the authenticated tenant's, and nothing on the
-   * authored read surface returns that key on a tower with no company — so it
-   * cannot be pre-filled, and a wrong one used to survive all the way to Review
-   * before the registry refused it. Asking now turns a dead end at the end into
-   * a correction on the field that caused it.
-   *
-   * Only `bundle-grant-refused` holds the operator here. Every other answer is
-   * about the rest of the bundle, which the later steps are still filling in,
-   * and Review is where those belong.
+   * The key is checked against the live registry before the operator can walk
+   * four more screens on it — and the check is bound to the draft it was made
+   * for, so an edit made while it was in flight cannot ride the old answer.
    */
   const leaveName = (): void => {
+    const mine = supersede();
     setKeyCheck({ kind: "asking" });
     void (async (): Promise<void> => {
       const answer = await ask(() =>
         computations.validateCompanyBundle({ body: { bundle: bundleOf(answers) } })
       );
-      if (answer.kind === "refused" && answer.problem.code === "bundle-grant-refused") {
-        setKeyCheck(answer);
+      if (generation.current !== mine) {
         return;
       }
-      setKeyCheck(null);
-      go(2);
+      if (answer.kind === "answered") {
+        setKeyCheck(null);
+        setStep(2);
+        return;
+      }
+      setKeyCheck(answer);
     })();
   };
 
   const start = (): void => {
-    setOutcome({ kind: "asking" });
+    const mine = supersede();
+    const bundle = bundleOf(answers);
+    setApplied({ kind: "asking" });
     void (async (): Promise<void> => {
-      const answer = await createCompany(bundleOf(answers), previewing, setValidation);
-      setOutcome(answer);
-      if (answer.kind === "answered" && !previewing) {
+      const answer = await createCompany(bundle, previewing);
+      if (generation.current !== mine) {
+        return;
+      }
+      setApplied(answer);
+      // Only an accepted command created a company. `durability_pending` is the
+      // same shape and the same status family, and promoting it would tell the
+      // operator a thing exists that the record has not agreed to yet.
+      if (
+        !previewing &&
+        answer.kind === "answered" &&
+        answer.value.durability_state === "accepted"
+      ) {
         onCreated();
       }
     })();
   };
 
-  const shared = { answers, onAnswers: setAnswers };
+  const shared = { answers, onAnswers: setAnswers, busy };
 
   switch (step) {
     case 1:
@@ -116,8 +148,9 @@ export function FirstRun({
             go(5);
           }}
           onSkip={(): void => {
-            setAnswers({ ...answers, mission: "", criterion: "" });
-            go(5);
+            supersede();
+            setAnswersState({ ...answers, mission: "", criterion: "" });
+            setStep(5);
           }}
         />
       );
@@ -125,8 +158,7 @@ export function FirstRun({
       return (
         <ReviewStep
           answers={answers}
-          outcome={outcome}
-          validation={validation}
+          applied={applied}
           previewing={previewing}
           onStart={start}
           onBack={(): void => {
@@ -142,28 +174,24 @@ export function FirstRun({
  * answer. The plan's own digest and base version are what apply is sent, so the
  * command can only ever apply the plan that was actually computed.
  *
- * A forced preview stops after the plan. The preview exists so this screen can
- * be looked at on a tower that already has a company, and on such a tower the
- * command would not be a no-op — it would replace that company's whole
- * definition with the four components this wizard just minted. So the reads run
- * for real, the write does not run at all, and the screen says which.
+ * A forced preview stops after the plan: the preview exists so this screen can
+ * be looked at on a tower that already has a company, and there the command
+ * would replace that company's whole definition.
  */
 async function createCompany(
   bundle: CompanyBundleDocument,
-  previewing: boolean,
-  onValidation: (validation: CompanyBundleValidationResult) => void
-): Promise<Answer<unknown>> {
+  previewing: boolean
+): Promise<FirstRunOutcome> {
   const checked = await ask(() => computations.validateCompanyBundle({ body: { bundle } }));
   if (checked.kind !== "answered") {
     return checked;
   }
-  onValidation(checked.value);
   const planned = await ask(() => computations.planCompanyBundle({ body: { bundle } }));
   if (planned.kind !== "answered") {
     return planned;
   }
   if (previewing) {
-    return { kind: "answered", value: planned.value };
+    return { kind: "previewed" };
   }
   return ask(() =>
     commands.applyCompanyBundle({

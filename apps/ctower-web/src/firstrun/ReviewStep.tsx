@@ -1,43 +1,45 @@
 import { Check } from "lucide-react";
 import type { ReactElement } from "react";
-import type { CompanyBundleValidationResult } from "@ctower/client";
-import type { Answer } from "../api/client";
-import { CheckList } from "../harness/CheckList";
-import { checksOf } from "../harness/checks";
+import type { CompanyBundleCommandResult } from "@ctower/client";
 import { Chip, Mono } from "../ui/primitives";
 import { Mark } from "../ui/marks";
-import { Malformed, Refused, Unreachable } from "../wizard/states";
-import { ADAPTERS } from "./answers";
+import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
+import { adapterFor } from "../harness/schema";
 import type { Answers } from "./answers";
+import type { FirstRunOutcome } from "./outcome";
+import { commandKeySurvivesReload } from "../wizard/apply/commandKey";
 import { StepFrame } from "./StepFrame";
 
 /**
  * Step 5 — what is about to be recorded, and the one command that records it.
  *
- * The checklist carries the idle mark, never the done mark. Nothing on this
- * screen has been recorded yet — the company does not exist until `Get started`
- * comes back accepted — and the mark law is that a state with no recorded fact
- * never borrows the glyph of one that has. A skipped answer carries no mark at
- * all.
+ * The checklist carries the idle mark, never the done mark: nothing here has
+ * been recorded, and a state with no recorded fact never borrows the glyph of
+ * one that has. A skipped answer carries no mark at all.
+ *
+ * What comes back is rendered as what it is. The API returns the same result
+ * shape for an accepted command and one that is merely durable-pending, and
+ * only one of those created a company.
  */
 export function ReviewStep({
   answers,
-  outcome,
+  applied,
   previewing,
   onStart,
   onBack,
-  validation,
 }: {
   readonly answers: Answers;
-  readonly outcome: Answer<unknown> | null;
+  readonly applied: FirstRunOutcome | null;
   readonly previewing: boolean;
   readonly onStart: () => void;
   readonly onBack: () => void;
-  /** The registry's own answer about this exact bundle, once it has one. */
-  readonly validation: CompanyBundleValidationResult | null;
 }): ReactElement {
-  const adapter = ADAPTERS.find((entry) => entry.key === answers.adapter);
-  const sending = outcome?.kind === "asking";
+  const adapter = adapterFor(answers.adapter);
+  const sending = applied?.kind === "asking";
+  // A recorded answer is final; everything else — a refusal, an unreachable
+  // tower, a preview — may be tried again, and the same command key makes the
+  // retry the same command rather than a second one.
+  const recorded = applied?.kind === "answered";
 
   return (
     <StepFrame
@@ -47,14 +49,15 @@ export function ReviewStep({
       title="Review"
       lead="This is what gets recorded, in one command."
       onBack={onBack}
+      busy={sending}
       onNext={onStart}
-      nextLabel={sending ? "Checking" : previewing ? "Check and plan" : "Get started"}
-      nextReady={!sending}
+      nextLabel={retryLabel(applied, previewing)}
+      nextReady={!recorded}
     >
       <ul className="m-0 list-none space-y-3 p-0">
         <Line label="Organization" value={answers.name} note={answers.key} given />
         <Line label="Harness" value={adapter?.label ?? answers.adapter} given />
-        <Line label="Agent" value={answers.agentName} note={`on ${adapter?.label ?? ""}`} given />
+        <Line label="Agent" value={answers.agentName} given />
         <Line
           label="Mission"
           value={answers.mission === "" ? "Not set" : answers.mission}
@@ -62,47 +65,77 @@ export function ReviewStep({
         />
       </ul>
 
-      {validation === null ? null : (
+      {applied === null ? null : (
         <div className="mt-6">
-          <CheckList
-            title="What the registry checked"
-            checks={checksOf(validation.checks)}
-            empty={<p className="m-0 text-sm text-muted">Nothing was checked.</p>}
-          />
-        </div>
-      )}
-      {outcome !== null && outcome.kind === "answered" && previewing ? (
-        <p className="mt-6 mb-0 rounded-md border border-line bg-card p-4 text-sm text-muted">
-          Checked and planned against the live registry. A preview does not write — on a tower that
-          already has a company this command would replace its whole definition.
-        </p>
-      ) : null}
-      {outcome === null || outcome.kind === "asking" || outcome.kind === "answered" ? null : (
-        <div className="mt-6">
-          <Outcome outcome={outcome} />
+          <Outcome applied={applied} />
         </div>
       )}
     </StepFrame>
   );
 }
 
-function Outcome({ outcome }: { readonly outcome: Answer<unknown> }): ReactElement | null {
-  switch (outcome.kind) {
+function Outcome({ applied }: { readonly applied: FirstRunOutcome }): ReactElement | null {
+  switch (applied.kind) {
+    case "asking":
+      return <Asking what="Creating this company" />;
+    case "previewed":
+      return (
+        <p className="m-0 rounded-md border border-line bg-card p-4 text-sm text-muted">
+          Checked and planned against the live registry. A preview does not write — on a tower that
+          already has a company this command would replace its whole definition.
+        </p>
+      );
     case "refused":
       return (
         <Refused
-          problem={outcome.problem}
+          problem={applied.problem}
           action="Nothing was created. Go back and change what it refused."
         />
       );
     case "unreachable":
-      return <Unreachable detail={outcome.detail} action="Nothing was created. Try again." />;
+      return (
+        <Unreachable
+          detail={applied.detail}
+          action="Whether anything was written is not known. Creating again reuses the same command, so it cannot write twice."
+        />
+      );
     case "malformed":
-      return <Malformed detail={outcome.detail} />;
-    case "asking":
+      return <Malformed detail={applied.detail} />;
     case "answered":
-      return null;
+      return <Receipt receipt={applied.value} />;
   }
+}
+
+/**
+ * The one thing this may not do is call a pending write done. The authored API
+ * answers `durability_pending` in the same shape as an acceptance, and only the
+ * accepted one created a company.
+ */
+function Receipt({ receipt }: { readonly receipt: CompanyBundleCommandResult }): ReactElement {
+  if (receipt.durability_state === "accepted") {
+    return (
+      <p className="m-0 flex items-center gap-2 text-sm text-fg">
+        <Mark name="done" /> Created — now at version <Mono>{receipt.active_version}</Mono>.
+      </p>
+    );
+  }
+  return (
+    <div className="rounded-md border border-amber/40 bg-amber/10 p-4">
+      <div className="flex items-start gap-2">
+        <Mark name="warn" className="mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="m-0 text-sm font-medium text-fg">
+            ctower took the command and has not confirmed it is durable.
+          </p>
+          <p className="mt-1.5 mb-0 text-xs text-muted">
+            The company is not created until it says so. Creating again reuses the same command
+            {commandKeySurvivesReload() ? "" : ", though not across a reload on this browser"}.
+          </p>
+          <Mono className="mt-2 block text-muted">{receipt.command_id}</Mono>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Line({
@@ -123,10 +156,25 @@ function Line({
       <span className={given ? "min-w-0 text-sm text-fg" : "min-w-0 text-sm text-muted"}>
         {value}
       </span>
-      {note === undefined || note.trim() === "on" ? null : (
-        <Mono className="text-muted">{note}</Mono>
-      )}
+      {note === undefined ? null : <Mono className="text-muted">{note}</Mono>}
       {given ? null : <Chip>skipped</Chip>}
     </li>
   );
+}
+
+/**
+ * The button says what pressing it does now. After something that did not
+ * record, that is a second try of the same command — never a new one.
+ */
+function retryLabel(applied: FirstRunOutcome | null, previewing: boolean): string {
+  if (applied?.kind === "asking") {
+    return "Working";
+  }
+  if (previewing) {
+    return applied === null ? "Check and plan" : "Check again";
+  }
+  if (applied === null || applied.kind === "answered") {
+    return "Get started";
+  }
+  return "Try again";
 }

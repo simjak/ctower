@@ -25,6 +25,7 @@ export function StepFrame({
   onSkip,
   skipLabel,
   action,
+  busy = false,
 }: {
   readonly step: number;
   readonly total: number;
@@ -40,6 +41,12 @@ export function StepFrame({
   readonly skipLabel?: string | undefined;
   /** A control this step owns whose meaning belongs to the form inside it. */
   readonly action?: ReactNode;
+  /**
+   * Work is in flight. Leaving is fenced rather than aborted: a command already
+   * sent cannot be recalled by walking backwards, and a screen that lets the
+   * operator walk away mid-write is a screen that lies about what happened.
+   */
+  readonly busy?: boolean;
 }): ReactElement {
   return (
     <div className="mx-auto w-[min(640px,100%)] px-6 py-16">
@@ -76,18 +83,18 @@ export function StepFrame({
           <span className="flex-1" />
         ) : (
           <>
-            <Button variant="quiet" onClick={onBack}>
+            <Button variant="quiet" disabled={busy} onClick={onBack}>
               <ArrowLeft /> Back
             </Button>
             <span className="flex-1" />
           </>
         )}
         {onSkip === undefined || skipLabel === undefined ? null : (
-          <Button variant="quiet" onClick={onSkip}>
+          <Button variant="quiet" disabled={busy} onClick={onSkip}>
             {skipLabel}
           </Button>
         )}
-        <Button variant="primary" disabled={!nextReady} onClick={onNext}>
+        <Button variant="primary" disabled={busy || !nextReady} onClick={onNext}>
           {nextLabel} <ArrowRight />
         </Button>
       </div>

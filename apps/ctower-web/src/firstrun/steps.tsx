@@ -17,6 +17,12 @@ interface StepProps {
   readonly onAnswers: (answers: Answers) => void;
   readonly onNext: () => void;
   readonly onBack?: (() => void) | undefined;
+  /**
+   * Something the operator started is still in flight. Every control that could
+   * change the draft or leave the step goes inert until it settles, so no answer
+   * can arrive for a question that has since been edited.
+   */
+  readonly busy: boolean;
 }
 
 const TOTAL = 5;
@@ -26,6 +32,7 @@ export function NameStep({
   answers,
   onAnswers,
   onNext,
+  busy,
   keyCheck,
 }: StepProps & { readonly keyCheck: Answer<unknown> | null }): ReactElement {
   const checking = keyCheck?.kind === "asking";
@@ -37,13 +44,15 @@ export function NameStep({
       title="Name your organization"
       lead="What should we call your team or company?"
       onNext={onNext}
+      busy={busy}
       nextLabel={checking ? "Checking" : "Next"}
-      nextReady={answers.name.trim().length > 0 && answers.key.trim().length > 2 && !checking}
+      nextReady={answers.name.trim().length > 0 && answers.key.trim().length > 2}
     >
       <Label htmlFor="org-name">Name</Label>
       <Input
         id="org-name"
         className="h-11 text-md"
+        disabled={busy}
         value={answers.name}
         placeholder="Acme Corp"
         onChange={(event): void => {
@@ -59,6 +68,7 @@ export function NameStep({
       <Input
         id="org-key"
         className="h-11 font-mono text-sm"
+        disabled={busy}
         value={answers.key}
         placeholder="acme-corp"
         spellCheck={false}
@@ -82,7 +92,7 @@ export function NameStep({
 }
 
 /** Step 2 — the runtime the team runs on, chosen before the staff. */
-export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): ReactElement {
+export function HarnessStep({ answers, onAnswers, onNext, onBack, busy }: StepProps): ReactElement {
   const adapter = adapterFor(answers.adapter);
   return (
     <StepFrame
@@ -93,6 +103,7 @@ export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): 
       lead="Pick the runtime your team runs on. Your first agent is created on it."
       onBack={onBack}
       onNext={onNext}
+      busy={busy}
       nextLabel="Connect"
       nextReady={adapter !== undefined}
       /* The lifted test button: this step owns the control, the harness form
@@ -110,6 +121,7 @@ export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): 
           <button
             key={entry.key}
             type="button"
+            disabled={busy}
             aria-pressed={answers.adapter === entry.key}
             onClick={(): void => {
               onAnswers({ ...answers, adapter: entry.key });
@@ -156,7 +168,7 @@ export function HarnessStep({ answers, onAnswers, onNext, onBack }: StepProps): 
 }
 
 /** Step 3 — the first agent, created on the harness chosen in step 2. */
-export function AgentStep({ answers, onAnswers, onNext, onBack }: StepProps): ReactElement {
+export function AgentStep({ answers, onAnswers, onNext, onBack, busy }: StepProps): ReactElement {
   const adapter = adapterFor(answers.adapter);
   return (
     <StepFrame
@@ -172,6 +184,7 @@ export function AgentStep({ answers, onAnswers, onNext, onBack }: StepProps): Re
       }
       onBack={onBack}
       onNext={onNext}
+      busy={busy}
       nextLabel="Next"
       nextReady={answers.agentName.trim().length > 0}
     >
@@ -186,6 +199,7 @@ export function AgentStep({ answers, onAnswers, onNext, onBack }: StepProps): Re
       <Input
         id="agent-name"
         className="h-11 text-md"
+        disabled={busy}
         value={answers.agentName}
         onChange={(event): void => {
           onAnswers({ ...answers, agentName: event.target.value });
@@ -217,6 +231,7 @@ export function MissionStep({
   onNext,
   onBack,
   onSkip,
+  busy,
 }: StepProps & { readonly onSkip: () => void }): ReactElement {
   return (
     <StepFrame
@@ -232,6 +247,7 @@ export function MissionStep({
       }
       onBack={onBack}
       onNext={onNext}
+      busy={busy}
       nextLabel="Confirm mission"
       nextReady={answers.mission.trim().length > 0}
       onSkip={onSkip}
@@ -241,6 +257,7 @@ export function MissionStep({
       <Input
         id="mission"
         className="h-11 text-md"
+        disabled={busy}
         value={answers.mission}
         placeholder="What is your team trying to achieve?"
         onChange={(event): void => {
@@ -252,7 +269,8 @@ export function MissionStep({
           <button
             key={suggestion.mission}
             type="button"
-            className="chip cursor-pointer hover:bg-raised"
+            disabled={busy}
+            className="chip cursor-pointer hover:bg-raised disabled:opacity-55"
             onClick={(): void => {
               onAnswers({
                 ...answers,
@@ -276,6 +294,7 @@ export function MissionStep({
           <Input
             id="criterion"
             className="h-11 text-sm"
+            disabled={busy}
             value={answers.criterion}
             placeholder="One thing that proves it."
             onChange={(event): void => {
