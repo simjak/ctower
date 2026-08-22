@@ -6,7 +6,8 @@ import type {
   VersionedComponent,
 } from "@ctower/client";
 import { canonicalDigest } from "../../mint/digest";
-import { idOf, isFileKind, strings, text } from "./read";
+import { pointerTo, reaimedPayload } from "./pointers";
+import { closureOf, idOf, isFileKind, strings, text } from "./read";
 import type { FileKind } from "./read";
 
 /**
@@ -96,34 +97,23 @@ export function documentWith(base: CompanyBundleDocument, draft: FileDraft): Com
 /**
  * Everything this edit moves, with the bytes each one ends up carrying.
  *
- * The set is the edited file plus every component that pins something already
- * moving, walked to a fixed point; a component moves at most once, so the loop
- * settles. Each moved payload has its `key@revision` pointers re-aimed at what
- * those components now are, which is why a digest is computed here rather than
+ * The set is `closureOf` — the edited file plus every component that names it,
+ * through its declared pins *and* through the `key@revision` pointers its
+ * payload carries. Each moved payload has those pointers re-aimed at what those
+ * components now are, which is why a digest is computed here rather than
  * carried: an agent profile that now speaks as revision 2 is different bytes.
  */
 function movesFor(base: CompanyBundleDocument, draft: FileDraft): ReadonlyMap<string, Move> {
   const edited = idOf(draft.base.component);
-  const moving = new Map<string, CompanyBundleResource>([[edited, draft.base]]);
-  let found = true;
-  while (found) {
-    found = false;
-    for (const resource of base.resources) {
-      const pins = resource.component.compatibility.requires.some((required) =>
-        moving.has(idOf(required))
-      );
-      if (pins && !moving.has(idOf(resource.component))) {
-        moving.set(idOf(resource.component), resource);
-        found = true;
-      }
-    }
-  }
+  const moving = new Map<string, CompanyBundleResource>(
+    closureOf(base, draft.base).map((resource) => [idOf(resource.component), resource])
+  );
 
   const renames = renamesFor(moving);
   const moves = new Map<string, Move>();
   for (const [id, resource] of moving) {
     const source = id === edited ? draft.payload : resource.payload;
-    const payload = reaimed(source, renames);
+    const payload = reaimedPayload(source, renames);
     moves.set(id, {
       base: resource,
       payload,
@@ -135,51 +125,18 @@ function movesFor(base: CompanyBundleDocument, draft: FileDraft): ReadonlyMap<st
 }
 
 /**
- * The payload pointers this move invalidates: `key@revision` to `key@revision`.
- *
- * A payload names a component by key and revision and never by kind, so a key
- * held by two moving components could not be re-aimed without guessing which
- * one a string meant. It is not guessed: an ambiguous key is left exactly as it
- * was recorded, and the plan shows a pointer that did not move.
+ * The pointers this move invalidates: one entry per moving component, keyed by
+ * kind so a persona and an agent profile sharing a key re-aim independently.
  */
 function renamesFor(
   moving: ReadonlyMap<string, CompanyBundleResource>
 ): ReadonlyMap<string, string> {
-  const byKey = new Map<string, CompanyBundleResource[]>();
-  for (const resource of moving.values()) {
-    byKey.set(resource.component.key, [...(byKey.get(resource.component.key) ?? []), resource]);
-  }
-  const renames = new Map<string, string>();
-  for (const [key, held] of byKey) {
-    const only = held.length === 1 ? held[0] : undefined;
-    if (only !== undefined) {
-      renames.set(
-        `${key}@${String(only.component.revision)}`,
-        `${key}@${String(only.component.revision + 1)}`
-      );
-    }
-  }
-  return renames;
-}
-
-/** One payload with every `key@revision` string it holds re-aimed. */
-function reaimed(
-  payload: Readonly<Record<string, unknown>>,
-  renames: ReadonlyMap<string, string>
-): Readonly<Record<string, unknown>> {
-  return Object.fromEntries(
-    Object.entries(payload).map(([field, value]) => [field, reaimedValue(value, renames)])
+  return new Map(
+    [...moving.values()].map((resource) => [
+      pointerTo(resource.component),
+      `${resource.component.key}@${String(resource.component.revision + 1)}`,
+    ])
   );
-}
-
-function reaimedValue(value: unknown, renames: ReadonlyMap<string, string>): unknown {
-  if (typeof value === "string") {
-    return renames.get(value) ?? value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item: unknown) => reaimedValue(item, renames));
-  }
-  return value;
 }
 
 /**
