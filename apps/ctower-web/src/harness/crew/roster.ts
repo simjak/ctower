@@ -29,17 +29,24 @@ export interface CrewRow {
 }
 
 const PROFILE_SLOT = "agent_profile";
+const PROJECT_KIND = "project";
 const PROJECT_SUBJECT = "project:";
 
 /**
  * The key an address can be issued against.
  *
- * `SeatCredentialIssueRequest.project_key` is narrower than an assignment
- * subject — no dots, no underscores — so a project the company records may still
- * be unable to carry a seat. Offering one would be offering an address ctower
- * refuses at the boundary.
+ * `SeatCredentialIssueRequest.project_key` is narrower than either place the
+ * company record names a project — no dots — so a project this company records
+ * may still be unable to carry a seat. That is the record's own shape and the
+ * screen shows it rather than dropping the row.
  */
 const ADDRESSABLE = /^[a-z][a-z0-9-]{2,63}$/;
+
+export interface ProjectOption {
+  readonly key: string;
+  /** Whether `SeatCredentialIssueRequest.project_key` accepts this key at all. */
+  readonly addressable: boolean;
+}
 
 export function crewsOf(
   document: CompanyBundleDocument,
@@ -59,13 +66,30 @@ export function crewsOf(
     });
 }
 
-/** The projects that can carry an address, as the record spells them. */
-export function addressableProjects(document: CompanyBundleDocument): readonly string[] {
-  const keys = document.assignments
+/**
+ * Every project this company records, as the record spells it.
+ *
+ * A company names a project in two places and they are not the same string: a
+ * `project` component carries the document's key, and a `project:` subject
+ * carries the key work is filed under. A project created on this screen's own
+ * harness exists only as the first, so reading either one alone hides projects
+ * that are really there — which is how a company with a brand new project ends
+ * up being told it has none.
+ *
+ * Neither is checked by ctower. `issueSeatCredential` stores `project_key` on
+ * the seat and validates nothing else about it, so this list is what the record
+ * says exists and not a promise that an address will reach anything.
+ */
+export function recordedProjects(document: CompanyBundleDocument): readonly ProjectOption[] {
+  const declared = document.resources
+    .filter((resource) => resource.component.kind === PROJECT_KIND)
+    .map((resource) => resource.component.key);
+  const filedUnder = document.assignments
     .filter((assignment) => assignment.subject.startsWith(PROJECT_SUBJECT))
-    .map((assignment) => assignment.subject.slice(PROJECT_SUBJECT.length))
-    .filter((key) => ADDRESSABLE.test(key));
-  return [...new Set(keys)].sort();
+    .map((assignment) => assignment.subject.slice(PROJECT_SUBJECT.length));
+  return [...new Set([...declared, ...filedUnder])]
+    .sort()
+    .map((key) => ({ key, addressable: ADDRESSABLE.test(key) }));
 }
 
 function splitSubject(subject: string): { readonly prefix: string; readonly name: string } {

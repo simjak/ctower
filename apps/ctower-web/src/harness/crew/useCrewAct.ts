@@ -98,7 +98,7 @@ export function useCrewAct(
         ...held,
         name: "",
         seatKey: "",
-        credentialRef: "",
+        refLocator: "",
         fingerprint: "",
       }));
     }
