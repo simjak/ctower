@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <!-- Two families, total: Geist carries the interface, JetBrains Mono carries
+         what machines own. bunny.net now; self-hosted at the production gate. -->
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link
+      href="https://fonts.bunny.net/css?family=geist:400,500,600,700|jetbrains-mono:400,500,600"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>ctower</title>
+    <script>
+      // Light is the default. The stored choice is applied before first paint so
+      // a dark-theme reader never gets a white flash on reload.
+      try {
+        if (window.localStorage.getItem("ctower-theme") === "dark") {
+          document.documentElement.classList.add("theme-dark");
+        }
+      } catch {
+        /* a blocked storage partition must not break first paint */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

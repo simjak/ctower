@@ -1,0 +1,32 @@
+{
+  "name": "@ctower/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@ctower/client": "workspace:*",
+    "@noble/hashes": "^2.3.0",
+    "canonicalize": "^4.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.33.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": ">=24 <25",
+    "@types/react": ">=19.2 <20",
+    "@types/react-dom": ">=19.2 <20",
+    "@vitejs/plugin-react": ">=6.1 <7",
+    "tailwindcss": "4.3.3",
+    "vite": ">=8.2 <9"
+  }
+}

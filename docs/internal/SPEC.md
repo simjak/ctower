@@ -3774,8 +3774,10 @@ source reference is that inbox thread, and whose initial custody follows the ord
 policy, then records the same one-time thread-to-ticket link. Creation and promotion events, ticket state,
 command result, outbox rows, subject links, and both navigation directions commit or refuse together. There
 is no classifier, title truncation, or compatibility path. The retired `ctower-ui` dogfood boundary and its
-browser controls are not current implementation or evidence; a future product browser remains separately
-deferred to CT-I2-005/I2.4.
+browser controls are not current implementation or evidence; a future product browser remains separately deferred to CT-I2-005/I2.4, narrowed by
+D77: the operator-approved ctower-web first-run surface (wizard, org switcher, Company
+page, honest-unbuilt shell) ships feature by feature behind the operator's explicit
+approval without activating I2.4 or any browser evidence suite.
 
 ### Mission-control notification transport
 
