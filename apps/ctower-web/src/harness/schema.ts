@@ -35,6 +35,7 @@ export interface Adapter {
   readonly key: string;
   readonly label: string;
   readonly blurb: string;
+  /** At most one adapter carries this: a field of equals recommends nothing. */
   readonly recommended: boolean;
   /** What this adapter declares as its settings. Empty is a real answer. */
   readonly config: readonly FieldSchema[];
@@ -53,7 +54,7 @@ export const ADAPTERS: readonly Adapter[] = [
     recommended: true,
     config: [],
   },
-  { key: "codex", label: "Codex", blurb: "Codex CLI harness", recommended: true, config: [] },
+  { key: "codex", label: "Codex", blurb: "Codex CLI harness", recommended: false, config: [] },
   {
     key: "hermes",
     label: "Hermes",
