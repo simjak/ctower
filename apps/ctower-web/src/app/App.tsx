@@ -7,7 +7,6 @@ import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { InboxPage } from "../inbox/InboxPage";
-import { ProjectsPage } from "../projects/ProjectsPage";
 import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
 import { destinationFromSearch } from "../shell/destinations";
@@ -136,7 +135,7 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Here here={here} seed={seed.value} onApplied={created} onGo={go} />
+          <Here here={here} seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>
@@ -163,23 +162,12 @@ function Here({
   here,
   seed,
   onApplied,
-  onGo,
 }: {
   readonly here: DestinationKey;
   readonly seed: Extract<Seed, { readonly kind: "exported" }>;
   readonly onApplied: () => void;
-  readonly onGo: (key: DestinationKey) => void;
 }): ReactElement {
   switch (here) {
-    case "projects":
-      return (
-        <ProjectsPage
-          result={seed.result}
-          onGoCompany={(): void => {
-            onGo("company");
-          }}
-        />
-      );
     case "requests":
       return <RequestsPage />;
     case "inbox":
@@ -197,6 +185,7 @@ function Here({
     case "lanes":
     case "tickets":
     case "harnesses":
+    case "projects":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
 }
