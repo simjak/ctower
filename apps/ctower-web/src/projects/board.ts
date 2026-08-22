@@ -31,7 +31,7 @@ export const LANE_WORD: Readonly<Record<BoardLane, string>> = {
 };
 
 /**
- * The lane's own state, in the six glyphs the CLI prints.
+ * The lane's own state, in four of the six glyphs the CLI prints.
  *
  * Waiting is idle, both ends of a review are work moving, a blocker is parked
  * and not dead, and only `complete` is proven. No lane is ever `⛔`: a refusal

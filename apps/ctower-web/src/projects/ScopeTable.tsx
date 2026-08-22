@@ -10,7 +10,8 @@ import type { ProjectScope } from "./read";
 /**
  * The portfolio, one row per project.
  *
- * Two numbers come from the bundle and land with the page; three come from that
+ * One number comes from the bundle — `Scoped`, how many components the company
+ * records under this project — and lands with the page; three come from that
  * project's own board read and land when it lands. A row whose board has not
  * answered says which of the four things happened to it instead of showing a
  * blank where a count goes — a missing number and a zero are different facts.
