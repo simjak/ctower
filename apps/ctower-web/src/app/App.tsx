@@ -1,5 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
+import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
+import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { Shell } from "../shell/Shell";
@@ -25,6 +27,7 @@ import { previewFromLocation, seedForPreview } from "./preview";
  * should be answering a single question, so the wizard takes the whole screen.
  */
 export function App(): ReactElement {
+  const [admitted, setAdmitted] = useState(sessionToken() !== null);
   const [reloadKey, setReloadKey] = useState(0);
   const real = useSeed(reloadKey);
   const preview = previewFromLocation(window.location.search);
@@ -35,6 +38,30 @@ export function App(): ReactElement {
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
   }, []);
+
+  // A restarted server mints a new token, so the one this tab holds stops
+  // working mid-session. The chokepoint drops it and says so; the gate comes
+  // back rather than every screen quietly failing to read.
+  useEffect((): (() => void) => {
+    const refused = (): void => {
+      setAdmitted(false);
+    };
+    window.addEventListener(SESSION_REFUSED_EVENT, refused);
+    return (): void => {
+      window.removeEventListener(SESSION_REFUSED_EVENT, refused);
+    };
+  }, []);
+
+  if (!admitted) {
+    return (
+      <Admission
+        onAdmitted={(): void => {
+          setAdmitted(true);
+          setReloadKey((count) => count + 1);
+        }}
+      />
+    );
+  }
 
   if (seed.kind === "answered" && seed.value.kind === "template") {
     return (

@@ -30,10 +30,26 @@
  *
  * A permanent status is *returned*, not thrown: the generated client decodes
  * `application/problem+json` into a typed refusal, and a refusal is an answer.
- * Only exhaustion and a refused rule leave here as errors.
+ * Only exhaustion, a refused rule, and a refusal by the serving process itself
+ * leave here as errors.
+ *
+ * That last one is why this module also knows about the session token. The
+ * development server holds the operator credential, so it admits nobody without
+ * the token it printed at startup; this is where that token is attached and
+ * where its refusal is turned into a typed outcome instead of a mystery `401`.
+ * The token is admission to that process and is stripped before anything is
+ * proxied — it is never an API bearer and never travels as one.
  */
 
 import { recordExhaustion } from "./observe";
+import {
+  ADMISSION_PATH,
+  forgetSession,
+  GATE_HEADER,
+  keepSession,
+  SESSION_HEADER,
+  sessionToken,
+} from "./session";
 
 export type FailureClass = "transient" | "permanent";
 
@@ -68,6 +84,14 @@ export const BOUNDS: Bounds = {
   baseDelayMs: 250,
   maxDelayMs: 2_000,
 };
+
+/** The server that serves this app does not admit this browser. */
+export class SessionRefused extends Error {
+  public constructor() {
+    super("this server no longer admits this browser's session token");
+    this.name = "SessionRefused";
+  }
+}
 
 /** The bounded policy refused to send at all. */
 export class ReadRefused extends Error {
@@ -125,6 +149,7 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
   return async (input, init): Promise<Response> => {
     const request = new Request(input, init);
     refuseUnlessRuleHolds(rule, request);
+    admit(request);
 
     const startedAt = performance.now();
     let last: ClassifiedFailure = {
@@ -144,6 +169,7 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
       }
       const answer = await attemptOnce(request, budget);
       if (answer.response !== null) {
+        refuseIfGated(answer.response);
         return answer.response;
       }
       last = answer.failure;
@@ -168,6 +194,55 @@ const NO_FAILURE: ClassifiedFailure = {
   detail: "the API answered",
   status: null,
 };
+
+/**
+ * Present this browser's admission token to the server that holds the operator
+ * credential. It is the server's own and goes no further: the server strips it
+ * before proxying, so it is never an API bearer and never travels as one.
+ */
+function admit(request: Request): void {
+  const token = sessionToken();
+  if (token !== null && !request.headers.has(SESSION_HEADER)) {
+    request.headers.set(SESSION_HEADER, token);
+  }
+}
+
+/**
+ * The server refused on its own behalf and the API was never asked, so this is
+ * neither a refusal by ctower nor a contract fault. Retrying would only spend
+ * attempts on a token that is now wrong — a restarted server mints a new one —
+ * so the held token is dropped and the screen is told to ask for it again.
+ */
+function refuseIfGated(response: Response): void {
+  if (response.headers.get(GATE_HEADER) !== "refused") {
+    return;
+  }
+  forgetSession();
+  throw new SessionRefused();
+}
+
+/**
+ * Offer a token to the server before anything is built on it, so a mistyped
+ * paste is answered on the gate screen rather than as a mystery refusal four
+ * screens later. Bounded like every other crossing here.
+ */
+export async function probeAdmission(token: string): Promise<boolean> {
+  const offered = token.trim();
+  if (offered === "") {
+    return false;
+  }
+  const probe = boundedFetch({ kind: "safe-read" });
+  try {
+    const response = await probe(ADMISSION_PATH, { headers: { [SESSION_HEADER]: offered } });
+    if (!response.ok) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+  keepSession(offered);
+  return true;
+}
 
 async function attemptOnce(request: Request, budgetMs: number): Promise<Attempt> {
   try {

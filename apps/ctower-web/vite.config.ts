@@ -68,7 +68,7 @@ function admission(): Plugin {
   return {
     name: "ctower-web-admission",
     apply: "serve",
-    configureServer(server) {
+    configureServer(server): void {
       required("CTOWER_WEB_API_TOKEN");
       expected = required("CTOWER_WEB_SESSION_TOKEN");
       server.middlewares.use((request, response, next) => {
@@ -91,7 +91,7 @@ function admission(): Plugin {
         }
         // Admission ends here. The token is this server's own and travels no
         // further; the API sees the operator credential and nothing else.
-        delete request.headers[SESSION_HEADER];
+        Reflect.deleteProperty(request.headers, SESSION_HEADER);
         if (path === CHECK_PATH) {
           response.statusCode = 204;
           response.end();

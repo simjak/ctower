@@ -1,6 +1,6 @@
 import { CtowerClient, CtowerProblemError } from "@ctower/client";
 import type { Problem } from "@ctower/client";
-import { boundedFetch, ReadExhausted, ReadRefused } from "./bounded";
+import { boundedFetch, ReadExhausted, ReadRefused, SessionRefused } from "./bounded";
 import type { RetryRule } from "./bounded";
 import { telemetry } from "./telemetry";
 
@@ -78,6 +78,11 @@ export async function ask<T>(call: () => Promise<T>): Promise<Answer<T>> {
     }
     if (error instanceof ReadRefused) {
       return { kind: "unreachable", detail: error.detail };
+    }
+    // The serving process refused before the API was asked. Nothing was
+    // written, nothing was read, and the gate screen is already coming back.
+    if (error instanceof SessionRefused) {
+      return { kind: "unreachable", detail: error.message };
     }
     if (error instanceof TypeError) {
       return { kind: "malformed", detail: error.message };
