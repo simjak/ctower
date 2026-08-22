@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import type { ReactElement } from "react";
 import type { BoardCard, CompanyBundleDocument } from "@ctower/client";
 import type { Answer } from "../api/client";
+import { Hint } from "../ui/form";
 import { Button, Card, CardBody, Mono, PageHead } from "../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { usePlace } from "./address";
@@ -13,6 +14,17 @@ import { Standing } from "./Standing";
 import { TicketDetail } from "./TicketDetail";
 import { TicketTable } from "./TicketTable";
 import { workProjectsIn } from "./projects";
+
+/**
+ * An empty board and an unknown project are the same answer.
+ *
+ * `getBoard` returns 200 with no cards for a project key the work plane never
+ * heard of, exactly as it does for one that simply has no ticket, and no
+ * declared operation tells the two apart. So this page never reports one as
+ * the other, and it never offers a write into an address it cannot show exists.
+ */
+const NO_CARDS =
+  "The board answers 200 with no cards for a project the work plane does not know, exactly as it does for one that has no ticket raised on it. No declared read tells the two apart.";
 
 /**
  * The Tickets page: the list, one ticket, and raising one.
@@ -31,6 +43,7 @@ export function TicketsPage({
   const [place, go] = usePlace();
   const [reloadKey, setReloadKey] = useState(0);
   const board = useBoard(place.project, reloadKey);
+  const scopes = workProjectsIn(document);
   const reread = useCallback((): void => {
     setReloadKey((count) => count + 1);
   }, []);
@@ -38,7 +51,7 @@ export function TicketsPage({
   if (place.project === null) {
     return (
       <ProjectChoice
-        projects={workProjectsIn(document)}
+        projects={scopes}
         onChoose={(project): void => {
           go({ project, ticket: null, raising: false });
         }}
@@ -47,6 +60,9 @@ export function TicketsPage({
   }
 
   const cards = board.kind === "answered" ? board.value.cards : [];
+  // A ticket on the board, or a component scoped to this key, is a recorded
+  // fact that the project exists. Neither is an answer's absence of cards.
+  const exists = cards.length > 0 || scopes.includes(place.project);
 
   if (place.raising) {
     return (
@@ -98,8 +114,10 @@ export function TicketsPage({
         }
       >
         {/* A board that would not answer is not a board a ticket can be raised
-            on, and an action that can only refuse is worse than no action. */}
-        {board.kind === "answered" ? (
+            on, and an action that can only refuse is worse than no action.
+            Neither is a project nothing here records: raising a ticket into an
+            address this console cannot show exists is a write on a guess. */}
+        {board.kind === "answered" && exists ? (
           <Button
             variant="primary"
             onClick={(): void => {
@@ -113,8 +131,13 @@ export function TicketsPage({
       <List
         board={board}
         cards={cards}
+        projectKey={place.project}
+        recorded={scopes.includes(place.project)}
         onOpen={(ticket): void => {
           go({ project: place.project, ticket, raising: false });
+        }}
+        onChoose={(): void => {
+          go({ project: null, ticket: null, raising: false });
         }}
       />
     </>
@@ -124,11 +147,18 @@ export function TicketsPage({
 function List({
   board,
   cards,
+  projectKey,
+  recorded,
   onOpen,
+  onChoose,
 }: {
   readonly board: Answer<unknown>;
   readonly cards: readonly BoardCard[];
+  readonly projectKey: string;
+  /** Whether a component in this company declares itself scoped to this key. */
+  readonly recorded: boolean;
   readonly onOpen: (ticketId: string) => void;
+  readonly onChoose: () => void;
 }): ReactElement {
   switch (board.kind) {
     case "asking":
@@ -145,15 +175,51 @@ function List({
     case "malformed":
       return <Malformed detail={board.detail} />;
     case "answered":
-      return cards.length === 0 ? <Empty /> : <TicketTable cards={cards} onOpen={onOpen} />;
+      return cards.length === 0 ? (
+        <Empty projectKey={projectKey} recorded={recorded} onChoose={onChoose} />
+      ) : (
+        <TicketTable cards={cards} onOpen={onOpen} />
+      );
   }
 }
 
-function Empty(): ReactElement {
+/**
+ * A board that answered with nothing, said as the two different facts it can
+ * be. A key this company records is a project with no ticket yet; a key nothing
+ * here records is a project this console cannot show exists at all, and the
+ * only honest next move is to choose one it can.
+ */
+function Empty({
+  projectKey,
+  recorded,
+  onChoose,
+}: {
+  readonly projectKey: string;
+  readonly recorded: boolean;
+  readonly onChoose: () => void;
+}): ReactElement {
   return (
     <Card>
       <CardBody>
-        <p className="m-0 text-sm text-muted">No ticket has been raised on this project yet.</p>
+        {recorded ? (
+          <p className="m-0 flex items-center gap-1.5 text-sm text-muted">
+            No ticket has been raised on this project yet.
+            <Hint text={NO_CARDS} />
+          </p>
+        ) : (
+          <>
+            <p className="m-0 flex items-center gap-1.5 text-sm text-fg">
+              <span>
+                This board answered with no ticket, and nothing in this company is scoped to{" "}
+                <Mono>{projectKey}</Mono>.
+              </span>
+              <Hint text={NO_CARDS} />
+            </p>
+            <Button className="mt-3" onClick={onChoose}>
+              Choose a project
+            </Button>
+          </>
+        )}
       </CardBody>
     </Card>
   );
