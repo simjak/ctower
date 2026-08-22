@@ -190,7 +190,7 @@ function Here({
     case "tickets":
       return <TicketsPage document={seed.result.bundle} />;
     case "board":
-      return <BoardPage definition={seed.result.bundle} />;
+      return <BoardPage company={seed.result.bundle} />;
     case "workflows":
       return <WorkflowsPage seed={seed.result} onApplied={onApplied} />;
     case "admin":
