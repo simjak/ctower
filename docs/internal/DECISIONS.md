@@ -3443,3 +3443,11 @@ any browser-e2e or dogfood suite (D75 stands); it does not move `active_phase` o
 feature lands only behind the operator's explicit walk-and-approve, under the same
 review and release gates as every other change, until CT-I2-005 activation supersedes
 this carve-out.
+
+## D78 — ctower remains on 0.x until the full UI exists (operator, 2026-08-22)
+
+The standing ruling is that ctower remains on 0.x until the full UI exists. “Full UI built”
+is the trigger for the 1.0.0 conversation; it is not a conclusion that Release Please may
+infer from a breaking-change trailer. Release tooling enforces this ruling so the constraint
+cannot be lost to a mechanical inference: while the version is below 1.0.0, a breaking change
+bumps the minor version rather than proposing 1.0.0.
