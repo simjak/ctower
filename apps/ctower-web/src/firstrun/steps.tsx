@@ -1,9 +1,10 @@
 import { Bot, Building2, Cpu, Target } from "lucide-react";
 import type { ReactElement } from "react";
-import { Button, Chip, Input, Mono } from "../ui/primitives";
+import { Button, Chip, Input } from "../ui/primitives";
 import { cn } from "../ui/cn";
 import { CheckList } from "../harness/CheckList";
 import { ConfigFields } from "../harness/ConfigFields";
+import { Field } from "../ui/form";
 import { ADAPTERS, adapterFor } from "../harness/schema";
 import { suggestKey } from "./answers";
 import type { Answers } from "./answers";
@@ -254,20 +255,24 @@ export function MissionStep({
         ))}
       </div>
 
-      <Label htmlFor="criterion">How you will know it worked</Label>
-      <Input
-        id="criterion"
-        className="h-11 text-sm"
-        value={answers.criterion}
-        placeholder="One thing that proves it."
-        onChange={(event): void => {
-          onAnswers({ ...answers, criterion: event.target.value });
-        }}
-      />
-      <p className="mt-2 mb-0 text-xs text-muted">
-        This becomes the goal document&apos;s single success criterion. <Mono>ctower.goal/v1</Mono>{" "}
-        requires one.
-      </p>
+      <div className="mt-4">
+        {/* D9: the reason a criterion is mandatory is rationale, so it sits
+            behind the one-line disclosure rather than on the screen. */}
+        <Field
+          label="How you will know it worked"
+          hint="The goal document this writes requires exactly one success criterion."
+        >
+          <Input
+            id="criterion"
+            className="h-11 text-sm"
+            value={answers.criterion}
+            placeholder="One thing that proves it."
+            onChange={(event): void => {
+              onAnswers({ ...answers, criterion: event.target.value });
+            }}
+          />
+        </Field>
+      </div>
     </StepFrame>
   );
 }
