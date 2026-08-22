@@ -27,7 +27,7 @@ export function CrewRail({
   readonly onSelect: (subject: string) => void;
 }): ReactElement {
   return (
-    <nav aria-label="Crews" className="min-h-0 overflow-y-auto py-2">
+    <nav aria-label="Crews" className="relative min-h-0 overflow-y-auto py-2">
       {projects.map((project) => (
         <div key={project.key}>
           <div className="flex items-baseline gap-2 px-3 pt-3 pb-1">
