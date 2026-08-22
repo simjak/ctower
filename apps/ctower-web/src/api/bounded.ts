@@ -11,9 +11,12 @@
  *
  * The five required properties, in order:
  *
- * 1. Concrete bounds — every attempt carries `attemptTimeoutMs`; the operation
- *    carries a finite `maxAttempts` and a finite `maxElapsedMs` deadline, and a
- *    backoff sleep is clamped to what is left of that deadline.
+ * 1. Concrete bounds — every attempt carries `attemptTimeoutMs` *or the rest of
+ *    the deadline, whichever is smaller*; the operation carries a finite
+ *    `maxAttempts` and a finite `maxElapsedMs` deadline, and both the attempt
+ *    and the backoff sleep are clamped to what is left of it. Clamping only the
+ *    sleep is not a wall bound: an attempt starting with a small remainder
+ *    would run the full per-attempt timeout past the advertised deadline.
  * 2. Exponential backoff with jitter — capped at `maxDelayMs`, full-jittered,
  *    never longer than the remaining deadline.
  * 3. A typed retry predicate — `classify` separates transient from permanent by
@@ -111,20 +114,27 @@ export function boundedFetch(rule: RetryRule): typeof globalThis.fetch {
     };
 
     for (let attempt = 1; attempt <= BOUNDS.maxAttempts; attempt += 1) {
-      const answer = await attemptOnce(request);
+      // The deadline binds the attempt, not just the gap between attempts. An
+      // attempt that starts with 10ms left may not install a 8s timeout and run
+      // past the wall bound this policy advertises, so the per-attempt budget is
+      // whichever of `attemptTimeoutMs` and the remaining deadline is smaller.
+      const budget = Math.min(BOUNDS.attemptTimeoutMs, BOUNDS.maxElapsedMs - since(startedAt));
+      if (budget <= 0) {
+        throw new ReadExhausted(attempt - 1, Math.round(since(startedAt)), last);
+      }
+      const answer = await attemptOnce(request, budget);
       if (answer.response !== null) {
         return answer.response;
       }
       last = answer.failure;
-      const elapsed = performance.now() - startedAt;
-      const remaining = BOUNDS.maxElapsedMs - elapsed;
+      const remaining = BOUNDS.maxElapsedMs - since(startedAt);
       if (attempt === BOUNDS.maxAttempts || remaining <= 0) {
-        throw new ReadExhausted(attempt, Math.round(elapsed), last);
+        throw new ReadExhausted(attempt, Math.round(since(startedAt)), last);
       }
       await sleep(Math.min(backoffFor(attempt), remaining));
     }
 
-    throw new ReadExhausted(BOUNDS.maxAttempts, Math.round(performance.now() - startedAt), last);
+    throw new ReadExhausted(BOUNDS.maxAttempts, Math.round(since(startedAt)), last);
   };
 }
 
@@ -139,10 +149,10 @@ const NO_FAILURE: ClassifiedFailure = {
   status: null,
 };
 
-async function attemptOnce(request: Request): Promise<Attempt> {
+async function attemptOnce(request: Request, budgetMs: number): Promise<Attempt> {
   try {
     const response = await fetch(request.clone(), {
-      signal: AbortSignal.timeout(BOUNDS.attemptTimeoutMs),
+      signal: AbortSignal.timeout(budgetMs),
     });
     const failure = classify(response.status);
     if (response.ok || failure.failureClass === "permanent") {
@@ -150,15 +160,15 @@ async function attemptOnce(request: Request): Promise<Attempt> {
     }
     return { response: null, failure };
   } catch (error) {
-    return { response: null, failure: transportFailure(error) };
+    return { response: null, failure: transportFailure(error, budgetMs) };
   }
 }
 
-function transportFailure(error: unknown): ClassifiedFailure {
+function transportFailure(error: unknown, budgetMs: number): ClassifiedFailure {
   const named = error instanceof Error ? error.name : "unknown";
   const detail =
     named === "TimeoutError"
-      ? `no answer within ${String(BOUNDS.attemptTimeoutMs)}ms`
+      ? `no answer within ${String(Math.round(budgetMs))}ms`
       : "the API could not be reached";
   return { failureClass: "transient", detail, status: null };
 }
@@ -184,6 +194,10 @@ function refuseUnlessRuleHolds(rule: RetryRule, request: Request): void {
 function backoffFor(attempt: number): number {
   const ceiling = Math.min(BOUNDS.baseDelayMs * 2 ** (attempt - 1), BOUNDS.maxDelayMs);
   return Math.random() * ceiling;
+}
+
+function since(startedAt: number): number {
+  return performance.now() - startedAt;
 }
 
 function sleep(milliseconds: number): Promise<void> {
