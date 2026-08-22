@@ -14,6 +14,7 @@ import { standingOf } from "../wizard/standing";
 import type { Standing } from "../wizard/standing";
 import { useApply } from "../wizard/useApply";
 import { AgentsPanel } from "./AgentsPanel";
+import { CrewPanel } from "./CrewPanel";
 import { ProjectsPanel } from "./ProjectsPanel";
 
 /**
@@ -66,6 +67,11 @@ export function HarnessPage({
       element: <ProjectsPanel authoring={ceremony.authoring} current={project} />,
     },
     { key: "agents", label: "Agents", element: <AgentsPanel authoring={ceremony.authoring} /> },
+    {
+      key: "crew",
+      label: "Crew",
+      element: <CrewPanel recorded={recorded} onRecorded={onApplied} />,
+    },
     // One line per surface, and nothing else in this array.
   ];
   const current = tabs.find((tab) => tab.key === here) ?? tabs[0];
