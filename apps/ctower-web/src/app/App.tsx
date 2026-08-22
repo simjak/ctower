@@ -4,6 +4,7 @@ import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
+import { InboxPage } from "../inbox/InboxPage";
 import { ProjectsPage } from "../projects/ProjectsPage";
 import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
@@ -145,10 +146,11 @@ function Here({
       );
     case "requests":
       return <RequestsPage />;
+    case "inbox":
+      return <InboxPage />;
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "lanes":
-    case "inbox":
     case "board":
     case "crews":
     case "harnesses":

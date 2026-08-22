@@ -91,6 +91,36 @@ export function Input({ className, ...props }: ComponentProps<"input">): ReactEl
   );
 }
 
+/** A closed set the contract owns; the operator picks, never types. */
+export function Select({ className, ...props }: ComponentProps<"select">): ReactElement {
+  return (
+    <select
+      className={cn(
+        "h-9 w-full min-w-0 rounded-sm border border-line bg-bg px-2.5 text-sm text-fg",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        "focus:border-transparent focus:outline-2 focus:outline-offset-0 focus:outline-amber",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/** Prose the operator writes. Grows by hand; nothing here resizes on its own. */
+export function Textarea({ className, ...props }: ComponentProps<"textarea">): ReactElement {
+  return (
+    <textarea
+      className={cn(
+        "w-full min-w-0 resize-y rounded-sm border border-line bg-bg px-3 py-2 text-sm text-fg",
+        "placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-50",
+        "focus:border-transparent focus:outline-2 focus:outline-offset-0 focus:outline-amber",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
 const chipVariants = cva("chip", {
   variants: {
     tone: { neutral: "", amber: "chip-amber", ok: "chip-ok", danger: "chip-danger" },
