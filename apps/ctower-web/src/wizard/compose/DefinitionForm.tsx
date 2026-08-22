@@ -73,7 +73,7 @@ export function DefinitionForm({
         title="Projects"
         facts={projectFacts(draft.base)}
         removed={draft.removed}
-        subjectNoun="bindings"
+        subjectNoun="binding"
         empty="No project is in this company yet."
         onRemove={setRemoved}
       />
@@ -82,7 +82,7 @@ export function DefinitionForm({
         title="Agents"
         facts={agentFacts(draft.base)}
         removed={draft.removed}
-        subjectNoun="seats"
+        subjectNoun="seat"
         empty="No agent is in this company yet."
         onRemove={setRemoved}
       />

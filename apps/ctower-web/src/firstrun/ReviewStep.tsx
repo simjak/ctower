@@ -14,10 +14,11 @@ import { StepFrame } from "./StepFrame";
 /**
  * Step 5 — what is about to be recorded, and the one command that records it.
  *
- * The checklist is the four answers, ticked because they were given and not
- * because anything succeeded yet. Nothing here claims the company exists: the
- * tick beside `Mission` is absent when it was skipped, and the whole list is
- * still just an intention until `Get started` comes back accepted.
+ * The checklist carries the idle mark, never the done mark. Nothing on this
+ * screen has been recorded yet — the company does not exist until `Get started`
+ * comes back accepted — and the mark law is that a state with no recorded fact
+ * never borrows the glyph of one that has. A skipped answer carries no mark at
+ * all.
  */
 export function ReviewStep({
   answers,
@@ -117,7 +118,7 @@ function Line({
 }): ReactElement {
   return (
     <li className="flex items-baseline gap-3">
-      {given ? <Mark name="done" /> : <span aria-hidden className="mono w-[1.4em] shrink-0" />}
+      {given ? <Mark name="idle" /> : <span aria-hidden className="mono w-[1.4em] shrink-0" />}
       <span className="w-28 shrink-0 text-xs text-muted">{label}</span>
       <span className={given ? "min-w-0 text-sm text-fg" : "min-w-0 text-sm text-muted"}>
         {value}
