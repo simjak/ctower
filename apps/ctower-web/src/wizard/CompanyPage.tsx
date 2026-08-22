@@ -36,6 +36,7 @@ export function CompanyPage({
         onApply={company.apply}
         onRetry={company.retry}
         onBack={company.closeReview}
+        backLabel="Back to the definition"
       />
     );
   }

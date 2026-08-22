@@ -29,17 +29,19 @@ export function Receipt({
   applied,
   onRetry,
   onBack,
+  backLabel,
 }: {
   readonly applied: Answer<CompanyBundleCommandResult>;
   readonly onRetry: (() => void) | null;
   readonly onBack: () => void;
+  readonly backLabel: string;
 }): ReactElement {
   return (
     <>
       <Outcome applied={applied} />
       <footer className="mt-6 flex items-center gap-2 border-t border-line pt-4">
         <Button variant="quiet" disabled={applied.kind === "asking"} onClick={onBack}>
-          <ArrowLeft /> Back to the definition
+          <ArrowLeft /> {backLabel}
         </Button>
         <span className="flex-1" />
         {onRetry === null ? null : (

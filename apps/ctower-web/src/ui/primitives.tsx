@@ -91,6 +91,29 @@ export function Input({ className, ...props }: ComponentProps<"input">): ReactEl
   );
 }
 
+/**
+ * A choice out of a closed set, and it is a native `select` on purpose.
+ *
+ * Every set this console offers is closed by the authored contract — an
+ * activity class, a publication state, a stage a move goes to — so the control
+ * that offers one is the control the platform already gives a keyboard, a
+ * screen reader and a form. A listbox rebuilt in React would only be the same
+ * thing, later, with its own focus bugs.
+ */
+export function Select({ className, ...props }: ComponentProps<"select">): ReactElement {
+  return (
+    <select
+      className={cn(
+        "h-9 w-full min-w-0 rounded-sm border border-line bg-bg px-2.5 text-sm text-fg",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        "focus:border-transparent focus:outline-2 focus:outline-offset-0 focus:outline-amber",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
 const chipVariants = cva("chip", {
   variants: {
     tone: { neutral: "", amber: "chip-amber", ok: "chip-ok", danger: "chip-danger" },

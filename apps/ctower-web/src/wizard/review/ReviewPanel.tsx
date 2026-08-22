@@ -9,7 +9,7 @@ import { AuthorityGate } from "./AuthorityGate";
 import { PlanDiff } from "./PlanDiff";
 import { Receipt } from "./Receipt";
 import { movedCount } from "./actions";
-import type { Standing } from "../useCompany";
+import type { Standing } from "../standing";
 
 /**
  * Review and apply, as one thing.
@@ -28,6 +28,7 @@ export function ReviewPanel({
   onApply,
   onRetry,
   onBack,
+  backLabel,
 }: {
   readonly review: Answer<Standing>;
   readonly applied: Answer<CompanyBundleCommandResult> | null;
@@ -37,9 +38,11 @@ export function ReviewPanel({
   /** Absent when there is nothing to send again; the receipt then offers none. */
   readonly onRetry: (() => void) | null;
   readonly onBack: () => void;
+  /** Where "back" goes, named by the screen this ceremony was entered from. */
+  readonly backLabel: string;
 }): ReactElement {
   if (applied !== null) {
-    return <Receipt applied={applied} onRetry={onRetry} onBack={onBack} />;
+    return <Receipt applied={applied} onRetry={onRetry} onBack={onBack} backLabel={backLabel} />;
   }
 
   return (
@@ -48,7 +51,7 @@ export function ReviewPanel({
       <Body review={review} armed={armed} onArm={onArm} />
       <footer className="mt-6 flex items-center gap-2 border-t border-line pt-4">
         <Button variant="quiet" onClick={onBack}>
-          <ArrowLeft /> Back to the definition
+          <ArrowLeft /> {backLabel}
         </Button>
         <span className="flex-1" />
         {review.kind === "answered" && movedCount(review.value.plan.actions) > 0 ? (
