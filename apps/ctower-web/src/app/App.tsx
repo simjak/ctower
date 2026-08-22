@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { AdminPage } from "../admin/AdminPage";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
+import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { InboxPage } from "../inbox/InboxPage";
@@ -30,6 +31,10 @@ import { previewFromLocation, seedForPreview } from "./preview";
  * With no company there is no shell to show. Every destination would be locked,
  * and a rail full of unreachable things is noise at the one moment the operator
  * should be answering a single question, so the wizard takes the whole screen.
+ *
+ * With a company there are built destinations, and which one is drawn is the
+ * rail's own state — there is no router and no URL, because the shell is one
+ * page and a second copy of the map is a second thing to keep true.
  */
 export function App(): ReactElement {
   const [admitted, setAdmitted] = useState(sessionToken() !== null);
@@ -152,12 +157,13 @@ function Here({
       return <RequestsPage />;
     case "inbox":
       return <InboxPage />;
+    case "board":
+      return <BoardPage definition={seed.result.bundle} />;
     case "admin":
       return <AdminPage />;
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "lanes":
-    case "board":
     case "crews":
     case "harnesses":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
