@@ -4,10 +4,11 @@ import type {
   CompanyBundleDocument,
   CompanyBundleResource,
 } from "@ctower/client";
-import { ask, ASKING, commands, computations } from "../../api/client";
+import { ASKING } from "../../api/client";
 import type { Answer } from "../../api/client";
-import { commandKeyFor } from "../../wizard/apply/commandKey";
-import type { Standing } from "../../wizard/useCompany";
+import { standingOf } from "../../wizard/standing";
+import type { Standing } from "../../wizard/standing";
+import { useApply } from "../../wizard/useApply";
 import { documentWith, draftOf, isEdited } from "./compose";
 import type { FileDraft } from "./compose";
 import { idOf, resourceById } from "./read";
@@ -19,6 +20,13 @@ import { idOf, resourceById } from "./read";
  * differs from what is recorded the way forward appears, and the moment it
  * stops differing it goes away again. Review is not a step an operator walks
  * through to discover that nothing changed — the digest already answered that.
+ *
+ * The ceremony itself is not this screen's. `standingOf` checks and plans one
+ * document and `useApply` sends the one command this browser can send, under an
+ * idempotency key derived from the plan's own digest. There is one company
+ * bundle and one act that writes it, so editing an agent file is the same act
+ * the Company page and the Workflows page perform, entered from a different
+ * screen.
  *
  * Every read is sequenced. A check-and-plan is two round trips and the operator
  * can keep typing, open another file, or apply during either of them, so each
@@ -60,9 +68,9 @@ export function useAgentFiles(
   const [mode, setMode] = useState<Mode>("editing");
   const [review, setReview] = useState<Answer<Standing>>(ASKING);
   const [armed, setArmed] = useState(false);
-  const [applied, setApplied] = useState<Answer<CompanyBundleCommandResult> | null>(null);
-  const [sent, setSent] = useState<Standing | null>(null);
   const generation = useRef(0);
+  const applying = useApply(generation, onApplied);
+  const { forget } = applying;
 
   const supersede = useCallback((): number => {
     generation.current += 1;
@@ -73,19 +81,19 @@ export function useAgentFiles(
     setMode("editing");
     setReview(ASKING);
     setArmed(false);
-    setApplied(null);
-    setSent(null);
-  }, []);
+    forget();
+  }, [forget]);
 
   /**
    * A new recorded definition is the authority. The open file is re-read out of
    * it, so an accepted apply lands in the editor as the revision it produced
    * and the edits that produced it stop being edits.
    *
-   * The receipt is deliberately left standing. The only thing that changes what
-   * is recorded is an accepted apply, and clearing the screen on the way back
-   * from one takes the command id, the digests and the version away at the
-   * moment they are the whole point. The operator leaves the receipt.
+   * The receipt is deliberately left standing: `forget` is not called here. The
+   * only thing that changes what is recorded is an accepted apply, and clearing
+   * the screen on the way back from one takes the command id, the digests and
+   * the version away at the moment they are the whole point. The operator leaves
+   * the receipt.
    */
   useEffect(() => {
     setDraftState((held) => {
@@ -133,55 +141,6 @@ export function useAgentFiles(
     clear();
   }, [supersede, clear]);
 
-  /**
-   * One command, and the exact document it was reviewed against. The
-   * idempotency key comes from the plan digest, so a retry of this standing is
-   * the same command and can never write twice.
-   */
-  const send = useCallback(
-    (standing: Standing): void => {
-      const mine = generation.current;
-      setApplied(ASKING);
-      void (async (): Promise<void> => {
-        const answer = await ask(() =>
-          commands.applyCompanyBundle({
-            IdempotencyKey: commandKeyFor(standing.plan.plan_digest),
-            body: {
-              bundle: standing.document,
-              expected_active_version: standing.plan.base_version,
-              plan_digest: standing.plan.plan_digest,
-            },
-          })
-        );
-        if (generation.current !== mine) {
-          return;
-        }
-        setApplied(answer);
-        // Only acceptance changed what is recorded. `durability_pending` did
-        // not, so nothing is re-read on it and the retry stays offered.
-        if (answer.kind === "answered" && answer.value.durability_state === "accepted") {
-          onApplied();
-        }
-      })();
-    },
-    [onApplied]
-  );
-
-  const apply = useCallback(
-    (standing: Standing): void => {
-      setSent(standing);
-      send(standing);
-    },
-    [send]
-  );
-
-  const retry =
-    sent === null || applied === null || !resendable(applied)
-      ? null
-      : (): void => {
-          send(sent);
-        };
-
   return {
     files,
     openId: draft === null ? null : idOf(draft.base.component),
@@ -195,47 +154,8 @@ export function useAgentFiles(
     closeReview,
     armed,
     setArmed,
-    applied,
-    apply,
-    retry,
-  };
-}
-
-/**
- * Whether sending the same command again is the honest next move.
- *
- * A refusal is not: ctower read the command and said no, and re-sending it asks
- * the same question of the same answer. The other three are — the API was not
- * reached, its answer could not be read, or it took the command and has not
- * confirmed it is durable. In every one of those the operator does not know
- * what was written, and the shared idempotency key is what makes finding out
- * safe.
- */
-function resendable(applied: Answer<CompanyBundleCommandResult>): boolean {
-  switch (applied.kind) {
-    case "asking":
-    case "refused":
-      return false;
-    case "unreachable":
-    case "malformed":
-      return true;
-    case "answered":
-      return applied.value.durability_state !== "accepted";
-  }
-}
-
-/** Check and plan one document, and stop at the first thing that is not an answer. */
-async function standingOf(bundle: CompanyBundleDocument): Promise<Answer<Standing>> {
-  const validation = await ask(() => computations.validateCompanyBundle({ body: { bundle } }));
-  if (validation.kind !== "answered") {
-    return validation;
-  }
-  const plan = await ask(() => computations.planCompanyBundle({ body: { bundle } }));
-  if (plan.kind !== "answered") {
-    return plan;
-  }
-  return {
-    kind: "answered",
-    value: { document: bundle, validation: validation.value, plan: plan.value },
+    applied: applying.applied,
+    apply: applying.apply,
+    retry: applying.retry,
   };
 }

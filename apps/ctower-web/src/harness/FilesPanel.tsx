@@ -70,6 +70,7 @@ function Files({
         onApply={files.apply}
         onRetry={files.retry}
         onBack={files.closeReview}
+        backLabel="Back to the file"
       />
     );
   }
