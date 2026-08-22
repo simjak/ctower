@@ -17,7 +17,12 @@ export function Select({
   className,
   ...props
 }: ComponentProps<"select"> & {
-  readonly options: readonly { readonly value: string; readonly label: string }[];
+  readonly options: readonly {
+    readonly value: string;
+    readonly label: string;
+    /** Recorded, but not something this command can take. Shown, never chosen. */
+    readonly unavailable?: boolean;
+  }[];
   /** What the control says when the record offers it nothing to choose from. */
   readonly empty: string;
 }): ReactElement {
@@ -37,7 +42,7 @@ export function Select({
         <option value="">{empty}</option>
       ) : (
         options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} disabled={option.unavailable === true}>
             {option.label}
           </option>
         ))
