@@ -92,7 +92,9 @@ export function InboxPage(): ReactElement {
 function Standing({ list }: { readonly list: Held<InboxThreadList> }): ReactElement | null {
   const working = list.answer.kind === "asking" ? <Mark name="working" /> : null;
   if (list.last === null) {
-    return working;
+    // Nothing has been read yet, so the body carries the working line in words.
+    // A bare glyph up here would say the same thing twice.
+    return null;
   }
   const recipient = list.last.recipient;
   const unread = list.last.total_unread;
