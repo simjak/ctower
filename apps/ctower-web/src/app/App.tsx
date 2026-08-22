@@ -4,6 +4,7 @@ import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
+import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
@@ -12,6 +13,7 @@ import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
+import type { Seed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
@@ -99,11 +101,45 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          <Here here={here} seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>
   );
+}
+
+/**
+ * The screen the rail is pointing at.
+ *
+ * Every destination is named, and the unbuilt ones are named together: the rail
+ * refuses to move to one, so their branch is unreachable and says so instead of
+ * standing in for a page the operator did not ask for. Naming them costs a line
+ * and buys the guarantee that a destination cannot become built without this
+ * file being made to say which screen it is.
+ */
+function Here({
+  here,
+  seed,
+  onApplied,
+}: {
+  readonly here: DestinationKey;
+  readonly seed: Seed;
+  readonly onApplied: () => void;
+}): ReactElement {
+  switch (here) {
+    case "requests":
+      return <RequestsPage />;
+    case "company":
+      return <CompanyPage seed={seed} onApplied={onApplied} />;
+    case "lanes":
+    case "inbox":
+    case "board":
+    case "crews":
+    case "harnesses":
+    case "projects":
+    case "admin":
+      return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
+  }
 }
 
 /**
