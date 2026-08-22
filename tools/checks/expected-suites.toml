@@ -214,6 +214,46 @@ command = ["{python}", "-m", "pytest", "tests/modules/record", "-q"]
 timeout_seconds = 300
 
 [[suite]]
+id = "attention-module"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "required"
+path = "tests/modules/attention"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/attention", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "board-context-module"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "required"
+path = "tests/modules/board_context"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/board_context", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "catalog-module"
+owner = "CT-I1-002"
+phase = "CT-I1-002"
+status = "required"
+path = "tests/modules/catalog"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/catalog", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "objects-module"
+owner = "CT-I1-002"
+phase = "CT-I1-002"
+status = "required"
+path = "tests/modules/objects"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/objects", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "work-module"
 owner = "CT-I1-002"
 phase = "CT-I1-002"
@@ -865,6 +905,16 @@ command = ["{python}", "-m", "pytest", "tests/modules/ctowerctl/test_request_pro
 timeout_seconds = 120
 
 [[suite]]
+id = "ctowerctl-module"
+owner = "CT-I1-004"
+phase = "CT-I1-004"
+status = "required"
+path = "tests/modules/ctowerctl"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/ctowerctl", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "request-proposal-acceptance"
 owner = "CT-I1-024"
 phase = "CT-I1-024"
@@ -1087,6 +1137,16 @@ path = "tests/modules/migration"
 patterns = ["test_estate_imports.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/migration/test_estate_imports.py", "-q"]
 timeout_seconds = 300
+
+[[suite]]
+id = "migration-module-deferred"
+owner = "CT-I1-032"
+phase = "CT-I1-032"
+status = "deferred"
+path = "tests/modules/migration"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/migration", "-q"]
+timeout_seconds = 900
 
 [[suite]]
 id = "estate-import-acceptance"
