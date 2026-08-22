@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
+import { AdminPage } from "../admin/AdminPage";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
@@ -12,6 +13,7 @@ import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
+import type { Seed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
@@ -99,11 +101,31 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          <Here here={here} seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>
   );
+}
+
+/**
+ * The screen the rail is pointing at.
+ *
+ * The rail only offers a destination it has marked built, so this needs no
+ * fallback: an unbuilt key never arrives here, and inventing a "nothing here"
+ * page for one would be a second, quieter answer to a question the rail has
+ * already answered honestly.
+ */
+function Here({
+  here,
+  seed,
+  onApplied,
+}: {
+  readonly here: DestinationKey;
+  readonly seed: Extract<Seed, { kind: "exported" }>;
+  readonly onApplied: () => void;
+}): ReactElement {
+  return here === "admin" ? <AdminPage /> : <CompanyPage seed={seed} onApplied={onApplied} />;
 }
 
 /**
