@@ -28,11 +28,41 @@ export function FirstRun({
   const [answers, setAnswers] = useState<Answers>(BLANK);
   const [outcome, setOutcome] = useState<Answer<unknown> | null>(null);
   const [validation, setValidation] = useState<CompanyBundleValidationResult | null>(null);
+  const [keyCheck, setKeyCheck] = useState<Answer<unknown> | null>(null);
 
   const go = (next: number): void => {
     setOutcome(null);
     setValidation(null);
     setStep(next);
+  };
+
+  /**
+   * The key is checked here, against the live registry, before the operator can
+   * walk four more screens on it.
+   *
+   * A company key must equal the authenticated tenant's, and nothing on the
+   * authored read surface returns that key on a tower with no company — so it
+   * cannot be pre-filled, and a wrong one used to survive all the way to Review
+   * before the registry refused it. Asking now turns a dead end at the end into
+   * a correction on the field that caused it.
+   *
+   * Only `bundle-grant-refused` holds the operator here. Every other answer is
+   * about the rest of the bundle, which the later steps are still filling in,
+   * and Review is where those belong.
+   */
+  const leaveName = (): void => {
+    setKeyCheck({ kind: "asking" });
+    void (async (): Promise<void> => {
+      const answer = await ask(() =>
+        computations.validateCompanyBundle({ body: { bundle: bundleOf(answers) } })
+      );
+      if (answer.kind === "refused" && answer.problem.code === "bundle-grant-refused") {
+        setKeyCheck(answer);
+        return;
+      }
+      setKeyCheck(null);
+      go(2);
+    })();
   };
 
   const start = (): void => {
@@ -50,14 +80,7 @@ export function FirstRun({
 
   switch (step) {
     case 1:
-      return (
-        <NameStep
-          {...shared}
-          onNext={(): void => {
-            go(2);
-          }}
-        />
-      );
+      return <NameStep {...shared} onNext={leaveName} keyCheck={keyCheck} />;
     case 2:
       return (
         <HarnessStep

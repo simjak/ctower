@@ -9,6 +9,8 @@ import { ADAPTERS, adapterFor } from "../harness/schema";
 import { suggestKey } from "./answers";
 import type { Answers } from "./answers";
 import { StepFrame } from "./StepFrame";
+import { Refused } from "../wizard/states";
+import type { Answer } from "../api/client";
 
 interface StepProps {
   readonly answers: Answers;
@@ -20,7 +22,13 @@ interface StepProps {
 const TOTAL = 5;
 
 /** Step 1 — what this organization is called. */
-export function NameStep({ answers, onAnswers, onNext }: StepProps): ReactElement {
+export function NameStep({
+  answers,
+  onAnswers,
+  onNext,
+  keyCheck,
+}: StepProps & { readonly keyCheck: Answer<unknown> | null }): ReactElement {
+  const checking = keyCheck?.kind === "asking";
   return (
     <StepFrame
       step={1}
@@ -29,8 +37,8 @@ export function NameStep({ answers, onAnswers, onNext }: StepProps): ReactElemen
       title="Name your organization"
       lead="What should we call your team or company?"
       onNext={onNext}
-      nextLabel="Next"
-      nextReady={answers.name.trim().length > 0 && answers.key.trim().length > 2}
+      nextLabel={checking ? "Checking" : "Next"}
+      nextReady={answers.name.trim().length > 0 && answers.key.trim().length > 2 && !checking}
     >
       <Label htmlFor="org-name">Name</Label>
       <Input
@@ -61,6 +69,14 @@ export function NameStep({ answers, onAnswers, onNext }: StepProps): ReactElemen
       <p className="mt-2 mb-0 text-xs text-muted">
         It must match the key this tower is registered under.
       </p>
+      {keyCheck !== null && keyCheck.kind === "refused" ? (
+        <div className="mt-4">
+          <Refused
+            problem={keyCheck.problem}
+            action="Change the key to the one this tower is registered under, then continue."
+          />
+        </div>
+      ) : null}
     </StepFrame>
   );
 }
