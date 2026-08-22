@@ -97,9 +97,16 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-21 | Mission is one screen and skippable | It authors a goal document when given; a company with no stated mission is a real state, not an incomplete one |
 | 2026-08-21 | The org switcher sits at the sidebar top: current org + prefix chip, "Create new organization…" honest-unbuilt | The reference console's pattern; no invite and no sign-out for a tailnet-private v1 |
 | 2026-08-21 | The browser mints component digests itself (RFC 8785 + SHA-256, not `crypto.subtle`) | Every wizard step authors a real component and the registry recomputes the digest; proven against the live API at 5 of 5 checks |
-| 2026-08-22 | **Bounded exception — the Cockpit is dressed at 1:1 Conductor parity** | Operator ruling 13:25Z: `board/design-refs-r2988-conductor/{1,3}*.png` is the source of truth for the Cockpit's pane layout, rail, chrome, type scale and spacing. This file's *dressing* deltas are discarded there. See the scope note below |
+| 2026-08-22 | **Bounded exception — the Cockpit is dressed at 1:1 Conductor parity** | **Director** ruling 13:25Z: `board/design-refs-r2988-conductor/{1,3}*.png` is the source of truth for the Cockpit's pane layout, rail, chrome, type scale and spacing. This file's *dressing* deltas are discarded there. See the scope note below |
 
-## The one bounded exception (operator, 2026-08-22 13:25Z)
+## The one bounded exception (director, 2026-08-22 13:25Z)
+
+**Whose ruling this is.** It was first recorded as the operator's and corrected
+the same day: the dialog was answered from the fleet socket by the **director**.
+The ruling stands and this exception is live. It is flagged rather than settled,
+because it discards dressing the operator personally ratified on 2026-08-21, and
+it has been raised to him for confirmation. If he overturns it, this section and
+the Cockpit's dressing revert together; nothing else in this file moves.
 
 The **Cockpit** (the Crews destination) is dressed at 1:1 Conductor parity
 against `board/design-refs-r2988-conductor/`. Everywhere else in ctower-web,
