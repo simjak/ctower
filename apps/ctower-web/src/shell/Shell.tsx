@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
+import { cn } from "../ui/cn";
 import { ThemeToggle } from "../app/ThemeToggle";
 import { OrgSwitcher } from "./OrgSwitcher";
 import type { Org } from "./OrgSwitcher";
@@ -16,6 +17,7 @@ export function Shell({
   onGo,
   org,
   status,
+  fill = false,
   children,
 }: {
   readonly here: DestinationKey;
@@ -25,6 +27,12 @@ export function Shell({
   /** The company this console is looking at, once it is known. */
   readonly org: Org | null;
   readonly status?: ReactNode;
+  /**
+   * A workspace rather than a page: it takes the height of the viewport and
+   * scrolls inside its own panes. A page keeps the ordinary flow, where the
+   * document is as long as it needs to be.
+   */
+  readonly fill?: boolean;
   readonly children: ReactNode;
 }): ReactElement {
   return (
@@ -49,7 +57,14 @@ export function Shell({
           <Rail here={here} lockReason={lockReason} onGo={onGo} />
         </div>
         <main className="min-w-0">
-          <div className="mx-auto max-w-[1200px] px-6 py-5">{children}</div>
+          <div
+            className={cn(
+              "mx-auto flex max-w-[1200px] flex-col px-6 py-5",
+              fill && "h-[calc(100dvh-52px)]"
+            )}
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>

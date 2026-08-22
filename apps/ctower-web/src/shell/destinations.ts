@@ -32,7 +32,7 @@ export const DESTINATIONS: readonly Destination[] = [
   { key: "inbox", label: "Inbox", group: "LIVE", built: false },
   { key: "board", label: "Board", group: "WORK", built: false },
   { key: "requests", label: "Requests", group: "WORK", built: false },
-  { key: "crews", label: "Crews", group: "TEAM", built: false },
+  { key: "crews", label: "Crews", group: "TEAM", built: true },
   { key: "company", label: "Company", group: "TEAM", built: true },
   { key: "harnesses", label: "Harnesses", group: "RUNTIME", built: false },
   { key: "projects", label: "Projects", group: "RUNTIME", built: false },
