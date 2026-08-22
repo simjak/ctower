@@ -23,8 +23,7 @@ does, not after the call behind it.
 React + Vite + Tailwind v4, the stack shape of `/srv/projects/paperclip-eval/ui`.
 Per `docs/internal/design/operator-cockpit.md` D8 the port is **the token layer
 only**: the tokens, the component vocabulary and the copy rules cross, the data
-layer does not. The token values are ctower's own, carried over from
-`apps/ctower-ui/design-reference/app.css`, which is the approved set.
+layer does not. The values are `DESIGN.md`'s, which the operator approved.
 
 ## The browser holds no credential
 
