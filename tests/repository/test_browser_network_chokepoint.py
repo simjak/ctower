@@ -7,10 +7,11 @@ the denominator by scanning every authored and generated TypeScript module for
 network-capable constructs, then require each discovered site to sit in an
 approved policy holder. An unclassifiable site fails the gate.
 
-Two further discoveries run the same way, each fail-closed: the generated
+Three further discoveries run the same way, each fail-closed: the generated
 client may be reached from an application only through a binder that hands it
-that application's bounded fetch and no credential, and no module under `apps/`
-may call a filesystem write.
+that application's bounded fetch and no credential, no module under `apps/` may
+call a filesystem write, and the generated reader's decode-failure prefix stays
+recognizable to the app that renders it as a visible state.
 
 The interim-source and `Reading` rules that used to live here went with the
 phase-1 surface in #545; they named `apps/ctower-ui/src/read/**` directly and
@@ -67,6 +68,18 @@ _NETWORK_POLICY_HOLDERS = {
     ),
 }
 _CHOKEPOINTS = ("apps/ctower-web/src/api/bounded.ts",)
+
+# The generated JSON reader raises a bare `SyntaxError`, so the only thing that
+# separates a malformed answer from a programming fault is the prefix on its
+# message. The app matches that prefix to render its declared `malformed` state;
+# if the generator ever stops producing it, every malformed answer silently
+# becomes an unhandled rejection and a screen that never leaves `asking`. Both
+# halves are asserted, so the coupling cannot rot in either file.
+_DECODE_PREFIX_HOLDERS = {
+    "generated/typescript/ctower-client/src/response-json.ts": "the generated reader",
+    "apps/ctower-web/src/api/client.ts": "the answer classifier that renders it",
+}
+_DECODE_PREFIX = "Invalid ctower JSON response"
 
 # The only application modules that may value-import the generated client, each
 # mapped to the chokepoint it must hand that client as its `fetch`. An entry
@@ -184,6 +197,16 @@ class BrowserNetworkChokepointTests(unittest.TestCase):
                     code,
                     r"new\s+CtowerClient\s*\([^)]*credential:",
                     "the browser holds no API bearer; the credential is attached server-side",
+                )
+
+    def test_the_generated_decode_failure_stays_recognizable_to_the_app(self) -> None:
+        for path, role in _DECODE_PREFIX_HOLDERS.items():
+            with self.subTest(holder=path):
+                self.assertIn(
+                    _DECODE_PREFIX,
+                    (_ROOT / path).read_text(encoding="utf-8"),
+                    f"{role} no longer names the generated decode-failure prefix; a malformed "
+                    "answer would escape the declared malformed state and strand the screen",
                 )
 
     def test_no_module_in_apps_writes_to_the_filesystem(self) -> None:

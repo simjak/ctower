@@ -63,6 +63,22 @@ export const ASKING: Answer<never> = { kind: "asking" };
  * cannot tell them apart cannot tell "ctower said no" from "ctower said
  * nothing".
  */
+/**
+ * The prefix the generated JSON reader puts on every parse failure it raises.
+ *
+ * It raises a bare `SyntaxError`, so this is the only thing that separates
+ * "ctower answered with something that is not JSON" from a `SyntaxError`
+ * thrown by a programming fault, which must not be swallowed as a rendered
+ * state. `tests/repository/test_browser_network_chokepoint.py` asserts the
+ * generated reader still produces exactly this prefix, so the coupling fails
+ * closed instead of silently ceasing to match.
+ */
+const DECODE_PREFIX = "Invalid ctower JSON response";
+
+function isDecodeFailure(error: unknown): error is SyntaxError {
+  return error instanceof SyntaxError && error.message.startsWith(DECODE_PREFIX);
+}
+
 export async function ask<T>(call: () => Promise<T>): Promise<Answer<T>> {
   try {
     return { kind: "answered", value: await call() };
@@ -84,7 +100,7 @@ export async function ask<T>(call: () => Promise<T>): Promise<Answer<T>> {
     if (error instanceof SessionRefused) {
       return { kind: "unreachable", detail: error.message };
     }
-    if (error instanceof TypeError) {
+    if (error instanceof TypeError || isDecodeFailure(error)) {
       return { kind: "malformed", detail: error.message };
     }
     throw error;
