@@ -57,7 +57,7 @@ export function CrewReview({
             <Term label="project" value={body.project_key} />
             <Term label="seat" value={body.seat_key} />
             <Term label="can do" value={body.scopes.join(" · ")} />
-            <Term label="lives at" value={body.credential_ref} />
+            <Place reference={body.credential_ref} />
             <Term
               label="fingerprint"
               value={shortDigest(body.credential_digest)}
@@ -169,6 +169,27 @@ function Gate({
         </label>
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * Where the credential lives, drawn as the two parts it is made of.
+ *
+ * The review is the last thing an operator reads before a command leaves, so
+ * this line is deliberately not one opaque string: the class is a chip from the
+ * contract's closed set and the place is the path under it. A string that is
+ * not a class and a path cannot be drawn here, because one cannot be composed.
+ */
+function Place({ reference }: { readonly reference: string }): ReactElement {
+  const colon = reference.indexOf(":");
+  return (
+    <>
+      <dt className="text-xs text-muted">lives at</dt>
+      <dd className="m-0 flex min-w-0 items-center gap-2">
+        <Chip>{reference.slice(0, colon)}</Chip>
+        <Mono className="min-w-0 truncate text-muted">{reference.slice(colon + 1)}</Mono>
+      </dd>
+    </>
   );
 }
 

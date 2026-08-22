@@ -99,12 +99,20 @@ function AddressHalf({
         <Field label="Project" hint="The project this crew works in, as the record names it.">
           <Select
             value={draft.projectKey}
-            empty="This company records no project"
-            options={projects.map((project) => ({
-              value: project.key,
-              label: project.addressable ? project.key : `${project.key} — no address possible`,
-              unavailable: !project.addressable,
-            }))}
+            empty="This company declares no project"
+            options={[
+              // Nothing is selectable when no declared key can carry an address,
+              // and a select showing blank reads as a control that failed to
+              // load rather than as a record that has nothing to offer.
+              ...(draft.projectKey === ""
+                ? [{ value: "", label: "None can carry an address", unavailable: true }]
+                : []),
+              ...projects.map((project) => ({
+                value: project.key,
+                label: project.addressable ? project.key : `${project.key} — no address possible`,
+                unavailable: !project.addressable,
+              })),
+            ]}
             onChange={(event): void => {
               onDraft({ ...draft, projectKey: event.target.value });
             }}
