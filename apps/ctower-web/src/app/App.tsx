@@ -10,6 +10,7 @@ import type { Org } from "../shell/OrgSwitcher";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
+import { HarnessPage } from "../harness/HarnessPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
@@ -99,7 +100,7 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          <HarnessPage seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>
