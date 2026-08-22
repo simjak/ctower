@@ -40,6 +40,7 @@ web-check:
     pnpm run format:check
     pnpm run lint
     pnpm run typecheck
+    pnpm run build
 
 # Documentation builds outside the worktree so checks never create or clean `site/`.
 docs-check:

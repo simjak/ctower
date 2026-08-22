@@ -1,35 +1,110 @@
+import { Buffer } from "node:buffer";
+import { timingSafeEqual } from "node:crypto";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 
 /**
- * The development server, and the reason this app has a proxy at all.
+ * The development server, and the two authorities it holds.
  *
  * `docs/internal/SPEC.md` states it twice — the browser receives no API bearer,
- * and no API token reaches browser JavaScript. So the credential lives in this
- * Node process for the life of the server and nowhere else: the browser asks
- * its own origin for `/v1/...`, this proxy attaches the operator credential,
- * and the API remains the one authorization authority. There is no code path
- * that hands the token to the client bundle, and `import.meta.env` carries none.
+ * and no API token reaches browser JavaScript. So the operator credential lives
+ * in this Node process for the life of the server and nowhere else: the browser
+ * asks its own origin for `/v1/...`, this proxy attaches the credential, and the
+ * API remains the one authorization authority. There is no code path that hands
+ * the token to the client bundle, and `import.meta.env` carries none.
  *
- * The credential is resolved by `serve-development.sh` from the same Secret
- * Service reference the instance itself uses; it is never written to a file,
- * never passed as an argument, and never committed. An unset credential refuses
- * to start rather than silently proxying an unauthenticated request, because a
- * blanket `401` renders as "the API refused you" and would be a lie about why.
+ * That arrangement makes the server itself operator authority for anyone who can
+ * reach the port. On a loopback bind that is the operator; bound to the tailnet
+ * so the operator can walk the wizard from a laptop, it is every host on the
+ * tailnet. So the server admits nobody without a session token it prints at
+ * startup and the operator pastes once. The token is admission to *this process*
+ * and is stripped before anything is forwarded — it is not the API bearer, it
+ * carries no authority at the API, and possessing it proves only that its holder
+ * could read this server's own terminal.
+ *
+ * Both requirements are checked when the server starts serving, not when this
+ * file is imported, so `vite build` produces the bundle on any host — a package
+ * that cannot be built without a live credential cannot be built by a gate.
  */
-const apiOrigin = process.env.CTOWER_WEB_API_ORIGIN ?? "http://127.0.0.1:8091";
-const credential = process.env.CTOWER_WEB_API_TOKEN;
 
-if (credential === undefined || credential === "") {
-  throw new Error(
-    "CTOWER_WEB_API_TOKEN is unset. Start through apps/ctower-web/serve-development.sh, " +
-      "which resolves it from the instance's own secret reference."
-  );
+const SESSION_HEADER = "x-ctower-web-session";
+/** How a refusal from this server is told apart from a refusal by the API. */
+const GATE_HEADER = "x-ctower-web-gate";
+const CHECK_PATH = "/__ctower-web-session";
+
+const apiOrigin = process.env.CTOWER_WEB_API_ORIGIN ?? "http://127.0.0.1:8091";
+
+function required(name: string): string {
+  const value = process.env[name];
+  if (value === undefined || value === "") {
+    throw new Error(
+      `${name} is unset. Start through apps/ctower-web/serve-development.sh, which resolves ` +
+        "the operator credential from the instance's own secret reference and mints a session token."
+    );
+  }
+  return value;
+}
+
+function admits(offered: unknown, expected: string): boolean {
+  if (typeof offered !== "string") {
+    return false;
+  }
+  const held = Buffer.from(offered, "utf8");
+  const wanted = Buffer.from(expected, "utf8");
+  return held.length === wanted.length && timingSafeEqual(held, wanted);
+}
+
+/**
+ * The admission gate, installed ahead of the proxy.
+ *
+ * A `configureServer` hook runs before Vite adds its own middlewares, so this is
+ * the first thing an API-bound request meets. Nothing reaches the proxy — and so
+ * nothing acquires the operator credential — without the session token.
+ */
+function admission(): Plugin {
+  let expected = "";
+  return {
+    name: "ctower-web-admission",
+    apply: "serve",
+    configureServer(server) {
+      required("CTOWER_WEB_API_TOKEN");
+      expected = required("CTOWER_WEB_SESSION_TOKEN");
+      server.middlewares.use((request, response, next) => {
+        const path = request.url ?? "";
+        if (path !== CHECK_PATH && !path.startsWith("/v1")) {
+          next();
+          return;
+        }
+        if (!admits(request.headers[SESSION_HEADER], expected)) {
+          response.statusCode = 401;
+          response.setHeader(GATE_HEADER, "refused");
+          response.setHeader("content-type", "application/json");
+          response.end(
+            JSON.stringify({
+              gate: "refused",
+              detail: "This server admits only the session token it printed at startup.",
+            })
+          );
+          return;
+        }
+        // Admission ends here. The token is this server's own and travels no
+        // further; the API sees the operator credential and nothing else.
+        delete request.headers[SESSION_HEADER];
+        if (path === CHECK_PATH) {
+          response.statusCode = 204;
+          response.end();
+          return;
+        }
+        next();
+      });
+    },
+  };
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [admission(), react(), tailwindcss()],
   server: {
     host: process.env.CTOWER_WEB_HOST ?? "127.0.0.1",
     port: Number(process.env.CTOWER_WEB_PORT ?? "3141"),
@@ -45,7 +120,11 @@ export default defineConfig({
       "/v1": {
         target: apiOrigin,
         changeOrigin: false,
-        headers: { Authorization: `Bearer ${credential}` },
+        configure: (proxy): void => {
+          proxy.on("proxyReq", (outbound) => {
+            outbound.setHeader("authorization", `Bearer ${required("CTOWER_WEB_API_TOKEN")}`);
+          });
+        },
       },
     },
   },
