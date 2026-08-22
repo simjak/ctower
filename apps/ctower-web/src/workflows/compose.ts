@@ -1,6 +1,7 @@
 import type {
   CompanyBundleAssignment,
   CompanyBundleDocument,
+  CompanyBundleResource,
   ComponentReference,
   VersionedComponent,
 } from "@ctower/client";
@@ -16,13 +17,21 @@ import { policyResource, splitReference } from "./read";
  * The authored contract declares no operation that writes a workflow. A
  * workflow is a component of the company bundle, so authoring one is authoring
  * the bundle: the same document, the same check, the same plan, the same
- * command under the operator's own authority. This page adds one resource to
- * that document and repoints the bindings that named the revision it replaces.
+ * command under the operator's own authority.
  *
  * The digest is minted here the way the kernel mints it — RFC 8785 then
  * SHA-256 — and the registry recomputes it. A wrong byte is not a silent
  * failure: the bundle is refused at `digest.canonical`, which is exactly why a
  * browser is allowed to author a component at all.
+ *
+ * **A dependency pin is exact, so a revision moves everything that names it.**
+ * A gate policy pins the workflow it gates by revision *and* digest, and this
+ * tower's workflow pins those policies straight back. Revising the workflow
+ * alone leaves those pins naming a revision the bundle no longer carries, and
+ * the registry answers `bundle-reference-invalid` — which is what it did to the
+ * first version of this file, on the live tower, before this closure existed.
+ * So every component that names what moved moves with it, and the operator
+ * reads the whole set in the plan before anything is applied.
  */
 const SLOT = "workflow";
 
@@ -32,46 +41,127 @@ export function documentWith(
 ): CompanyBundleDocument {
   const revision = (draft.base?.revision ?? 0) + 1;
   const payload = payloadOf(draft, revision);
-  const component = mint(base, draft, payload, revision);
-  const reference: ComponentReference = {
-    content_digest: component.content_digest,
-    key: component.key,
-    kind: component.kind,
-    revision: component.revision,
-  };
-  const kept = base.resources.filter(
-    (resource) => !(resource.component.kind === "workflow" && resource.component.key === draft.key)
-  );
+  const authored = mint(base, draft, payload, revision);
+  const moved = closureOf(base, authored);
+  const resolved = repointed(base, moved, { component: authored, payload });
+  const kept = base.resources.filter((resource) => !moved.has(idOf(resource.component)));
   return {
     ...base,
-    assignments: rebind(base.assignments, draft, reference),
-    resources: [...kept, { component, payload }],
+    assignments: rebind(base.assignments, moved, draft, resolved),
+    resources: [...kept, ...resolved.values()],
   };
 }
 
 /**
- * The bindings that say which projects run this workflow.
- *
- * A binding names an exact revision and its digest, so a revision that is not
- * repointed leaves the record naming a component the bundle no longer carries.
- * Every binding for this workflow is therefore rebuilt from the operator's own
- * selection, and no other binding in the document is touched.
+ * Everything this change moves: the authored workflow, and every component that
+ * pins something already moving. A component moves at most once, so the loop
+ * settles; its payload is untouched, so its digest is the one it already had
+ * and only its revision and its pins change.
+ */
+function closureOf(
+  base: CompanyBundleDocument,
+  authored: VersionedComponent
+): ReadonlyMap<string, ComponentReference> {
+  const moved = new Map<string, ComponentReference>([[idOf(authored), referenceOf(authored)]]);
+  let found = true;
+  while (found) {
+    found = false;
+    for (const resource of base.resources) {
+      const component = resource.component;
+      if (moved.has(idOf(component))) {
+        continue;
+      }
+      if (component.compatibility.requires.some((required) => moved.has(idOf(required)))) {
+        moved.set(idOf(component), {
+          content_digest: component.content_digest,
+          key: component.key,
+          kind: component.kind,
+          revision: component.revision + 1,
+        });
+        found = true;
+      }
+    }
+  }
+  return moved;
+}
+
+/** Each moved component, rebuilt at its new revision with its pins re-aimed. */
+function repointed(
+  base: CompanyBundleDocument,
+  moved: ReadonlyMap<string, ComponentReference>,
+  authored: CompanyBundleResource
+): ReadonlyMap<string, CompanyBundleResource> {
+  const authoredId = idOf(authored.component);
+  const built = new Map<string, CompanyBundleResource>([[authoredId, aimed(authored, moved)]]);
+  for (const resource of base.resources) {
+    const next = moved.get(idOf(resource.component));
+    if (next === undefined || idOf(resource.component) === authoredId) {
+      continue;
+    }
+    const carried = {
+      ...resource,
+      component: {
+        ...resource.component,
+        revision: next.revision,
+        supersedes: referenceOf(resource.component),
+      },
+    };
+    built.set(idOf(resource.component), aimed(carried, moved));
+  }
+  return built;
+}
+
+/** One component with every pin it holds re-aimed at what that pin now is. */
+function aimed(
+  resource: CompanyBundleResource,
+  moved: ReadonlyMap<string, ComponentReference>
+): CompanyBundleResource {
+  return {
+    ...resource,
+    component: {
+      ...resource.component,
+      compatibility: {
+        ...resource.component.compatibility,
+        requires: resource.component.compatibility.requires.map(
+          (required) => moved.get(idOf(required)) ?? required
+        ),
+      },
+    },
+  };
+}
+
+/**
+ * The bindings. Every one that names a moved component is re-aimed at its new
+ * revision, and the workflow's own set is rebuilt from the operator's choice of
+ * projects — because an unticked project is a project this revision does not run
+ * on, which is a decision and not an omission.
  */
 function rebind(
   assignments: readonly CompanyBundleAssignment[],
+  moved: ReadonlyMap<string, ComponentReference>,
   draft: WorkflowDraft,
-  component: ComponentReference
+  resolved: ReadonlyMap<string, CompanyBundleResource>
 ): readonly CompanyBundleAssignment[] {
-  const others = assignments.filter(
-    (assignment) =>
-      !(assignment.component.kind === "workflow" && assignment.component.key === draft.key)
-  );
-  const mine = draft.projects.map((project) => ({
-    component,
-    slot: SLOT,
-    subject: `project:${project}`,
-  }));
-  return [...others, ...mine];
+  const authoredId = `workflow:${draft.key}`;
+  const workflow = resolved.get(authoredId);
+  const others = assignments
+    .filter((assignment) => idOf(assignment.component) !== authoredId)
+    .map((assignment) => ({
+      ...assignment,
+      component: moved.get(idOf(assignment.component)) ?? assignment.component,
+    }));
+  if (workflow === undefined) {
+    return others;
+  }
+  const reference = referenceOf(workflow.component);
+  return [
+    ...others,
+    ...draft.projects.map((project) => ({
+      component: reference,
+      slot: SLOT,
+      subject: `project:${project}`,
+    })),
+  ];
 }
 
 function mint(
@@ -121,12 +211,7 @@ function requirements(
     policyResource(base, "gate_policy", blank(draft.gatesRef)),
   ]
     .filter((resource) => resource !== null)
-    .map((resource) => ({
-      content_digest: resource.component.content_digest,
-      key: resource.component.key,
-      kind: resource.component.kind,
-      revision: resource.component.revision,
-    }));
+    .map((resource) => referenceOf(resource.component));
 }
 
 /** The work-plane projects this company declares, by the record's own rule. */
@@ -146,6 +231,20 @@ export function boundProjects(base: CompanyBundleDocument, workflowKey: string):
     )
     .map((assignment) => assignment.subject.split(":")[1] ?? assignment.subject)
     .sort();
+}
+
+function referenceOf(component: VersionedComponent): ComponentReference {
+  return {
+    content_digest: component.content_digest,
+    key: component.key,
+    kind: component.kind,
+    revision: component.revision,
+  };
+}
+
+/** A component's identity across revisions: what it is and what it is called. */
+function idOf(reference: { readonly kind: string; readonly key: string }): string {
+  return `${reference.kind}:${reference.key}`;
 }
 
 function blank(value: string): string | null {

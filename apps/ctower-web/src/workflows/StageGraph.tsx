@@ -107,11 +107,18 @@ function StageCard({
           {stage.roles.length === 0 ? (
             <span className="text-muted">no role declared</span>
           ) : (
-            <span className="flex flex-wrap gap-1">
-              {stage.roles.map((role) => (
-                <Mono key={`${role.plane}:${role.key}`} className="text-muted" title={role.plane}>
-                  {role.key}
-                </Mono>
+            <span className="flex flex-wrap items-center gap-1.5">
+              {stage.roles.map((role, index) => (
+                <span key={`${role.plane}:${role.key}`} className="flex items-center gap-1.5">
+                  {index === 0 ? null : (
+                    <span aria-hidden className="text-muted">
+                      ·
+                    </span>
+                  )}
+                  <Mono className="text-muted" title={role.plane}>
+                    {role.key}
+                  </Mono>
+                </span>
               ))}
             </span>
           )}
@@ -137,11 +144,16 @@ function StageCard({
         </Row>
         {back.length === 0 ? null : (
           <Row label="entered from">
-            <span className="flex flex-wrap gap-1">
-              {back.map((transition) => (
-                <Mono key={transition.from} className="text-muted">
-                  {transition.from}
-                </Mono>
+            <span className="flex flex-wrap items-center gap-1.5">
+              {back.map((transition, index) => (
+                <span key={transition.from} className="flex items-center gap-1.5">
+                  {index === 0 ? null : (
+                    <span aria-hidden className="text-muted">
+                      ·
+                    </span>
+                  )}
+                  <Mono className="text-muted">{transition.from}</Mono>
+                </span>
               ))}
             </span>
           </Row>
