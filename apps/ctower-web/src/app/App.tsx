@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
+import type { CompanyBundleDocument } from "@ctower/client";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
@@ -10,6 +11,8 @@ import type { Org } from "../shell/OrgSwitcher";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { Cockpit } from "../cockpit/Cockpit";
+import { CrewRail } from "../cockpit/CrewRail";
+import { useRoster } from "../cockpit/useRoster";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
@@ -35,6 +38,10 @@ export function App(): ReactElement {
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
   const [here, setHere] = useState<DestinationKey>("company");
+  // The cockpit's selection is held here because its two halves render on
+  // either side of the shell: the crew list goes in the rail, the panes go in
+  // the content. Reading a roster costs nothing when there is no company.
+  const roster = useRoster(bundleOf(seed));
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
@@ -88,6 +95,15 @@ export function App(): ReactElement {
         org={orgOf(seed)}
         status={statusFor(seed.kind, previewing)}
         fill={here === "crews"}
+        rail={
+          here === "crews" ? (
+            <CrewRail
+              projects={roster.projects}
+              selected={roster.crew?.subject ?? null}
+              onSelect={roster.pick}
+            />
+          ) : undefined
+        }
       >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
         {seed.kind === "refused" ? (
@@ -102,7 +118,7 @@ export function App(): ReactElement {
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
           here === "crews" ? (
-            <Cockpit document={seed.value.result.bundle} />
+            <Cockpit projects={roster.projects} crew={roster.crew} />
           ) : (
             <CompanyPage seed={seed.value} onApplied={created} />
           )
@@ -121,11 +137,16 @@ export function App(): ReactElement {
  */
 /** The company, once the read has actually produced one. */
 function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
+  const bundle = bundleOf(seed);
+  return bundle === null ? null : { name: bundle.company.display_name, key: bundle.company.key };
+}
+
+/** The bundle itself, and only when a read actually produced one. */
+function bundleOf(seed: ReturnType<typeof seedForPreview>): CompanyBundleDocument | null {
   if (seed.kind !== "answered" || seed.value.kind !== "exported") {
     return null;
   }
-  const company = seed.value.result.bundle.company;
-  return { name: company.display_name, key: company.key };
+  return seed.value.result.bundle;
 }
 
 function statusFor(kind: string, previewing: boolean): ReactElement | null {

@@ -1,24 +1,26 @@
 import type { ReactElement } from "react";
 import { Mono } from "../ui/primitives";
 import { cn } from "../ui/cn";
+import { RAIL_SECTION } from "../shell/Rail";
 import { LIST_ROW } from "./panes";
 import type { Crew, Project } from "./roster";
 
 /**
  * The company's crews, by the project they hold a seat in — the reference's
- * `Projects` tree, at its own rhythm.
+ * `Projects` tree, in the one rail, under the destinations.
  *
- * Measured off `crop-rail.png`: a sentence-case muted section label (not
- * uppercase, not letter-spaced), a project row carrying a bordered initial
- * badge, then child rows on a 40px pitch with a 32px fill inset 4 each side.
- * The reference indents its children 49 in a 254 rail; this holds the same 19%
- * at 208.
+ * Measured off `crop-rail.png`: a project row carrying a bordered initial badge
+ * whose label sits in the same column as the destinations' above it, then child
+ * rows on a 40px pitch with a 32px fill inset 4 each side. The reference
+ * indents its children 49 in a 254 rail; 48 holds the same 19% at 248.
  *
- * The section label says `Projects` because the tree's top level genuinely is
- * projects and that is the reference's own word. It sits one rail away from the
- * shell's `Projects` destination, which is a different screen — flagged for the
- * operator's walk rather than renamed, because renaming to dodge an adjacency
- * is the kind of judgement the parity ruling exists to stop.
+ * The heading says `SEATS`, not the reference's `Projects`. Merging the rails
+ * put this block five rows under the destination list, and that list already
+ * contains both `Projects` and `Crews` — either of the obvious labels would
+ * repeat a navigation row directly above its own heading. The reference never
+ * repeats a word between its nav block and its section labels either
+ * (Home/Create/Search over Pinned/My workspaces/Team). `Seats` is the word this
+ * surface already uses for the thing, twice, in its own empty states.
  *
  * No row carries a state mark or a diff badge. The reference's badge is its
  * most distinctive rail signal, and ctower has no diff read to fill it; nothing
@@ -35,16 +37,17 @@ export function CrewRail({
   readonly onSelect: (subject: string) => void;
 }): ReactElement {
   return (
-    <nav aria-label="Crews" className="relative min-h-0 overflow-y-auto pb-3">
-      <div className="flex h-9 items-center px-3">
-        <span className="flex-1 text-xs text-muted">Projects</span>
-      </div>
+    <nav aria-label="Crews" className="pb-3">
+      <div className={RAIL_SECTION}>SEATS</div>
       {projects.map((project) => (
-        <div key={project.key} className="pb-1">
-          {/* The reference steps its tree 34 → 49 in a 254 rail. Held at 19%,
-              that is 28 → 40 here, so the project sits left of its seats rather
-              than level with them. */}
-          <div className="flex h-8 items-center gap-1.5 px-2">
+        // A column rather than ordinary flow, so the child rows' 4px above and
+        // below stay 4 and 4. In flow they are adjacent sibling margins and
+        // collapse into one, which renders the 40 pitch as 36.
+        <div key={project.key} className="flex flex-col pb-1">
+          {/* The reference steps its tree from its nav labels to its children at
+              19% of the rail. At 248 that is 38 → 48, so the project sits left
+              of its seats rather than level with them. */}
+          <div className="flex h-8 items-center gap-1.5 border-l-2 border-transparent px-4">
             <span
               aria-hidden
               className="grid size-4 shrink-0 place-content-center rounded-sm border border-line text-[9px] font-semibold text-muted"
@@ -55,7 +58,7 @@ export function CrewRail({
             <span className="shrink-0 text-2xs text-muted">{project.crews.length}</span>
           </div>
           {project.crews.length === 0 ? (
-            <p className="m-0 pt-0.5 pb-1 pl-9 text-2xs text-muted">No seats in this project.</p>
+            <p className="m-0 pt-0.5 pb-1 pl-12 text-2xs text-muted">No seats in this project.</p>
           ) : (
             project.crews.map((crew) => (
               <CrewRow
@@ -90,9 +93,13 @@ function CrewRow({
       }}
       className={cn(
         LIST_ROW,
+        // The 4px above and below is the rail's alone: 4 + a 32 fill + 4 is the
+        // reference's 40 child pitch, and the right pane's rows on this same
+        // `LIST_ROW` are measured at 32 with no gap.
+        //
         // The reference's selected row is a filled grey block, not an accent
         // edge: weight and fill carry the state, never a hue.
-        "w-[calc(100%-0.5rem)] cursor-pointer gap-2 pl-9 text-left text-sm",
+        "my-1 w-[calc(100%-0.5rem)] cursor-pointer gap-2 pl-11 text-left text-sm",
         here ? "bg-raised font-medium text-fg" : "text-fg hover:bg-raised"
       )}
     >

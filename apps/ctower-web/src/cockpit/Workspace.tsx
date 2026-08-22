@@ -8,7 +8,7 @@ import { cn } from "../ui/cn";
 import type { Answer } from "../api/client";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { livenessOf } from "./liveness";
-import { LIST_ROW, TAB_ROW } from "./panes";
+import { FOOT_TAB_ROW, LIST_ROW, TAB_ROW } from "./panes";
 import { Unbuilt } from "./Unbuilt";
 
 /**
@@ -72,7 +72,7 @@ export function Workspace({
         )}
       </div>
 
-      <div role="tablist" aria-label="Session" className={cn(TAB_ROW, "border-t")}>
+      <div role="tablist" aria-label="Session" className={cn(TAB_ROW, FOOT_TAB_ROW)}>
         <Tab here={foot} me="terminal" label="Terminal" count={null} onPick={setFoot} />
         <Tab here={foot} me="run" label="Run" count={null} onPick={setFoot} />
       </div>

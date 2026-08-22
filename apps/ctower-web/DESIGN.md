@@ -13,9 +13,13 @@ operator's explicit approval.
   is wired to truth. Nothing decorates, nothing pretends.
 
 ## Architecture of the surface (binds IA, not just pixels)
-- **One app, one shell.** Permanent left sidebar with exactly five groups:
+- **One app, one shell, one rail.** Permanent left sidebar with exactly five groups:
   LIVE (Lanes, Inbox) · WORK (Board, Requests) · TEAM (Crews, Company) ·
-  RUNTIME (Harnesses, Projects) · SYSTEM (Admin).
+  RUNTIME (Harnesses, Projects) · SYSTEM (Admin). Under those five, a screen may
+  contribute **one** section of its own content (the Cockpit's `SEATS` tree is
+  the first), behind a full-bleed divider and under a heading in the same style.
+  The five groups never change; the section below them does. There is never a
+  second rail.
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
   Next. The order follows the runtime, not the org chart: **1 Name your organization → 2
@@ -68,7 +72,9 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 
 ## Spacing & Layout
 - **Base unit:** 4px. **Density:** compact (Conductor-grade).
-- **Shell grid:** 200px rail + fluid content, max content 1200px, desktop-first.
+- **Shell grid:** 248px rail + fluid content, max content 1200px, desktop-first.
+  (Rail was 200 until 2026-08-22; see the Decisions Log. A workspace's frame caps
+  at 1250 so its *panes* measure the 1200.)
 - **Radius:** sm 4px (inputs/buttons/chips-square), md 8px (cards), 999px (state chips).
 - **Tables:** 13.5px, header 12px muted, row borders only (no zebra).
 
@@ -98,6 +104,8 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-21 | The org switcher sits at the sidebar top: current org + prefix chip, "Create new organization…" honest-unbuilt | The reference console's pattern; no invite and no sign-out for a tailnet-private v1 |
 | 2026-08-21 | The browser mints component digests itself (RFC 8785 + SHA-256, not `crypto.subtle`) | Every wizard step authors a real component and the registry recomputes the digest; proven against the live API at 5 of 5 checks |
 | 2026-08-22 | **Bounded exception — the Cockpit is dressed at 1:1 Conductor parity** | **Director** ruling 13:25Z: `board/design-refs-r2988-conductor/{1,3}*.png` is the source of truth for the Cockpit's pane layout, rail, chrome, type scale and spacing. This file's *dressing* deltas are discarded there. See the scope note below |
+| 2026-08-22 | **Superseded:** one 248px rail, not a 200px destination rail plus a second one | Commander reversal 19:10Z of his own 16:34 two-rail ruling. Reference 1 carries app navigation (Home, Create, Search) *and* the item list (Pinned, My workspaces, Team) in one ~248 column with section headings, so a second rail was never the reference's answer to the problem it was ruled for. The five destination groups are unchanged; the open screen's section stacks under them |
+| 2026-08-22 | **Superseded:** the rail's active destination is a neutral fill with a thin left accent, not an amber fill and edge | Same reversal. Merging the rails put the destination list inside the Cockpit, where the parity exception already said amber may not sit at rest. Amber survives on this surface as the focus ring, which is unchanged and still the only visible keyboard indicator. The amber wordmark and the org badge stay: both are identity, and the reference's own account row carries a full-colour avatar |
 
 ## The one bounded exception (director, 2026-08-22 13:25Z)
 
@@ -111,6 +119,13 @@ the Cockpit's dressing revert together; nothing else in this file moves.
 The **Cockpit** (the Crews destination) is dressed at 1:1 Conductor parity
 against `board/design-refs-r2988-conductor/`. Everywhere else in ctower-web,
 this file governs unchanged.
+
+**One thing the exception now reaches everywhere: the rail.** After the
+2026-08-22 reversal there is only one rail, so its width and its active-row
+treatment are the Cockpit's and every other screen's at the same time. Those two
+values moved for parity and are recorded in the log above. Nothing else about
+the rail moved — the five groups, their order, their labels, the unbuilt
+destination's dimmed-with-a-reason state, and the focus ring are untouched.
 
 What the exception reaches: pane layout, the crew rail's rhythm, pane chrome,
 type scale and spacing, and the accent — Conductor signals state with a filled
