@@ -36,10 +36,11 @@ export function ReviewStep({
 }): ReactElement {
   const adapter = adapterFor(answers.adapter);
   const sending = applied?.kind === "asking";
-  // A recorded answer is final; everything else — a refusal, an unreachable
-  // tower, a preview — may be tried again, and the same command key makes the
-  // retry the same command rather than a second one.
-  const recorded = applied?.kind === "answered";
+  // Only acceptance is final. A refusal, an unreachable tower, an unreadable
+  // answer, a preview, and a command taken but not yet durable may all be tried
+  // again — and the same command key makes that the same command rather than a
+  // second one.
+  const created = applied?.kind === "answered" && applied.value.durability_state === "accepted";
 
   return (
     <StepFrame
@@ -52,7 +53,7 @@ export function ReviewStep({
       busy={sending}
       onNext={onStart}
       nextLabel={retryLabel(applied, previewing)}
-      nextReady={!recorded}
+      nextReady={!created}
     >
       <ul className="m-0 list-none space-y-3 p-0">
         <Line label="Organization" value={answers.name} note={answers.key} given />
@@ -173,8 +174,11 @@ function retryLabel(applied: FirstRunOutcome | null, previewing: boolean): strin
   if (previewing) {
     return applied === null ? "Check and plan" : "Check again";
   }
-  if (applied === null || applied.kind === "answered") {
+  if (applied === null) {
     return "Get started";
   }
-  return "Try again";
+  if (applied.kind === "answered" && applied.value.durability_state === "accepted") {
+    return "Get started";
+  }
+  return "Send it again";
 }

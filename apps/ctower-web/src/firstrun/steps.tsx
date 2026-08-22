@@ -9,7 +9,7 @@ import { ADAPTERS, adapterFor } from "../harness/schema";
 import { suggestKey } from "./answers";
 import type { Answers } from "./answers";
 import { StepFrame } from "./StepFrame";
-import { Refused } from "../wizard/states";
+import { Malformed, Refused, Unreachable } from "../wizard/states";
 import type { Answer } from "../api/client";
 
 interface StepProps {
@@ -79,16 +79,45 @@ export function NameStep({
       <p className="mt-2 mb-0 text-xs text-muted">
         It must match the key this tower is registered under.
       </p>
-      {keyCheck !== null && keyCheck.kind === "refused" ? (
+      {keyCheck === null ? null : (
         <div className="mt-4">
-          <Refused
-            problem={keyCheck.problem}
-            action="Change the key to the one this tower is registered under, then continue."
-          />
+          <KeyCheck answer={keyCheck} />
         </div>
-      ) : null}
+      )}
     </StepFrame>
   );
+}
+
+/**
+ * Why the key was not accepted, whatever the reason was.
+ *
+ * Only one of these is ctower saying no. The others are ctower saying nothing,
+ * or saying something this client cannot read, and none of them is permission
+ * to walk four more screens on an unchecked key — so each is named for what it
+ * is and the step does not move.
+ */
+function KeyCheck({ answer }: { readonly answer: Answer<unknown> }): ReactElement | null {
+  switch (answer.kind) {
+    case "asking":
+    case "answered":
+      return null;
+    case "refused":
+      return (
+        <Refused
+          problem={answer.problem}
+          action="Change the key to the one this tower is registered under, then continue."
+        />
+      );
+    case "unreachable":
+      return (
+        <Unreachable
+          detail={answer.detail}
+          action="The key was not checked, so this stays put. Press Next to ask again."
+        />
+      );
+    case "malformed":
+      return <Malformed detail={answer.detail} />;
+  }
 }
 
 /** Step 2 — the runtime the team runs on, chosen before the staff. */
