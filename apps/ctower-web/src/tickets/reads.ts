@@ -42,16 +42,30 @@ export interface OneTicket {
   readonly timeline: TimelineResponse;
 }
 
+/**
+ * A different ticket is a different question and starts unanswered. Asking the
+ * same one again does not: the re-read after a move would otherwise blank the
+ * page that reported it, and the receipt — the run the record wrote, the version
+ * it is now at — would be gone before it could be read. So the last answer is
+ * held until the next one lands, and only the stage the record confirms replaces
+ * it.
+ */
 export function useTicket(
   projectKey: string,
   ticketId: string,
   reloadKey: number
 ): Answer<OneTicket> {
+  const which = `${projectKey} ${ticketId}`;
   const [one, setOne] = useState<Answer<OneTicket>>(ASKING);
+  const [asked, setAsked] = useState(which);
+
+  if (asked !== which) {
+    setAsked(which);
+    setOne(ASKING);
+  }
 
   useEffect((): (() => void) => {
     let live = true;
-    setOne(ASKING);
     const load = async (): Promise<void> => {
       const answer = await bothReads(projectKey, ticketId);
       if (!live) {
