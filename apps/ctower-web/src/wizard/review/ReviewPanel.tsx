@@ -125,9 +125,20 @@ function Planned({
   );
 }
 
-function Summary({ review }: { readonly review: Answer<Standing> }): ReactElement {
-  if (review.kind !== "answered") {
+/**
+ * The head's own line, and it may only say what has happened.
+ *
+ * A refusal is not a question still out. This said "Asking the registry" above
+ * a rendered refusal, which reads as a screen that has not heard back from a
+ * registry that has already answered — so the line exists while the call is
+ * out, and after that the body carries the fact.
+ */
+function Summary({ review }: { readonly review: Answer<Standing> }): ReactElement | null {
+  if (review.kind === "asking") {
     return <span>Asking the registry</span>;
+  }
+  if (review.kind !== "answered") {
+    return null;
   }
   const plan = review.value.plan;
   const moved = movedCount(plan.actions);

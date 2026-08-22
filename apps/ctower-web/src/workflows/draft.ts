@@ -121,7 +121,9 @@ export function newDraft(): WorkflowDraft {
 export function editCount(draft: WorkflowDraft): number {
   const base = draft.base;
   if (base === null) {
-    return 1;
+    // A workflow with no key is not yet a workflow. Offering to review one
+    // would offer to check a document nobody has started composing.
+    return draft.key.length === 0 ? 0 : 1;
   }
   const was = draftOf(base, draft.projects);
   return [

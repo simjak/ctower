@@ -145,6 +145,7 @@ export function Editor({
           <PolicyField
             label="Gates"
             hint="What a candidate must satisfy before a stage may be left."
+            example="engineering.software-factory.gates@1"
             kind="gate_policy"
             document={document}
             value={draft.gatesRef}
@@ -155,6 +156,7 @@ export function Editor({
           <PolicyField
             label="Execution"
             hint="Which seats run each stage, and under which review plan."
+            example="engineering.software-factory.execution@1"
             kind="execution_policy"
             document={document}
             value={draft.executionRef}
@@ -178,6 +180,7 @@ export function Editor({
 function PolicyField({
   label,
   hint,
+  example,
   kind,
   document,
   value,
@@ -185,6 +188,7 @@ function PolicyField({
 }: {
   readonly label: string;
   readonly hint: string;
+  readonly example: string;
   readonly kind: ComponentKind;
   readonly document: CompanyBundleDocument;
   readonly value: string;
@@ -199,7 +203,7 @@ function PolicyField({
       <Input
         className="font-mono"
         list={listId}
-        placeholder="engineering.software-factory.gates@1"
+        placeholder={example}
         spellCheck={false}
         value={value}
         onChange={(event): void => {

@@ -65,11 +65,16 @@ export function WorkflowCard({
             {projects.length === 0 ? (
               <span className="text-muted">no project is bound to it</span>
             ) : (
-              <span className="flex flex-wrap gap-1.5">
-                {projects.map((project) => (
-                  <Mono key={project} className="text-fg">
-                    {project}
-                  </Mono>
+              <span className="flex flex-wrap items-center gap-1.5">
+                {projects.map((project, index) => (
+                  <span key={project} className="flex items-center gap-1.5">
+                    {index === 0 ? null : (
+                      <span aria-hidden className="text-muted">
+                        ·
+                      </span>
+                    )}
+                    <Mono className="text-fg">{project}</Mono>
+                  </span>
                 ))}
               </span>
             )}
@@ -131,7 +136,7 @@ function Source({ workflow }: { readonly workflow: WorkflowFact }): ReactElement
         <Mono className="text-muted">{workflow.schemaRef}</Mono>
       </CardHeader>
       <CardBody>
-        <pre className="m-0 overflow-x-auto font-mono text-xs leading-relaxed text-fg">
+        <pre className="m-0 overflow-x-auto rounded-sm border border-line bg-bg p-3 font-mono text-xs leading-relaxed text-fg">
           {JSON.stringify(workflow.payload, null, 2)}
         </pre>
       </CardBody>

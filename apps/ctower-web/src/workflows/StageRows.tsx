@@ -40,7 +40,7 @@ export function StageRows({
         <div key={index} className="flex items-center gap-2">
           <Input
             aria-label={`Stage ${String(index + 1)} key`}
-            className="font-mono"
+            className="max-w-sm font-mono"
             placeholder="review"
             spellCheck={false}
             value={stage.key}
