@@ -46,6 +46,15 @@ export interface ProjectDocument {
   readonly goals: readonly string[];
 }
 
+/**
+ * Every project scope in the bundle, in key order.
+ *
+ * The order is this screen's, not the record's: a bundle carries its resources
+ * in whatever order the export emitted them, which is not a fact about the
+ * portfolio and can change between two exports of the same company. Sorting by
+ * key means a project sits where the operator last saw it. Nothing is filtered
+ * — every non-null scope renders, and no row is hidden or ranked.
+ */
 export function projectScopes(document: CompanyBundleDocument): readonly ProjectScope[] {
   const keys = new Set(
     document.resources
@@ -58,7 +67,12 @@ export function projectScopes(document: CompanyBundleDocument): readonly Project
   }));
 }
 
-/** A scope's components counted by kind, the largest group first. */
+/**
+ * A scope's components counted by kind, the largest group first and ties by
+ * name. Also this screen's order rather than the record's, and for the same
+ * reason: no kind is dropped, so what moves is where a row sits, never whether
+ * it renders.
+ */
 export function kindCounts(resources: readonly CompanyBundleResource[]): readonly KindCount[] {
   const counts = new Map<ComponentKind, number>();
   for (const resource of resources) {
