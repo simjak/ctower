@@ -189,7 +189,11 @@ function addressMark(address: Answer<SeatCredentialReceipt> | null): MarkName | 
     case "unreachable":
     case "malformed":
       return null;
-    case "answered":
+    case "answered": {
+      if (address.value.durability_state !== "accepted") {
+        return "working";
+      }
       return address.value.state === "active" ? "done" : "dead";
+    }
   }
 }
