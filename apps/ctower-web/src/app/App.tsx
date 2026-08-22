@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
+import { InboxPage } from "../inbox/InboxPage";
 import { Overlay } from "../firstrun/Overlay";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
@@ -98,9 +99,10 @@ export function App(): ReactElement {
           />
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
-        {seed.kind === "answered" && seed.value.kind === "exported" ? (
+        {seed.kind === "answered" && seed.value.kind === "exported" && here === "company" ? (
           <CompanyPage seed={seed.value} onApplied={created} />
         ) : null}
+        {seed.kind === "answered" && here === "inbox" ? <InboxPage /> : null}
       </Shell>
     </TooltipScope>
   );
