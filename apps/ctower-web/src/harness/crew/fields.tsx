@@ -1,20 +1,21 @@
 import type { ComponentProps, ReactElement } from "react";
 import type { CredentialScope } from "@ctower/client";
-import { cn } from "../../ui/cn";
+import { Select as SelectControl } from "../../ui/primitives";
 import { Checkbox } from "../../ui/form";
 
 /**
  * The two controls this screen needs that the shared vocabulary does not carry.
  *
- * Both are deliberately plain. A native `select` already answers to the keyboard
- * on every platform and takes the one focus treatment the token layer puts on
- * everything focusable, and a scope is a set of three, which is a row of
- * checkboxes rather than a widget.
+ * The select is the shared `Select` primitive with one thing added: a list of
+ * options where a recorded thing this command cannot take is shown and
+ * disabled, and a record with nothing to offer says so instead of rendering
+ * blank. The control itself — its metrics, its focus treatment, its disabled
+ * state — is the shell's, not a second copy of it. A scope is a set of three,
+ * which is a row of checkboxes rather than a widget.
  */
 export function Select({
   options,
   empty,
-  className,
   ...props
 }: ComponentProps<"select"> & {
   readonly options: readonly {
@@ -27,15 +28,7 @@ export function Select({
   readonly empty: string;
 }): ReactElement {
   return (
-    <select
-      className={cn(
-        "h-9 w-full min-w-0 rounded-sm border border-line bg-bg px-3 text-sm text-fg",
-        "disabled:cursor-not-allowed disabled:text-muted",
-        className
-      )}
-      disabled={options.length === 0}
-      {...props}
-    >
+    <SelectControl disabled={options.length === 0} {...props}>
       {/* A blank dropdown reads as a control that has not loaded. One that has
           nothing to offer says so, because that is the honest state. */}
       {options.length === 0 ? (
@@ -47,7 +40,7 @@ export function Select({
           </option>
         ))
       )}
-    </select>
+    </SelectControl>
   );
 }
 
