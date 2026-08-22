@@ -46,7 +46,7 @@ const buttonVariants = cva(
     "disabled:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
     // A control that is not yet armed says so by going quiet, not by wearing a
     // dimmed version of its own fill.
-    "disabled:border-line disabled:bg-transparent disabled:text-muted"
+    "disabled:border-line disabled:bg-transparent disabled:text-muted disabled:opacity-55"
   ),
   {
     variants: {

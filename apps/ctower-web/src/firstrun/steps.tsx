@@ -59,7 +59,7 @@ export function NameStep({ answers, onAnswers, onNext }: StepProps): ReactElemen
         }}
       />
       <p className="mt-2 mb-0 text-xs text-muted">
-        The record is keyed by this, and it has to match the tenant your credential belongs to.
+        It must match the key this tower is registered under.
       </p>
     </StepFrame>
   );

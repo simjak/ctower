@@ -21,6 +21,7 @@ export function EntityRow({
 }: {
   readonly fact: EntityFact;
   readonly removed: boolean;
+  /** Singular; the row pluralises it against the count. */
   readonly subjectNoun: string;
   readonly onRemove: (removed: boolean) => void;
 }): ReactElement {
@@ -70,7 +71,7 @@ export function EntityRow({
         <>
           {fact.subjects.length === 0 ? null : (
             <Chip title={fact.subjects.join(" · ")}>
-              {fact.subjects.length} {subjectNoun}
+              {fact.subjects.length} {fact.subjects.length === 1 ? subjectNoun : `${subjectNoun}s`}
             </Chip>
           )}
           <Button
