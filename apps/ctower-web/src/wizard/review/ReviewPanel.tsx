@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactElement } from "react";
-import type { CompanyBundleCommandResult, CompanyBundlePlan } from "@ctower/client";
+import type { CompanyBundleCommandResult } from "@ctower/client";
 import type { Answer } from "../../api/client";
 import { Button, Chip, Mono, PageHead } from "../../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../states";
@@ -26,17 +26,20 @@ export function ReviewPanel({
   armed,
   onArm,
   onApply,
+  onRetry,
   onBack,
 }: {
   readonly review: Answer<Standing>;
   readonly applied: Answer<CompanyBundleCommandResult> | null;
   readonly armed: boolean;
   readonly onArm: (armed: boolean) => void;
-  readonly onApply: (plan: CompanyBundlePlan) => void;
+  readonly onApply: (standing: Standing) => void;
+  /** Absent when there is nothing to send again; the receipt then offers none. */
+  readonly onRetry: (() => void) | null;
   readonly onBack: () => void;
 }): ReactElement {
   if (applied !== null) {
-    return <Receipt applied={applied} onBack={onBack} />;
+    return <Receipt applied={applied} onRetry={onRetry} onBack={onBack} />;
   }
 
   return (
@@ -54,7 +57,7 @@ export function ReviewPanel({
             disabled={!armed}
             title={armed ? undefined : "Confirm the authority above first."}
             onClick={(): void => {
-              onApply(review.value.plan);
+              onApply(review.value);
             }}
           >
             Apply as operator

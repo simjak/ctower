@@ -15,8 +15,15 @@ import type { Seed } from "./useSeed";
  * it are the page; review and apply are what edits produce, and they exist for
  * exactly as long as the edits do.
  */
-export function CompanyPage({ seed }: { readonly seed: Seed }): ReactElement {
-  const company = useCompany(seed);
+export function CompanyPage({
+  seed,
+  onApplied,
+}: {
+  readonly seed: Seed;
+  /** An accepted apply changed what is recorded; the page re-reads it. */
+  readonly onApplied: () => void;
+}): ReactElement {
+  const company = useCompany(seed, onApplied);
   const digest = seed.kind === "exported" ? seed.result.bundle_digest : null;
 
   if (company.mode === "review") {
@@ -27,6 +34,7 @@ export function CompanyPage({ seed }: { readonly seed: Seed }): ReactElement {
         armed={company.armed}
         onArm={company.setArmed}
         onApply={company.apply}
+        onRetry={company.retry}
         onBack={company.closeReview}
       />
     );

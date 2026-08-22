@@ -99,7 +99,7 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} />
+          <CompanyPage seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>

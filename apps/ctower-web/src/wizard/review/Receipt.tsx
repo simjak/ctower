@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCw } from "lucide-react";
 import type { ReactElement } from "react";
 import type { CompanyBundleCommandResult } from "@ctower/client";
 import type { Answer } from "../../api/client";
@@ -19,21 +19,34 @@ import { shortDigest } from "../bundle";
  * What came back, and the one thing it may not do: call a pending write done.
  * `durability_pending` is not acceptance, so it is not drawn as one and the
  * version does not move.
+ *
+ * Three of these outcomes tell the operator that sending again is safe, so
+ * sending again is a control here and not an instruction to reload the page.
+ * It is the same command under the same idempotency key — that is the whole
+ * reason the promise can be made.
  */
 export function Receipt({
   applied,
+  onRetry,
   onBack,
 }: {
   readonly applied: Answer<CompanyBundleCommandResult>;
+  readonly onRetry: (() => void) | null;
   readonly onBack: () => void;
 }): ReactElement {
   return (
     <>
       <Outcome applied={applied} />
       <footer className="mt-6 flex items-center gap-2 border-t border-line pt-4">
-        <Button variant="quiet" onClick={onBack}>
+        <Button variant="quiet" disabled={applied.kind === "asking"} onClick={onBack}>
           <ArrowLeft /> Back to the definition
         </Button>
+        <span className="flex-1" />
+        {onRetry === null ? null : (
+          <Button variant="primary" onClick={onRetry}>
+            <RotateCw /> Send the same command again
+          </Button>
+        )}
       </footer>
     </>
   );
