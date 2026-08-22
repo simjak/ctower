@@ -12,6 +12,7 @@ import { Shell } from "../shell/Shell";
 import { destinationFromSearch } from "../shell/destinations";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
+import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { Cockpit } from "../cockpit/Cockpit";
@@ -174,6 +175,8 @@ function Here({
       return <InboxPage />;
     case "crews":
       return <Cockpit document={seed.result.bundle} />;
+    case "tickets":
+      return <TicketsPage document={seed.result.bundle} />;
     case "board":
       return <BoardPage company={seed.result.bundle} />;
     case "workflows":
@@ -183,7 +186,6 @@ function Here({
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "lanes":
-    case "tickets":
     case "harnesses":
     case "projects":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
