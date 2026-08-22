@@ -98,7 +98,7 @@ function personaNames(document: CompanyBundleDocument): ReadonlyMap<string, stri
  * code is, and which commit is pinned. The row shows both, with the commit at
  * the length a person actually reads one; the whole value stays in the hover.
  */
-function readableRepository(reference: string): string {
+export function readableRepository(reference: string): string {
   const path = reference.replace(/^repository:/, "");
   const match = /^(.*)\/([0-9a-f]{40})$/.exec(path);
   if (match === null) {
