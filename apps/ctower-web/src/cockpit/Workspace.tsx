@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import type { TicketSession } from "@ctower/client";
 import { Mono } from "../ui/primitives";
 import { Mark } from "../ui/marks";
@@ -8,32 +8,35 @@ import { cn } from "../ui/cn";
 import type { Answer } from "../api/client";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { livenessOf } from "./liveness";
-import { PANE_HEAD } from "./panes";
+import { LIST_ROW, TAB_ROW } from "./panes";
 import { Unbuilt } from "./Unbuilt";
 
 /**
  * The console viewer is a real, shipped server surface and it is deliberately
- * not this browser's.
- *
- * It answers only on its own exact HTTPS origin, behind a human session cookie
- * and a CSRF value bound to that cookie, and its four operations are marked out
- * of the generated client for exactly that reason. This console holds an
- * operator bearer on a private HTTP origin and can hold none of those things,
- * so there is nothing here to read a crew's terminal with — and inventing the
- * read would be inventing the authority behind it.
+ * not this browser's: it answers only on its own exact HTTPS origin, behind a
+ * human session cookie and a CSRF value bound to it, and its operations are
+ * marked out of the generated client for exactly that reason.
  */
 const TERMINAL_REASON =
   "The console viewer answers only on its own origin, behind a browser session this console does not hold.";
-
-/**
- * Why this pane is the project's work and not this seat's: an assignment is
- * keyed by subject and a session by seat, and nothing at this head joins them.
- */
 const SCOPE_REASON =
   "A session records its own seat and crew, and no read ties either to a bundle assignment's subject.";
+const FILES_REASON = "No file, diff or check read exists in the authored contract at this head.";
 
-type TabKey = "work" | "terminal";
+type TopTab = "work" | "files" | "checks";
+type FootTab = "run" | "terminal";
 
+/**
+ * The right pane, in the reference's shape: a tab row over a list, and a second
+ * tab row over a panel at the foot.
+ *
+ * The reference fills all of this with a changes list, and ctower has no diff
+ * read — so `Files` and `Checks` are drawn and honestly empty. What ctower does
+ * have is the project's recorded work, and it takes the reference's own row
+ * grammar rather than a shape of its own: identifier left, quantities right, on
+ * the same 32px pitch. One tab label is ctower's word for the job instead of
+ * the reference's; that is the divergence, and it is named.
+ */
 export function Workspace({
   projectKey,
   sessions,
@@ -41,74 +44,98 @@ export function Workspace({
   readonly projectKey: string;
   readonly sessions: Answer<readonly TicketSession[]>;
 }): ReactElement {
-  const [tab, setTab] = useState<TabKey>("work");
+  const [top, setTop] = useState<TopTab>("work");
+  const [foot, setFoot] = useState<FootTab>("terminal");
+  const count = sessions.kind === "answered" ? sessions.value.length : null;
 
   return (
     <section className="flex min-h-0 flex-1 flex-col border-l border-line">
-      <div role="tablist" aria-label="Workspace" className={cn(PANE_HEAD, "gap-1 px-2")}>
-        <Tab here={tab} me="work" label="Work" onPick={setTab} />
-        <Tab here={tab} me="terminal" label="Terminal" onPick={setTab} />
+      <div role="tablist" aria-label="Workspace" className={cn(TAB_ROW)}>
+        <Tab here={top} me="work" label="Work" count={count} onPick={setTop} />
+        <Tab here={top} me="files" label="Files" count={null} onPick={setTop} />
+        <Tab here={top} me="checks" label="Checks" count={null} onPick={setTop} />
       </div>
       <div
         role="tabpanel"
-        id={`workspace-panel-${tab}`}
-        aria-labelledby={`workspace-tab-${tab}`}
-        // A scroll container that is not a positioning context lets any
-        // absolutely-positioned descendant resolve against the document and
-        // escape the clip. This one holds a list, so it says so once here.
-        className="relative min-h-0 flex-1 overflow-y-auto"
+        id={`workspace-panel-${top}`}
+        aria-labelledby={`workspace-tab-${top}`}
+        className="relative min-h-0 flex-[3] overflow-y-auto"
       >
-        {tab === "work" ? (
+        {top === "work" ? (
           <Work projectKey={projectKey} sessions={sessions} />
         ) : (
           <Unbuilt
             className="h-full"
-            what="A crew's terminal is not readable from this console."
-            why={TERMINAL_REASON}
+            what={top === "files" ? "No changed files render here." : "No checks render here."}
+            why={FILES_REASON}
           />
         )}
+      </div>
+
+      <div role="tablist" aria-label="Session" className={cn(TAB_ROW, "border-t")}>
+        <Tab here={foot} me="terminal" label="Terminal" count={null} onPick={setFoot} />
+        <Tab here={foot} me="run" label="Run" count={null} onPick={setFoot} />
+      </div>
+      <div
+        role="tabpanel"
+        id={`foot-panel-${foot}`}
+        aria-labelledby={`foot-tab-${foot}`}
+        className="relative min-h-0 flex-[2] overflow-y-auto"
+      >
+        <Unbuilt
+          className="h-full"
+          what={
+            foot === "terminal"
+              ? "A crew's terminal is not readable from this console."
+              : "Nothing runs from this console."
+          }
+          why={foot === "terminal" ? TERMINAL_REASON : FILES_REASON}
+        />
       </div>
     </section>
   );
 }
 
-function Tab({
+/**
+ * The reference's active tab is a filled grey pill carrying a muted count, and
+ * its inactive tabs are muted text with no decoration at all. Weight and fill
+ * carry the state; no hue does.
+ */
+function Tab<T extends string>({
   here,
   me,
   label,
+  count,
   onPick,
 }: {
-  readonly here: TabKey;
-  readonly me: TabKey;
+  readonly here: T;
+  readonly me: T;
   readonly label: string;
-  readonly onPick: (tab: TabKey) => void;
+  readonly count: number | null;
+  readonly onPick: (tab: T) => void;
 }): ReactElement {
+  const active = here === me;
   return (
     <button
       type="button"
       role="tab"
-      id={`workspace-tab-${me}`}
-      // Both tabs stay in the tab order rather than taking a roving index: the
-      // law here is that every control is keyboard-reachable, and two stops
-      // reach both panels without teaching an arrow-key convention first.
-      aria-selected={here === me}
-      aria-controls={`workspace-panel-${me}`}
+      id={`${me === "run" || me === "terminal" ? "foot" : "workspace"}-tab-${me}`}
+      aria-selected={active}
+      aria-controls={`${me === "run" || me === "terminal" ? "foot" : "workspace"}-panel-${me}`}
       onClick={(): void => {
         onPick(me);
       }}
       className={cn(
-        // The underline sits on the head's own rule rather than floating above
-        // it, so the active tab reads as attached to the panel it opens.
-        "-mb-px flex cursor-pointer items-center self-stretch border-b-2 px-2 text-xs",
-        here === me ? "border-amber font-semibold text-fg" : "border-transparent text-muted"
+        "flex h-6.5 cursor-pointer items-center gap-1.5 rounded-sm px-2.5 text-xs",
+        active ? "bg-raised font-medium text-fg" : "text-muted"
       )}
     >
       {label}
+      {count === null ? null : <span className="text-muted">{count}</span>}
     </button>
   );
 }
 
-/** The work the record holds for this project, newest first. */
 function Work({
   projectKey,
   sessions,
@@ -120,17 +147,20 @@ function Work({
     return <Waiting sessions={sessions} />;
   }
   return (
-    <div className="px-4 py-3">
-      <p className="mt-0 mb-3 flex items-center gap-1.5 text-2xs text-muted">
-        Work recorded in <Mono>{projectKey}</Mono>
+    <div className="py-1">
+      <div className="flex items-center gap-1.5 px-3 pt-1 pb-2">
+        <span className="text-2xs text-muted">Work recorded in</span>
+        <Mono className="text-muted">{projectKey}</Mono>
         <Hint text={SCOPE_REASON} />
-      </p>
+      </div>
       {sessions.value.length === 0 ? (
-        <p className="m-0 text-sm text-muted">Nothing has been worked on in this project yet.</p>
+        <p className="m-0 px-3 text-sm text-muted">
+          Nothing has been worked on in this project yet.
+        </p>
       ) : (
-        <ul className="m-0 list-none space-y-3 p-0">
+        <ul className="m-0 list-none p-0">
           {sessions.value.map((session) => (
-            <SessionCard key={session.session_id} session={session} />
+            <SessionRow key={session.session_id} session={session} />
           ))}
         </ul>
       )}
@@ -145,7 +175,11 @@ function Waiting({
   readonly sessions: Answer<readonly TicketSession[]>;
 }): ReactElement {
   if (sessions.kind === "asking") {
-    return <Asking what="Reading this project's work" />;
+    return (
+      <div className="px-3">
+        <Asking what="Reading this project's work" />
+      </div>
+    );
   }
   return (
     <div className="p-3">
@@ -160,53 +194,37 @@ function Waiting({
   );
 }
 
-function SessionCard({ session }: { readonly session: TicketSession }): ReactElement {
+/**
+ * One session, in the reference's file-row grammar: the dimmed context first,
+ * the identifier in ink, and the quantities right-aligned. The reference puts a
+ * directory before a basename; this puts the crew before the seat, which is the
+ * same move — the part you scan past, then the part you are looking for.
+ */
+function SessionRow({ session }: { readonly session: TicketSession }): ReactElement {
   const live = livenessOf(session);
   return (
-    <li className="border-t border-line pt-3 first:border-t-0 first:pt-0">
-      <div className="flex items-baseline gap-1.5">
+    <li>
+      <div className={cn(LIST_ROW, "gap-1.5")} title={session.branch_ref}>
         {live.mark === null ? null : <Mark name={live.mark} />}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{session.seat_key}</span>
+        {/* The reference truncates the directory and never the basename: the
+            part you scan past gives up its width, the part you are looking for
+            keeps it. Here the crew is the prefix and the seat is the name. */}
+        <span className="flex min-w-0 items-baseline text-sm">
+          <span className="min-w-0 truncate text-muted">{session.crew_name}/</span>
+          <span className="shrink-0 font-medium">{session.seat_key}</span>
+        </span>
+        <span className="flex-1" />
         <span className="shrink-0 text-2xs text-muted">{live.word}</span>
-      </div>
-      <dl className="m-0 mt-1.5">
-        <Fact label="Crew">{session.crew_name}</Fact>
-        <Fact label="Branch">{session.branch_ref}</Fact>
-        <Fact label="Worktree">{session.worktree_ref}</Fact>
-        <Fact label="Model">{session.model_ref}</Fact>
-        <Fact label="Started">{session.started_at}</Fact>
-        <Fact label="State changes">{session.transition_count}</Fact>
-        <Fact label="Tokens">
-          {session.tokens === null
-            ? null
-            : `${String(session.tokens.input_tokens)} in · ${String(session.tokens.output_tokens)} out`}
-        </Fact>
-      </dl>
-    </li>
-  );
-}
-
-function Fact({
-  label,
-  children,
-}: {
-  readonly label: string;
-  readonly children: ReactNode;
-}): ReactElement {
-  // Label over value rather than beside it. A branch or worktree ref is longer
-  // than the column a two-up split leaves in a 304px pane, and the break lands
-  // mid-word — `/srv/projects/ctowe` / `r/.worktrees/…` is a path an operator
-  // has to reassemble by eye before they can read it.
-  return (
-    <div className="py-1">
-      <dt className="text-2xs text-muted">{label}</dt>
-      <dd className="m-0 break-all">
-        {children === null ? (
-          <span className="text-2xs text-muted">none recorded</span>
-        ) : (
-          <Mono>{children}</Mono>
+        {session.tokens === null ? null : (
+          // A count carries its unit, or it is just a large number.
+          <Mono className="shrink-0 text-muted">{session.tokens.total_tokens} tok</Mono>
         )}
-      </dd>
-    </div>
+      </div>
+      <div className={cn(LIST_ROW, "h-5 gap-1.5 pt-0 text-2xs")}>
+        <Mono className="min-w-0 truncate text-muted">{session.branch_ref}</Mono>
+        <span className="flex-1" />
+        <Mono className="shrink-0 text-muted">{session.model_ref}</Mono>
+      </div>
+    </li>
   );
 }

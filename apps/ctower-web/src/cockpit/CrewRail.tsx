@@ -1,21 +1,29 @@
 import type { ReactElement } from "react";
 import { Mono } from "../ui/primitives";
 import { cn } from "../ui/cn";
+import { LIST_ROW } from "./panes";
 import type { Crew, Project } from "./roster";
 
 /**
- * The company's crews, by the project they hold a seat in.
+ * The company's crews, by the project they hold a seat in — the reference's
+ * `Projects` tree, at its own rhythm.
  *
- * The project heading is the `project_key` itself, in the machine face, because
- * that is what it is: the exact string every project-scoped read takes. The
- * bundle records display names for project *components*, and those are a
- * different key — putting one over the other would be labelling a row with a
- * name that does not identify it.
+ * Measured off `crop-rail.png`: a sentence-case muted section label (not
+ * uppercase, not letter-spaced), a project row carrying a bordered initial
+ * badge, then child rows on a 40px pitch with a 32px fill inset 4 each side.
+ * The reference indents its children 49 in a 254 rail; this holds the same 19%
+ * at 208.
  *
- * No row carries a state mark. The bundle says who the company has; the work
- * record says what was worked on; and at this head nothing joins one to the
- * other, so no seat here has a recorded state to draw. A mark inferred from a
- * near-matching name is exactly the borrowed glyph `DESIGN.md` forbids.
+ * The section label says `Projects` because the tree's top level genuinely is
+ * projects and that is the reference's own word. It sits one rail away from the
+ * shell's `Projects` destination, which is a different screen — flagged for the
+ * operator's walk rather than renamed, because renaming to dodge an adjacency
+ * is the kind of judgement the parity ruling exists to stop.
+ *
+ * No row carries a state mark or a diff badge. The reference's badge is its
+ * most distinctive rail signal, and ctower has no diff read to fill it; nothing
+ * at this head joins a seat to a recorded session either. A mark inferred from
+ * a near-matching name is exactly the borrowed glyph the marks law forbids.
  */
 export function CrewRail({
   projects,
@@ -27,15 +35,27 @@ export function CrewRail({
   readonly onSelect: (subject: string) => void;
 }): ReactElement {
   return (
-    <nav aria-label="Crews" className="relative min-h-0 overflow-y-auto py-2">
+    <nav aria-label="Crews" className="relative min-h-0 overflow-y-auto pb-3">
+      <div className="flex h-9 items-center px-3">
+        <span className="flex-1 text-xs text-muted">Projects</span>
+      </div>
       {projects.map((project) => (
-        <div key={project.key}>
-          <div className="flex items-baseline gap-2 px-3 pt-3 pb-1">
-            <Mono className="min-w-0 flex-1 truncate text-muted">{project.key}</Mono>
+        <div key={project.key} className="pb-1">
+          {/* The reference steps its tree 34 → 49 in a 254 rail. Held at 19%,
+              that is 28 → 40 here, so the project sits left of its seats rather
+              than level with them. */}
+          <div className="flex h-8 items-center gap-1.5 px-2">
+            <span
+              aria-hidden
+              className="grid size-4 shrink-0 place-content-center rounded-sm border border-line text-[9px] font-semibold text-muted"
+            >
+              {project.key.slice(0, 1).toUpperCase()}
+            </span>
+            <Mono className="min-w-0 flex-1 truncate text-fg">{project.key}</Mono>
             <span className="shrink-0 text-2xs text-muted">{project.crews.length}</span>
           </div>
           {project.crews.length === 0 ? (
-            <p className="m-0 px-3 pb-1 text-2xs text-muted">No seats in this project.</p>
+            <p className="m-0 pt-0.5 pb-1 pl-9 text-2xs text-muted">No seats in this project.</p>
           ) : (
             project.crews.map((crew) => (
               <CrewRow
@@ -69,16 +89,16 @@ function CrewRow({
         onSelect(crew.subject);
       }}
       className={cn(
-        "flex w-full cursor-pointer items-baseline gap-2 px-3 py-1.5 text-left text-sm",
-        here
-          ? "border-r-2 border-amber bg-amber/14 font-semibold"
-          : "border-r-2 border-transparent hover:bg-raised"
+        LIST_ROW,
+        // The reference's selected row is a filled grey block, not an accent
+        // edge: weight and fill carry the state, never a hue.
+        "w-[calc(100%-0.5rem)] cursor-pointer gap-2 pl-9 text-left text-sm",
+        here ? "bg-raised font-medium text-fg" : "text-fg hover:bg-raised"
       )}
     >
       <span className="min-w-0 flex-1 truncate">{crew.seat}</span>
-      {/* The persona is in the head of the pane this row opens, so repeating it
-          down the column would be chrome. An unstaffed seat is the one thing
-          the row itself has to say, because nothing downstream can say it. */}
+      {/* An unstaffed seat is the one thing the row itself has to say; the
+          persona is in the head of the pane this row opens. */}
       {crew.profileKey === null ? (
         <span className="shrink-0 text-2xs text-muted">no agent</span>
       ) : null}
