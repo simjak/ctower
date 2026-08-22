@@ -4,6 +4,7 @@ import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
+import { HarnessPage } from "../harness/HarnessPage";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
@@ -12,6 +13,7 @@ import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
+import type { Seed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
@@ -99,11 +101,33 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          <Page here={here} seed={seed.value} onApplied={created} />
         ) : null}
       </Shell>
     </TooltipScope>
   );
+}
+
+/**
+ * The screen the rail is pointing at.
+ *
+ * Only a built destination reaches here — the rail refuses to travel to one
+ * that is not — so a destination that has no screen yet is a fall-through to
+ * the company rather than a dead route.
+ */
+function Page({
+  here,
+  seed,
+  onApplied,
+}: {
+  readonly here: DestinationKey;
+  readonly seed: Extract<Seed, { kind: "exported" }>;
+  readonly onApplied: () => void;
+}): ReactElement {
+  if (here === "harnesses") {
+    return <HarnessPage recorded={seed.result.bundle} onApplied={onApplied} />;
+  }
+  return <CompanyPage seed={seed} onApplied={onApplied} />;
 }
 
 /**
