@@ -17,10 +17,13 @@ export interface Authored {
   readonly kind: ComponentKind;
   readonly schemaRef: string;
   readonly payload: Readonly<Record<string, unknown>> & { readonly key: string };
+  /** The screen this was typed into, when it was not the first run. */
+  readonly source?: string;
 }
 
 export function mint(authored: Authored, tenant: string): VersionedComponent {
   const digest = canonicalDigest(authored.payload);
+  const source = authored.source ?? "ctower-web/first-run";
   return {
     compatibility: { ctower: ">=0.0.0,<1.0.0", requires: [] },
     content_digest: digest,
@@ -28,7 +31,7 @@ export function mint(authored: Authored, tenant: string): VersionedComponent {
     kind: authored.kind,
     lifecycle: "published",
     payload_ref: `object:${digest}`,
-    provenance: [{ digest, kind: "authored", source: "ctower-web/first-run" }],
+    provenance: [{ digest, kind: "authored", source }],
     revision: 1,
     schema: "ctower.versioned-component/v1",
     schema_ref: authored.schemaRef,
