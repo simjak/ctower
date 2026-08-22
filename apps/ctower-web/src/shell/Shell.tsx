@@ -16,6 +16,7 @@ export function Shell({
   lockReason,
   onGo,
   org,
+  project,
   status,
   fill = false,
   children,
@@ -26,6 +27,8 @@ export function Shell({
   readonly onGo: (key: DestinationKey) => void;
   /** The company this console is looking at, once it is known. */
   readonly org: Org | null;
+  /** Which of that company's projects the console is on. */
+  readonly project?: ReactNode;
   readonly status?: ReactNode;
   /**
    * A workspace rather than a page: it takes the height of the viewport and
@@ -52,6 +55,9 @@ export function Shell({
           {org === null ? null : (
             <div className="border-b border-line">
               <OrgSwitcher org={org} />
+              {/* The project sits under the company it belongs to: the record
+                  nests them, and so does the rail. */}
+              {project === undefined ? null : <div className="border-t border-line">{project}</div>}
             </div>
           )}
           <Rail here={here} lockReason={lockReason} onGo={onGo} />
