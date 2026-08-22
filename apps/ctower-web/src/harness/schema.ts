@@ -35,8 +35,6 @@ export interface Adapter {
   readonly key: string;
   readonly label: string;
   readonly blurb: string;
-  /** At most one adapter carries this: a field of equals recommends nothing. */
-  readonly recommended: boolean;
   /** What this adapter declares as its settings. Empty is a real answer. */
   readonly config: readonly FieldSchema[];
 }
@@ -45,23 +43,15 @@ export interface Adapter {
  * The three adapters the runner actually has a binding for. A card for anything
  * else would be offering a harness with nothing behind it, which is how a stub
  * becomes an adapter by accident.
+ *
+ * None of them is recommended. All three have a real binding and a real
+ * conformance suite, so ranking them would be this screen expressing a
+ * preference the record does not hold.
  */
 export const ADAPTERS: readonly Adapter[] = [
-  {
-    key: "claude-code",
-    label: "Claude Code",
-    blurb: "Claude Code CLI harness",
-    recommended: true,
-    config: [],
-  },
-  { key: "codex", label: "Codex", blurb: "Codex CLI harness", recommended: false, config: [] },
-  {
-    key: "hermes",
-    label: "Hermes",
-    blurb: "Hermes profile harness",
-    recommended: false,
-    config: [],
-  },
+  { key: "claude-code", label: "Claude Code", blurb: "Claude Code CLI harness", config: [] },
+  { key: "codex", label: "Codex", blurb: "Codex CLI harness", config: [] },
+  { key: "hermes", label: "Hermes", blurb: "Hermes profile harness", config: [] },
 ];
 
 export function adapterFor(key: string): Adapter | undefined {
