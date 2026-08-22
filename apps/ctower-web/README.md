@@ -1,9 +1,14 @@
 # ctower-web boundary
 
-One screen: the company-creation wizard. Compose a company bundle, validate it,
-plan it, and hand the apply to the operator. Nothing else exists in this
-application — no second route, no navigation, and no control that is not wired
-to a real operation.
+The operator console: a shell with five groups, and the screens that are built
+behind them. Two are, today — **Company** (compose a company bundle, validate
+it, plan it, and hand the apply to the operator) and **Board** (the work the
+projection holds, read-only). Every other destination renders as unbuilt rather
+than as a pretend page, and no control exists that is not wired to a real
+operation.
+
+Where the operator is lives in the address — `?at=board&project=ctower` — so a
+screen is a link and the same screen opens for whoever it is sent to.
 
 ## The four steps are four operations
 
@@ -17,6 +22,22 @@ does, not after the call behind it.
 | Check the bundle | `validateCompanyBundle` | the real check; a refusal renders as a refusal |
 | Review changes | `planCompanyBundle` | the real diff — adds, changes, removes |
 | Apply | `applyCompanyBundle` | gated: it runs with the operator's own authority (D30) |
+
+## The Board is a projection, and says so
+
+| What is drawn | Read behind it | What it is |
+| --- | --- | --- |
+| The six columns | `getBoard` | the contract's own closed `BoardLane` set, in the order work moves through it |
+| A card's workflow position | `getBoard` | the card's own `stage_label`; a card that declares none is drawn without one |
+| `current` / `catching up` | `getBoard` | `health` and the two watermarks, which are record positions and never render as a count of tickets |
+| A card's detail | `getTicket`, `getTicketTimeline` | read-only; a transition is a command with its own authority and arrives with it |
+
+The work-plane project key is not a company component key: the board reads
+`ctower`, the definition holds `ctower.control-plane`. The record owns the rule
+that joins them — `allocate_ticket_display_key` matches a project component by
+its key's first dot-segment — so the console reads that rule and guesses
+nothing. No operation enumerates work-plane projects, so the definition's own
+projects are offered and any other key can be named.
 
 ## The stack, and what ports from paperclip
 

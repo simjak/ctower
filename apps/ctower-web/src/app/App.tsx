@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import type { ReactElement } from "react";
+import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
+import { hereFromLocation, rememberHere } from "../shell/here";
 import type { Org } from "../shell/OrgSwitcher";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
@@ -30,10 +32,15 @@ export function App(): ReactElement {
   const preview = previewFromLocation(window.location.search);
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
-  const [here, setHere] = useState<DestinationKey>("company");
+  const [here, setHere] = useState<DestinationKey>(() => hereFromLocation(window.location.search));
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
+  }, []);
+
+  const go = useCallback((key: DestinationKey): void => {
+    setHere(key);
+    rememberHere(key);
   }, []);
 
   if (seed.kind === "answered" && seed.value.kind === "template") {
@@ -56,7 +63,7 @@ export function App(): ReactElement {
       <Shell
         here={here}
         lockReason={seed.kind === "answered" ? null : "Still reading this company"}
-        onGo={setHere}
+        onGo={go}
         org={orgOf(seed)}
         status={statusFor(seed.kind, previewing)}
       >
@@ -72,7 +79,11 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} />
+          here === "board" ? (
+            <BoardPage company={seed.value.result.bundle} />
+          ) : (
+            <CompanyPage seed={seed.value} />
+          )
         ) : null}
       </Shell>
     </TooltipScope>
