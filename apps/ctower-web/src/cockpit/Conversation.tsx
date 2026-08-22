@@ -1,50 +1,44 @@
+import { ChevronRight } from "lucide-react";
 import type { ReactElement } from "react";
 import { Mono } from "../ui/primitives";
 import { cn } from "../ui/cn";
 import type { Crew } from "./roster";
-import { PANE_HEAD } from "./panes";
-import { InertControl, Unbuilt } from "./Unbuilt";
+import { BREADCRUMB } from "./panes";
+import { Composer, Unbuilt } from "./Unbuilt";
 
 const TRANSCRIPT_REASON =
   "The typed transcript read and stream are authored contract law with no implementation at this head.";
-const COMPOSER_REASON =
-  "Composer send is authored as one typed operator command with no implementation at this head.";
-const STEER_REASON =
-  "Steer is authored as the same typed command path as send, with no implementation at this head.";
 
 /**
- * The middle pane: who this crew is, and the conversation with them.
+ * The middle pane: which seat is selected, and the conversation with it.
  *
- * The head is the bundle's own record of this seat — the persona assigned to
- * it and the harness that profile names — and nothing else. It carries no
- * state chip, because no read at this head can say what this seat is doing.
+ * The head is the reference's breadcrumb at its measured 52px — `project ›
+ * seat` — with the two facts the bundle records about that seat riding the same
+ * row, right-aligned in the machine face. One row, not a second header: the
+ * reference has no pane header here and inventing one is what the earlier build
+ * did.
  *
- * The composer is drawn as its two real verbs rather than as a text box. A box
- * invites typing, and typing into a surface that cannot send is the one thing
- * an operator console may never do; two inert controls that say what they would
- * be is the same information without the lie.
+ * There is no tab strip. The reference tabs over concurrent workspaces in one
+ * project; ctower's record has no such object, so empty tabs would be chrome
+ * for its own sake.
  */
 export function Conversation({ crew }: { readonly crew: Crew }): ReactElement {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className={cn(PANE_HEAD, "gap-3 px-4")}>
-        {/* The heading is the seat, because the seat is what the operator
-            picked. The persona is a property of it and sits underneath — this
-            company assigns one persona to every seat, so leading with it would
-            title ten different screens identically. */}
-        <div className="min-w-0 flex-1">
-          <h2 className="m-0 truncate text-md leading-tight font-semibold tracking-[-0.02em]">
-            {crew.seat}
-          </h2>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-muted">
-            <Mono>{crew.projectKey}</Mono>
-            <span>{crew.personaName ?? "no persona recorded"}</span>
-            {crew.harnessRef === null ? (
-              <span>no harness recorded</span>
-            ) : (
-              <Mono>{crew.harnessRef}</Mono>
-            )}
-          </div>
+      <header className={cn(BREADCRUMB)}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Mono className="shrink-0 text-muted">{crew.projectKey}</Mono>
+          <ChevronRight aria-hidden className="size-3 shrink-0 text-muted" />
+          <span className="min-w-0 truncate text-sm font-medium">{crew.seat}</span>
+        </div>
+        <span className="flex-1" />
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-2xs text-muted">{crew.personaName ?? "no persona recorded"}</span>
+          {crew.harnessRef === null ? (
+            <span className="text-2xs text-muted">no harness recorded</span>
+          ) : (
+            <Mono className="text-muted">{crew.harnessRef}</Mono>
+          )}
         </div>
       </header>
 
@@ -54,10 +48,9 @@ export function Conversation({ crew }: { readonly crew: Crew }): ReactElement {
         why={TRANSCRIPT_REASON}
       />
 
-      <footer className="flex items-center gap-2 border-t border-line px-4 py-3">
-        <InertControl label="Send a message" reason={COMPOSER_REASON} className="flex-1" />
-        <InertControl label="Steer" reason={STEER_REASON} />
-      </footer>
+      <div className="shrink-0 px-4 pb-4">
+        <Composer />
+      </div>
     </section>
   );
 }

@@ -48,8 +48,10 @@
   --bg: var(--paper);
   --fg: var(--ink);
   --card: var(--surface);
-  /* A quiet fill for a row under the pointer. Derived, never a fifth grey. */
-  --raised: color-mix(in srgb, var(--fg) 4%, transparent);
+  /* A quiet fill for a row under the pointer, and for a selected row or an
+     active tab. Derived, never a fifth grey. 6% resolves to ~#f0f0ef on white,
+     which is the fill measured off the Conductor references (R2988). */
+  --raised: color-mix(in srgb, var(--fg) 6%, transparent);
 
   --r-sm: 4px;
   --r-md: 8px;

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import type { CompanyBundleDocument } from "@ctower/client";
-import { PageHead } from "../ui/primitives";
+import { cn } from "../ui/cn";
 import { Conversation } from "./Conversation";
 import { CrewRail } from "./CrewRail";
-import { crewCount, findCrew, firstCrew, rosterOf } from "./roster";
+import { CREW_RAIL, WORKSPACE } from "./panes";
+import { findCrew, firstCrew, rosterOf } from "./roster";
 import { sessionsOfProject, useSessions } from "./useSessions";
 import { Workspace } from "./Workspace";
 
@@ -26,33 +27,30 @@ export function Cockpit({ document }: { readonly document: CompanyBundleDocument
   const crew = findCrew(projects, picked) ?? firstCrew(projects);
 
   return (
-    <>
-      <PageHead
-        title="Crews"
-        subtitle={`${String(crewCount(projects))} across ${String(projects.length)} projects`}
-      />
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-md border border-line bg-card">
-        <div className="flex w-[204px] shrink-0 flex-col border-r border-line">
-          <CrewRail projects={projects} selected={crew?.subject ?? null} onSelect={setPicked} />
-        </div>
-        {crew === null ? (
-          <p className="m-0 grid flex-1 place-content-center p-6 text-sm text-muted">
-            This company has no crew seats yet. Add one on the Company page.
-          </p>
-        ) : (
-          <>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Conversation crew={crew} />
-            </div>
-            <div className="flex w-[304px] shrink-0 flex-col">
-              <Workspace
-                projectKey={crew.projectKey}
-                sessions={sessionsOfProject(sessions.get(crew.projectKey))}
-              />
-            </div>
-          </>
-        )}
+    // No page head. The reference puts its panes straight under the window
+    // chrome, and the breadcrumb in the centre is what orients you — a title
+    // bar over the top would be a row the reference does not have.
+    <div className="flex min-h-0 flex-1 overflow-hidden rounded-md border border-line bg-card">
+      <div className={cn(CREW_RAIL, "flex shrink-0 flex-col border-r border-line bg-bg/40")}>
+        <CrewRail projects={projects} selected={crew?.subject ?? null} onSelect={setPicked} />
       </div>
-    </>
+      {crew === null ? (
+        <p className="m-0 grid flex-1 place-content-center p-6 text-sm text-muted">
+          This company has no crew seats yet. Add one on the Company page.
+        </p>
+      ) : (
+        <>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Conversation crew={crew} />
+          </div>
+          <div className={cn(WORKSPACE, "flex shrink-0 flex-col")}>
+            <Workspace
+              projectKey={crew.projectKey}
+              sessions={sessionsOfProject(sessions.get(crew.projectKey))}
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }

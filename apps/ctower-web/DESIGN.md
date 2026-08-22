@@ -97,3 +97,32 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-21 | Mission is one screen and skippable | It authors a goal document when given; a company with no stated mission is a real state, not an incomplete one |
 | 2026-08-21 | The org switcher sits at the sidebar top: current org + prefix chip, "Create new organization…" honest-unbuilt | The reference console's pattern; no invite and no sign-out for a tailnet-private v1 |
 | 2026-08-21 | The browser mints component digests itself (RFC 8785 + SHA-256, not `crypto.subtle`) | Every wizard step authors a real component and the registry recomputes the digest; proven against the live API at 5 of 5 checks |
+| 2026-08-22 | **Bounded exception — the Cockpit is dressed at 1:1 Conductor parity** | Operator ruling 13:25Z: `board/design-refs-r2988-conductor/{1,3}*.png` is the source of truth for the Cockpit's pane layout, rail, chrome, type scale and spacing. This file's *dressing* deltas are discarded there. See the scope note below |
+
+## The one bounded exception (operator, 2026-08-22 13:25Z)
+
+The **Cockpit** (the Crews destination) is dressed at 1:1 Conductor parity
+against `board/design-refs-r2988-conductor/`. Everywhere else in ctower-web,
+this file governs unchanged.
+
+What the exception reaches: pane layout, the crew rail's rhythm, pane chrome,
+type scale and spacing, and the accent — Conductor signals state with a filled
+grey pill and type weight, so amber does not appear on any resting surface in
+the Cockpit.
+
+What it does **not** reach, and what therefore still binds everywhere including
+the Cockpit:
+
+- the six CLI marks and their meanings — they are shared vocabulary with
+  `ctowerctl` and change in both places or neither;
+- the D9 copy budget;
+- reserved motion;
+- the focus law. Amber survives in the Cockpit as the focus ring only. Conductor
+  has no accent hue and neither reference shows a focus ring, so parity has no
+  answer here; dropping it would remove the only visible keyboard indicator from
+  a surface whose rows, tabs and inert controls are all tab stops, which is an
+  accessibility regression rather than a change of look.
+
+A seat working outside the Cockpit follows this file. A seat working inside it
+follows the screenshots, and records every deliberate divergence with its
+reason — "the backend cannot serve this" being the reason the ticket accepts.
