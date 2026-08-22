@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CompanyBundleCommandResult } from "@ctower/client";
 import type { Answer } from "../api/client";
-import { useApply } from "./apply/useApply";
+import { useApply } from "./useApply";
 import { documentOf, draftFrom, EMPTY_TEMPLATE, editCount } from "./bundle";
 import type { Draft } from "./bundle";
 import { standingOf } from "./standing";

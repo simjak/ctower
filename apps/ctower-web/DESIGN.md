@@ -14,7 +14,7 @@ operator's explicit approval.
 
 ## Architecture of the surface (binds IA, not just pixels)
 - **One app, one shell.** Permanent left sidebar with exactly five groups:
-  LIVE (Lanes, Inbox) · WORK (Board, Workflows, Requests) · TEAM (Crews, Company) ·
+  LIVE (Lanes, Inbox) · WORK (Tickets, Board, Workflows, Requests) · TEAM (Crews, Company) ·
   RUNTIME (Harnesses, Projects) · SYSTEM (Admin).
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
@@ -100,3 +100,5 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-22 | Workflows joins WORK, between Board and Requests | The operator's workflow mockup puts it in the sidebar and the T-004 brief issues the page; it is where work's shape is declared, so it sits beside where work is watched |
 | 2026-08-22 | The six marks draw nowhere on the Workflows page | A workflow's publication state and a component's lifecycle are closed sets of the record's own, not members of the CLI glyph vocabulary; borrowing the done glyph for `published` would assert a proven-ness the record never claimed. Chips carry them instead |
 | 2026-08-22 | `Select` enters the component vocabulary | Every set this console offers is closed by the authored contract, so the control that offers one is the native control that already has a keyboard and a screen reader |
+| 2026-08-22 | WORK gains **Tickets** beside Board and Requests — awaiting the operator's ratification | His own ticket mockup (`mockups/ctower-ui/shot-ticket-*.png`) puts Tickets in WORK. A board and a list of tickets are two ways of reading the same record, and only one of them carries a ticket's own page |
+| 2026-08-22 | Where the operator is lives in the address (`?at=…&project=…&ticket=…`) | A screen has to be a link: a reload comes back to it, Back means back, and a screenshot is reproducible from its URL |

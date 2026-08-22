@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import type { CompanyBundleCommandResult } from "@ctower/client";
-import { ask, commands } from "../../api/client";
-import type { Answer } from "../../api/client";
-import { commandKeyFor } from "./commandKey";
-import type { Standing } from "../standing";
+import { ask, commands, resendable } from "../api/client";
+import type { Answer } from "../api/client";
+import { commandKeyFor } from "../api/commandKey";
+import type { Standing } from "./standing";
 
 /**
  * The one command this browser can send, and everything that makes sending it
@@ -91,27 +91,4 @@ export function useApply(
         };
 
   return { applied, apply, retry, forget };
-}
-
-/**
- * Whether sending the same command again is the honest next move.
- *
- * A refusal is not: ctower read the command and said no, and re-sending it
- * asks the same question of the same answer. The other three are — the API was
- * not reached, its answer could not be read, or it took the command and has not
- * confirmed it is durable. In every one of those the operator does not know
- * what was written, and the shared idempotency key is what makes finding out
- * safe.
- */
-function resendable(applied: Answer<CompanyBundleCommandResult>): boolean {
-  switch (applied.kind) {
-    case "asking":
-    case "refused":
-      return false;
-    case "unreachable":
-    case "malformed":
-      return true;
-    case "answered":
-      return applied.value.durability_state !== "accepted";
-  }
 }

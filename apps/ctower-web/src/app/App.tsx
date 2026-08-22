@@ -10,8 +10,10 @@ import { InboxPage } from "../inbox/InboxPage";
 import { ProjectsPage } from "../projects/ProjectsPage";
 import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
+import { destinationFromSearch } from "../shell/destinations";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
+import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
@@ -34,8 +36,10 @@ import { previewFromLocation, seedForPreview } from "./preview";
  * should be answering a single question, so the wizard takes the whole screen.
  *
  * With a company there are built destinations, and which one is drawn is the
- * rail's own state — there is no router and no URL, because the shell is one
- * page and a second copy of the map is a second thing to keep true.
+ * address: `?at=…` is where the operator is, so a screen is a link, a reload
+ * comes back to it and Back means back. There is still no router — the map in
+ * `destinations.ts` is the only map, and this reads the address against it
+ * rather than keeping a second copy of it.
  */
 export function App(): ReactElement {
   const [admitted, setAdmitted] = useState(sessionToken() !== null);
@@ -44,10 +48,31 @@ export function App(): ReactElement {
   const preview = previewFromLocation(window.location.search);
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
-  const [here, setHere] = useState<DestinationKey>("company");
+  // The address is where the operator is, so a screen is a link and a reload
+  // comes back to it. It only ever names a destination that is actually built.
+  const [here, setHere] = useState<DestinationKey>(
+    () => destinationFromSearch(window.location.search) ?? "company"
+  );
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
+  }, []);
+
+  const go = useCallback((key: DestinationKey): void => {
+    window.history.pushState(null, "", `?at=${key}`);
+    setHere(key);
+  }, []);
+
+  // Back and Forward move the shell, not just the page inside it, so the
+  // address and what is drawn cannot disagree about where the operator is.
+  useEffect((): (() => void) => {
+    const walked = (): void => {
+      setHere(destinationFromSearch(window.location.search) ?? "company");
+    };
+    window.addEventListener("popstate", walked);
+    return (): void => {
+      window.removeEventListener("popstate", walked);
+    };
   }, []);
 
   // A restarted server mints a new token, so the one this tab holds stops
@@ -94,7 +119,7 @@ export function App(): ReactElement {
       <Shell
         here={here}
         lockReason={seed.kind === "answered" ? null : "Still reading this company"}
-        onGo={setHere}
+        onGo={go}
         org={orgOf(seed)}
         status={statusFor(seed.kind, previewing)}
       >
@@ -110,7 +135,7 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Here here={here} seed={seed.value} onApplied={created} onGo={setHere} />
+          <Here here={here} seed={seed.value} onApplied={created} onGo={go} />
         ) : null}
       </Shell>
     </TooltipScope>
@@ -158,6 +183,8 @@ function Here({
       return <RequestsPage />;
     case "inbox":
       return <InboxPage />;
+    case "tickets":
+      return <TicketsPage document={seed.result.bundle} />;
     case "board":
       return <BoardPage definition={seed.result.bundle} />;
     case "workflows":
