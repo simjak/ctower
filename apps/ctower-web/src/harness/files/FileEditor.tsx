@@ -1,11 +1,11 @@
 import type { ChangeEvent, ReactElement } from "react";
-import type { CompanyBundleDocument } from "@ctower/client";
+import type { CompanyBundleDocument, CompanyBundleResource } from "@ctower/client";
 import { Checkbox, Field } from "../../ui/form";
 import { Card, CardBody, CardHeader, CardTitle, Chip, Input, Mono } from "../../ui/primitives";
 import { shortDigest } from "../../wizard/bundle";
 import { withField } from "./compose";
 import type { FileDraft } from "./compose";
-import { capabilityChoices, dependentsOf, strings, text } from "./read";
+import { capabilityChoices, dependentsOf, staleNamersOf, strings, text } from "./read";
 
 /**
  * One agent file, open for editing.
@@ -28,7 +28,8 @@ export function FileEditor({
   readonly onDraft: (draft: FileDraft) => void;
 }): ReactElement {
   const component = draft.base.component;
-  const pinnedBy = dependentsOf(document, draft.base);
+  const moves = dependentsOf(document, draft.base);
+  const behind = staleNamersOf(document, draft.base);
 
   return (
     <Card>
@@ -79,19 +80,41 @@ export function FileEditor({
           </Field>
         )}
 
-        {pinnedBy.length === 0 ? null : (
-          <p className="m-0 border-t border-line pt-3 text-xs text-muted">
-            Pinned by{" "}
-            {pinnedBy.map((resource) => (
-              <Mono key={resource.component.key} className="mr-2 text-muted">
-                {resource.component.key}
-              </Mono>
-            ))}
-            — a new revision moves them too.
-          </p>
+        {moves.length === 0 && behind.length === 0 ? null : (
+          <div className="space-y-1 border-t border-line pt-3">
+            {moves.length === 0 ? null : <Named what={moves} says="Moves with this edit" />}
+            {behind.length === 0 ? null : <Named what={behind} says="Left on an earlier revision" />}
+          </div>
         )}
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * Who else this file is named by, and what happens to them.
+ *
+ * A component names this one in its declared pins, in its payload, or in both,
+ * and the two can disagree. So the two answers are separate lines: what this
+ * edit carries with it, and what is left on a revision it does not touch. The
+ * second line is the one that explains an agent whose name did not change.
+ */
+function Named({
+  what,
+  says,
+}: {
+  readonly what: readonly CompanyBundleResource[];
+  readonly says: string;
+}): ReactElement {
+  return (
+    <p className="m-0 text-xs text-muted">
+      {says}:{" "}
+      {what.map((resource) => (
+        <Mono key={`${resource.component.kind}:${resource.component.key}`} className="mr-2">
+          {resource.component.kind} {resource.component.key}
+        </Mono>
+      ))}
+    </p>
   );
 }
 
