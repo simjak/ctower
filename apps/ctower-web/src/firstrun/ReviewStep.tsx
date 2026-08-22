@@ -7,7 +7,7 @@ import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { adapterFor } from "../harness/schema";
 import type { Answers } from "./answers";
 import type { FirstRunOutcome } from "./outcome";
-import { commandKeySurvivesReload } from "../wizard/apply/commandKey";
+import { commandKeySurvivesReload } from "../api/commandKey";
 import { StepFrame } from "./StepFrame";
 
 /**

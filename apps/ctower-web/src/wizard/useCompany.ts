@@ -5,9 +5,9 @@ import type {
   CompanyBundlePlan,
   CompanyBundleValidationResult,
 } from "@ctower/client";
-import { ask, commands, computations } from "../api/client";
+import { ask, commands, computations, resendable } from "../api/client";
 import type { Answer } from "../api/client";
-import { commandKeyFor } from "./apply/commandKey";
+import { commandKeyFor } from "../api/commandKey";
 import { documentOf, draftFrom, EMPTY_TEMPLATE, editCount } from "./bundle";
 import type { Draft } from "./bundle";
 import type { Seed } from "./useSeed";
@@ -207,29 +207,6 @@ export function useCompany(seed: Seed, onApplied: () => void): Company {
     apply,
     retry,
   };
-}
-
-/**
- * Whether sending the same command again is the honest next move.
- *
- * A refusal is not: ctower read the command and said no, and re-sending it
- * asks the same question of the same answer. The other three are — the API was
- * not reached, its answer could not be read, or it took the command and has not
- * confirmed it is durable. In every one of those the operator does not know
- * what was written, and the shared idempotency key is what makes finding out
- * safe.
- */
-function resendable(applied: Answer<CompanyBundleCommandResult>): boolean {
-  switch (applied.kind) {
-    case "asking":
-    case "refused":
-      return false;
-    case "unreachable":
-    case "malformed":
-      return true;
-    case "answered":
-      return applied.value.durability_state !== "accepted";
-  }
 }
 
 /** Check and plan one document, and stop at the first thing that is not an answer. */
