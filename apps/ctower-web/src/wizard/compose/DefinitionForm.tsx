@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Chip, Mono } from "../../ui/primitives";
+import { Card, CardBody, CardHeader, CardTitle, Mono } from "../../ui/primitives";
 import { Field } from "../../ui/form";
 import { Input } from "../../ui/primitives";
 import type { Draft } from "../bundle";
@@ -9,6 +9,12 @@ import { EntityRow } from "./EntityRow";
 
 /**
  * What this company is: its name and key, its projects, and its agents.
+ *
+ * The projects and the agents are shown and not edited. The registry answers
+ * `bundle-compatibility-refused` to any plan that deprecates a component, so a
+ * removal here could only ever build a document that apply would reject; the
+ * control says so where it sits rather than letting the operator find out at
+ * the end of a review.
  *
  * The component inventory and the secret bindings used to sit under these and
  * are gone. Neither is something an operator does anything with here — one is a
@@ -23,16 +29,6 @@ export function DefinitionForm({
   readonly draft: Draft;
   readonly onDraft: (draft: Draft) => void;
 }): ReactElement {
-  const setRemoved = (id: string, removed: boolean): void => {
-    const next = new Set(draft.removed);
-    if (removed) {
-      next.add(id);
-    } else {
-      next.delete(id);
-    }
-    onDraft({ ...draft, removed: next });
-  };
-
   return (
     <div className="space-y-4">
       <Card>
@@ -72,19 +68,15 @@ export function DefinitionForm({
       <EntityCard
         title="Projects"
         facts={projectFacts(draft.base)}
-        removed={draft.removed}
         subjectNoun="binding"
         empty="No project is in this company yet."
-        onRemove={setRemoved}
       />
 
       <EntityCard
         title="Agents"
         facts={agentFacts(draft.base)}
-        removed={draft.removed}
         subjectNoun="seat"
         empty="No agent is in this company yet."
-        onRemove={setRemoved}
       />
     </div>
   );
@@ -93,42 +85,26 @@ export function DefinitionForm({
 function EntityCard({
   title,
   facts,
-  removed,
   subjectNoun,
   empty,
-  onRemove,
 }: {
   readonly title: string;
   readonly facts: readonly EntityFact[];
-  readonly removed: ReadonlySet<string>;
   readonly subjectNoun: string;
   readonly empty: string;
-  readonly onRemove: (id: string, removed: boolean) => void;
 }): ReactElement {
-  const retiring = facts.filter((fact) => removed.has(fact.id)).length;
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <span className="flex-1" />
-        {retiring === 0 ? null : <Chip tone="amber">{retiring} removed</Chip>}
-        <Mono className="text-muted">{facts.length - retiring} kept</Mono>
+        <Mono className="text-muted">{facts.length}</Mono>
       </CardHeader>
       <CardBody className="space-y-2">
         {facts.length === 0 ? (
           <p className="m-0 text-sm text-muted">{empty}</p>
         ) : (
-          facts.map((fact) => (
-            <EntityRow
-              key={fact.id}
-              fact={fact}
-              removed={removed.has(fact.id)}
-              subjectNoun={subjectNoun}
-              onRemove={(next): void => {
-                onRemove(fact.id, next);
-              }}
-            />
-          ))
+          facts.map((fact) => <EntityRow key={fact.id} fact={fact} subjectNoun={subjectNoun} />)
         )}
       </CardBody>
     </Card>

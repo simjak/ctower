@@ -10,19 +10,22 @@ import type {
  * into the authored contract's own document.
  *
  * A draft is deliberately not a second bundle model. It is the exported
- * document plus exactly the two edits this browser can honestly own: the
- * company's identity, and which authored components are in. Everything else —
- * every digest, revision, payload and compatibility record — is carried through
- * byte for byte from the answer the API gave, because the browser cannot mint a
- * canonical component digest and must never appear to.
+ * document plus exactly the edit this browser can honestly own: the company's
+ * identity. Everything else — every digest, revision, payload and compatibility
+ * record — is carried through byte for byte from the answer the API gave,
+ * because the browser cannot mint a canonical component digest and must never
+ * appear to.
+ *
+ * Taking a component out is not among the edits, because the registry refuses
+ * it: a plan carrying any deprecation is answered `bundle-compatibility-refused`
+ * at apply. A draft that can express it is a draft that can only be built into
+ * a document nothing will accept, so the draft cannot express it.
  */
 export interface Draft {
   /** The exported document, or the empty template when no bundle is active. */
   readonly base: CompanyBundleDocument;
   readonly companyKey: string;
   readonly displayName: string;
-  /** Component references the operator has taken out, by `componentId`. */
-  readonly removed: ReadonlySet<string>;
 }
 
 export const EMPTY_TEMPLATE: CompanyBundleDocument = {
@@ -38,7 +41,6 @@ export function draftFrom(base: CompanyBundleDocument): Draft {
     base,
     companyKey: base.company.key,
     displayName: base.company.display_name,
-    removed: new Set<string>(),
   };
 }
 
@@ -52,17 +54,9 @@ export function componentId(reference: {
 
 /** The draft as the authored contract's own document, ready to send. */
 export function documentOf(draft: Draft): CompanyBundleDocument {
-  const resources = draft.base.resources.filter(
-    (resource) => !draft.removed.has(componentId(resource.component))
-  );
-  const assignments = draft.base.assignments.filter(
-    (assignment) => !draft.removed.has(componentId(assignment.component))
-  );
   return {
     ...draft.base,
     company: { key: draft.companyKey, display_name: draft.displayName },
-    resources,
-    assignments,
   };
 }
 
@@ -74,10 +68,10 @@ export function documentOf(draft: Draft): CompanyBundleDocument {
  * the other. The registry's own count comes back from the plan.
  */
 export function editCount(draft: Draft): number {
-  const identity =
+  return (
     (draft.companyKey === draft.base.company.key ? 0 : 1) +
-    (draft.displayName === draft.base.company.display_name ? 0 : 1);
-  return draft.removed.size + identity;
+    (draft.displayName === draft.base.company.display_name ? 0 : 1)
+  );
 }
 
 export function isEdited(draft: Draft): boolean {
