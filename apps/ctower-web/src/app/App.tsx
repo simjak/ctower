@@ -4,6 +4,7 @@ import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
+import { ProjectsPage } from "../projects/ProjectsPage";
 import { Shell } from "../shell/Shell";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
@@ -12,6 +13,7 @@ import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { useSeed } from "../wizard/useSeed";
+import type { Seed } from "../wizard/useSeed";
 import { previewFromLocation, seedForPreview } from "./preview";
 
 /**
@@ -99,11 +101,42 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <CompanyPage seed={seed.value} onApplied={created} />
+          <Destination here={here} seed={seed.value} onApplied={created} onGo={setHere} />
         ) : null}
       </Shell>
     </TooltipScope>
   );
+}
+
+/**
+ * Which screen the rail is pointing at.
+ *
+ * Every built destination reads the same company the shell already holds, so
+ * none of them re-asks for it and none can disagree with the rail about which
+ * tower this is.
+ */
+function Destination({
+  here,
+  seed,
+  onApplied,
+  onGo,
+}: {
+  readonly here: DestinationKey;
+  readonly seed: Extract<Seed, { readonly kind: "exported" }>;
+  readonly onApplied: () => void;
+  readonly onGo: (key: DestinationKey) => void;
+}): ReactElement {
+  if (here === "projects") {
+    return (
+      <ProjectsPage
+        result={seed.result}
+        onGoCompany={(): void => {
+          onGo("company");
+        }}
+      />
+    );
+  }
+  return <CompanyPage seed={seed} onApplied={onApplied} />;
 }
 
 /**
