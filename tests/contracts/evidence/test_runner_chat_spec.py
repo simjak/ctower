@@ -211,13 +211,13 @@ def test_i2_backlog_rows_remain_inside_the_markdown_table() -> None:
 
 def test_runner_box_has_a_closed_right_edge_and_bounded_gap_claim() -> None:
     lines = ROOT.joinpath("ARCHITECTURE.md").read_text(encoding="utf-8").splitlines()
-    right_edge = len(lines[340 - 1]) - 1
-    for line_number in (347, 348):
+    right_edge = len(lines[334 - 1]) - 1
+    for line_number in (341, 342):
         line = lines[line_number - 1]
         assert line.endswith("|")
         assert len(line) == right_edge + 1
 
-    atlas = re.sub(r"\s+", " ", "\n".join(lines[368 - 1 : 374 - 1]))
+    atlas = re.sub(r"\s+", " ", "\n".join(lines[362 - 1 : 368 - 1]))
     assert (
         f"admitted G1{_EN_DASH}G4 operation families, including the HarnessSpec read,"
         f" joined by the record-backed G10, G11, and G12 reads"
