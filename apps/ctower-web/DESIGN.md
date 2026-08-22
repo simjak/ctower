@@ -14,7 +14,7 @@ operator's explicit approval.
 
 ## Architecture of the surface (binds IA, not just pixels)
 - **One app, one shell.** Permanent left sidebar with exactly five groups:
-  LIVE (Lanes, Inbox) · WORK (Board, Requests) · TEAM (Crews, Company) ·
+  LIVE (Lanes, Inbox) · WORK (Tickets, Board, Requests) · TEAM (Crews, Company) ·
   RUNTIME (Harnesses, Projects) · SYSTEM (Admin).
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
@@ -97,3 +97,5 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-21 | Mission is one screen and skippable | It authors a goal document when given; a company with no stated mission is a real state, not an incomplete one |
 | 2026-08-21 | The org switcher sits at the sidebar top: current org + prefix chip, "Create new organization…" honest-unbuilt | The reference console's pattern; no invite and no sign-out for a tailnet-private v1 |
 | 2026-08-21 | The browser mints component digests itself (RFC 8785 + SHA-256, not `crypto.subtle`) | Every wizard step authors a real component and the registry recomputes the digest; proven against the live API at 5 of 5 checks |
+| 2026-08-22 | WORK gains **Tickets** beside Board and Requests — awaiting the operator's ratification | His own ticket mockup (`mockups/ctower-ui/shot-ticket-*.png`) puts Tickets in WORK. A board and a list of tickets are two ways of reading the same record, and only one of them carries a ticket's own page |
+| 2026-08-22 | Where the operator is lives in the address (`?at=…&project=…&ticket=…`) | A screen has to be a link: a reload comes back to it, Back means back, and a screenshot is reproducible from its URL |

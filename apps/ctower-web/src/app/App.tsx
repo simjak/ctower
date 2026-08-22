@@ -5,8 +5,10 @@ import { Admission } from "./Admission";
 import { FirstRun } from "../firstrun/FirstRun";
 import { Overlay } from "../firstrun/Overlay";
 import { Shell } from "../shell/Shell";
+import { destinationFromSearch } from "../shell/destinations";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
+import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
 import { CompanyPage } from "../wizard/CompanyPage";
@@ -33,10 +35,31 @@ export function App(): ReactElement {
   const preview = previewFromLocation(window.location.search);
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
-  const [here, setHere] = useState<DestinationKey>("company");
+  // The address is where the operator is, so a screen is a link and a reload
+  // comes back to it. It only ever names a destination that is actually built.
+  const [here, setHere] = useState<DestinationKey>(
+    () => destinationFromSearch(window.location.search) ?? "company"
+  );
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
+  }, []);
+
+  const go = useCallback((key: DestinationKey): void => {
+    window.history.pushState(null, "", `?at=${key}`);
+    setHere(key);
+  }, []);
+
+  // Back and Forward move the shell, not just the page inside it, so the
+  // address and what is drawn cannot disagree about where the operator is.
+  useEffect((): (() => void) => {
+    const walked = (): void => {
+      setHere(destinationFromSearch(window.location.search) ?? "company");
+    };
+    window.addEventListener("popstate", walked);
+    return (): void => {
+      window.removeEventListener("popstate", walked);
+    };
   }, []);
 
   // A restarted server mints a new token, so the one this tab holds stops
@@ -83,7 +106,7 @@ export function App(): ReactElement {
       <Shell
         here={here}
         lockReason={seed.kind === "answered" ? null : "Still reading this company"}
-        onGo={setHere}
+        onGo={go}
         org={orgOf(seed)}
         status={statusFor(seed.kind, previewing)}
       >
@@ -98,8 +121,11 @@ export function App(): ReactElement {
           />
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
-        {seed.kind === "answered" && seed.value.kind === "exported" ? (
+        {seed.kind === "answered" && seed.value.kind === "exported" && here === "company" ? (
           <CompanyPage seed={seed.value} onApplied={created} />
+        ) : null}
+        {seed.kind === "answered" && seed.value.kind === "exported" && here === "tickets" ? (
+          <TicketsPage document={seed.value.result.bundle} />
         ) : null}
       </Shell>
     </TooltipScope>
