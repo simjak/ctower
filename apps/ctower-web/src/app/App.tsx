@@ -16,6 +16,7 @@ import type { Org } from "../shell/OrgSwitcher";
 import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
+import { Cockpit } from "../cockpit/Cockpit";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { WorkflowsPage } from "../workflows/WorkflowsPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
@@ -122,6 +123,7 @@ export function App(): ReactElement {
         onGo={go}
         org={orgOf(seed)}
         status={statusFor(seed.kind, previewing)}
+        fill={here === "crews"}
       >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
         {seed.kind === "refused" ? (
@@ -183,6 +185,8 @@ function Here({
       return <RequestsPage />;
     case "inbox":
       return <InboxPage />;
+    case "crews":
+      return <Cockpit document={seed.result.bundle} />;
     case "tickets":
       return <TicketsPage document={seed.result.bundle} />;
     case "board":
@@ -194,7 +198,6 @@ function Here({
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "lanes":
-    case "crews":
     case "harnesses":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
