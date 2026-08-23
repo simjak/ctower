@@ -174,6 +174,16 @@ command = ["{python}", "-m", "pytest", "tests/modules/console", "-q"]
 timeout_seconds = 300
 
 [[suite]]
+id = "manifest-generation-contract"
+owner = "CT-I1-032"
+phase = "CT-I1-032"
+status = "deferred"
+path = "tests"
+patterns = ["test_manifest_generation.py"]
+command = ["{python}", "-m", "pytest", "tests/test_manifest_generation.py", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "console-phase1-acceptance"
 owner = "CT-I1-021"
 phase = "CT-I1-021"
