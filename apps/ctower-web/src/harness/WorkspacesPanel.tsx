@@ -25,8 +25,7 @@ import { useSeed } from "../wizard/useSeed";
  * which is why no row carries a mark: nothing has run here, and borrowing a
  * neighbour's glyph is how a thing that never ran gets drawn as a thing that did.
  */
-const CANNOT =
-  "Declared only. Nothing creates, edits or spawns against a workspace yet — that waits on CT-I2-013.";
+const CANNOT = "Declared only. Nothing creates, edits or spawns against a workspace yet.";
 
 const CONTRACT_FACT =
   "The authored contract declares the workspace component and no operation that manages one; " +

@@ -61,7 +61,10 @@ export function ProjectsPanel({
               <div
                 key={fact.id}
                 aria-current={fact.key === current ? "true" : undefined}
-                className={cn("rounded-md", fact.key === current ? "ring-1 ring-amber" : null)}
+                className={cn(
+                  "relative rounded-md",
+                  fact.key === current ? "ring-1 ring-amber" : null
+                )}
               >
                 <EntityRow fact={fact} subjectNoun="binding" />
                 {fact.key === current ? <span className="sr-only">current project</span> : null}
