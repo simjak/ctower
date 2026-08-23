@@ -77,7 +77,7 @@ export function HarnessPage({
       label: "Crew",
       element: <CrewPanel recorded={recorded} onRecorded={onApplied} />,
     },
-    { key: "files", label: "Agent files", element: <FilesPanel /> },
+    { key: "files", label: "Agent files", element: <FilesPanel onApplied={onApplied} /> },
     { key: "workspaces", label: "Workspaces", element: <WorkspacesPanel /> },
     // One line per surface, and nothing else in this array.
   ];
