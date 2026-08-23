@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { ArrowLeft, RotateCw } from "lucide-react";
 import type { CompanyBundleDocument } from "@ctower/client";
@@ -8,8 +8,9 @@ import { CrewReceipt } from "./crew/CrewReceipt";
 import { CrewReview, ready } from "./crew/CrewReview";
 import { DefineCrew } from "./crew/DefineCrew";
 import { blankDraft, unmet } from "./crew/draft";
+import { recordMinted, useMinted } from "./crew/minted";
 import { crewsOf, recordedProjects } from "./crew/roster";
-import type { Minted, ProjectOption } from "./crew/roster";
+import type { ProjectOption } from "./crew/roster";
 import { Roster } from "./crew/Roster";
 import { useCrewAct } from "./crew/useCrewAct";
 import { useRevokeAct } from "./crew/useRevokeAct";
@@ -42,10 +43,10 @@ export function CrewPanel({
   readonly onRecorded?: () => void;
 }): ReactElement {
   const bundle = recorded;
-  const [minted, setMinted] = useState<readonly Minted[]>([]);
-  const record = useCallback((entry: Minted): void => {
-    setMinted((held) => [...held, entry]);
-  }, []);
+  // Session-scoped, not panel-scoped: this tab unmounts when the operator looks
+  // at another one, and an address does not stop existing because they did.
+  const minted = useMinted();
+  const record = recordMinted;
 
   const profiles = useMemo(() => profilesOf(bundle), [bundle]);
   const projects = useMemo(() => recordedProjects(bundle), [bundle]);
