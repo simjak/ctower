@@ -48,10 +48,17 @@
  * Playwright is supplied from outside the repository on purpose — it is the one
  * thing this tool needs that D75 says the repository does not carry.
  *
+ * A console does not always serve the tree this tool was checked out from. The
+ * seeded board surface pins an older merge on which two destinations are still
+ * honestly unbuilt, so its map is a different file — `WALK_MAP` points at it,
+ * and the rail check then holds the surface to its own map rather than to one
+ * it never claimed.
+ *
  * Environment, all optional but the first:
  *   WALK_PLAYWRIGHT_ROOT  where playwright is installed
  *   WALK_TARGET           the console's origin (default this host's :3150 walk surface)
  *   WALK_TOKEN_FILE       the file holding that server's session token
+ *   WALK_MAP              the `destinations.ts` the target serves (default this checkout's)
  *   WALK_SHOT_DIR         where screenshots and the report are written
  */
 
@@ -61,7 +68,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
-const DESTINATION_MAP = path.join(REPO, "apps", "ctower-web", "src", "shell", "destinations.ts");
+const DESTINATION_MAP =
+  process.env.WALK_MAP ??
+  path.join(REPO, "apps", "ctower-web", "src", "shell", "destinations.ts");
 
 const TARGET = process.env.WALK_TARGET ?? "http://100.84.252.114:3150/";
 const TOKEN_FILE = process.env.WALK_TOKEN_FILE ?? "/tmp/walk-session-token";
@@ -520,7 +529,7 @@ async function main() {
   const report = {
     target: TARGET,
     when: new Date().toISOString(),
-    map: path.relative(REPO, DESTINATION_MAP),
+    map: path.resolve(DESTINATION_MAP),
     walked: built.length,
     clean,
     failed: failed.length,
