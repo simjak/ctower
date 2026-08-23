@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { BoardCard, BoardLane } from "@ctower/client";
+import type { BoardCard } from "@ctower/client";
 import { Mono } from "../ui/primitives";
 import { laneWord, Marks, PriorityChip } from "./facts";
 
@@ -10,18 +10,15 @@ import { laneWord, Marks, PriorityChip } from "./facts";
  * column is a fact the read answered with — there is no derived column and no
  * count this page worked out for itself.
  *
+ * The rows keep the board's order. The projection serves its cards
+ * `ORDER BY ticket_id` (the record's own position for a ticket), and a client
+ * that re-sorted them — by lane, or by the number in a display key — would be
+ * overruling that answer with a rule of its own.
+ *
  * A row is opened from the button in its key cell. The row is clickable too,
  * because an operator aims at the row, but the button is the one focusable
  * thing in it, so a keyboard walks the list a row at a time.
  */
-const ORDER: readonly BoardLane[] = [
-  "blocked",
-  "in_review",
-  "in_progress",
-  "ready",
-  "backlog",
-  "complete",
-];
 
 export function TicketTable({
   cards,
@@ -57,7 +54,7 @@ export function TicketTable({
         </tr>
       </thead>
       <tbody>
-        {inReadingOrder(cards).map((card) => (
+        {cards.map((card) => (
           <Row key={card.ticket_id} card={card} onOpen={onOpen} />
         ))}
       </tbody>
@@ -111,25 +108,6 @@ function Row({
       </td>
     </tr>
   );
-}
-
-/**
- * Where the eye should land first: what is stuck, then what is moving, then
- * what has not started, then what is finished. Within a lane the record's own
- * display key orders them, numerically — `CTW-10` is not before `CTW-2`.
- */
-function inReadingOrder(cards: readonly BoardCard[]): readonly BoardCard[] {
-  return [...cards].sort(
-    (left, right) =>
-      ORDER.indexOf(left.lane) - ORDER.indexOf(right.lane) ||
-      numberIn(left.display_key) - numberIn(right.display_key) ||
-      (left.display_key ?? left.ticket_id).localeCompare(right.display_key ?? right.ticket_id)
-  );
-}
-
-function numberIn(displayKey: string | null): number {
-  const match = displayKey === null ? null : /-(\d+)$/.exec(displayKey);
-  return match === null ? Number.MAX_SAFE_INTEGER : Number(match[1]);
 }
 
 /** A ticket with no display key is still openable; it shows what it has. */

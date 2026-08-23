@@ -17,6 +17,12 @@ import type { CompanyBundleDocument, CompanyBundleResource } from "@ctower/clien
  * Everything a crew row says about itself — its persona's name, the harness it
  * runs on — comes from the agent profile the bundle assigns to that exact
  * subject. A seat with no profile renders as a seat with no profile.
+ *
+ * The order is the record's: assignments appear in export order (the bundle is
+ * normalized and deterministic, `SPEC.md` § CompanyBundle), so projects render
+ * where the record first names them and each rail lists seats in the order the
+ * record assigned them. Alphabetizing either would overrule that with a rule
+ * no authored document declares.
  */
 export interface Crew {
   readonly projectKey: string;
@@ -45,12 +51,10 @@ export function rosterOf(document: CompanyBundleDocument): readonly Project[] {
       seats.get(crew.projectKey)?.push(crew);
     }
   }
-  return [...keys]
-    .sort((left, right) => left.localeCompare(right))
-    .map((key) => ({
-      key,
-      crews: (seats.get(key) ?? []).sort((left, right) => left.seat.localeCompare(right.seat)),
-    }));
+  return [...keys].map((key) => ({
+    key,
+    crews: seats.get(key) ?? [],
+  }));
 }
 
 export function crewCount(projects: readonly Project[]): number {

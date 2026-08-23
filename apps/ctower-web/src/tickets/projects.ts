@@ -17,12 +17,22 @@ import type { CompanyBundleDocument } from "@ctower/client";
  * No declared operation enumerates work-plane projects, so this list is an
  * offer and never the whole truth. Any other key can still be named, the same
  * shape `ctowerctl board query <project_key>` already has.
+ *
+ * The order is the record's. The bundle export is normalized and deterministic
+ * (`SPEC.md`, § CompanyBundle), so the first-appearance order of the scopes is
+ * the export's own sequence; sorting them here would overrule the record with
+ * a client-side rule no authored document declares, and two surfaces reading
+ * one bundle would then have to agree by coincidence rather than by contract.
  */
 export function workProjectsIn(document: CompanyBundleDocument): readonly string[] {
-  const scopes = new Set(
-    document.resources
-      .map((resource) => resource.component.scope.project)
-      .filter((key): key is string => key !== null)
-  );
-  return [...scopes].sort();
+  const seen = new Set<string>();
+  const projects: string[] = [];
+  for (const resource of document.resources) {
+    const key = resource.component.scope.project;
+    if (key !== null && !seen.has(key)) {
+      seen.add(key);
+      projects.push(key);
+    }
+  }
+  return projects;
 }
