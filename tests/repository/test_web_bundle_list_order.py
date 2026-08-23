@@ -43,6 +43,10 @@ _INVENTORY: dict[str, tuple[str, ...]] = {
     "cockpit/roster.ts": ("rosterOf",),
     "workflows/compose.ts": ("projectKeys", "boundProjects"),
     "inbox/address.ts": ("routeTo", "seatsOffered"),
+    "tickets/history.ts": ("historyOf",),
+    "tickets/workflow.ts": ("workflowFrom",),
+    "cockpit/useSessions.ts": ("sessionsOfProject",),
+    "tickets/TicketTable.tsx": ("TicketTable",),
 }
 
 # Any ordering construct inside an inventoried reader is a re-sort of recorded
@@ -68,7 +72,7 @@ def _function_body(source: str, name: str) -> str | None:
     if match is None:
         return None
     start = match.start()
-    open_brace = source.index("{", match.end())
+    open_brace = source.index("{", _parameters_close(source, match.end() - 1))
     depth = 0
     for position in range(open_brace, len(source)):
         if source[position] == "{":
@@ -78,6 +82,26 @@ def _function_body(source: str, name: str) -> str | None:
             if depth == 0:
                 return source[start : position + 1]
     return None
+
+
+def _parameters_close(source: str, open_paren: int) -> int:
+    """The index of the ``)`` closing a declaration's parameter list.
+
+    A component destructures its props, so the first ``{`` after the
+    declaration opens a parameter pattern rather than the body. Balancing the
+    parameter list first is what makes the body of such a reader scannable
+    instead of silently empty. The scan assumes no ``)`` inside a parameter
+    default's own call — true of every inventoried reader.
+    """
+    depth = 1
+    position = open_paren
+    while depth:
+        position += 1
+        if source[position] == "(":
+            depth += 1
+        elif source[position] == ")":
+            depth -= 1
+    return position
 
 
 class WebBundleListOrderTests(unittest.TestCase):
@@ -150,6 +174,22 @@ class DetectorNegativeControlTests(unittest.TestCase):
 
     def test_a_missing_reader_fails_closed(self) -> None:
         self.assertIsNone(_function_body("export const elsewhere = 1;\n", "projectsOf"))
+
+    def test_a_destructured_component_body_is_scanned(self) -> None:
+        fixture = (
+            "export function TicketTable({\n"
+            "  cards,\n"
+            "  onOpen,\n"
+            "}: {\n"
+            "  readonly cards: readonly BoardCard[];\n"
+            "  readonly onOpen: (card: BoardCard) => void;\n"
+            "}): ReactElement {\n"
+            "  return <tbody>{[...cards].sort().map(render)}</tbody>;\n"
+            "}\n"
+        )
+        body = _function_body(fixture, "TicketTable")
+        self.assertIn("return <tbody>", body or "")
+        self.assertTrue(_ORDERING.search(body or ""))
 
 
 if __name__ == "__main__":
