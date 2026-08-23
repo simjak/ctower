@@ -53,29 +53,25 @@ export function useSessions(projectKeys: readonly string[]): SessionsByProject {
 }
 
 /**
- * One project's recorded sessions, newest first — and only ever a project's.
+ * One project's recorded sessions, in the record's own order — and only ever a
+ * project's.
  *
- * There is deliberately no per-crew read here, because the authored contract
- * has no key that joins one. A bundle assignment carries `component`, `slot`
- * and `subject` and nothing else; a session carries `seat_key` and `crew_name`,
- * which SPEC keeps as authored strings distinct from an assignment's subject.
- * Filtering sessions by a crew's subject would therefore be a guess wearing the
- * clothes of a fact, and a rail full of quietly wrong marks is worse than a
- * rail with none. `project_key` is the one key both sides really share.
+ * The session page read is a record-position cursor page (`ORDER BY
+ * event.record_position`), so the answer arrives ordered by the record;
+ * re-sorting it by `started_at` here would overrule that with a string
+ * comparison the record never declared. There is deliberately no per-crew read
+ * here, because the authored contract has no key that joins one. A bundle
+ * assignment carries `component`, `slot` and `subject` and nothing else; a
+ * session carries `seat_key` and `crew_name`, which SPEC keeps as authored
+ * strings distinct from an assignment's subject. Filtering sessions by a
+ * crew's subject would therefore be a guess wearing the clothes of a fact, and
+ * a rail full of quietly wrong marks is worse than a rail with none.
+ * `project_key` is the one key both sides really share.
  */
 export function sessionsOfProject(
   answer: Answer<readonly TicketSession[]> | undefined
 ): Answer<readonly TicketSession[]> {
-  if (answer === undefined) {
-    return ASKING;
-  }
-  if (answer.kind !== "answered") {
-    return answer;
-  }
-  return {
-    kind: "answered",
-    value: [...answer.value].sort((left, right) => right.started_at.localeCompare(left.started_at)),
-  };
+  return answer ?? ASKING;
 }
 
 function sessionsOf(

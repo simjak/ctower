@@ -219,18 +219,34 @@ export function projectKeys(base: CompanyBundleDocument): readonly string[] {
   const keys = base.resources
     .filter((resource) => resource.component.kind === "project")
     .map((resource) => splitReference(resource.component.key)[0].split(".")[0] ?? "");
-  return [...new Set(keys.filter((key) => key.length > 0))].sort();
+  const seen = new Set<string>();
+  const declared: string[] = [];
+  for (const key of keys.filter((key) => key.length > 0)) {
+    if (!seen.has(key)) {
+      seen.add(key);
+      declared.push(key);
+    }
+  }
+  // The export is normalized and deterministic (SPEC.md § CompanyBundle), so
+  // this is the record's own order; sorting would overrule it client-side.
+  return declared;
 }
 
 /** The projects a recorded workflow is bound to, read off the bindings. */
 export function boundProjects(base: CompanyBundleDocument, workflowKey: string): readonly string[] {
-  return base.assignments
-    .filter(
-      (assignment) =>
-        assignment.component.kind === "workflow" && assignment.component.key === workflowKey
-    )
-    .map((assignment) => assignment.subject.split(":")[1] ?? assignment.subject)
-    .sort();
+  const seen = new Set<string>();
+  const bound: string[] = [];
+  for (const assignment of base.assignments) {
+    if (assignment.component.kind !== "workflow" || assignment.component.key !== workflowKey) {
+      continue;
+    }
+    const subject = assignment.subject.split(":")[1] ?? assignment.subject;
+    if (subject !== "" && !seen.has(subject)) {
+      seen.add(subject);
+      bound.push(subject);
+    }
+  }
+  return bound;
 }
 
 function referenceOf(component: VersionedComponent): ComponentReference {
