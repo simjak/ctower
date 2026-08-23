@@ -8,6 +8,7 @@ import { History } from "./History";
 import { MoveStage } from "./MoveStage";
 import { StageLadder } from "./StageLadder";
 import { Changes, Labels, TicketFacts } from "./TicketFacts";
+import { TicketCrew } from "./crew/TicketCrew";
 import type { OneTicket } from "./reads";
 import { workflowFrom } from "./workflow";
 
@@ -24,10 +25,13 @@ import { workflowFrom } from "./workflow";
 export function TicketDetail({
   one,
   card,
+  project,
   onBack,
   onMoved,
 }: {
   readonly one: OneTicket;
+  /** The project scope this ticket was read under; its crew reads need it too. */
+  readonly project: string;
   /** What the board says about this ticket, when it has folded it. */
   readonly card: BoardCard | null;
   readonly onBack: () => void;
@@ -62,6 +66,7 @@ export function TicketDetail({
           {standing === null ? null : (
             <MoveStage ticketId={one.ticket.ticket_id} standing={standing} onMoved={onMoved} />
           )}
+          <TicketCrew projectKey={project} ticketId={one.ticket.ticket_id} />
           <History timeline={one.timeline} />
         </div>
         <div className="min-w-0 space-y-4">

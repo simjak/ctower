@@ -255,7 +255,15 @@ function OneTicketScreen({
     case "malformed":
       return <Malformed detail={one.detail} />;
     case "answered":
-      return <TicketDetail one={one.value} card={card} onBack={onBack} onMoved={moved} />;
+      return (
+        <TicketDetail
+          one={one.value}
+          card={card}
+          project={projectKey}
+          onBack={onBack}
+          onMoved={moved}
+        />
+      );
   }
 }
 
