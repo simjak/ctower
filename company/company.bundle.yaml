@@ -27,19 +27,19 @@ resources:
   - component:
       schema: ctower.versioned-component/v1
       kind: project
-      key: ctower.control-plane
+      key: ctower-control-plane
       scope: {tenant: ctower, project: null}
       revision: 1
-      content_digest: sha256:b4db33f7f328dd64d4e7d4b16df6f66316fc6e50de4c7fdde2a749de80026d62
+      content_digest: sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b
       schema_ref: ctower.project/v1
       lifecycle: published
       compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
       provenance:
-        - {kind: authored, source: packs/components/projects/ctower.control-plane/v1.yaml, digest: sha256:b4db33f7f328dd64d4e7d4b16df6f66316fc6e50de4c7fdde2a749de80026d62}
-      payload_ref: object:sha256:b4db33f7f328dd64d4e7d4b16df6f66316fc6e50de4c7fdde2a749de80026d62
+        - {kind: authored, source: packs/components/projects/ctower-control-plane/v1.yaml, digest: sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b}
+      payload_ref: object:sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b
     payload:
       schema: ctower.project/v1
-      key: ctower.control-plane
+      key: ctower-control-plane
       display_name: Ctower control plane
       prefix: CTW
       repository_ref: repository:github/simjak/ctower
@@ -671,19 +671,19 @@ resources:
   - component:
       schema: ctower.versioned-component/v1
       kind: project
-      key: manibo.delivery
+      key: manibo-delivery
       scope: {tenant: ctower, project: null}
       revision: 1
-      content_digest: sha256:486c0e4fadf5a9da1f24c978a0cd5e21f45b83004830831c11e9c95ee6648d8e
+      content_digest: sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef
       schema_ref: ctower.project/v1
       lifecycle: published
       compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
       provenance:
-        - {kind: authored, source: packs/components/projects/manibo.delivery/v1.yaml, digest: sha256:486c0e4fadf5a9da1f24c978a0cd5e21f45b83004830831c11e9c95ee6648d8e}
-      payload_ref: object:sha256:486c0e4fadf5a9da1f24c978a0cd5e21f45b83004830831c11e9c95ee6648d8e
+        - {kind: authored, source: packs/components/projects/manibo-delivery/v1.yaml, digest: sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef}
+      payload_ref: object:sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef
     payload:
       schema: ctower.project/v1
-      key: manibo.delivery
+      key: manibo-delivery
       display_name: Manibo delivery
       prefix: MNB
       repository_ref: repository:gitlab/lastmachines/manibo/7653119987f124348de68b597ed4485029661ce1
@@ -691,19 +691,19 @@ resources:
   - component:
       schema: ctower.versioned-component/v1
       kind: project
-      key: bh-loop.delivery
+      key: cyklo-delivery
       scope: {tenant: ctower, project: null}
       revision: 1
-      content_digest: sha256:b666367edd86d3dee3552aae5779476c81b71bb7d31b9dc8f537665c1dab320c
+      content_digest: sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1
       schema_ref: ctower.project/v1
       lifecycle: published
       compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
       provenance:
-        - {kind: authored, source: packs/components/projects/bh-loop.delivery/v1.yaml, digest: sha256:b666367edd86d3dee3552aae5779476c81b71bb7d31b9dc8f537665c1dab320c}
-      payload_ref: object:sha256:b666367edd86d3dee3552aae5779476c81b71bb7d31b9dc8f537665c1dab320c
+        - {kind: authored, source: packs/components/projects/cyklo-delivery/v1.yaml, digest: sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1}
+      payload_ref: object:sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1
     payload:
       schema: ctower.project/v1
-      key: bh-loop.delivery
+      key: cyklo-delivery
       display_name: BH.Loop delivery
       prefix: BHL
       repository_ref: repository:github/simjak/bh-loop/f0c5ed64eee237ff0d0eb4def801081397416857

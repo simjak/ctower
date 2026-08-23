@@ -21,6 +21,7 @@ _PROJECT_SCHEMA = ROOT / "contracts/components/project.schema.json"
 _OPENAPI = ROOT / "contracts/http/openapi.yaml"
 _BUNDLE = ROOT / "company/company.bundle.yaml"
 _CONSUMER_PATTERN = r"^[a-z][a-z0-9-]{2,63}$"
+_EXPECTED_PROJECT_RESOURCES = 3
 
 
 def _project_key_pattern() -> str:
@@ -32,9 +33,8 @@ def _project_key_pattern() -> str:
 
 def _openapi_project_query_pattern() -> str:
     spec = yaml.safe_load(_OPENAPI.read_text(encoding="utf-8"))
-    schemas = spec["components"]["schemas"]
-    project_query = schemas["ProjectQuery"]
-    return project_query["properties"]["project_key"]["pattern"]
+    project_query = spec["components"]["parameters"]["ProjectQuery"]
+    return project_query["schema"]["pattern"]
 
 
 def test_authored_project_key_pattern_equals_the_consumer_pattern() -> None:
@@ -50,13 +50,12 @@ def test_every_bundle_project_payload_and_component_key_satisfies_the_consumer_p
     project_resources = [
         resource for resource in bundle["resources"] if resource["component"]["kind"] == "project"
     ]
-    assert len(project_resources) == 3
+    assert len(project_resources) == _EXPECTED_PROJECT_RESOURCES
 
     offenders = sorted(
         f"{resource['component']['key']}"
         for resource in project_resources
-        if "." in resource["component"]["key"]
-        or "." in resource["payload"]["key"]
+        if "." in resource["component"]["key"] or "." in resource["payload"]["key"]
     )
     assert offenders == [], (
         "dotted project keys are legal to author but getBoard refuses them (T-020): "

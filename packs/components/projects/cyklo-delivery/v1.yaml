@@ -1,6 +1,6 @@
 {
   "schema": "ctower.project/v1",
-  "key": "bh-loop.delivery",
+  "key": "cyklo-delivery",
   "display_name": "BH.Loop delivery",
   "prefix": "BHL",
   "repository_ref": "repository:github/simjak/bh-loop/f0c5ed64eee237ff0d0eb4def801081397416857",

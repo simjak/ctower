@@ -48,7 +48,7 @@ def test_project_prefix_contract_admits_only_two_to_five_uppercase_letters() -> 
     validator = Draft202012Validator(_load(_PROJECT_SCHEMA))
     base = {
         "schema": "ctower.project/v1",
-        "key": "example.project",
+        "key": "example-project",
         "display_name": "Example",
         "repository_ref": "repository:github/example/project",
         "goal_refs": ["company.goal@1"],
