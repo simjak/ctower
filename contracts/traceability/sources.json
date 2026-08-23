@@ -1285,7 +1285,7 @@
       ]
     },
     {
-      "path": "packs/components/projects/bh-loop.delivery/v1.yaml",
+      "path": "packs/components/projects/cyklo-delivery/v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
@@ -1294,7 +1294,7 @@
       ]
     },
     {
-      "path": "packs/components/projects/ctower.control-plane/v1.yaml",
+      "path": "packs/components/projects/ctower-control-plane/v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
@@ -1303,7 +1303,7 @@
       ]
     },
     {
-      "path": "packs/components/projects/manibo.delivery/v1.yaml",
+      "path": "packs/components/projects/manibo-delivery/v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
