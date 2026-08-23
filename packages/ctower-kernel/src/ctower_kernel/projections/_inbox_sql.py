@@ -47,7 +47,14 @@ _ADDRESSABLE_SEATS = """
 """
 _IN_ONE_PROJECT = "      AND seat.project_key = %s\n"
 _IN_GRANTED_PROJECTS = "      AND seat.project_key = ANY(%s)\n"
-_BY_SEAT_KEY = "    ORDER BY seat_key\n"
+_BY_SEAT_KEY = "    ORDER BY seat_key, project_key\n"
+"""The stated order of every correspondent answer.
+
+`seat_key` alone leaves a seat key two projects share to the table's scan
+order, so two towers could hand the same tenant a different first project for
+the same recipient. `project_key` is the tiebreak the client (`routeTo`) defers
+to, and the narrow and unnarrowed reads share it, so they cannot drift.
+"""
 
 
 def apply_message(
