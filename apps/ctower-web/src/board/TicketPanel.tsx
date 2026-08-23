@@ -3,7 +3,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import type { ReactElement, ReactNode } from "react";
 import type { BoardCard, TicketResource } from "@ctower/client";
 import type { Answer } from "../api/client";
-import { AuditFeed } from "../audit/AuditFeed";
+import { AuditFeed, WORK_SCOPE, WORK_TITLE } from "../audit/AuditFeed";
 import { Hint } from "../ui/form";
 import { Button, Chip, Mono } from "../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
@@ -91,7 +91,7 @@ export function TicketPanel({
                 beside it. Two overlapping histories on one panel would be two
                 answers to one question, and the smaller one was the one that
                 had to say what it was missing. */}
-            <Section title="Work" hint="Every act the record kept against this ticket.">
+            <Section title={WORK_TITLE} hint={WORK_SCOPE}>
               <AuditFeed projectKey={projectKey} ticketId={card.ticket_id} />
             </Section>
           </div>

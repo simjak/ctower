@@ -37,7 +37,7 @@ function isWorkflow(
  * first event are both 1. Ordering by it interleaves two histories into one
  * wrong story; the instant is the only ordering both streams share.
  */
-export function byInstant(left: TimelineEvent, right: TimelineEvent): number {
+function byInstant(left: TimelineEvent, right: TimelineEvent): number {
   return left.occurred_at.localeCompare(right.occurred_at);
 }
 

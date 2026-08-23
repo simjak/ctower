@@ -22,6 +22,17 @@ import { useAudit } from "./useAudit";
  * forwards: page one is the oldest page, so a list drawn newest-first would
  * have to fill in from the middle.
  */
+/**
+ * The words both surfaces use for this feed, held once so they cannot drift.
+ *
+ * The Board panel and the ticket's own page answer the same question from the
+ * same read. They said it in two different headings until the commander ruled
+ * this read canonical (T-009), and two headings over one answer is how a reader
+ * learns to expect two different things. The heading now lives with the feed.
+ */
+export const WORK_TITLE = "Work";
+export const WORK_SCOPE = "Every act the record kept against this ticket.";
+
 export function AuditFeed({
   projectKey,
   ticketId,
