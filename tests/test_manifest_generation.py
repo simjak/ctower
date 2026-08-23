@@ -273,8 +273,9 @@ def test_manifest_batch_structure(
     assert {"project_key": "docs", "count": 1} in by_project
 
     # batch_digest is a valid sha256
-    assert batch["batch_digest"].startswith("sha256:")
-    assert len(batch["batch_digest"]) == 71
+    batch_digest = cast(str, batch["batch_digest"])
+    assert batch_digest.startswith("sha256:")
+    assert len(batch_digest) == 71
 
 
 def test_manifest_content_digests(
