@@ -1,13 +1,17 @@
 import { RotateCw } from "lucide-react";
 import { useCallback, useState } from "react";
 import type { ReactElement } from "react";
-import type { BoardCard, BoardView, CompanyBundleDocument } from "@ctower/client";
+import type { BoardCard, BoardView, CompanyBundleDocument, MovementEvent } from "@ctower/client";
 import type { Answer } from "../api/client";
 import { Button, Chip, PageHead } from "../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
+import { Advance } from "./Advance";
 import { Column } from "./Column";
+import { Conveyor } from "./Conveyor";
 import { columnsOf, freshnessOf, projectsOf } from "./lanes";
 import type { Project } from "./lanes";
+import type { Moved } from "./conveyor";
+import { useMovement } from "./useMovement";
 import { atPriority, countsOf, PriorityField } from "./PriorityField";
 import type { PriorityChoice } from "./PriorityField";
 import { ProjectField } from "./ProjectField";
@@ -15,13 +19,22 @@ import { TicketPanel } from "./TicketPanel";
 import { useBoard } from "./useBoard";
 
 /**
- * The Board. Six lanes, the cards the projection holds, and nothing else.
+ * The Board, on either of the two axes the record actually keeps.
+ *
+ * **Lanes** are the projection's summary of where a card stands — six of them,
+ * closed, and `getBoard` puts every card in exactly one. **Stages** are the
+ * workflow's own positions: the company definition declares them, the ticket
+ * carries the one it stands at, and the record moves it between them. Neither
+ * is derived from the other and the switch says which one is being read.
  *
  * The page is still. It reads once when the project changes and once more when
  * the operator asks it to, because `DESIGN.md` reserves motion for real work
- * moving and a board that repaints on a timer moves when nothing has. The
- * project lives in the address, so a board is a link — the same board opens for
- * whoever the operator sends it to.
+ * moving and a board that repaints on a timer moves when nothing has. The one
+ * thing that animates is a card the record moved between two of those reads,
+ * which is the conveyor the design system reserves its motion budget for.
+ *
+ * The project and the axis both live in the address, so a board is a link — the
+ * same board opens for whoever the operator sends it to.
  */
 export function BoardPage({ company }: { readonly company: CompanyBundleDocument }): ReactElement {
   const projects = projectsOf(company);
@@ -29,8 +42,11 @@ export function BoardPage({ company }: { readonly company: CompanyBundleDocument
   const [reloadKey, setReloadKey] = useState(0);
   const [open, setOpen] = useState<BoardCard | null>(null);
   const [priority, setPriority] = useState<PriorityChoice>("any");
+  const [axis, setAxis] = useState<Axis>(() => opensAlong());
   const board = useBoard(projectKey, reloadKey);
+  const movement = useMovement(projectKey, reloadKey);
   const answered = board.kind === "answered" ? board.value.cards : null;
+  const moves = movement.answer.kind === "answered" ? movement.answer.value : [];
 
   const choose = useCallback((key: string): void => {
     setOpen(null);
@@ -41,6 +57,7 @@ export function BoardPage({ company }: { readonly company: CompanyBundleDocument
   return (
     <>
       <PageHead title="Board" subtitle={<Standing board={board} projectKey={projectKey} />}>
+        <AxisField axis={axis} onChoose={goAlong(setAxis)} />
         <ProjectField projectKey={projectKey} projects={projects} onChoose={choose} />
         <PriorityField priority={priority} counts={countsOf(answered)} onChoose={setPriority} />
         <Button
@@ -60,6 +77,10 @@ export function BoardPage({ company }: { readonly company: CompanyBundleDocument
       ) : (
         <Lanes
           board={board}
+          axis={axis}
+          company={company}
+          movement={moves}
+          moved={movement.moved}
           priority={priority}
           selectedId={open?.ticket_id ?? null}
           onOpen={setOpen}
@@ -73,6 +94,20 @@ export function BoardPage({ company }: { readonly company: CompanyBundleDocument
         <TicketPanel
           card={open}
           projectKey={projectKey}
+          advance={
+            axis === "stages" ? (
+              <Advance
+                company={company}
+                projectKey={projectKey}
+                ticketId={open.ticket_id}
+                stageKey={open.stage_key}
+                movement={moves}
+                onMoved={(): void => {
+                  setReloadKey((count) => count + 1);
+                }}
+              />
+            ) : undefined
+          }
           onClose={(): void => {
             setOpen(null);
           }}
@@ -122,12 +157,20 @@ function Unopened({
 
 function Lanes({
   board,
+  axis,
+  company,
+  movement,
+  moved,
   priority,
   selectedId,
   onOpen,
   onAnyPriority,
 }: {
   readonly board: Answer<BoardView>;
+  readonly axis: Axis;
+  readonly company: CompanyBundleDocument;
+  readonly movement: readonly MovementEvent[];
+  readonly moved: readonly Moved[];
   readonly priority: PriorityChoice;
   readonly selectedId: string | null;
   readonly onOpen: (card: BoardCard) => void;
@@ -156,6 +199,10 @@ function Lanes({
       return (
         <Grid
           view={board.value}
+          axis={axis}
+          company={company}
+          movement={movement}
+          moved={moved}
           priority={priority}
           selectedId={selectedId}
           onOpen={onOpen}
@@ -167,12 +214,20 @@ function Lanes({
 
 function Grid({
   view,
+  axis,
+  company,
+  movement,
+  moved,
   priority,
   selectedId,
   onOpen,
   onAnyPriority,
 }: {
   readonly view: BoardView;
+  readonly axis: Axis;
+  readonly company: CompanyBundleDocument;
+  readonly movement: readonly MovementEvent[];
+  readonly moved: readonly Moved[];
   readonly priority: PriorityChoice;
   readonly selectedId: string | null;
   readonly onOpen: (card: BoardCard) => void;
@@ -195,6 +250,18 @@ function Grid({
       </div>
     );
   }
+  if (axis === "stages") {
+    return (
+      <Conveyor
+        company={company}
+        cards={kept}
+        movement={movement}
+        moved={moved}
+        selectedId={selectedId}
+        onOpen={onOpen}
+      />
+    );
+  }
   return (
     <div className="grid grid-cols-6 gap-2">
       {columnsOf(kept).map((column) => (
@@ -202,6 +269,63 @@ function Grid({
       ))}
     </div>
   );
+}
+
+/**
+ * Which axis the board is read along.
+ *
+ * Two words, both of them the record's: a **lane** is what `getBoard` puts a
+ * card in, a **stage** is where the workflow has it standing. The control names
+ * them and does not translate either into the other.
+ */
+export type Axis = "lanes" | "stages";
+
+const AXES: readonly Axis[] = ["lanes", "stages"];
+
+const AXIS_LABEL: Readonly<Record<Axis, string>> = {
+  lanes: "Lanes",
+  stages: "Stages",
+};
+
+function AxisField({
+  axis,
+  onChoose,
+}: {
+  readonly axis: Axis;
+  readonly onChoose: (axis: Axis) => void;
+}): ReactElement {
+  return (
+    <div role="group" aria-label="Read the board along" className="flex items-center gap-1">
+      {AXES.map((choice) => (
+        <Button
+          key={choice}
+          variant={choice === axis ? "ghost" : "quiet"}
+          size="sm"
+          aria-pressed={choice === axis}
+          className={choice === axis ? "border-amber text-fg" : undefined}
+          onClick={(): void => {
+            onChoose(choice);
+          }}
+        >
+          {AXIS_LABEL[choice]}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+/** The axis is in the address too, so a stage view is as linkable as a board. */
+function opensAlong(): Axis {
+  return new URLSearchParams(window.location.search).get("along") === "stages" ? "stages" : "lanes";
+}
+
+function goAlong(setAxis: (axis: Axis) => void): (axis: Axis) => void {
+  return (axis: Axis): void => {
+    setAxis(axis);
+    const url = new URL(window.location.href);
+    url.searchParams.set("along", axis);
+    window.history.replaceState(null, "", url);
+  };
 }
 
 /**

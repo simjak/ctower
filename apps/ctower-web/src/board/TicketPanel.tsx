@@ -15,9 +15,10 @@ import { useTicket } from "./useBoard";
 /**
  * What one card is, read out of the record.
  *
- * Read-only, and that is a product decision rather than an unfinished one: a
- * transition is a command with its own authority, its own idempotency and its
- * own refusals, and it arrives with those. Nothing on this panel writes.
+ * The panel itself reads and never writes. The one command that can reach a
+ * card — the move its workflow declares next — arrives as a section the stage
+ * view passes in, with its own authority, its own idempotency key and its own
+ * refusals, and it is absent from the lane view because a lane is not a stage.
  *
  * The card the operator clicked already carries a title, a lane and a priority,
  * so those are drawn from it immediately and the two reads fill in what only
@@ -27,10 +28,18 @@ import { useTicket } from "./useBoard";
 export function TicketPanel({
   card,
   projectKey,
+  advance,
   onClose,
 }: {
   readonly card: BoardCard;
   readonly projectKey: string;
+  /**
+   * The one move the workflow declares out of this card's stage, when the
+   * screen that opened this panel is the one that draws stages. The lane view
+   * passes none: a lane is not a stage, and a move out of `in_progress` is not
+   * a thing the record declares.
+   */
+  readonly advance?: ReactNode;
   readonly onClose: () => void;
 }): ReactElement {
   const ticket = useTicket(projectKey, card.ticket_id);
@@ -91,6 +100,7 @@ export function TicketPanel({
                 beside it. Two overlapping histories on one panel would be two
                 answers to one question, and the smaller one was the one that
                 had to say what it was missing. */}
+            {advance === undefined ? null : advance}
             <Section title="Work" hint="Every act the record kept against this ticket.">
               <AuditFeed projectKey={projectKey} ticketId={card.ticket_id} />
             </Section>

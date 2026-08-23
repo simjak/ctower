@@ -176,3 +176,35 @@
     color: var(--danger);
   }
 }
+
+@layer components {
+  /* The conveyor's arrival, and the only animation in this product.
+     `DESIGN.md` reserves motion for real work moving and names this surface as
+     the one expressive moment: a card animates when — and only when — the
+     record moved it between two reads. 220ms ease-out sits inside the 150-250ms
+     the system allows; the amber edge is the same accent every active state
+     uses, and it leaves rather than staying lit. A reader who asks for less
+     motion gets the arrival mark without the travel. */
+  .conveyor-arrive {
+    animation: conveyor-arrive 220ms ease-out both;
+  }
+
+  @keyframes conveyor-arrive {
+    from {
+      transform: translateX(calc(-1 * var(--conveyor-travel, 16px)));
+      border-left-color: var(--amber);
+      background: color-mix(in srgb, var(--amber) 14%, var(--card));
+    }
+    to {
+      transform: translateX(0);
+      border-left-color: var(--line);
+      background: var(--card);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .conveyor-arrive {
+      animation: none;
+    }
+  }
+}
