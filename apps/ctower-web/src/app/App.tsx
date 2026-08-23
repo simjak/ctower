@@ -5,6 +5,7 @@ import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { BoardPage } from "../board/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
+import { HarnessPage } from "../harness/HarnessPage";
 import { Overlay } from "../firstrun/Overlay";
 import { InboxPage } from "../inbox/InboxPage";
 import { ProjectsPage } from "../projects/ProjectsPage";
@@ -13,6 +14,8 @@ import { Shell } from "../shell/Shell";
 import { destinationFromSearch } from "../shell/destinations";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
+import { ProjectSwitcher, projectChoices, useCurrentProject } from "../shell/ProjectSwitcher";
+import type { ProjectChoice } from "../shell/ProjectSwitcher";
 import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
@@ -54,6 +57,8 @@ export function App(): ReactElement {
   const [here, setHere] = useState<DestinationKey>(
     () => destinationFromSearch(window.location.search) ?? "company"
   );
+  const projects = projectsOf(seed);
+  const { current, choose } = useCurrentProject(projects);
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
@@ -122,6 +127,20 @@ export function App(): ReactElement {
         lockReason={seed.kind === "answered" ? null : "Still reading this company"}
         onGo={go}
         org={orgOf(seed)}
+        project={
+          <ProjectSwitcher
+            projects={projects}
+            current={current}
+            onChoose={choose}
+            // A project is made on the harness screen, and that screen opens on
+            // its Projects tab. One place authors a project, and this is the
+            // way to it rather than a second form in the rail. It travels the
+            // way the rail does, so the address says where the operator went.
+            onAdd={(): void => {
+              go("harnesses");
+            }}
+          />
+        }
         status={statusFor(seed.kind, previewing)}
         fill={here === "crews"}
       >
@@ -137,7 +156,13 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Here here={here} seed={seed.value} onApplied={created} onGo={go} />
+          <Here
+            here={here}
+            seed={seed.value}
+            project={current?.key ?? null}
+            onApplied={created}
+            onGo={go}
+          />
         ) : null}
       </Shell>
     </TooltipScope>
@@ -163,11 +188,14 @@ export function App(): ReactElement {
 function Here({
   here,
   seed,
+  project,
   onApplied,
   onGo,
 }: {
   readonly here: DestinationKey;
   readonly seed: Extract<Seed, { readonly kind: "exported" }>;
+  /** The project key the rail's switcher is pointed at, when this company has one. */
+  readonly project: string | null;
   readonly onApplied: () => void;
   /** Projects sends the operator to the one place a project is authored. */
   readonly onGo: (key: DestinationKey) => void;
@@ -198,8 +226,9 @@ function Here({
       return <AdminPage />;
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
-    case "lanes":
     case "harnesses":
+      return <HarnessPage recorded={seed.result.bundle} project={project} onApplied={onApplied} />;
+    case "lanes":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
 }
@@ -218,6 +247,14 @@ function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
   }
   const company = seed.value.result.bundle.company;
   return { name: company.display_name, key: company.key };
+}
+
+/** The projects that company records, once the read has produced them. */
+function projectsOf(seed: ReturnType<typeof seedForPreview>): readonly ProjectChoice[] {
+  if (seed.kind !== "answered" || seed.value.kind !== "exported") {
+    return [];
+  }
+  return projectChoices(seed.value.result.bundle);
 }
 
 function statusFor(kind: string, previewing: boolean): ReactElement | null {
