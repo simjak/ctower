@@ -14,6 +14,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import httpx
+import psycopg
 import pytest
 from support.acceptance import accept_pending_commands
 from support.server import running_api
@@ -23,6 +24,8 @@ from support.tenant_fixture import TenantFixture, provision_seat
 from ctower_client import CtowerClient, CtowerProblemError, Problem
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
+from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record.project_scope import project_scope_grants
 
 __all__: tuple[str, ...] = ()
 
@@ -340,3 +343,47 @@ def test_unrestricted_operator_authority_still_reaches_every_registered_project(
     assert listed.sender == "fleet-operator"
     assert ("apex", "apex-engineer") in offered
     assert ("ctower", "director") in offered
+
+
+def test_a_seat_registered_by_two_projects_lists_them_in_the_read_s_order(
+    tenant: TenantFixture,
+) -> None:
+    """A tied seat's projects arrive in the order the read itself states.
+
+    `routeTo` resolves a recipient's project keys from this list and defers to
+    the list's order, so the read has to state one: `ORDER BY seat_key,
+    project_key`. With only `seat_key` ordered, the two rows of a tied seat come
+    back in whatever order the table happens to scan, so the same tenant on two
+    towers can disagree about which project a compose names first — the exact
+    instability the record-order rule forbids.
+    """
+
+    # seeded descending on purpose: a single-column order answers in scan order,
+    # which follows insertion here, so an unfixed read fails this assertion
+    provision_seat(tenant, "shared-seat", project_key="zulu")
+    provision_seat(tenant, "shared-seat", project_key="alpha")
+
+    # the reader is a third principal seated in `zulu` only: the commander's own
+    # seat is withheld from the answer, and a reader seated in one tie arm still
+    # sees both rows of the tie, so the assertion reads the read's own order
+    principal_id, credential = provision_seat(tenant, "reader", project_key="zulu")
+    actor = Actor(principal_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    with psycopg.connect(tenant.database.runtime_dsn) as connection:
+        granted = project_scope_grants(
+            connection, tenant_id=tenant.tenant_id, principal_id=principal_id
+        )
+
+    with (
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+        CtowerClient(base_url, credential=credential) as client,
+    ):
+        listed = client.list_inbox_correspondents()
+
+    tied = [item.project_key for item in listed.correspondents if item.seat_key == "shared-seat"]
+    print(
+        "REAL_TIED_SEAT_ORDER tied=" + json.dumps(tied) + f" grants={json.dumps(list(granted))}"
+    )
+    assert tied == ["alpha", "zulu"]
