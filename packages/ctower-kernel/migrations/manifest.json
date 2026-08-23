@@ -705,7 +705,7 @@
     },
     {
       "path": "0075_ticket_display_keys.sql",
-      "sha256": "sha256:82ae3a618e876f253e6cd8c273a5aff6bfd1131e2933cee6e94aedc29ddf6965",
+      "sha256": "sha256:fcddf520d56ebf36e194fef6943c5d936af8e720289a97d1d408bb0ca0814b29",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/contracts/domain/test_ticket_display_keys_contract.py::test_ticket_display_key_migration_is_additive_and_backfills_by_creation_order",
