@@ -41,13 +41,16 @@ export type Route =
   | { readonly kind: "unknown" };
 
 export function routeTo(correspondents: readonly InboxCorrespondent[], seatKey: string): Route {
-  const projectKeys = [
-    ...new Set(
-      correspondents
-        .filter((correspondent) => correspondent.seat_key === seatKey)
-        .map((correspondent) => correspondent.project_key)
-    ),
-  ].sort((left, right) => left.localeCompare(right));
+  const seen = new Set<string>();
+  const projectKeys: string[] = [];
+  for (const correspondent of correspondents) {
+    if (correspondent.seat_key === seatKey && !seen.has(correspondent.project_key)) {
+      seen.add(correspondent.project_key);
+      projectKeys.push(correspondent.project_key);
+    }
+  }
+  // The correspondent read serves its rows `ORDER BY seat_key`, so this is the
+  // record's own order; sorting it again would overrule it client-side.
   const only = projectKeys[0];
   if (only === undefined) {
     return { kind: "unknown" };
@@ -57,9 +60,19 @@ export function routeTo(correspondents: readonly InboxCorrespondent[], seatKey: 
     : { kind: "ambiguous", projectKeys };
 }
 
-/** The seats this console may open a thread to, each named once. */
+/**
+ * The seats this console may open a thread to, each named once, in the order
+ * the correspondent list records them — that read is already `ORDER BY
+ * seat_key`, so a re-sort here would impose a second answer on an ordered one.
+ */
 export function seatsOffered(correspondents: readonly InboxCorrespondent[]): readonly string[] {
-  return [...new Set(correspondents.map((correspondent) => correspondent.seat_key))].sort(
-    (left, right) => left.localeCompare(right)
-  );
+  const seen = new Set<string>();
+  const seats: string[] = [];
+  for (const correspondent of correspondents) {
+    if (!seen.has(correspondent.seat_key)) {
+      seen.add(correspondent.seat_key);
+      seats.push(correspondent.seat_key);
+    }
+  }
+  return seats;
 }
