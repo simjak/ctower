@@ -1,5 +1,4 @@
 import type { TimelineEvent } from "@ctower/client";
-import { byInstant } from "./workflow";
 
 /**
  * The ticket's history, said as what a person did.
@@ -32,8 +31,14 @@ export const HISTORY_SCOPE =
   "Raising, custody, comments and stage moves. Work intents such as admitting " +
   "or blocking are on another read.";
 
+/**
+ * The timeline read is already ordered: the record serves events by global
+ * record position (`ORDER BY event.record_position`), which is the only
+ * ordering both streams share, and re-sorting by `occurred_at` would overrule
+ * it with a client-side rule that can disagree with it.
+ */
 export function historyOf(events: readonly TimelineEvent[]): readonly Entry[] {
-  return [...events].sort(byInstant).map(entryOf);
+  return events.map(entryOf);
 }
 
 function entryOf(event: TimelineEvent): Entry {
