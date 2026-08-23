@@ -61,6 +61,9 @@ class _RoutineStore:
     def tenant_ids(self) -> tuple[UUID, ...]:
         return (self.tenant_id,)
 
+    def fully_retired_routine_refs(self) -> tuple[str, ...]:
+        return ()
+
     def register(
         self,
         tenant_id: UUID,

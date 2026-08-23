@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 
+from ctowerctl import _beat_dispatch_commands
 from ctowerctl._parser import parse_arguments
 
 __all__: tuple[str, ...] = ()
@@ -19,3 +22,25 @@ def test_public_cli_does_not_abbreviate_base_url(prefix: str, *, joined: bool) -
 
     with pytest.raises(ValueError, match="usage:"):
         parse_arguments([*override, "control", "health"])
+
+
+def test_beat_retire_parses_and_builds_the_strict_generated_request() -> None:
+    command_id = uuid4()
+    arguments = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "beat-dispatch",
+            "retire",
+            "ctower.beat.health@1",
+            "--command-id",
+            str(command_id),
+        ]
+    )
+
+    payload = _beat_dispatch_commands.build_mutation(arguments)
+
+    assert arguments.cli_name == "beat-dispatch retire"
+    assert arguments.command_id == command_id
+    assert payload.request.model_dump(mode="json") == {}
+    assert payload.path_parameters == {"routine_ref": "ctower.beat.health@1"}
