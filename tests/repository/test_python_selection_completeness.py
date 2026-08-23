@@ -109,7 +109,10 @@ class PythonSelectionCompletenessTests(unittest.TestCase):
     def _suite_claims(self, path: str) -> bool:
         for suite in self._suites():
             prefix = cast(str, suite["path"]).rstrip("/") + "/"
-            if not path.startswith(prefix):
+            command_named = any(
+                str(argument) == path for argument in cast(list[str], suite.get("command", []))
+            )
+            if not (path.startswith(prefix) or command_named):
                 continue
             patterns = cast(list[str], suite["patterns"])
             if any(fnmatch.fnmatch(Path(path).name, pattern) for pattern in patterns):
