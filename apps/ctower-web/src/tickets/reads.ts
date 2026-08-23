@@ -39,6 +39,7 @@ export function useBoard(projectKey: string | null, reloadKey: number): Answer<B
 
 export interface OneTicket {
   readonly ticket: TicketResource;
+  /** The workflow's own moves. What happened to this ticket is the audit read. */
   readonly timeline: TimelineResponse;
 }
 
@@ -82,7 +83,15 @@ export function useTicket(
   return one;
 }
 
-/** Ask for the ticket and its history, and stop at the first thing that is not an answer. */
+/**
+ * Ask for the ticket and the stages it has walked, stopping at the first thing
+ * that is not an answer.
+ *
+ * The timeline is read for `workflowFrom` and nothing else. It used to narrate
+ * this page's History section too, until T-009 made the audit read canonical for
+ * that question — four event kinds cannot answer "what happened" beside a read
+ * that answers nine.
+ */
 async function bothReads(projectKey: string, ticketId: string): Promise<Answer<OneTicket>> {
   const ticket = await ask(() => reads.getTicket({ projectKey, ticketId }));
   if (ticket.kind !== "answered") {

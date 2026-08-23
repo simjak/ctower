@@ -1,10 +1,11 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactElement } from "react";
 import type { BoardCard } from "@ctower/client";
-import { Button, Card, CardBody, Chip, Mono } from "../ui/primitives";
+import { AuditFeed, WORK_SCOPE, WORK_TITLE } from "../audit/AuditFeed";
+import { Button, Card, CardBody, CardHeader, CardTitle, Chip, Mono } from "../ui/primitives";
+import { Hint } from "../ui/form";
 import { Mark } from "../ui/marks";
 import { Instant, laneWord, PriorityChip } from "./facts";
-import { History } from "./History";
 import { MoveStage } from "./MoveStage";
 import { StageLadder } from "./StageLadder";
 import { Changes, Labels, TicketFacts } from "./TicketFacts";
@@ -67,7 +68,21 @@ export function TicketDetail({
             <MoveStage ticketId={one.ticket.ticket_id} standing={standing} onMoved={onMoved} />
           )}
           <TicketCrew projectKey={project} ticketId={one.ticket.ticket_id} />
-          <History timeline={one.timeline} />
+          {/* The same read the Board panel draws, by the commander's T-009
+              ruling: `listTicketAuditEvents` answers nine event kinds where the
+              timeline answers four, and two surfaces answering "what happened"
+              with different completeness is how one of them gets believed. The
+              timeline read stays — it is what `workflowFrom` above needs — but
+              it no longer narrates a history it cannot finish. */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{WORK_TITLE}</CardTitle>
+              <Hint text={WORK_SCOPE} />
+            </CardHeader>
+            <CardBody>
+              <AuditFeed projectKey={project} ticketId={one.ticket.ticket_id} />
+            </CardBody>
+          </Card>
         </div>
         <div className="min-w-0 space-y-4">
           <TicketFacts ticket={one.ticket} card={card} />
