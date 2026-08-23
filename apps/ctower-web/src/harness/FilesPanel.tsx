@@ -20,27 +20,13 @@ import { useAgentFiles } from "./files/useAgentFiles";
  * file is editing the company: the same check, the same plan, the same command
  * under the operator's own authority, and the registry recomputes the digest
  * that pins the result.
- *
- * This panel reads the company itself, so an accepted apply has to be announced
- * twice: once here, and once to whatever page is holding this panel. A host
- * that read the bundle to build its own screen is now a version behind — the
- * operator's own edit is what made it stale — and a neighbouring tab authoring
- * from that document proposes against a superseded version and is refused. So
- * `onApplied` is called on acceptance and only on acceptance. A host with
- * nothing to re-read may omit it; this panel still refreshes itself.
  */
-export function FilesPanel({
-  onApplied,
-}: {
-  /** An accepted apply changed what is recorded; a host that reads should re-read. */
-  readonly onApplied?: () => void;
-}): ReactElement {
+export function FilesPanel(): ReactElement {
   const [reloadKey, setReloadKey] = useState(0);
   const seed = useSeed(reloadKey);
   const reread = useCallback((): void => {
     setReloadKey((count) => count + 1);
-    onApplied?.();
-  }, [onApplied]);
+  }, []);
 
   switch (seed.kind) {
     case "asking":
