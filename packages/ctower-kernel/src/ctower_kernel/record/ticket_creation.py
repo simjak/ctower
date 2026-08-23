@@ -181,12 +181,14 @@ def allocate_ticket_display_key(
         JOIN catalog_components AS component
           ON component.tenant_id = revision.tenant_id
          AND component.component_id = revision.component_id
-        WHERE active.tenant_id = %s
+        WHERE active.tenant_id = %(tenant_id)s
           AND component.kind = 'project'
-          AND split_part(component.component_key, '.', 1) = %s
+          AND (revision.scope_project = %(project_key)s
+               OR component.component_key = %(project_key)s
+               OR split_part(component.component_key, '.', 1) = %(project_key)s)
           AND revision.project_prefix IS NOT NULL
         """,
-        (tenant_id, project_key),
+        {"tenant_id": tenant_id, "project_key": project_key},
     ).fetchall()
     if not prefix_rows:
         return None

@@ -28,7 +28,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: ctower-control-plane
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower, project: ctower}
       revision: 1
       content_digest: sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b
       schema_ref: ctower.project/v1
@@ -672,7 +672,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: manibo-delivery
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef
       schema_ref: ctower.project/v1
@@ -692,7 +692,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: cyklo-delivery
-      scope: {tenant: ctower, project: null}
+      scope: {tenant: ctower, project: cyklo}
       revision: 1
       content_digest: sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1
       schema_ref: ctower.project/v1
