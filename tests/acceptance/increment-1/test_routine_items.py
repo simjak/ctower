@@ -161,7 +161,10 @@ def test_ac_rwi_03_open_item_suppresses_next_window_with_one_typed_fact(
     first = runtime.scan(tenant.tenant_id)
     blocking_item_id = first.work_items[0].work_item_id
 
-    next_due = datetime.now(UTC) - timedelta(seconds=1)
+    # Re-arm from the row's own scheduled_for, never from wall-clock now: a
+    # wall-derived instant can straddle a minute boundary and either collapse
+    # into an already-evaluated window or drag an extra due mark into the scan.
+    next_due = first.work_items[0].scheduled_for + timedelta(milliseconds=1)
     reset_trigger(tenant, ROUTINE_REF, next_due)
     suppressed = runtime.scan(tenant.tenant_id)
 
@@ -183,7 +186,7 @@ def test_ac_rwi_03_open_item_suppresses_next_window_with_one_typed_fact(
         CompleteRoutineWorkItemCommand(UUID(int=10), blocking_item_id, "artifact:test-report"),
     )
     assert not isinstance(receipt, RecordProblem)
-    following_due = datetime.now(UTC) - timedelta(seconds=1)
+    following_due = next_due + timedelta(milliseconds=1)
     reset_trigger(tenant, ROUTINE_REF, following_due)
     following = runtime.scan(tenant.tenant_id)
     assert len(following.work_items) == 1
@@ -208,7 +211,12 @@ def test_ac_rwi_03_suppression_is_unconditional_across_the_gate_set(
     blocking_item_id = first.work_items[0].work_item_id
 
     append_movement_event(tenant)
-    reset_trigger(tenant, ROUTINE_REF, datetime.now(UTC) - timedelta(seconds=1))
+    # Re-arm from the row's own scheduled_for, never from wall-clock now: a
+    # wall-derived instant can straddle a minute boundary and either collapse
+    # into an already-evaluated window or drag an extra due mark into the scan.
+    reset_trigger(
+        tenant, ROUTINE_REF, first.work_items[0].scheduled_for + timedelta(milliseconds=1)
+    )
     suppressed = runtime.scan(tenant.tenant_id)
 
     assert _gate_results(tenant) == ["fired", "fired"]
