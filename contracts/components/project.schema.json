@@ -7,7 +7,7 @@
   "required": ["schema", "key", "display_name", "repository_ref", "goal_refs", "prefix"],
   "properties": {
     "schema": { "const": "ctower.project/v1" },
-    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" },
     "display_name": { "type": "string", "minLength": 1, "maxLength": 128 },
     "prefix": { "type": "string", "pattern": "^[A-Z]{2,5}$" },
     "repository_ref": {

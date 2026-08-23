@@ -1,6 +1,6 @@
 {
   "schema": "ctower.project/v1",
-  "key": "ctower.control-plane",
+  "key": "ctower-control-plane",
   "display_name": "Ctower control plane",
   "prefix": "CTW",
   "repository_ref": "repository:github/simjak/ctower",
