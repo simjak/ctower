@@ -65,8 +65,8 @@ class PythonSelectionCompletenessTests(unittest.TestCase):
         )
 
     def _tracked_python_files(self) -> list[str]:
-        completed = subprocess.run(
-            ["git", "-C", str(self.root), "ls-files", "--", "*.py"],
+        completed = subprocess.run(  # noqa: S603 - fixed repository introspection command
+            ["/usr/bin/git", "-C", str(self.root), "ls-files", "--", "*.py"],
             capture_output=True,
             text=True,
             check=True,
@@ -100,9 +100,7 @@ class PythonSelectionCompletenessTests(unittest.TestCase):
     def _lint_selects(self, path: str, lint_paths: set[str]) -> bool:
         """A selection argument covers a path when it is the path or an ancestor dir."""
         parts = path.split("/")
-        return any(
-            "/".join(parts[:i]) in lint_paths for i in range(1, len(parts) + 1)
-        )
+        return any("/".join(parts[:i]) in lint_paths for i in range(1, len(parts) + 1))
 
     def _suites(self) -> list[dict[str, object]]:
         with (self.root / "tools/checks/expected-suites.toml").open("rb") as handle:

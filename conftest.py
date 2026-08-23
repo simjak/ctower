@@ -12,12 +12,15 @@ frame argument, local, and traceback line intact.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from typing import cast
 
 try:
-    from _pytest._code.code import FormattedExcinfo as _ExcinfoFormatter
-except ImportError:  # pytest 9 renamed FormattedExcinfo to ExceptionInfoFormatter
     from _pytest._code.code import ExceptionInfoFormatter as _ExcinfoFormatter
+except ImportError:  # pragma: no cover - pytest < 9 named the formatter FormattedExcinfo
+    from _pytest._code.code import (  # type: ignore[attr-defined,no-redef]
+        FormattedExcinfo as _ExcinfoFormatter,
+    )
 from _pytest._code.code import ReprFuncArgs, ReprLocals, TracebackEntry
 from _pytest._io.saferepr import saferepr
 
@@ -85,12 +88,16 @@ _original_repr_locals = _ExcinfoFormatter.repr_locals
 
 
 def _redacting_repr_locals(
-    self: _ExcinfoFormatter, locals: Mapping[str, object]
+    self: _ExcinfoFormatter, frame_locals: Mapping[str, object]
 ) -> ReprLocals | None:
     if not self.showlocals:
         return None
-    safe_locals = {name: _redact_named(name, value) for name, value in locals.items()}
-    return _original_repr_locals(self, safe_locals)
+    safe_locals = {name: _redact_named(name, value) for name, value in frame_locals.items()}
+    safe_repr_locals = cast(
+        "Callable[[Mapping[str, object]], ReprLocals | None]",
+        _original_repr_locals.__get__(self, _ExcinfoFormatter),
+    )
+    return safe_repr_locals(safe_locals)
 
 
 def _redacting_repr_args(self: _ExcinfoFormatter, entry: TracebackEntry) -> ReprFuncArgs | None:
@@ -106,5 +113,5 @@ def _redacting_repr_args(self: _ExcinfoFormatter, entry: TracebackEntry) -> Repr
     return ReprFuncArgs(args)
 
 
-_ExcinfoFormatter.repr_locals = _redacting_repr_locals  # type: ignore[method-assign]
+_ExcinfoFormatter.repr_locals = _redacting_repr_locals  # type: ignore[assignment]
 _ExcinfoFormatter.repr_args = _redacting_repr_args  # type: ignore[method-assign]
