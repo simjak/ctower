@@ -132,7 +132,10 @@ def api_main() -> None:
         readiness_gate=PostgresWork(runtime_dsn),
     )
     runtime_store = PostgresRuntime(runtime_dsn)
-    revisions = load_routine_revisions(packs)
+    revisions = load_routine_revisions(
+        packs,
+        retired_routine_refs=runtime_store.fully_retired_routine_refs(),
+    )
     uvicorn.run(
         create_app(
             record,
