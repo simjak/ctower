@@ -391,7 +391,14 @@ def _authored_prefixes(tenant: TenantFixture) -> dict[str, str]:
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         rows = connection.execute(
             """
-            SELECT split_part(component.component_key, '.', 1) AS project_key,
+            SELECT COALESCE(
+                       revision.scope_project,
+                       CASE
+                           WHEN position('.' in component.component_key) = 0
+                               THEN component.component_key
+                           ELSE split_part(component.component_key, '.', 1)
+                       END
+                   ) AS project_key,
                 revision.project_prefix
             FROM company_bundle_active AS active
             JOIN company_bundle_members AS member
