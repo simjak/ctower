@@ -7,8 +7,8 @@ components:
     key: company.trusted-delivery
     source: packs/components/goals/company.trusted-delivery/v1.yaml
   - kind: project
-    key: ctower.control-plane
-    source: packs/components/projects/ctower.control-plane/v1.yaml
+    key: ctower-control-plane
+    source: packs/components/projects/ctower-control-plane/v1.yaml
   - kind: persona
     key: operator.commander
     source: packs/components/personas/operator.commander/v1.yaml

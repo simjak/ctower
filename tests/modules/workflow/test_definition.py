@@ -325,7 +325,7 @@ def test_a_project_overlay_applies_after_the_base_in_authored_order() -> None:
     base = resolve_workflow_definition(definition)
     lastmachines = resolve_workflow_definition(definition, project="lastmachines")
     bh_loop = resolve_workflow_definition(definition, project="bh-loop")
-    unlisted = resolve_workflow_definition(definition, project="ctower.control-plane")
+    unlisted = resolve_workflow_definition(definition, project="ctower-control-plane")
 
     assert _stage(base, "qa").slot_keys == ("uses-not-loads",)
     assert _stage(lastmachines, "qa").slot_keys == ("uses-not-loads", "k3d-only")

@@ -2641,7 +2641,7 @@
           "uniqueItems": true
         },
         "key": {
-          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
           "type": "string"
         },
         "prefix": {
@@ -23445,7 +23445,7 @@
     {
       "id": "https://ctower.local/contracts/components/project.schema.json",
       "path": "contracts/components/project.schema.json",
-      "sha256": "sha256:e82f7219521e637275fb2b9ae1bfae303d1aab9ee3aab811dca70f4127f0029b"
+      "sha256": "sha256:b39d903fa72f0ab3953d48a2872cc776709923511f5228328c22bc52f381b92e"
     },
     {
       "id": "https://ctower.local/contracts/components/seat-catalog.schema.json",
