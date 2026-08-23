@@ -23,19 +23,19 @@ from ctower_kernel.runtime.beats import BeatDispatchSpec
 
 __all__: tuple[str, ...] = ()
 
-_PACK_PATHS = (
-    "routines/ctower.i1.synthetic-four-stage/v1.yaml",
-    "routines/ctower.i1.daily-backup/v1.yaml",
-    "routines/ctower.i1.record-anchor/v1.yaml",
-    "routines/ctower.dream.manibo/v1.yaml",
-    "routines/ctower.dream.ctower/v1.yaml",
-    "routines/ctower.dream.bh-loop/v1.yaml",
-    "routines/ctower.dream.fleet/v1.yaml",
-    "routines/ctower.beat.health/v1.yaml",
-    "routines/ctower.beat.migration/v1.yaml",
-    "routines/ctower.beat.bhloop/v1.yaml",
-    "routines/ctower.beat.sprint/v1.yaml",
-    "routines/ctower.beat.digest/v1.yaml",
+_PACKS = (
+    ("ctower.i1.synthetic-four-stage@1", "routines/ctower.i1.synthetic-four-stage/v1.yaml"),
+    ("ctower.i1.daily-backup@1", "routines/ctower.i1.daily-backup/v1.yaml"),
+    ("ctower.i1.record-anchor@1", "routines/ctower.i1.record-anchor/v1.yaml"),
+    ("ctower.dream.manibo@1", "routines/ctower.dream.manibo/v1.yaml"),
+    ("ctower.dream.ctower@1", "routines/ctower.dream.ctower/v1.yaml"),
+    ("ctower.dream.bh-loop@1", "routines/ctower.dream.bh-loop/v1.yaml"),
+    ("ctower.dream.fleet@1", "routines/ctower.dream.fleet/v1.yaml"),
+    ("ctower.beat.health@1", "routines/ctower.beat.health/v1.yaml"),
+    ("ctower.beat.migration@1", "routines/ctower.beat.migration/v1.yaml"),
+    ("ctower.beat.bhloop@1", "routines/ctower.beat.bhloop/v1.yaml"),
+    ("ctower.beat.sprint@1", "routines/ctower.beat.sprint/v1.yaml"),
+    ("ctower.beat.digest@1", "routines/ctower.beat.digest/v1.yaml"),
 )
 _TOP_LEVEL_KEYS_V1 = frozenset(
     {
@@ -78,26 +78,24 @@ class RoutineLoop:
         return tuple(scans)
 
 
-def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
-    """Load only the twelve authored packs and reject every untyped field."""
+def load_routine_revisions(
+    pack_root: Path,
+    *,
+    retired_routine_refs: tuple[str, ...] = (),
+) -> tuple[RoutineRevision, ...]:
+    """Load every active authored pack and reject absent active or unknown retired references."""
 
-    revisions = tuple(_load_revision(pack_root / relative) for relative in _PACK_PATHS)
+    retired = frozenset(retired_routine_refs)
+    expected = {reference for reference, _relative in _PACKS}
+    if not retired <= expected:
+        raise ValueError("retired Routine references are outside the authored pack set")
+    revisions = tuple(
+        _load_revision(pack_root / relative)
+        for reference, relative in _PACKS
+        if reference not in retired
+    )
     references = {revision.routine_ref for revision in revisions}
-    expected = {
-        "ctower.i1.synthetic-four-stage@1",
-        "ctower.i1.daily-backup@1",
-        "ctower.i1.record-anchor@1",
-        "ctower.dream.manibo@1",
-        "ctower.dream.ctower@1",
-        "ctower.dream.bh-loop@1",
-        "ctower.dream.fleet@1",
-        "ctower.beat.health@1",
-        "ctower.beat.migration@1",
-        "ctower.beat.bhloop@1",
-        "ctower.beat.sprint@1",
-        "ctower.beat.digest@1",
-    }
-    if references != expected:
+    if references != expected - retired:
         raise ValueError("Routine packs do not declare the exact authored revision set")
     return revisions
 
