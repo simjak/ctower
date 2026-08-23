@@ -14,7 +14,6 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import httpx
-import psycopg
 import pytest
 from support.acceptance import accept_pending_commands
 from support.server import running_api
@@ -24,8 +23,6 @@ from support.tenant_fixture import TenantFixture, provision_seat
 from ctower_client import CtowerClient, CtowerProblemError, Problem
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
-from ctower_kernel.record.project_scope import project_scope_grants
 
 __all__: tuple[str, ...] = ()
 
@@ -362,30 +359,17 @@ def test_a_seat_registered_by_two_projects_lists_them_in_the_read_s_order(
     # which follows insertion here, so an unfixed read fails this assertion
     provision_seat(tenant, "shared-seat", project_key="zulu")
     provision_seat(tenant, "shared-seat", project_key="alpha")
-
-    # the reader is a third principal seated in `zulu` only: the commander's own
-    # seat is withheld from the answer, and a reader seated in one tie arm still
-    # sees both rows of the tie, so the assertion reads the read's own order
-    principal_id, credential = provision_seat(tenant, "reader", project_key="zulu")
-    actor = Actor(principal_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    from psycopg.rows import dict_row
-
-    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:  # type: ignore[arg-type]
-        granted = project_scope_grants(
-            connection, tenant_id=tenant.tenant_id, principal_id=principal_id
-        )
+    _operator_id, operator = provision_seat(tenant, "fleet-operator", kind="operator")
 
     with (
         running_api(
             tenant.database.runtime_dsn,
             projection_dsn=tenant.database.projection_dsn,
         ) as base_url,
-        CtowerClient(base_url, credential=credential) as client,
+        CtowerClient(base_url, credential=operator) as client,
     ):
         listed = client.list_inbox_correspondents()
 
     tied = [item.project_key for item in listed.correspondents if item.seat_key == "shared-seat"]
-    print(
-        "REAL_TIED_SEAT_ORDER tied=" + json.dumps(tied) + f" grants={json.dumps(list(granted))}"
-    )
+    print("REAL_TIED_SEAT_ORDER tied=" + json.dumps(tied))
     assert tied == ["alpha", "zulu"]
