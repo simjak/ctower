@@ -1164,7 +1164,7 @@ owner = "CT-I1-032"
 phase = "CT-I1-032"
 status = "deferred"
 path = "tests/migration"
-patterns = ["test_inbox_import.py", "test_rulings_import.py", "test_knowledge_import.py", "test_company_records_import.py"]
+patterns = ["test_inbox_import.py", "test_rulings_import.py", "test_knowledge_import.py", "test_company_records_import.py", "test_request_cutover_dry_run.py"]
 
 command = [
   "{python}",
@@ -1174,6 +1174,7 @@ command = [
   "tests/migration/test_rulings_import.py",
   "tests/migration/test_knowledge_import.py",
   "tests/migration/test_company_records_import.py",
+  "tests/migration/test_request_cutover_dry_run.py",
   "-q",
 ]
 timeout_seconds = 300
