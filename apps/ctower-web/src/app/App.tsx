@@ -156,7 +156,13 @@ export function App(): ReactElement {
         ) : null}
         {seed.kind === "malformed" ? <Malformed detail={seed.detail} /> : null}
         {seed.kind === "answered" && seed.value.kind === "exported" ? (
-          <Here here={here} seed={seed.value} project={current?.key ?? null} onApplied={created} onGo={go} />
+          <Here
+            here={here}
+            seed={seed.value}
+            project={current?.key ?? null}
+            onApplied={created}
+            onGo={go}
+          />
         ) : null}
       </Shell>
     </TooltipScope>
