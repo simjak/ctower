@@ -85,6 +85,12 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 - Loading/error/empty states are honest and compact; no invented data, ever.
 - The screenshot gate: no screen reaches the operator until its own render passes
   side-by-side against this system.
+- **No wire vocabulary renders** (operator, 2026-08-24). A rendered surface carries ZERO
+  technical text: no component keys, no `@revision` suffixes, no digests, no schema names,
+  no uuids, no `repository:` refs, no file paths. Whatever the record needs is DERIVED from
+  what the operator chose or typed. Where a machine value genuinely has to be reachable it
+  sits behind an explicit developer affordance, never in the default render. Product names
+  a person says out loud — "Claude Code", a model's name — are words, not wire, and stay.
 
 ## Decisions Log
 | Date | Decision | Rationale |
@@ -102,3 +108,7 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-22 | `Select` enters the component vocabulary | Every set this console offers is closed by the authored contract, so the control that offers one is the native control that already has a keyboard and a screen reader |
 | 2026-08-22 | WORK gains **Tickets** beside Board and Requests — awaiting the operator's ratification | His own ticket mockup (`mockups/ctower-ui/shot-ticket-*.png`) puts Tickets in WORK. A board and a list of tickets are two ways of reading the same record, and only one of them carries a ticket's own page |
 | 2026-08-22 | Where the operator is lives in the address (`?at=…&project=…&ticket=…`) | A screen has to be a link: a reload comes back to it, Back means back, and a screenshot is reproducible from its URL |
+| 2026-08-24 | **Zero technical text on any rendered surface** | The operator's rule, made law here. He asked for staff, not wiring: "I dont need any machine backend language here." A key or a revision on screen is the console asking him to hold the record's addressing in his head |
+| 2026-08-24 | A harness is picked from a card, and a harness ctower cannot start is drawn rather than dropped | The choice is a thing he knows the name of; hiding an absent one would answer "where is Pi" with silence, and this system draws unbuilt things honestly |
+| 2026-08-24 | An agent row carries the CLI's mark **and** the word; an agent with no recorded state carries neither | The six glyphs are shared with `ctowerctl`, so a row's dot is the terminal's dot. Unknown stays first-class: no borrowed glyph, and the pill says `unknown` |
+| 2026-08-24 | Components are built and screenshotted on a bench (`gallery.html`) before any page adopts them | `vite build` never sees the bench and no destination points at it, so a component can be reviewed as itself, in both themes, in every state — including the states a live tower will not produce on demand |
