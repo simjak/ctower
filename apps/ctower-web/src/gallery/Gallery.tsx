@@ -1,13 +1,14 @@
 import { useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { AgentRow } from "../agents/AgentRow";
+import { AgentsRail } from "../agents/AgentsRail";
 import type { Agent } from "../agents/AgentRow";
 import { HarnessPicker } from "../agents/HarnessPicker";
 import { harnessChoices } from "../agents/harnesses";
 import type { HarnessFamily } from "../agents/harnesses";
 import { Card, PageHead } from "../ui/primitives";
 import { ThemeToggle } from "../app/ThemeToggle";
-import { STAFF } from "./stories";
+import { PAYROLL, STAFF } from "./stories";
 
 /**
  * The bench: two components, alone, in every state they have.
@@ -27,6 +28,7 @@ export function Gallery(): ReactElement {
       <div className="space-y-8">
         <PickerStories />
         <RowStories />
+        <RailStories />
       </div>
     </main>
   );
@@ -67,6 +69,45 @@ function RowStories(): ReactElement {
         ))}
       </Card>
     </Story>
+  );
+}
+
+/**
+ * The rail section, at the two sizes that matter: a company with more staff
+ * than the rail carries, and one with none at all.
+ */
+function RailStories(): ReactElement {
+  const [opened, setOpened] = useState<string | null>(null);
+  return (
+    <div className="grid gap-6 sm:grid-cols-2">
+      <Story
+        title="Rail — eight agents, six drawn"
+        note={opened === null ? "Open one." : `Opened ${opened}.`}
+      >
+        <div className="w-[200px] border border-line bg-card py-2">
+          <AgentsRail
+            agents={PAYROLL}
+            here
+            current={opened}
+            onOpen={setOpened}
+            onSeeAll={(): void => {
+              setOpened(null);
+            }}
+          />
+        </div>
+      </Story>
+      <Story title="Rail — a company with no agent yet" note="One line, and the way to make one.">
+        <div className="w-[200px] border border-line bg-card py-2">
+          <AgentsRail
+            agents={[]}
+            here={false}
+            current={null}
+            onOpen={(): void => undefined}
+            onSeeAll={(): void => undefined}
+          />
+        </div>
+      </Story>
+    </div>
   );
 }
 

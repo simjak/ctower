@@ -100,6 +100,7 @@ const HEADING = {
   workflows: /^Workflows$/,
   requests: /^Requests$/,
   crews: /^Crews$/,
+  agents: /^Agents$/,
   company: /^(Create a company|Edit company definition)$/,
   harnesses: /^Harnesses$/,
   projects: /^Projects$/,
