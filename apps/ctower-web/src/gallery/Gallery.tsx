@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { AgentRow } from "../agents/AgentRow";
 import { AgentsRail } from "../agents/AgentsRail";
-import type { Agent } from "../agents/AgentRow";
+import type { AgentFacts } from "../agents/read";
 import { HarnessPicker } from "../agents/HarnessPicker";
 import { harnessChoices } from "../agents/harnesses";
 import type { HarnessFamily } from "../agents/harnesses";
@@ -62,7 +62,7 @@ function RowStories(): ReactElement {
           <AgentRow
             key={agent.name}
             agent={agent}
-            onOpen={(who: Agent): void => {
+            onOpen={(who: AgentFacts): void => {
               setOpened(who.name);
             }}
           />

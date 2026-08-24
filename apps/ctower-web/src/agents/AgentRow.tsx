@@ -4,7 +4,7 @@ import { Mark } from "../ui/marks";
 import { cn } from "../ui/cn";
 import { stamp } from "../inbox/when";
 import { standingOf } from "./status";
-import type { AgentStatus } from "./status";
+import type { AgentFacts } from "./read";
 
 /**
  * One agent, as a person would introduce them.
@@ -19,44 +19,28 @@ import type { AgentStatus } from "./status";
  * relative time goes stale on a page that is still by design and cannot be
  * compared against the CLI or a log, so this prints the sortable instant in the
  * reader's own zone and keeps the exact recorded value on `title`.
+ *
+ * The row carries no "this is the one you asked for" state. Naming an agent —
+ * here or in the rail — opens that agent's own home, so a highlighted row in a
+ * list nobody is looking at would be a state the operator can never see.
  */
-export interface Agent {
-  readonly name: string;
-  /** The job, in the operator's words: "Chief of staff · CEO". */
-  readonly role: string | null;
-  /** Plain product names, both of them: "claude-fable-5", "Claude Code". */
-  readonly model: string | null;
-  readonly harness: string | null;
-  /** When this agent last did something, or nothing recorded yet. */
-  readonly lastActive: string | null;
-  /** The recorded state, or nothing recorded yet. */
-  readonly status: AgentStatus | null;
-}
-
 export function AgentRow({
   agent,
-  current = false,
   onOpen,
 }: {
-  readonly agent: Agent;
-  /** Whether this is the agent the rail is pointing at. */
-  readonly current?: boolean;
-  readonly onOpen: (agent: Agent) => void;
+  readonly agent: AgentFacts;
+  readonly onOpen: (agent: AgentFacts) => void;
 }): ReactElement {
   const standing = standingOf(agent.status);
   return (
     <button
       type="button"
-      aria-current={current ? "true" : undefined}
       onClick={(): void => {
         onOpen(agent);
       }}
       className={cn(
         "flex w-full cursor-pointer items-center gap-3 border-b border-line px-3 py-2.5",
-        "text-left last:border-b-0 hover:bg-raised",
-        // The rail's own vocabulary for "this is the one you asked for",
-        // carried into the list the rail sends the operator to.
-        current && "border-l-2 border-l-amber bg-amber/10"
+        "text-left last:border-b-0 hover:bg-raised"
       )}
     >
       {standing.mark === null ? (
@@ -85,7 +69,7 @@ export function AgentRow({
  * screen says once, in a line of its own, which of these it is short of.
  * "Never run" would be an answer, and nothing here has asked the question.
  */
-function Runs({ agent }: { readonly agent: Agent }): ReactElement {
+function Runs({ agent }: { readonly agent: AgentFacts }): ReactElement {
   const runs = [agent.model, agent.harness].filter((one) => one !== null);
   return (
     <span className="hidden min-w-0 shrink-0 text-right sm:block">

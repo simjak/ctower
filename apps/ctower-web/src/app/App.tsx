@@ -4,7 +4,7 @@ import { AdminPage } from "../admin/AdminPage";
 import { AgentsPage } from "../agents/AgentsPage";
 import { AgentsRail } from "../agents/AgentsRail";
 import { agentsIn } from "../agents/read";
-import type { ListedAgent } from "../agents/read";
+import type { AgentFacts } from "../agents/read";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { BoardPage } from "../board/BoardPage";
@@ -66,18 +66,20 @@ export function App(): ReactElement {
   );
   const projects = projectsOf(seed);
   const { current, choose } = useCurrentProject(projects);
-  // Whether the operator is making a project. The pop-up is a moment, not a
-  // place, so it lives here rather than in the address: the rail's own "New
-  // project…" opens it on the Projects screen, and nothing else can.
+  // Whether the operator is making one of the things a company has — a project
+  // or an agent. The pop-up is a moment, not a place, so it lives here rather
+  // than in the address, and the screen it is open on is the one being looked
+  // at: moving to another screen closes it rather than carrying it there.
   const [creating, setCreating] = useState(false);
   // Which project the Projects screen has open, if it has one. Entering a card
   // is a place — `?at=projects&project=…` reopens that project's own screen —
   // so it is the address that says so, and the rail's own Projects always
   // means the whole list.
   const [opened, setOpened] = useState<string | null>(() => openedIn(window.location.search));
-  // Which agent the Agents screen is pointed at, when the rail sent the
-  // operator to one. It is a place inside that screen, so it rides the address
-  // the way an open project does.
+  // Which agent the Agents screen has open, if it has one — named from the
+  // rail or opened from the list, both the same place. Same rule as a project's
+  // own screen: opening one is a place, so the address says so and a reload
+  // comes back to it, while the rail's own "See all agents" means the list.
   const [agent, setAgent] = useState<string | null>(() => agentIn(window.location.search));
   const project = current?.key ?? null;
 
@@ -91,6 +93,11 @@ export function App(): ReactElement {
       setHere(key);
       setOpened(null);
       setAgent(place.agent ?? null);
+      // A pop-up is a moment, not a place. Two screens now share this one flag,
+      // so leaving the screen that opened it has to close it — otherwise the
+      // pop-up that makes an agent reopens as the one that makes a project.
+      // `createProject` sets it after this runs, so its own way in still works.
+      setCreating(false);
     },
     [project]
   );
@@ -292,11 +299,11 @@ function Here({
   readonly seed: Extract<Seed, { readonly kind: "exported" }>;
   /** The project the rail's switcher is pointed at, when this company has one. */
   readonly project: string | null;
-  /** The agent the Agents screen is pointed at, when the rail named one. */
+  /** The agent the Agents screen has open, when the rail or the list named one. */
   readonly agent: string | null;
   /** The project the Projects screen has open, when it has one. */
   readonly opened: string | null;
-  /** Whether the Projects screen is showing the pop-up that makes one. */
+  /** Whether a screen is showing the pop-up that makes a project or an agent. */
   readonly creating: boolean;
   readonly onCreating: (creating: boolean) => void;
   readonly onEnter: (key: string) => void;
@@ -342,18 +349,20 @@ function Here({
     case "agents":
       return (
         <AgentsPage
-          document={seed.result.bundle}
-          current={agent}
+          result={seed.result}
+          opened={agent}
+          creating={creating}
+          onCreating={onCreating}
+          // Opening an agent from the list is the same act as naming one in the
+          // rail, so it is the same address rather than a second handler that
+          // would eventually disagree with it about where an agent lives.
           onOpen={(key): void => {
             onGo("agents", { agent: key });
           }}
-          // An agent is authored on the harness screen today. AC-3 moves that
-          // into a flow of its own; until it does, this is the way to the one
-          // place that makes one, the same way the rail's own "New project…"
-          // leads to the screen that makes those.
-          onNew={(): void => {
-            onGo("harnesses");
+          onBack={(): void => {
+            onGo("agents");
           }}
+          onApplied={onApplied}
         />
       );
     case "admin":
@@ -393,8 +402,9 @@ function openedIn(search: string): string | null {
 }
 
 /**
- * The agent the Agents screen is pointed at, read out of the address. Only that
- * screen carries one; everywhere else the key would name nothing.
+ * The agent the Agents screen has open, read out of the address. Only that
+ * screen carries one, and only when it is the screen being looked at;
+ * everywhere else the key would name nothing.
  */
 function agentIn(search: string): string | null {
   if (destinationFromSearch(search) !== "agents") {
@@ -405,7 +415,7 @@ function agentIn(search: string): string | null {
 }
 
 /** The agents that company records, once the read has produced them. */
-function agentsOf(seed: ReturnType<typeof seedForPreview>): readonly ListedAgent[] {
+function agentsOf(seed: ReturnType<typeof seedForPreview>): readonly AgentFacts[] {
   if (seed.kind !== "answered" || seed.value.kind !== "exported") {
     return [];
   }
