@@ -48,7 +48,10 @@ import { previewFromLocation, seedForPreview } from "./preview";
 export function App(): ReactElement {
   const [admitted, setAdmitted] = useState(sessionToken() !== null);
   const [reloadKey, setReloadKey] = useState(0);
-  const real = useSeed(reloadKey);
+  // The read and the gate share one fact: until the server admits this tab,
+  // asking for the company would only collect the gate's own refusals, so the
+  // hook holds its ask until admission arrives.
+  const real = useSeed(reloadKey, admitted);
   const preview = previewFromLocation(window.location.search);
   const previewing = preview !== null;
   const seed = seedForPreview(preview, real);
