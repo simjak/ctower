@@ -52,6 +52,10 @@ _INVENTORY: dict[str, tuple[str, ...]] = {
     # screen's own reader over the same join is inventoried beside it.
     "shell/ProjectSwitcher.tsx": ("projectChoices",),
     "projects/read.ts": ("projectsIn",),
+    # T-025: the agents list and the rail's AGENTS section read one bundle
+    # through one reader, so the rail and the page cannot disagree about who
+    # works here or in what order.
+    "agents/read.ts": ("agentsIn",),
     "cockpit/roster.ts": ("rosterOf",),
     "workflows/compose.ts": ("projectKeys", "boundProjects"),
     "inbox/address.ts": ("routeTo", "seatsOffered"),
