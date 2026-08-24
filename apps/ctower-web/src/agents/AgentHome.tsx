@@ -9,6 +9,7 @@ import type { Answer } from "../api/client";
 import type { TicketSession } from "@ctower/client";
 import { Dashboard } from "./Dashboard";
 import { Held } from "./Held";
+import { Instructions } from "./instructions/Instructions";
 import { standingOf } from "./status";
 import { UNBUILT } from "./tabs";
 import type { TabKey } from "./tabs";
@@ -24,11 +25,16 @@ import type { AgentFacts } from "./read";
  * the three actions beside it are drawn as the acts they would be rather than
  * as buttons that would do nothing.
  *
- * Nine tabs, and only three of them have a read behind them. That ratio is the
+ * Nine tabs, and only four of them have a read behind them. That ratio is the
  * screen's whole point: the reference console's agent home is the shape the
- * operator asked for, and drawing six of its tabs with invented content would
- * make the three real ones worthless. Each unbuilt tab says what it will hold
+ * operator asked for, and drawing five of its tabs with invented content would
+ * make the four real ones worthless. Each unbuilt tab says what it will hold
  * and why it cannot hold it yet.
+ *
+ * Instructions is the fourth, and it is the shelf §5 asked for: what this agent
+ * is told, resolved through its own profile, on the agent rather than on the
+ * harness that runs it. It reads the company for itself and re-reads on an
+ * accepted apply, so `onApplied` travels out to whoever else is holding a copy.
  *
  * A tab is a place inside a screen, not a screen of its own, so it does not
  * enter the address — the address says which agent, and that is what survives a
@@ -37,10 +43,13 @@ import type { AgentFacts } from "./read";
 export function AgentHome({
   agent,
   onBack,
+  onApplied,
 }: {
   readonly agent: AgentFacts;
   /** Where the trail goes back to. */
   readonly onBack: () => void;
+  /** An accepted apply changed what is recorded; the host reads again. */
+  readonly onApplied: () => void;
 }): ReactElement {
   const [here, setHere] = useState<TabKey>("dashboard");
   const standing = standingOf(null);
@@ -121,7 +130,7 @@ export function AgentHome({
         ))}
       </div>
 
-      <Panel here={here} agent={agent} work={workOf(agent, sessions)} />
+      <Panel here={here} agent={agent} work={workOf(agent, sessions)} onApplied={onApplied} />
     </>
   );
 }
@@ -142,21 +151,24 @@ function Panel({
   here,
   agent,
   work,
+  onApplied,
 }: {
   readonly here: TabKey;
   readonly agent: AgentFacts;
   readonly work: Answer<readonly TicketSession[]>;
+  readonly onApplied: () => void;
 }): ReactElement {
   switch (here) {
     case "dashboard":
       return <Dashboard work={work} />;
+    case "instructions":
+      return <Instructions agentKey={agent.key} onApplied={onApplied} />;
     case "skills":
       return <Held what="skills" held={agent.skills} reason={UNBUILT.skills} />;
     case "tools":
       return <Held what="tools" held={agent.tools} reason={UNBUILT.tools} />;
     case "configuration":
       return <Configuration agent={agent} />;
-    case "instructions":
     case "secrets":
     case "runs":
     case "audit":
