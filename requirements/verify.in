@@ -13,7 +13,7 @@ keyring==25.7.0
 # CommonMark token oracle from https://github.com/executablebooks/markdown-it-py
 markdown-it-py==4.2.0
 mkdocs-material==9.7.7
-mypy==2.3.0
+mypy==2.3.1
 opentelemetry-api==1.44.0
 opentelemetry-sdk==1.44.0
 platformdirs==4.11.3
