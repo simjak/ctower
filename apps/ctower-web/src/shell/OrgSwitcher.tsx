@@ -1,11 +1,11 @@
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import type { ReactElement } from "react";
-import { Mono } from "../ui/primitives";
 import { cn } from "../ui/cn";
 
 export interface Org {
   readonly name: string;
+  /** What addresses this company. It travels; it does not render. */
   readonly key: string;
 }
 
@@ -17,9 +17,9 @@ export interface Org {
  * neither verb exists for them yet. Drawing either would be offering a control
  * over a thing that is not there.
  *
- * The chip is the company key rather than a short prefix. That console shows a
- * ticket prefix because it has one; ctower's record does not carry one, and the
- * key is the real thing that identifies this company.
+ * The mark is the company's own initial. That console shows a short code
+ * because its record carries one; ctower's does not, and the key that does
+ * identify a company is machine text, which this surface never renders.
  */
 export function OrgSwitcher({ org }: { readonly org: Org }): ReactElement {
   return (
@@ -47,10 +47,9 @@ export function OrgSwitcher({ org }: { readonly org: Org }): ReactElement {
 
           <DropdownMenu.Item className="flex items-center gap-2.5 rounded-sm px-3 py-2 outline-none data-[highlighted]:bg-raised">
             <Avatar name={org.name} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm text-fg">{org.name}</span>
-              <Mono className="block truncate text-muted">{org.key}</Mono>
-            </span>
+            {/* The name, and nothing under it. The key that addresses this
+                company is machine text and never renders. */}
+            <span className="min-w-0 flex-1 truncate text-sm text-fg">{org.name}</span>
             <Check aria-hidden className="size-3.5 shrink-0 text-ok" />
             <span className="sr-only">current</span>
           </DropdownMenu.Item>

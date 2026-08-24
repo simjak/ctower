@@ -4,7 +4,6 @@ import type { CompanyBundleCommandResult } from "@ctower/client";
 import type { Answer } from "../../api/client";
 import { Button, Chip, Mono, PageHead } from "../../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../states";
-import { shortDigest } from "../bundle";
 import { AuthorityGate } from "./AuthorityGate";
 import { PlanDiff } from "./PlanDiff";
 import { Receipt } from "./Receipt";
@@ -119,7 +118,7 @@ function Planned({
       {standing.validation.valid ? null : (
         <Chip tone="danger">the edited definition does not check out</Chip>
       )}
-      <PlanDiff plan={standing.plan} />
+      <PlanDiff plan={standing.plan} document={standing.document} />
       {moved === 0 ? null : <AuthorityGate plan={standing.plan} armed={armed} onArm={onArm} />}
     </div>
   );
@@ -151,12 +150,12 @@ function Summary({ review }: { readonly review: Answer<Standing> }): ReactElemen
           {moved} of {plan.actions.length} move
         </Chip>
       )}
+      {/* The record's version is a number a person can hold — which edition of
+          this company is being replaced. The digest that pins it is machine
+          text and does not render. */}
       <span>
         version <Mono>{plan.base_version}</Mono> → <Mono>{plan.base_version + 1}</Mono>
       </span>
-      <Mono className="text-muted" title={plan.plan_digest}>
-        {shortDigest(plan.plan_digest)}
-      </Mono>
     </>
   );
 }

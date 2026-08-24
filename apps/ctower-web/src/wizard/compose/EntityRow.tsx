@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 import type { ReactElement } from "react";
-import { Button, Chip, Mono } from "../../ui/primitives";
+import { Button, Chip } from "../../ui/primitives";
 import type { EntityFact } from "../read";
 
 /**
@@ -26,19 +26,13 @@ export function EntityRow({
     <div className="flex items-center gap-3 rounded-md border border-line bg-card px-4 py-3 hover:bg-raised">
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-fg">{fact.name}</div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-muted">
-          <Mono className="shrink-0">{fact.key}</Mono>
-          {fact.detail === null ? null : (
-            <>
-              <span aria-hidden className="text-muted">
-                ·
-              </span>
-              <Mono className="truncate text-muted" title={fact.detailTitle ?? fact.detail}>
-                {fact.detail}
-              </Mono>
-            </>
-          )}
-        </div>
+        {/* The name, and the one supporting fact a person reads — a repository,
+            a harness. The key that pins this component is machine text and does
+            not render; it is what the record is keyed by, not what the thing is
+            called. */}
+        {fact.detail === null ? null : (
+          <div className="mt-0.5 min-w-0 truncate text-xs text-muted">{fact.detail}</div>
+        )}
       </div>
 
       {fact.subjects.length === 0 ? null : (

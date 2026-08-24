@@ -85,7 +85,14 @@ function Row({
             onOpen(card.ticket_id);
           }}
         >
-          <Mono className="text-fg">{card.display_key ?? shortId(card.ticket_id)}</Mono>
+          {/* The ticket's own number, the one a person says out loud. A card
+              the record has not numbered yet says so: its identifier is a
+              machine one and putting it here would put a uuid on the screen. */}
+          {card.display_key === null ? (
+            <span className="text-muted">Unnumbered</span>
+          ) : (
+            <Mono className="text-fg">{card.display_key}</Mono>
+          )}
           <span className="sr-only"> — {card.title}</span>
         </button>
       </td>
@@ -98,19 +105,10 @@ function Row({
       </td>
       <td className="py-1.5 pr-3 align-top whitespace-nowrap">{laneWord(card.lane)}</td>
       <td className="py-1.5 align-top whitespace-nowrap">
-        {card.stage_label === null ? (
-          // No workflow has told the record where this ticket stands. An
-          // em dash says so; borrowing the lane's word would invent a stage.
-          <span className="text-muted">—</span>
-        ) : (
-          <Mono>{card.stage_label}</Mono>
-        )}
+        {/* No workflow has told the record where this ticket stands. An em
+            dash says so; borrowing the lane's word would invent a stage. */}
+        {card.stage_label ?? <span className="text-muted">—</span>}
       </td>
     </tr>
   );
-}
-
-/** A ticket with no display key is still openable; it shows what it has. */
-function shortId(ticketId: string): string {
-  return ticketId.slice(0, 8);
 }

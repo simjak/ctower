@@ -1,16 +1,15 @@
 import { RotateCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { ReactElement } from "react";
-import type { BoardCard, BoardView, CompanyBundleDocument } from "@ctower/client";
+import type { BoardCard, BoardView } from "@ctower/client";
 import type { Answer } from "../api/client";
 import { Button, Chip, PageHead } from "../ui/primitives";
+import type { DestinationKey } from "../shell/destinations";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { Column } from "./Column";
-import { columnsOf, freshnessOf, projectsOf } from "./lanes";
-import type { Project } from "./lanes";
+import { columnsOf, freshnessOf } from "./lanes";
 import { atPriority, countsOf, PriorityField } from "./PriorityField";
 import type { PriorityChoice } from "./PriorityField";
-import { ProjectField } from "./ProjectField";
 import { TicketPanel } from "./TicketPanel";
 import { useBoard } from "./useBoard";
 
@@ -19,29 +18,31 @@ import { useBoard } from "./useBoard";
  *
  * The page is still. It reads once when the project changes and once more when
  * the operator asks it to, because `DESIGN.md` reserves motion for real work
- * moving and a board that repaints on a timer moves when nothing has. The
- * project lives in the address, so a board is a link — the same board opens for
- * whoever the operator sends it to.
+ * moving and a board that repaints on a timer moves when nothing has.
+ *
+ * Which project it reads is not this screen's question. The rail governs the
+ * project workspace and the address carries the answer, so the board is handed
+ * one and shows it — one chooser for every project-scoped screen, and a board
+ * that is a link because the address it was opened from says which project it
+ * is about.
  */
-export function BoardPage({ company }: { readonly company: CompanyBundleDocument }): ReactElement {
-  const projects = projectsOf(company);
-  const [projectKey, setProjectKey] = useState<string | null>(() => opensOn(projects));
+export function BoardPage({
+  projectKey,
+  onGoProjects,
+}: {
+  /** The project the rail is pointed at; null only when the company has none. */
+  readonly projectKey: string | null;
+  readonly onGoProjects: (key: DestinationKey) => void;
+}): ReactElement {
   const [reloadKey, setReloadKey] = useState(0);
   const [open, setOpen] = useState<BoardCard | null>(null);
   const [priority, setPriority] = useState<PriorityChoice>("any");
   const board = useBoard(projectKey, reloadKey);
   const answered = board.kind === "answered" ? board.value.cards : null;
 
-  const choose = useCallback((key: string): void => {
-    setOpen(null);
-    setProjectKey(key);
-    rememberProject(key);
-  }, []);
-
   return (
     <>
       <PageHead title="Board" subtitle={<Standing board={board} projectKey={projectKey} />}>
-        <ProjectField projectKey={projectKey} projects={projects} onChoose={choose} />
         <PriorityField priority={priority} counts={countsOf(answered)} onChoose={setPriority} />
         <Button
           variant="ghost"
@@ -56,7 +57,7 @@ export function BoardPage({ company }: { readonly company: CompanyBundleDocument
       </PageHead>
 
       {projectKey === null ? (
-        <Unopened projects={projects} onChoose={choose} />
+        <Unopened onGoProjects={onGoProjects} />
       ) : (
         <Lanes
           board={board}
@@ -83,39 +84,28 @@ export function BoardPage({ company }: { readonly company: CompanyBundleDocument
 }
 
 /**
- * No project yet, and the one action that fixes it sits next to the sentence
- * that says so. The choices are the definition's own projects; a company whose
- * definition names none gets the sentence and the field, because there is
- * nothing real to offer and a made-up suggestion would be worse than none.
+ * No project in the rail, so no board to read. This company records none yet,
+ * and the one action that fixes it sits next to the sentence that says so.
  */
 function Unopened({
-  projects,
-  onChoose,
+  onGoProjects,
 }: {
-  readonly projects: readonly Project[];
-  readonly onChoose: (key: string) => void;
+  readonly onGoProjects: (key: DestinationKey) => void;
 }): ReactElement {
   return (
     <div className="py-6">
       <p className="m-0 text-sm text-muted">
-        Name the project this board reads, and it opens on that project&rsquo;s work.
+        This company has no project yet, so there is no board to read.
       </p>
-      {projects.length === 0 ? null : (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {projects.map((project) => (
-            <Button
-              key={project.key}
-              variant="ghost"
-              size="sm"
-              onClick={(): void => {
-                onChoose(project.key);
-              }}
-            >
-              {project.name}
-            </Button>
-          ))}
-        </div>
-      )}
+      <Button
+        variant="primary"
+        className="mt-3"
+        onClick={(): void => {
+          onGoProjects("projects");
+        }}
+      >
+        Open Projects
+      </Button>
     </div>
   );
 }
@@ -253,26 +243,4 @@ function Counted({ view }: { readonly view: BoardView }): ReactElement {
       {freshness.kind === "unknown" ? <Chip>not known</Chip> : null}
     </>
   );
-}
-
-/**
- * Which project the board opens on.
- *
- * The address wins, so a board is a link. Failing that, a company whose
- * definition names exactly one project has no question to ask and the board
- * opens on it; a company that names several is asked, because picking the
- * alphabetically first one would be a guess dressed as a default.
- */
-function opensOn(projects: readonly Project[]): string | null {
-  const asked = new URLSearchParams(window.location.search).get("project");
-  if (asked !== null && asked !== "") {
-    return asked;
-  }
-  return projects.length === 1 ? (projects[0]?.key ?? null) : null;
-}
-
-function rememberProject(key: string): void {
-  const url = new URL(window.location.href);
-  url.searchParams.set("project", key);
-  window.history.replaceState(null, "", url);
 }

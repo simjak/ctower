@@ -1,11 +1,17 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { cn } from "../ui/cn";
-import { destinationsIn, GROUPS } from "./destinations";
+import { destinationsIn, WORKSPACES } from "./destinations";
 import type { Destination, DestinationKey } from "./destinations";
 
 /**
- * The permanent rail. Five groups, every destination the product will have, and
- * an honest state on each.
+ * The permanent rail. Two workspaces, every destination the product will have,
+ * and an honest state on each.
+ *
+ * COMPANY is the tenant: its definition, its crews, the harnesses they run on,
+ * its inbox, its admissions. PROJECT is one project, and the dropdown at the
+ * head of that section says which — every destination under it reads that
+ * project and nothing else. The dropdown sits inside the section it governs
+ * rather than above the whole rail, because it governs half of it.
  *
  * Three states, and they are different facts:
  *
@@ -22,17 +28,25 @@ export function Rail({
   here,
   lockReason,
   onGo,
+  project,
 }: {
   readonly here: DestinationKey;
   readonly lockReason: string | null;
   readonly onGo: (key: DestinationKey) => void;
+  /** Which project the section below it is about; the dropdown that says so. */
+  readonly project?: ReactNode;
 }): ReactElement {
   return (
     <nav aria-label="Sections" className="py-3.5">
-      {GROUPS.map((group) => (
-        <div key={group}>
-          <div className="px-4 pt-3 pb-1 text-[10.5px] tracking-[0.1em] text-muted">{group}</div>
-          {destinationsIn(group).map((destination) => (
+      {WORKSPACES.map((workspace) => (
+        <div key={workspace}>
+          <div className="px-4 pt-3 pb-1 text-[10.5px] tracking-[0.1em] text-muted">
+            {workspace}
+          </div>
+          {workspace === "PROJECT" && project !== undefined ? (
+            <div className="mb-1 border-y border-line">{project}</div>
+          ) : null}
+          {destinationsIn(workspace).map((destination) => (
             <RailLink
               key={destination.key}
               destination={destination}
