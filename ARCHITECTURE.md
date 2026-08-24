@@ -228,7 +228,9 @@ caller-observed token counts; twelve fixed Routine revisions (three I1 maintenan
 nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet, plus five fleet-beat
 revisions—three UTC cadences and Europe/Vilnius digest and sprint civil-time schedules—whose immutable
 full-prompt effects target the external DIRECTOR delivery ledger; corrected digests replace only the
-tenant's active trigger and preserve prior revision/effect history); an accepted-only,
+tenant's active trigger and preserve prior revision/effect history; an operator/Commander retirement
+appends one immutable tenant-scoped fact/event, removes the active trigger, and prevents registration from
+reactivating it); an accepted-only,
 rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
@@ -816,6 +818,13 @@ and `next_fire_at` commit together before acceptance-gated dispatch. Nonexistent
 skips and repeated times use the earlier offset. One logical scheduler owns Routine truth; there is no OS cron process per agent or
 Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
 are independent and make health `STATE UNKNOWN` when stale.
+
+Fleet-beat retirement uses the same tenant-row serialization as registration and scanning. The authority
+transaction appends `routine.retired`, stores the immutable retirement fact bound to the active revision,
+and removes only that tenant's trigger; later registration observes the fact and cannot recreate the
+trigger. Unknown and foreign references share one typed non-enumerating refusal. At API/worker boot, the
+pack loader subtracts only references retired for every current tenant from the exact authored pack set, so
+a retired pack may be absent while any unexplained or still-active absence fails closed.
 
 Each of the four nightly dream Routines emits exactly one immutable `dream_dispatch` effect at its UTC
 boundary. The effect carries the project-or-fleet scope, `skills/dreamer/SKILL.md`, and the hard-model
