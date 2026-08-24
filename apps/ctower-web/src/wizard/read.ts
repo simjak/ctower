@@ -13,14 +13,31 @@ export interface EntityFact {
   readonly id: string;
   /** The name a person gave this thing, when the payload carries one. */
   readonly name: string;
-  /** The authored key that pins it. */
+  /** The authored key that pins it. It addresses the row; it does not render. */
   readonly key: string;
-  /** One line of supporting fact: a repository, a harness, a persona. */
-  readonly detail: string | null;
-  /** The full value behind `detail`, for the hover. */
-  readonly detailTitle: string | null;
+  /** Where this project's code is, when the payload names a repository. */
+  readonly repository: Repository | null;
   /** The seats or projects this component is bound to. */
   readonly subjects: readonly string[];
+}
+
+/**
+ * A repository, as a person reads it and as a browser opens it.
+ *
+ * `repository:github/simjak/ctower/<40 hex>` is a host, a path, and the commit
+ * the record pins. A row says the path, because that is the repository's name;
+ * the link carries the pin, so following it lands on the exact commit this
+ * company recorded rather than wherever that branch has since moved.
+ */
+export interface Repository {
+  /** What the row says: `simjak/ctower`. */
+  readonly label: string;
+  /** Where it opens, or null when the reference names a host with no address. */
+  readonly href: string | null;
+  /** The host the reference names, exactly as authored. */
+  readonly host: string;
+  /** The reference as recorded, for the hover. */
+  readonly reference: string;
 }
 
 export function projectFacts(document: CompanyBundleDocument): readonly EntityFact[] {
@@ -32,8 +49,7 @@ export function projectFacts(document: CompanyBundleDocument): readonly EntityFa
         id: componentId(resource.component),
         name: text(resource, "display_name") ?? resource.component.key,
         key: resource.component.key,
-        detail: repository === null ? null : readableRepository(repository),
-        detailTitle: repository,
+        repository: repository === null ? null : repositoryOf(repository),
         subjects: subjectsOf(document.assignments, resource),
       };
     });
@@ -50,13 +66,11 @@ export function agentFacts(document: CompanyBundleDocument): readonly EntityFact
     .filter((resource) => resource.component.kind === "agent_profile")
     .map((resource) => {
       const persona = text(resource, "persona_ref");
-      const harness = text(resource, "harness_ref");
       return {
         id: componentId(resource.component),
         name: (persona === null ? null : (personas.get(persona) ?? null)) ?? resource.component.key,
         key: resource.component.key,
-        detail: harness,
-        detailTitle: harness,
+        repository: null,
         subjects: subjectsOf(document.assignments, resource),
       };
     });
@@ -91,6 +105,37 @@ function personaNames(document: CompanyBundleDocument): ReadonlyMap<string, stri
     }
   }
   return names;
+}
+
+/**
+ * The hosts this console can turn into an address, and how each one names a
+ * commit.
+ *
+ * A reference carries a host family — `github`, `gitlab` — and not a domain, so
+ * every address below is this console's claim rather than the record's. That is
+ * why the set is closed and tiny: a host that is not in it gets no link at all,
+ * because the alternative is a plausible URL nobody recorded.
+ */
+const HOSTS: Readonly<Record<string, { readonly origin: string; readonly tree: string }>> = {
+  github: { origin: "https://github.com", tree: "tree" },
+  gitlab: { origin: "https://gitlab.com", tree: "-/tree" },
+};
+
+/** `repository:<host>/<path>[/<40 hex>]` split into what it actually says. */
+function repositoryOf(reference: string): Repository {
+  const path = reference.replace(/^repository:/, "");
+  const match = /^([a-z][a-z0-9.-]*)\/(.+?)(?:\/([0-9a-f]{40}))?$/.exec(path);
+  const host = match?.[1] ?? "";
+  const repository = match?.[2] ?? path;
+  const commit = match?.[3];
+  const site = HOSTS[host];
+  if (site === undefined) {
+    // Nothing is invented for a host with no address: the row says the
+    // reference as recorded, and says it as text.
+    return { label: path, href: null, host, reference };
+  }
+  const pinned = commit === undefined ? "" : `/${site.tree}/${commit}`;
+  return { label: repository, href: `${site.origin}/${repository}${pinned}`, host, reference };
 }
 
 /**

@@ -9,10 +9,16 @@ import type { Standing } from "./standing";
  * Where the four-step ceremony went.
  *
  * Checking and planning an unchanged definition is not a journey, it is a fact,
- * and a fact belongs on one line: valid, how many checks passed, whether
- * anything would move, and the digest it is all about. Walking an operator
- * through four screens to arrive at "nothing happened" is ritual, and ritual is
- * the opposite of everything here being real.
+ * and a fact does not need a screen. It does not need the header either: an
+ * operator opening this page is going to change something, and `valid`, `5 of 5
+ * checks`, `no changes` and a digest are four answers to a question nobody
+ * asked. They are one word away instead — the digest is the record's own
+ * identity and stays reachable, per D9, behind an affordance rather than
+ * rendered by default.
+ *
+ * A standing that is not settled keeps its chip. Checking, refused, and
+ * unreachable are states an operator has to act on, and a state that needs
+ * acting on is never folded away.
  *
  * Once the draft is edited these facts are about a document that no longer
  * exists, so they are replaced by what is true instead: how many edits stand,
@@ -52,6 +58,13 @@ export function StandingLine({
   }
 }
 
+/**
+ * What was recorded, one press away.
+ *
+ * `details` is the disclosure this codebase already uses for a fold nobody has
+ * to open — the plan's unchanged rows use the same one — so the keyboard, the
+ * screen reader and the Escape key are the platform's rather than this file's.
+ */
 function Recorded({
   standing,
   digest,
@@ -64,21 +77,26 @@ function Recorded({
   const moved = movedCount(standing.plan.actions);
 
   return (
-    <>
-      {standing.validation.valid ? (
-        <Chip tone="ok">valid</Chip>
-      ) : (
-        <Chip tone="danger">not valid</Chip>
-      )}
-      <Chip>
-        {passed} of {checks.length} checks
-      </Chip>
-      {moved === 0 ? <Chip>no changes</Chip> : <Chip tone="amber">{moved} would move</Chip>}
-      {digest === null ? null : (
-        <Mono className="text-muted" title={digest}>
-          {shortDigest(digest)}
-        </Mono>
-      )}
-    </>
+    <details className="relative">
+      <summary className="chip cursor-pointer list-none hover:bg-raised">Details</summary>
+      <div className="absolute right-0 z-30 mt-1.5 flex w-max flex-col items-end gap-2 rounded-md border border-line bg-card p-3">
+        <div className="flex items-center gap-2">
+          {standing.validation.valid ? (
+            <Chip tone="ok">valid</Chip>
+          ) : (
+            <Chip tone="danger">not valid</Chip>
+          )}
+          <Chip>
+            {passed} of {checks.length} checks
+          </Chip>
+          {moved === 0 ? <Chip>no changes</Chip> : <Chip tone="amber">{moved} would move</Chip>}
+        </div>
+        {digest === null ? null : (
+          <Mono className="text-muted" title={digest}>
+            {shortDigest(digest)}
+          </Mono>
+        )}
+      </div>
+    </details>
   );
 }

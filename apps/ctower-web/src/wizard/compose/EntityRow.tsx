@@ -1,10 +1,18 @@
 import { Trash2 } from "lucide-react";
 import type { ReactElement } from "react";
-import { Button, Chip, Mono } from "../../ui/primitives";
+import { Button, Chip } from "../../ui/primitives";
 import type { EntityFact } from "../read";
+import { RepositoryLink } from "./RepositoryLink";
 
 /**
  * One project or one agent.
+ *
+ * A row says the name a person gave the thing, and — for a project — where its
+ * code is, as a link. It does not say the key it is addressed by, the revision
+ * pinning it, or the harness reference behind it. Those are the record's own
+ * vocabulary: they are what this console reads to find the row, not what the
+ * operator reads once it is drawn. The reference stays reachable in the link's
+ * hover, which is where D9 puts a fact nobody needs by default.
  *
  * The bin is drawn and it does not work, which is the honest state and not an
  * oversight. Increment 1's registry refuses any plan carrying a deprecation —
@@ -26,19 +34,7 @@ export function EntityRow({
     <div className="flex items-center gap-3 rounded-md border border-line bg-card px-4 py-3 hover:bg-raised">
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-fg">{fact.name}</div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-muted">
-          <Mono className="shrink-0">{fact.key}</Mono>
-          {fact.detail === null ? null : (
-            <>
-              <span aria-hidden className="text-muted">
-                ·
-              </span>
-              <Mono className="truncate text-muted" title={fact.detailTitle ?? fact.detail}>
-                {fact.detail}
-              </Mono>
-            </>
-          )}
-        </div>
+        {fact.repository === null ? null : <RepositoryLink repository={fact.repository} />}
       </div>
 
       {fact.subjects.length === 0 ? null : (
