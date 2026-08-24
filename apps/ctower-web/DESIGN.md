@@ -37,6 +37,11 @@ holds: the grid, the palette, the marks, the copy budget.
 - **Projects are not runtime and not a harness.** They live in the company workspace,
   listed as cards with a `New project` pop-up. The harness screen is the runtime the staff
   run on and holds no project.
+- **What an agent is told belongs to the agent, not to its runtime.** A persona, a skill
+  and a tool are named by an agent's own profile, so they are read under
+  `Agents › <name> › Instructions` and the harness screen keeps no copy. A harness has no
+  way to say which agent reads what, so a list of every file the company carries is not an
+  answer to the question the operator is asking.
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
   Next. The order follows the runtime, not the org chart: **1 Name your organization → 2

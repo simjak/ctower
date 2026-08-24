@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import type { TicketSession } from "@ctower/client";
 import type { Answer } from "../api/client";
 import { Mark } from "../ui/marks";
 import type { MarkName } from "../ui/marks";
@@ -18,15 +17,24 @@ import { Asking } from "../wizard/states";
  * are written for whoever maintains ctower, not for whoever runs it, so they
  * sit closed behind a disclosure that says who it is for — reachable in one
  * keystroke, and never in the operator's way.
+ *
+ * It says nothing about what was being read, so it is not typed to one read.
+ * Every screen under `agents/` meets the same four outcomes and owes the
+ * operator the same four sentences; a second copy of them, differing only in
+ * its type parameter, is how two screens start disagreeing about what silence
+ * means.
  */
 export function Waiting({
   answer,
+  what = "Reading this team's work",
 }: {
-  readonly answer: Answer<readonly TicketSession[]>;
+  readonly answer: Answer<unknown>;
+  /** What is being read, in the operator's words, while it is still out. */
+  readonly what?: string;
 }): ReactElement | null {
   switch (answer.kind) {
     case "asking":
-      return <Asking what="Reading this team's work" />;
+      return <Asking what={what} />;
     case "answered":
       return null;
     case "refused":
