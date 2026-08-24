@@ -1,4 +1,5 @@
 import type { Agent } from "../agents/AgentRow";
+import type { ListedAgent } from "../agents/read";
 
 /**
  * The staff the bench draws with.
@@ -51,3 +52,31 @@ export const STAFF: readonly Agent[] = [
     status: null,
   },
 ];
+
+/**
+ * A payroll longer than the rail carries.
+ *
+ * The rail shows six names and puts the rest behind "See all agents", with the
+ * count beside it. No live company on hand has eight agents, and a cap nobody
+ * has seen work is a cap nobody knows is honest — so the bench has eight.
+ */
+export const PAYROLL: readonly ListedAgent[] = [
+  "Ada",
+  "Luna",
+  "Ox",
+  "Sol",
+  "Vela",
+  "Juno",
+  "Rhea",
+  "Kepler",
+].map((name) => ({
+  key: `bench-${name.toLowerCase()}`,
+  agent: {
+    name,
+    role: null,
+    model: null,
+    harness: "Claude Code",
+    lastActive: null,
+    status: null,
+  },
+}));

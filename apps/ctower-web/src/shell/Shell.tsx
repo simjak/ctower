@@ -17,6 +17,7 @@ export function Shell({
   onGo,
   org,
   project,
+  agents,
   status,
   fill = false,
   children,
@@ -33,6 +34,8 @@ export function Shell({
    * the company workspace above it is not about a project at all.
    */
   readonly project?: ReactNode;
+  /** The company's staff, drawn as a section of the company workspace. */
+  readonly agents?: ReactNode;
   readonly status?: ReactNode;
   /**
    * A workspace rather than a page: it takes the height of the viewport and
@@ -61,7 +64,7 @@ export function Shell({
               <OrgSwitcher org={org} />
             </div>
           )}
-          <Rail here={here} lockReason={lockReason} onGo={onGo} project={project} />
+          <Rail here={here} lockReason={lockReason} onGo={onGo} project={project} agents={agents} />
         </div>
         <main className="min-w-0">
           <div

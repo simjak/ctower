@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { cn } from "../ui/cn";
-import { destinationsIn, WORKSPACES } from "./destinations";
+import { linksIn, WORKSPACES } from "./destinations";
 import type { Destination, DestinationKey } from "./destinations";
 
 /**
@@ -29,12 +29,19 @@ export function Rail({
   lockReason,
   onGo,
   project,
+  agents,
 }: {
   readonly here: DestinationKey;
   readonly lockReason: string | null;
   readonly onGo: (key: DestinationKey) => void;
   /** Which project the section below it is about; the dropdown that says so. */
   readonly project?: ReactNode;
+  /**
+   * The company's staff, by name. It is a section of this rail rather than a
+   * link in it, so it arrives already drawn: the rail knows where it goes and
+   * nothing about who is in it.
+   */
+  readonly agents?: ReactNode;
 }): ReactElement {
   return (
     <nav aria-label="Sections" className="py-3.5">
@@ -46,7 +53,7 @@ export function Rail({
           {workspace === "PROJECT" && project !== undefined ? (
             <div className="mb-1 border-y border-line">{project}</div>
           ) : null}
-          {destinationsIn(workspace).map((destination) => (
+          {linksIn(workspace).map((destination) => (
             <RailLink
               key={destination.key}
               destination={destination}
@@ -55,6 +62,10 @@ export function Rail({
               onGo={onGo}
             />
           ))}
+          {/* The staff sit under the company's own destinations, because they
+              are the company's and not one project's. Nothing is drawn while
+              the rail is locked: there is no company yet to have staff. */}
+          {workspace === "COMPANY" && agents !== undefined && lockReason === null ? agents : null}
         </div>
       ))}
     </nav>

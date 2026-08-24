@@ -17,6 +17,7 @@ export type Workspace = "COMPANY" | "PROJECT";
 export type DestinationKey =
   | "company"
   | "projects"
+  | "agents"
   | "crews"
   | "harnesses"
   | "inbox"
@@ -38,6 +39,7 @@ export interface Destination {
 export const DESTINATIONS: readonly Destination[] = [
   { key: "company", label: "Company", workspace: "COMPANY", built: true },
   { key: "projects", label: "Projects", workspace: "COMPANY", built: true },
+  { key: "agents", label: "Agents", workspace: "COMPANY", built: true },
   { key: "crews", label: "Crews", workspace: "COMPANY", built: true },
   { key: "inbox", label: "Inbox", workspace: "COMPANY", built: true },
   { key: "harnesses", label: "Harnesses", workspace: "COMPANY", built: true },
@@ -51,8 +53,26 @@ export const DESTINATIONS: readonly Destination[] = [
 
 export const WORKSPACES: readonly Workspace[] = ["COMPANY", "PROJECT"];
 
+/**
+ * The one destination the rail draws as a section of its own rather than as a
+ * link.
+ *
+ * T-025 §1: the operator asked for his staff in the sidebar, by name, with one
+ * way to the whole list. So the rail carries an AGENTS section whose rows are
+ * the agents themselves, and the section is how this destination is reached —
+ * a link labelled "Agents" beside it would be a second door to one room.
+ * It stays in the map because it is still a destination: it has an address, a
+ * screen, and a `built` flag that says whether either exists yet.
+ */
+export const RAIL_SECTION: DestinationKey = "agents";
+
 export function destinationsIn(workspace: Workspace): readonly Destination[] {
   return DESTINATIONS.filter((destination) => destination.workspace === workspace);
+}
+
+/** The destinations of a workspace the rail draws as ordinary links. */
+export function linksIn(workspace: Workspace): readonly Destination[] {
+  return destinationsIn(workspace).filter((destination) => destination.key !== RAIL_SECTION);
 }
 
 /** Whether a screen is about one project rather than about the company. */
