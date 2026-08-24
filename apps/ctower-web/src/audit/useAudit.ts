@@ -52,8 +52,14 @@ function fresh(subject: string): Feed {
   return { subject, at: 0, events: [], cursor: null, page: ASKING };
 }
 
-export function useAudit(projectKey: string, ticketId: string): AuditFeed {
-  const subject = `${projectKey}/${ticketId}`;
+/**
+ * `reloadKey` is part of what these rows are about, not a parameter beside it.
+ * A comment recorded on this ticket makes the pages already gathered a stale
+ * answer to the same question, so the read starts again from the first page
+ * rather than appending a second copy of what it already holds.
+ */
+export function useAudit(projectKey: string, ticketId: string, reloadKey: number): AuditFeed {
+  const subject = `${projectKey}/${ticketId}/${String(reloadKey)}`;
   const [feed, setFeed] = useState<Feed>(() => fresh(subject));
 
   useEffect(() => {
