@@ -63,23 +63,27 @@
  */
 
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  admit,
+  CONTRACT_ERROR,
+  loadPlaywright,
+  NO_ANSWER,
+  RAIL,
+  settle,
+  watch,
+  why,
+} from "./_console.mjs";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const DESTINATION_MAP =
-  process.env.WALK_MAP ??
-  path.join(REPO, "apps", "ctower-web", "src", "shell", "destinations.ts");
+  process.env.WALK_MAP ?? path.join(REPO, "apps", "ctower-web", "src", "shell", "destinations.ts");
 
 const TARGET = process.env.WALK_TARGET ?? "http://100.84.252.114:3150/";
 const TOKEN_FILE = process.env.WALK_TOKEN_FILE ?? "/tmp/walk-session-token";
 const SHOT_DIR = process.env.WALK_SHOT_DIR ?? "/tmp/walk-shots";
 const REPORT = path.join(SHOT_DIR, "walk-web-report.json");
-
-/** How long one destination is given to finish its reads before it is judged. */
-const SETTLE_QUIET_MS = 700;
-const SETTLE_CAP_MS = 20_000;
 
 /**
  * The head each built destination draws, authored once, here.
@@ -101,35 +105,6 @@ const HEADING = {
   projects: /^Projects$/,
   admin: /^Admin$/,
 };
-
-/**
- * The two states this walk reads as a failed page rather than as content.
- *
- * Both are authored once in `wizard/states.tsx` and every screen renders them
- * through it, so matching their words is matching the state and not a phrase
- * that happens to appear. A refusal is deliberately not here: a refusal is an
- * answer, and an operator walking a console may legitimately meet one.
- */
-const CONTRACT_ERROR = "ctower answered something this client cannot read.";
-const NO_ANSWER = "ctower did not answer.";
-
-const RAIL = 'nav[aria-label="Sections"]';
-
-function loadPlaywright() {
-  const root = process.env.WALK_PLAYWRIGHT_ROOT;
-  const from = root === undefined ? import.meta.filename : path.join(root, "package.json");
-  try {
-    return createRequire(from)("playwright");
-  } catch (error) {
-    const why = error instanceof Error ? error.message.split("\n", 1)[0] : String(error);
-    throw new Error(
-      `playwright is not resolvable (${why}). This walk is outside the repository's ` +
-        "dependency set on purpose: point WALK_PLAYWRIGHT_ROOT at a directory whose " +
-        "node_modules holds playwright, and set PLAYWRIGHT_BROWSERS_PATH if that " +
-        "install keeps its browsers beside itself."
-    );
-  }
-}
 
 /**
  * The product's map, read from the product.
@@ -162,108 +137,6 @@ async function readDestinations() {
     "no destination is marked built; there is nothing to walk"
   );
   return listed;
-}
-
-/**
- * Watch one page for the things a screenshot cannot show.
- *
- * Everything is collected for the whole session and read in slices, so a
- * failure names the destination that provoked it. Only the console's own
- * `/v1/...` calls are judged: the module graph a dev server serves is not the
- * product, and a lost module is a lost link rather than a page defect.
- */
-function watch(page, origin) {
-  const state = { crashes: [], apiFailures: [], inFlight: 0, lastActivity: Date.now() };
-  const isApi = (url) => url.startsWith(`${origin}/v1/`);
-
-  page.on("pageerror", (error) => {
-    state.crashes.push(error.message.split("\n", 1)[0].slice(0, 300));
-  });
-  page.on("request", (request) => {
-    if (isApi(request.url())) {
-      state.inFlight += 1;
-      state.lastActivity = Date.now();
-    }
-  });
-  page.on("requestfinished", (request) => {
-    if (isApi(request.url())) {
-      state.inFlight -= 1;
-      state.lastActivity = Date.now();
-    }
-  });
-  page.on("requestfailed", (request) => {
-    if (!isApi(request.url())) {
-      return;
-    }
-    state.inFlight -= 1;
-    state.lastActivity = Date.now();
-    state.apiFailures.push(
-      `${request.method()} ${short(request.url(), origin)} — ${request.failure()?.errorText ?? "failed"}`
-    );
-  });
-  page.on("response", (response) => {
-    if (isApi(response.url()) && response.status() >= 400) {
-      state.apiFailures.push(
-        `${response.request().method()} ${short(response.url(), origin)} — ${String(response.status())}`
-      );
-    }
-  });
-  return state;
-}
-
-function short(url, origin) {
-  return url.startsWith(origin) ? url.slice(origin.length) : url;
-}
-
-/** Wait for the destination's own reads to finish, or give up and judge it anyway. */
-async function settle(page, watched) {
-  const deadline = Date.now() + SETTLE_CAP_MS;
-  watched.lastActivity = Date.now();
-  while (Date.now() < deadline) {
-    if (watched.inFlight <= 0 && Date.now() - watched.lastActivity >= SETTLE_QUIET_MS) {
-      return;
-    }
-    await page.waitForTimeout(100);
-  }
-}
-
-/**
- * Admission, once, for the whole walk.
- *
- * The token admits the browser to the serving process and nothing else. It is
- * read from a file, typed into the gate the operator types it into, and never
- * printed — not into the report, and not into a failure note.
- */
-async function admit(page, token) {
-  let last = null;
-  for (const attempt of [1, 2]) {
-    try {
-      await page.goto(TARGET, { waitUntil: "domcontentloaded" });
-      const gate = page.getByRole("heading", { name: "Unlock this console" });
-      await gate.waitFor();
-      await page.getByLabel("Session token").fill(token);
-      await page.getByRole("button", { name: "Unlock" }).click();
-      // The gate proves the token before it keeps it, and says so when it is
-      // not this server's. Read that answer rather than waiting out a timeout
-      // and calling a refusal a hang.
-      const refused = page.getByText("That token is not this server");
-      const deadline = Date.now() + 20_000;
-      while (Date.now() < deadline) {
-        if ((await gate.count()) === 0) {
-          return attempt === 1 ? "the console admitted this walk" : "admitted on a second attempt";
-        }
-        assert.ok(
-          (await refused.count()) === 0,
-          `${TARGET} refused the token in ${TOKEN_FILE}: it is not the one that server printed at startup`
-        );
-        await page.waitForTimeout(200);
-      }
-      throw new Error(`${TARGET} neither admitted this walk nor refused its token`);
-    } catch (error) {
-      last = error;
-    }
-  }
-  throw last;
 }
 
 /**
@@ -344,7 +217,10 @@ async function judge(page, watched, destination, from, since) {
   assert.ok(expected, `${key} is built and this walk has no head authored for it`);
   const heads = await page.locator("main h1").allInnerTexts();
   assert.ok(heads.length === 1, `${label} drew ${String(heads.length)} page heads, not one`);
-  assert.ok(expected.test(heads[0]), `${label} drew the head "${heads[0]}", which is not ${String(expected)}`);
+  assert.ok(
+    expected.test(heads[0]),
+    `${label} drew the head "${heads[0]}", which is not ${String(expected)}`
+  );
   notes.push(`head "${heads[0]}"`);
 
   // The shell's content column holds the page's head and then the page. One
@@ -359,7 +235,10 @@ async function judge(page, watched, destination, from, since) {
   assert.ok(failures.length === 0, `${label} read the API and it failed: ${failures.join(" | ")}`);
 
   const shown = await page.locator("main").innerText();
-  assert.ok(!shown.includes(CONTRACT_ERROR), `${label} rendered a contract error: ${CONTRACT_ERROR}`);
+  assert.ok(
+    !shown.includes(CONTRACT_ERROR),
+    `${label} rendered a contract error: ${CONTRACT_ERROR}`
+  );
   assert.ok(!shown.includes(NO_ANSWER), `${label} rendered an unanswered read: ${NO_ANSWER}`);
   return notes.join("; ");
 }
@@ -437,7 +316,8 @@ async function walkDestination(page, watched, destination) {
     destination: destination.key,
     pass: false,
     attempts: 2,
-    note: refused[0] === refused[1] ? refused[0] : `${refused[0]}; by its own address, ${refused[1]}`,
+    note:
+      refused[0] === refused[1] ? refused[0] : `${refused[0]}; by its own address, ${refused[1]}`,
     shot: shotFor(destination.key),
   };
 }
@@ -491,7 +371,9 @@ async function main() {
   };
 
   try {
-    await step("admission", async () => admit(page, token));
+    await step("admission", async () =>
+      admit(page, { target: TARGET, tokenFile: TOKEN_FILE, token })
+    );
     if (results[0].pass) {
       await step("shell rail", async () => checkRail(page, watched, destinations));
 
@@ -540,24 +422,13 @@ async function main() {
   for (const one of results) {
     console.log(`${one.pass ? "PASS" : "FAIL"} ${one.destination.padEnd(20)} ${one.note}`);
   }
-  console.log(`\n${String(clean)}/${String(built.length)} built destinations walked clean on ${TARGET}`);
+  console.log(
+    `\n${String(clean)}/${String(built.length)} built destinations walked clean on ${TARGET}`
+  );
   console.log(`screenshots: ${SHOT_DIR}/walk-*.png\nreport: ${REPORT}`);
   if (failed.length > 0) {
     process.exitCode = 1;
   }
-}
-
-/** A failure, in one line, with nothing secret in it. */
-function why(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return message
-    .replace(/\b[0-9a-f]{32,}\b/gi, "<redacted>")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "")
-    .slice(0, 3)
-    .join(" ")
-    .slice(0, 400);
 }
 
 await main();
