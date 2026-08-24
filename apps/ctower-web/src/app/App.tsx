@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { AdminPage } from "../admin/AdminPage";
+import { AgentsPage } from "../agents/AgentsPage";
+import { AgentsRail } from "../agents/AgentsRail";
+import { agentsIn } from "../agents/read";
+import type { ListedAgent } from "../agents/read";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { BoardPage } from "../board/BoardPage";
@@ -71,6 +75,10 @@ export function App(): ReactElement {
   // so it is the address that says so, and the rail's own Projects always
   // means the whole list.
   const [opened, setOpened] = useState<string | null>(() => openedIn(window.location.search));
+  // Which agent the Agents screen is pointed at, when the rail sent the
+  // operator to one. It is a place inside that screen, so it rides the address
+  // the way an open project does.
+  const [agent, setAgent] = useState<string | null>(() => agentIn(window.location.search));
   const project = current?.key ?? null;
 
   const created = useCallback((): void => {
@@ -82,6 +90,7 @@ export function App(): ReactElement {
       window.history.pushState(null, "", addressFor(key, project, place));
       setHere(key);
       setOpened(null);
+      setAgent(place.agent ?? null);
     },
     [project]
   );
@@ -119,6 +128,7 @@ export function App(): ReactElement {
       const search = window.location.search;
       setHere(destinationFromSearch(search) ?? "company");
       setOpened(openedIn(search));
+      setAgent(agentIn(search));
       const asked = projectFromSearch(search);
       if (asked !== null) {
         choose(asked);
@@ -190,6 +200,19 @@ export function App(): ReactElement {
             }}
           />
         }
+        agents={
+          <AgentsRail
+            agents={agentsOf(seed)}
+            here={here === "agents"}
+            current={agent}
+            onOpen={(key): void => {
+              go("agents", { agent: key });
+            }}
+            onSeeAll={(): void => {
+              go("agents");
+            }}
+          />
+        }
         status={statusFor(seed.kind, previewing)}
         fill={here === "crews"}
       >
@@ -209,6 +232,7 @@ export function App(): ReactElement {
             here={here}
             seed={seed.value}
             project={project}
+            agent={agent}
             opened={opened}
             creating={creating}
             onCreating={setCreating}
@@ -248,6 +272,7 @@ function Here({
   here,
   seed,
   project,
+  agent,
   opened,
   creating,
   onCreating,
@@ -259,6 +284,8 @@ function Here({
   readonly seed: Extract<Seed, { readonly kind: "exported" }>;
   /** The project the rail's switcher is pointed at, when this company has one. */
   readonly project: string | null;
+  /** The agent the Agents screen is pointed at, when the rail named one. */
+  readonly agent: string | null;
   /** The project the Projects screen has open, when it has one. */
   readonly opened: string | null;
   /** Whether the Projects screen is showing the pop-up that makes one. */
@@ -302,6 +329,23 @@ function Here({
           onGo={onGo}
         />
       );
+    case "agents":
+      return (
+        <AgentsPage
+          document={seed.result.bundle}
+          current={agent}
+          onOpen={(key): void => {
+            onGo("agents", { agent: key });
+          }}
+          // An agent is authored on the harness screen today. AC-3 moves that
+          // into a flow of its own; until it does, this is the way to the one
+          // place that makes one, the same way the rail's own "New project…"
+          // leads to the screen that makes those.
+          onNew={(): void => {
+            onGo("harnesses");
+          }}
+        />
+      );
     case "admin":
       return <AdminPage />;
     case "company":
@@ -336,6 +380,26 @@ function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
  */
 function openedIn(search: string): string | null {
   return destinationFromSearch(search) === "projects" ? projectFromSearch(search) : null;
+}
+
+/**
+ * The agent the Agents screen is pointed at, read out of the address. Only that
+ * screen carries one; everywhere else the key would name nothing.
+ */
+function agentIn(search: string): string | null {
+  if (destinationFromSearch(search) !== "agents") {
+    return null;
+  }
+  const asked = new URLSearchParams(search).get("agent");
+  return asked === null || asked === "" ? null : asked;
+}
+
+/** The agents that company records, once the read has produced them. */
+function agentsOf(seed: ReturnType<typeof seedForPreview>): readonly ListedAgent[] {
+  if (seed.kind !== "answered" || seed.value.kind !== "exported") {
+    return [];
+  }
+  return agentsIn(seed.value.result.bundle);
 }
 
 /** The projects that company records, once the read has produced them. */
