@@ -70,6 +70,33 @@ const CATALOG: readonly HarnessChoice[] = [
   },
 ];
 
+/**
+ * The adapters this console can put a name to, which is not the same list.
+ *
+ * A recorded harness carries an `adapter` and no display name — the component
+ * schema is closed and has no field for one — so naming one on screen means
+ * knowing what its adapter is. Two of these are not cards: `ctowerctl`'s
+ * generated client is how the commander seat reaches the control plane, and it
+ * is a harness a company really runs on without being one an operator picks
+ * when making an agent.
+ *
+ * An adapter that is not here gets **no** name rather than its own machine
+ * text dressed up as one. A blank is a fact an operator can ask about; a
+ * lower-cased key with the dots taken out is the console pretending.
+ */
+const NAMED_ADAPTERS: ReadonlyMap<string, string> = new Map([
+  ["claude-code", "Claude Code"],
+  ["claude_code", "Claude Code"],
+  ["codex", "Codex"],
+  ["hermes", "Hermes"],
+  ["ctowerctl.generated_client", "ctower CLI"],
+]);
+
+/** What a recorded harness is called, when this console can say honestly. */
+export function harnessNamed(adapter: string | null): string | null {
+  return adapter === null ? null : (NAMED_ADAPTERS.get(adapter) ?? null);
+}
+
 /** Every harness this console knows how to offer, in the order it offers them. */
 export function harnessChoices(): readonly HarnessChoice[] {
   return CATALOG;

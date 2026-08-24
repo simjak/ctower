@@ -23,10 +23,10 @@ import type { AgentStatus } from "./status";
 export interface Agent {
   readonly name: string;
   /** The job, in the operator's words: "Chief of staff · CEO". */
-  readonly role: string;
+  readonly role: string | null;
   /** Plain product names, both of them: "claude-fable-5", "Claude Code". */
-  readonly model: string;
-  readonly harness: string;
+  readonly model: string | null;
+  readonly harness: string | null;
   /** When this agent last did something, or nothing recorded yet. */
   readonly lastActive: string | null;
   /** The recorded state, or nothing recorded yet. */
@@ -35,21 +35,28 @@ export interface Agent {
 
 export function AgentRow({
   agent,
+  current = false,
   onOpen,
 }: {
   readonly agent: Agent;
+  /** Whether this is the agent the rail is pointing at. */
+  readonly current?: boolean;
   readonly onOpen: (agent: Agent) => void;
 }): ReactElement {
   const standing = standingOf(agent.status);
   return (
     <button
       type="button"
+      aria-current={current ? "true" : undefined}
       onClick={(): void => {
         onOpen(agent);
       }}
       className={cn(
         "flex w-full cursor-pointer items-center gap-3 border-b border-line px-3 py-2.5",
-        "text-left last:border-b-0 hover:bg-raised"
+        "text-left last:border-b-0 hover:bg-raised",
+        // The rail's own vocabulary for "this is the one you asked for",
+        // carried into the list the rail sends the operator to.
+        current && "border-l-2 border-l-amber bg-amber/10"
       )}
     >
       {standing.mark === null ? (
@@ -59,7 +66,9 @@ export function AgentRow({
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">{agent.name}</span>
-        <span className="block truncate text-xs text-muted">{agent.role}</span>
+        {agent.role === null ? null : (
+          <span className="block truncate text-xs text-muted">{agent.role}</span>
+        )}
       </span>
       <Runs agent={agent} />
       <Chip tone={standing.tone}>{standing.word}</Chip>
@@ -70,16 +79,20 @@ export function AgentRow({
 /**
  * What it runs on and when it last ran — the two facts that answer "is this
  * thing working for me", side by side and quiet.
+ *
+ * Each is drawn only where there is one to draw. A record that keeps no model
+ * gets no model, and a record that ties no run to an agent gets no time: the
+ * screen says once, in a line of its own, which of these it is short of.
+ * "Never run" would be an answer, and nothing here has asked the question.
  */
 function Runs({ agent }: { readonly agent: Agent }): ReactElement {
+  const runs = [agent.model, agent.harness].filter((one) => one !== null);
   return (
     <span className="hidden min-w-0 shrink-0 text-right sm:block">
-      <span className="block truncate text-xs">
-        {agent.model} · {agent.harness}
-      </span>
-      {agent.lastActive === null ? (
-        <span className="block text-2xs text-muted">never run</span>
-      ) : (
+      {runs.length === 0 ? null : (
+        <span className="block truncate text-xs">{runs.join(" · ")}</span>
+      )}
+      {agent.lastActive === null ? null : (
         <span className="block text-2xs text-muted" title={agent.lastActive}>
           {stamp(agent.lastActive)}
         </span>
