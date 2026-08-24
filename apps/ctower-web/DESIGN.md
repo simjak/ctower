@@ -37,6 +37,11 @@ holds: the grid, the palette, the marks, the copy budget.
 - **Projects are not runtime and not a harness.** They live in the company workspace,
   listed as cards with a `New project` pop-up. The harness screen is the runtime the staff
   run on and holds no project.
+- **What an agent is told belongs to the agent, not to its runtime.** A persona, a skill
+  and a tool are named by an agent's own profile, so they are read under
+  `Agents › <name> › Instructions` and the harness screen keeps no copy. A harness has no
+  way to say which agent reads what, so a list of every file the company carries is not an
+  answer to the question the operator is asking.
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
   Next. The order follows the runtime, not the org chart: **1 Name your organization → 2
@@ -152,6 +157,9 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-24 | A project is made in a pop-up over the card list, document-style, with key and ticket prefix derived from the name | Operator's Paperclip New-project reference, verbatim "make the same". A key is machine text; asking for one is asking a question with no right answer |
 | 2026-08-24 | Schema errors surface inline on the field, and Review is unreachable while any remain | Operator: "this must be on the fly error not next page". The browser validates against the authored contract it imports, so the dead page is only ever a server refusal |
 | 2026-08-24 | A project has its own screen: Tasks · Overview · Configuration · Budget | Operator's three Paperclip project-home screenshots. Tasks is the project's tickets read, so the rail's Tickets opens it rather than growing a second list |
+| 2026-08-24 | Agent files leave the harness screen for `Agents › <name> › Instructions`, listed as that agent's own | Operator: "why agent setup is on harness". A profile names its persona, skills and tools, so the record already knows which files belong to whom; the harness listed all of them because a runtime cannot tell them apart |
+| 2026-08-24 | Mode, Root and Entry live in one closed `Advanced` disclosure, and `External` is drawn inert | Operator's amendment puts them behind Advanced; AC-7 puts machine text in the same place, and they turn out to be one requirement. `persona`/`skill` close their payloads with `additionalProperties: false` and declare no path field, so External has nowhere in the record to be written down |
+| 2026-08-24 | No markdown editor for instruction text, and the screen says why | The reference console edits prose here; ctower's record carries `instructions_digest` — a pin over the bytes, never the bytes. A Save that cannot save is the one thing an honest surface must not draw |
 | 2026-08-24 | A later operator directive outranks this file, and amends it in the same PR | Director ruling on this ticket. The design system is law until he says otherwise; a stale file is not a veto |
 | 2026-08-24 | A row names the thing and nothing that addresses it: no key, no revision, no `key@revision`, and a count of bindings rather than a list of principals | Operator walk: "I dont need to see any Key @ tags or `commander.protected-cli · local.generated-client@1`". The record's own vocabulary is how this console finds a row, never what an operator reads once it is drawn |
 | 2026-08-24 | A repository renders as its own name and opens as a link, carrying GitHub's own mark on `github/*` and none on any other host | Operator walk: "please make a real clickable link to github with github icons". `lucide-react` ships no brand glyph, so the mark is one authored path beside the row rather than a new dependency. The scheme and the pinned commit stay in the reader — neither the label, the hover nor the address carries them — and a host this console cannot address gets no link at all, because inventing a domain is worse than plain text |
