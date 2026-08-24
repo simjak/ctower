@@ -1,5 +1,6 @@
-import type { ReactElement } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Mono } from "../../ui/primitives";
+import { ChevronDown, Plus } from "lucide-react";
+import type { ReactElement, ReactNode } from "react";
+import { Button, Card, CardBody, CardHeader, CardTitle, Mono } from "../../ui/primitives";
 import { Field } from "../../ui/form";
 import { Input } from "../../ui/primitives";
 import type { Draft } from "../bundle";
@@ -16,6 +17,13 @@ import { EntityRow } from "./EntityRow";
  * control says so where it sits rather than letting the operator find out at
  * the end of a review.
  *
+ * Making one is different from editing one. A project is authored in exactly
+ * one place — the pop-up over the Projects screen's card list — so this card
+ * carries the way there rather than a second form. A list of projects with no
+ * way to get another one is where an operator gets stuck, and the fix is a
+ * route, not a duplicate. It says `New project` because that is what the two
+ * other ways in say; one act with three names is three acts to a person.
+ *
  * The component inventory and the secret bindings used to sit under these and
  * are gone. Neither is something an operator does anything with here — one is a
  * count of things this screen cannot author, the other a list it cannot change
@@ -25,51 +33,28 @@ import { EntityRow } from "./EntityRow";
 export function DefinitionForm({
   draft,
   onDraft,
+  onCreateProject,
 }: {
   readonly draft: Draft;
   readonly onDraft: (draft: Draft) => void;
+  /** To the one place that authors a project; this card only lists them. */
+  readonly onCreateProject: () => void;
 }): ReactElement {
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Identity</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-5 sm:grid-cols-2">
-          <Field
-            label="Name"
-            hint="What people call this company on every screen and in every report."
-          >
-            <Input
-              value={draft.displayName}
-              placeholder="Acme Robotics"
-              onChange={(event): void => {
-                onDraft({ ...draft, displayName: event.target.value });
-              }}
-            />
-          </Field>
-          <Field
-            label="Key"
-            hint="Lower-case letters, digits and hyphens. It is what the record is keyed by."
-          >
-            <Input
-              className="font-mono"
-              value={draft.companyKey}
-              placeholder="acme-robotics"
-              spellCheck={false}
-              onChange={(event): void => {
-                onDraft({ ...draft, companyKey: event.target.value });
-              }}
-            />
-          </Field>
-        </CardBody>
-      </Card>
+      <IdentityCard draft={draft} onDraft={onDraft} />
 
       <EntityCard
         title="Projects"
         facts={projectFacts(draft.base)}
         subjectNoun="binding"
         empty="No project is in this company yet."
+        action={
+          <Button size="sm" onClick={onCreateProject}>
+            <Plus />
+            New project
+          </Button>
+        }
       />
 
       <EntityCard
@@ -82,16 +67,83 @@ export function DefinitionForm({
   );
 }
 
+/**
+ * What this company is called, and — for whoever needs it — what it is keyed by.
+ *
+ * The name is the field an operator came here for. The key is an identifier: it
+ * is what the record is addressed by, it is not something a person reads on a
+ * screen, and renaming a company must never quietly re-key it, so it is neither
+ * derived from the name nor deleted. It sits behind an affordance that says who
+ * it is for. An operator who never opens it never meets one.
+ */
+function IdentityCard({
+  draft,
+  onDraft,
+}: {
+  readonly draft: Draft;
+  readonly onDraft: (draft: Draft) => void;
+}): ReactElement {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Identity</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            label="Name"
+            hint="What people call this company on every screen and in every report."
+          >
+            <Input
+              value={draft.displayName}
+              placeholder="Acme Robotics"
+              onChange={(event): void => {
+                onDraft({ ...draft, displayName: event.target.value });
+              }}
+            />
+          </Field>
+        </div>
+
+        <details className="border-t border-line pt-3">
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-2xs text-muted hover:text-fg">
+            Developer details
+            <ChevronDown aria-hidden className="size-3" />
+          </summary>
+          <div className="mt-3 grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Key"
+              hint="Lower-case letters, digits and hyphens. It is what the record is keyed by."
+            >
+              <Input
+                className="font-mono"
+                value={draft.companyKey}
+                placeholder="acme-robotics"
+                spellCheck={false}
+                onChange={(event): void => {
+                  onDraft({ ...draft, companyKey: event.target.value });
+                }}
+              />
+            </Field>
+          </div>
+        </details>
+      </CardBody>
+    </Card>
+  );
+}
+
 function EntityCard({
   title,
   facts,
   subjectNoun,
   empty,
+  action,
 }: {
   readonly title: string;
   readonly facts: readonly EntityFact[];
   readonly subjectNoun: string;
   readonly empty: string;
+  /** The one thing this card can do about what it lists, when there is one. */
+  readonly action?: ReactNode;
 }): ReactElement {
   return (
     <Card>
@@ -99,6 +151,7 @@ function EntityCard({
         <CardTitle>{title}</CardTitle>
         <span className="flex-1" />
         <Mono className="text-muted">{facts.length}</Mono>
+        {action}
       </CardHeader>
       <CardBody className="space-y-2">
         {facts.length === 0 ? (
