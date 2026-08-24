@@ -9,6 +9,7 @@ import type { HarnessFamily } from "../agents/harnesses";
 import { Card, PageHead } from "../ui/primitives";
 import { ThemeToggle } from "../app/ThemeToggle";
 import { PAYROLL, STAFF } from "./stories";
+import { Screen, screenFromSearch } from "./t028/Screens";
 
 /**
  * The bench: two components, alone, in every state they have.
@@ -20,6 +21,12 @@ import { PAYROLL, STAFF } from "./stories";
  * itself, in both themes, before any page decides where it goes.
  */
 export function Gallery(): ReactElement {
+  // A whole screen, when the address asks for one. T-028's board is an assembly
+  // rather than a component, so the bench draws it inside the real shell;
+  // `?screen=…` picks which shape, and no address at all keeps the components.
+  if (new URLSearchParams(window.location.search).has("screen")) {
+    return <Screen shape={screenFromSearch(window.location.search)} />;
+  }
   return (
     <main className="mx-auto max-w-[1000px] px-6 py-8">
       <PageHead title="Agent components" subtitle="Two components, on their own. Nothing is wired.">
