@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { cn } from "../ui/cn";
-import type { ListedAgent } from "./read";
+import type { AgentFacts } from "./read";
 
 /** How many names the rail carries before the rest live behind "See all". */
 const SHOWN = 6;
@@ -25,10 +25,10 @@ export function AgentsRail({
   onOpen,
   onSeeAll,
 }: {
-  readonly agents: readonly ListedAgent[];
+  readonly agents: readonly AgentFacts[];
   /** Whether the operator is on the agents page at all. */
   readonly here: boolean;
-  /** The agent that page is pointed at, when it is pointed at one. */
+  /** The agent that page has open, when it has one. */
   readonly current: string | null;
   readonly onOpen: (key: string) => void;
   readonly onSeeAll: () => void;
@@ -41,13 +41,13 @@ export function AgentsRail({
       {agents.length === 0 ? (
         <p className="m-0 px-4 pb-1 text-xs text-muted">No agent yet.</p>
       ) : (
-        shown.map((listed) => (
+        shown.map((agent) => (
           <Entry
-            key={listed.key}
-            name={listed.agent.name}
-            here={here && listed.key === current}
+            key={agent.key}
+            name={agent.name}
+            here={here && agent.key === current}
             onOpen={(): void => {
-              onOpen(listed.key);
+              onOpen(agent.key);
             }}
           />
         ))

@@ -1,21 +1,37 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import type { ReactElement } from "react";
-import type { CompanyBundleDocument } from "@ctower/client";
+import type { CompanyBundleExportResult } from "@ctower/client";
 import { Button, Card, PageHead } from "../ui/primitives";
 import { Hint } from "../ui/form";
 import { cn } from "../ui/cn";
+import { useCeremony } from "../wizard/ceremony";
+import { ReviewPanel } from "../wizard/review/ReviewPanel";
+import { AgentHome } from "./AgentHome";
 import { AgentRow } from "./AgentRow";
-import { agentsIn } from "./read";
-import type { ListedAgent } from "./read";
+import { NewAgent } from "./NewAgent";
+import { agentAt, agentsIn } from "./read";
+import type { AgentFacts } from "./read";
 import type { AgentStatus } from "./status";
 
 /**
- * Agents: everyone this company has, one row each.
+ * Agents: everyone this company has, one row each — and one more.
  *
  * The row is the whole screen. There is no table of properties, because an
  * agent is a member of staff here and not a component: a name, the job, what it
  * runs on, when it last ran, how it is doing. Nothing on this page is a key, a
  * revision or a digest, and the address is the only place a key travels.
+ *
+ * This screen is also the junction its three parts meet at, the same shape the
+ * Projects screen settled: the address decides which of them is drawn. Naming
+ * an agent — in the rail or in this list — opens that agent's home; making one
+ * opens the pop-up over the list; proposing one sends the whole screen to the
+ * one review this console has.
+ *
+ * There is no `createAgent` operation and there is not meant to be one. An
+ * agent is two components of the company bundle, so making one is authoring
+ * documents into the recorded bundle and handing the result to the same
+ * check-plan-apply every other authoring screen runs.
  *
  * **The two lines this screen has to be honest about.** The record keeps a
  * persona's name and the harness a profile pairs it with, and nothing else a
@@ -27,34 +43,76 @@ import type { AgentStatus } from "./status";
  * would be the console making up staff.
  */
 export function AgentsPage({
-  document,
-  current,
+  result,
+  opened,
+  creating,
+  onCreating,
   onOpen,
-  onNew,
+  onBack,
+  onApplied,
 }: {
-  readonly document: CompanyBundleDocument;
-  /** The agent the rail is pointing at, when it is pointing at one. */
-  readonly current: string | null;
+  readonly result: CompanyBundleExportResult;
+  /** The agent whose own screen the address names, when it names one. */
+  readonly opened: string | null;
+  /** Whether the pop-up that makes an agent is open. */
+  readonly creating: boolean;
+  readonly onCreating: (creating: boolean) => void;
+  /** Opening an agent is a place: the address reopens on it. */
   readonly onOpen: (key: string) => void;
-  /** Where an agent is made today. */
-  readonly onNew: () => void;
+  readonly onBack: () => void;
+  readonly onApplied: () => void;
 }): ReactElement {
-  const agents = agentsIn(document);
+  const ceremony = useCeremony(result.bundle, onApplied);
+  const agents = agentsIn(result.bundle);
+  const open = agentAt(result.bundle, opened);
   const [filter, setFilter] = useState<Filter>("all");
-  const shown = agents.filter((listed) => matches(listed, filter));
+  const shown = agents.filter((agent) => matches(agent, filter));
+
+  if (ceremony.review !== null) {
+    return (
+      <ReviewPanel
+        review={ceremony.review}
+        applied={ceremony.applied}
+        armed={ceremony.armed}
+        onArm={ceremony.setArmed}
+        onApply={ceremony.apply}
+        onRetry={ceremony.retry}
+        onBack={ceremony.close}
+        backLabel="Back to agents"
+      />
+    );
+  }
+
+  // An address naming an agent this company no longer records falls back to the
+  // list rather than to a blank screen: the agent is gone, and the list is the
+  // true answer to where it went.
+  if (open !== null) {
+    return <AgentHome agent={open} onBack={onBack} />;
+  }
 
   return (
     <>
       <PageHead title="Agents" subtitle={<Counted agents={agents} />}>
-        <Button variant="primary" onClick={onNew}>
-          New agent
+        <Button
+          variant="primary"
+          onClick={(): void => {
+            onCreating(true);
+          }}
+        >
+          <Plus /> New agent
         </Button>
       </PageHead>
 
       {agents.length === 0 ? (
         <Card className="p-6 text-sm text-muted">
           No agent is in this company yet.{" "}
-          <button type="button" className="cursor-pointer underline" onClick={onNew}>
+          <button
+            type="button"
+            className="cursor-pointer underline"
+            onClick={(): void => {
+              onCreating(true);
+            }}
+          >
             Make the first one.
           </button>
         </Card>
@@ -67,13 +125,12 @@ export function AgentsPage({
                 No agent is recorded as {WORD[filter]}.
               </p>
             ) : (
-              shown.map((listed) => (
+              shown.map((agent) => (
                 <AgentRow
-                  key={listed.key}
-                  agent={listed.agent}
-                  current={listed.key === current}
+                  key={agent.key}
+                  agent={agent}
                   onOpen={(): void => {
-                    onOpen(listed.key);
+                    onOpen(agent.key);
                   }}
                 />
               ))
@@ -81,6 +138,13 @@ export function AgentsPage({
           </Card>
         </>
       )}
+
+      <NewAgent
+        authoring={ceremony.authoring}
+        company={result.bundle.company.display_name}
+        open={creating}
+        onOpenChange={onCreating}
+      />
     </>
   );
 }
@@ -98,8 +162,8 @@ const WORD: Readonly<Record<Filter, string>> = {
   error: "in error",
 };
 
-function matches(listed: ListedAgent, filter: Filter): boolean {
-  return filter === "all" || listed.agent.status === filter;
+function matches(agent: AgentFacts, filter: Filter): boolean {
+  return filter === "all" || agent.status === filter;
 }
 
 /**
@@ -114,7 +178,7 @@ function Tabs({
   filter,
   onFilter,
 }: {
-  readonly agents: readonly ListedAgent[];
+  readonly agents: readonly AgentFacts[];
   readonly filter: Filter;
   readonly onFilter: (filter: Filter) => void;
 }): ReactElement {
@@ -138,7 +202,7 @@ function Tabs({
         >
           <span className="capitalize">{tab}</span>{" "}
           <span className="text-2xs text-muted">
-            {agents.filter((listed) => matches(listed, tab)).length}
+            {agents.filter((agent) => matches(agent, tab)).length}
           </span>
         </button>
       ))}
@@ -154,7 +218,7 @@ function Tabs({
  * for every agent in every company, and an operator who is not told that will
  * read it as this company being badly set up.
  */
-function Counted({ agents }: { readonly agents: readonly ListedAgent[] }): ReactElement {
+function Counted({ agents }: { readonly agents: readonly AgentFacts[] }): ReactElement {
   return (
     <>
       <span>
