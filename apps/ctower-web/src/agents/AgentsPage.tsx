@@ -87,7 +87,7 @@ export function AgentsPage({
   // list rather than to a blank screen: the agent is gone, and the list is the
   // true answer to where it went.
   if (open !== null) {
-    return <AgentHome agent={open} onBack={onBack} />;
+    return <AgentHome agent={open} onBack={onBack} onApplied={onApplied} />;
   }
 
   return (
