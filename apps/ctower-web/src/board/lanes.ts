@@ -95,13 +95,6 @@ export interface Project {
  * `split_part(component_key, '.', 1)` — so the first segment is read here and
  * nothing is guessed. ctower has no operation that enumerates work-plane
  * projects, so this is what the definition knows, never a closed list.
- *
- * The order is the record's. The export is normalized and deterministic
- * (`SPEC.md`, § CompanyBundle): components are stored sorted by kind, key,
- * revision and digest, and the export replays that sequence, so first
- * appearance here is where the record puts each project — not which component
- * kind it happened to acquire first, and never an alphabetical guess this
- * screen would have to defend on its own.
  */
 export function projectsOf(document: CompanyBundleDocument): readonly Project[] {
   const found = new Map<string, string>();
@@ -115,5 +108,7 @@ export function projectsOf(document: CompanyBundleDocument): readonly Project[] 
       found.set(key, typeof name === "string" && name !== "" ? name : key);
     }
   }
-  return [...found].map(([key, name]) => ({ key, name }));
+  return [...found]
+    .map(([key, name]) => ({ key, name }))
+    .sort((left, right) => left.key.localeCompare(right.key));
 }

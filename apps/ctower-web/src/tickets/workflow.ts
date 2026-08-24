@@ -34,12 +34,15 @@ function isWorkflow(
 
 /**
  * `sequence` is per stream, so the ticket's first event and the workflow's
- * first event are both 1. The timeline read orders by global record position,
- * which is the only ordering both streams share — so this walk takes the
- * events as they arrive and never re-sorts them.
+ * first event are both 1. Ordering by it interleaves two histories into one
+ * wrong story; the instant is the only ordering both streams share.
  */
+function byInstant(left: TimelineEvent, right: TimelineEvent): number {
+  return left.occurred_at.localeCompare(right.occurred_at);
+}
+
 export function workflowFrom(timeline: TimelineResponse): StandingWorkflow | null {
-  const moves = timeline.events.filter(isWorkflow);
+  const moves = [...timeline.events].sort(byInstant).filter(isWorkflow);
   const last = moves.at(-1);
   if (last === undefined) {
     return null;
