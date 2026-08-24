@@ -1,64 +1,110 @@
 /**
- * The shell's map. Five groups, and every destination the product will have.
+ * The shell's map. Two workspaces, and every destination the product will have.
+ *
+ * The split is what a destination is *about*. A company workspace holds the
+ * things that are true of the tenant however many projects it runs — the
+ * company's own definition, the crews, the harnesses they run on, the inbox,
+ * the console's admissions. A project workspace holds the things that are only
+ * ever about one project, and the rail's project dropdown says which one.
  *
  * `DESIGN.md`: an unbuilt destination renders honestly — dimmed, with its
  * reason on focus — never a dead route and never a pretend page. So the list is
  * the whole product, and `built` is the only thing that changes as features
  * land. Labels are the operator's jobs; not one of them is an API operation.
  */
-export type GroupName = "LIVE" | "WORK" | "TEAM" | "RUNTIME" | "SYSTEM";
+export type Workspace = "COMPANY" | "PROJECT";
 
 export type DestinationKey =
-  | "lanes"
+  | "company"
+  | "projects"
+  | "crews"
+  | "harnesses"
   | "inbox"
+  | "admin"
   | "tickets"
   | "board"
   | "workflows"
   | "requests"
-  | "crews"
-  | "company"
-  | "harnesses"
-  | "projects"
-  | "admin";
+  | "lanes";
 
 export interface Destination {
   readonly key: DestinationKey;
   readonly label: string;
-  readonly group: GroupName;
+  readonly workspace: Workspace;
   /** A destination is built when a real screen answers on it. */
   readonly built: boolean;
 }
 
 export const DESTINATIONS: readonly Destination[] = [
-  { key: "lanes", label: "Lanes", group: "LIVE", built: false },
-  { key: "inbox", label: "Inbox", group: "LIVE", built: true },
-  { key: "tickets", label: "Tickets", group: "WORK", built: true },
-  { key: "board", label: "Board", group: "WORK", built: true },
-  { key: "workflows", label: "Workflows", group: "WORK", built: true },
-  { key: "requests", label: "Requests", group: "WORK", built: true },
-  { key: "crews", label: "Crews", group: "TEAM", built: true },
-  { key: "company", label: "Company", group: "TEAM", built: true },
-  { key: "harnesses", label: "Harnesses", group: "RUNTIME", built: true },
-  { key: "projects", label: "Projects", group: "RUNTIME", built: true },
-  { key: "admin", label: "Admin", group: "SYSTEM", built: true },
+  { key: "company", label: "Company", workspace: "COMPANY", built: true },
+  { key: "projects", label: "Projects", workspace: "COMPANY", built: true },
+  { key: "crews", label: "Crews", workspace: "COMPANY", built: true },
+  { key: "harnesses", label: "Harnesses", workspace: "COMPANY", built: true },
+  { key: "inbox", label: "Inbox", workspace: "COMPANY", built: true },
+  { key: "admin", label: "Admin", workspace: "COMPANY", built: true },
+  { key: "tickets", label: "Tickets", workspace: "PROJECT", built: true },
+  { key: "board", label: "Board", workspace: "PROJECT", built: true },
+  { key: "workflows", label: "Workflows", workspace: "PROJECT", built: true },
+  { key: "requests", label: "Requests", workspace: "PROJECT", built: true },
+  { key: "lanes", label: "Lanes", workspace: "PROJECT", built: false },
 ];
 
-export const GROUPS: readonly GroupName[] = ["LIVE", "WORK", "TEAM", "RUNTIME", "SYSTEM"];
+export const WORKSPACES: readonly Workspace[] = ["COMPANY", "PROJECT"];
 
-export function destinationsIn(group: GroupName): readonly Destination[] {
-  return DESTINATIONS.filter((destination) => destination.group === group);
+export function destinationsIn(workspace: Workspace): readonly Destination[] {
+  return DESTINATIONS.filter((destination) => destination.workspace === workspace);
+}
+
+/** Whether a screen is about one project rather than about the company. */
+export function scopedToProject(key: DestinationKey): boolean {
+  return DESTINATIONS.find((destination) => destination.key === key)?.workspace === "PROJECT";
 }
 
 /**
  * Where the address says the operator is.
  *
- * A screen is a link: `?at=tickets&project=ctower&ticket=<id>` reopens exactly
- * what was being looked at. Only a built destination is honoured, so a stale
- * link to a screen that does not exist yet lands on the shell's own first
- * destination rather than on a blank pane.
+ * A screen is a link: `?at=board&project=ctower` reopens exactly what was being
+ * looked at, and `?at=tickets&project=ctower&ticket=<id>` is the same screen one
+ * level in. Only a built destination is honoured, so a stale link to a screen
+ * that does not exist yet lands on the shell's own first destination rather than
+ * on a blank pane.
  */
 export function destinationFromSearch(search: string): DestinationKey | null {
   const asked = new URLSearchParams(search).get("at");
   const found = DESTINATIONS.find((destination) => destination.key === asked);
   return found?.built === true ? found.key : null;
+}
+
+/** The project the address is pointed at, when it names one. */
+export function projectFromSearch(search: string): string | null {
+  const asked = new URLSearchParams(search).get("project");
+  return asked === null || asked === "" ? null : asked;
+}
+
+/**
+ * The address a destination is written as, path unchanged.
+ *
+ * A project workspace screen carries its project, because the screen means
+ * nothing without it: sending someone `?at=board` alone would open whichever
+ * project their own console happened to remember. A company workspace screen
+ * carries none, because none would be true of it.
+ *
+ * Nothing else survives. A ticket id belongs to the project it was raised in,
+ * so moving to another project — or to another screen — drops it rather than
+ * carrying a key into an address where it names nothing.
+ */
+export function addressFor(
+  key: DestinationKey,
+  project: string | null,
+  /** What the destination itself needs to reopen on: a ticket, a raise. */
+  place: Readonly<Record<string, string>> = {}
+): string {
+  const asked = new URLSearchParams({ at: key });
+  if (project !== null && scopedToProject(key)) {
+    asked.set("project", project);
+  }
+  for (const [name, value] of Object.entries(place)) {
+    asked.set(name, value);
+  }
+  return `?${asked.toString()}`;
 }

@@ -7,8 +7,8 @@ import { Button, Card, CardBody, CardHeader, CardTitle, Input, Mono } from "../u
 import { Field } from "../ui/form";
 import { EntityRow } from "../wizard/compose/EntityRow";
 import { agentFacts } from "../wizard/read";
+import type { Authoring } from "../wizard/ceremony";
 import { AUTHORED_HERE, choicesOf, Picker } from "./HarnessPage";
-import type { Authoring } from "./HarnessPage";
 
 /**
  * Agents: the ones this company has, and one more.

@@ -5,6 +5,10 @@
     "jsx": "react-jsx",
     "allowJs": false,
     "skipLibCheck": true,
+    // The authored component contracts are read, not restated: the form that
+    // builds a project payload validates it against the same
+    // `contracts/components/*.schema.json` the kernel validates it against.
+    "resolveJsonModule": true,
     "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]

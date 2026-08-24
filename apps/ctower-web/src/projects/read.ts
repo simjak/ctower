@@ -1,121 +1,112 @@
 import type { CompanyBundleDocument, CompanyBundleResource, ComponentKind } from "@ctower/client";
-import { readableRepository } from "../wizard/read";
 
 /**
- * What the active bundle records about projects, and it records two things that
- * are not the same thing.
+ * What the active bundle records about a project.
  *
- * A **scope** is the project every component declares itself to belong to —
- * `component.scope.project` — and it is the identifier every project-addressed
- * read on this API takes. A **document** is a `project` component: a name, a
- * repository, a ticket prefix, the goals it serves.
+ * A project is recorded twice over. Its **document** is a `project` component —
+ * a name, a repository, a ticket prefix, the goals it serves. Its **scope** is
+ * what every other component declares itself to belong to, and it is the
+ * identifier every project-addressed read takes. The record's own rule joins
+ * them: `allocate_ticket_display_key` matches a project component by
+ * `split_part(component_key, '.', 1)`, so a document keyed `acme.delivery` is
+ * the project addressed as `acme`.
  *
- * Nothing in the bundle binds one to the other. `ctower.control-plane` is a
- * document key and `ctower` is a scope; they resemble each other and a
- * resemblance is not a recorded fact, so this reader never joins them and the
- * screen draws them as the two separate things they are.
+ * The rail makes that join once, in `shell/ProjectSwitcher`, and hands out the
+ * addressing key. This reader takes it back and gathers everything under it, so
+ * a card and the screen behind it agree about which project they are about.
+ *
+ * The order is the record's. The export is normalized and deterministic
+ * (`SPEC.md`, § CompanyBundle): components are stored sorted by kind, key,
+ * revision and digest, and the export replays that sequence, so a project
+ * appears where the company's own record puts it.
  */
-
-/** One project components are scoped to, and everything scoped to it. */
-export interface ProjectScope {
+export interface ProjectFacts {
+  /** The key that addresses this project. It travels; it does not render. */
   readonly key: string;
-  readonly resources: readonly CompanyBundleResource[];
+  readonly name: string;
+  /** The ticket prefix — `null` when the recorded payload carries none. */
+  readonly prefix: string | null;
+  /** The repository, as a person reads one; `null` when none is recorded. */
+  readonly repository: string | null;
+  /** The goals this project serves, named where the bundle names them. */
+  readonly goals: readonly string[];
+  /** Everything this company records under this project. */
+  readonly scoped: readonly CompanyBundleResource[];
 }
 
-/** How many of one kind of component a scope holds. */
+/** How many of one kind of component a project holds, and what they are called. */
 export interface KindCount {
   readonly kind: ComponentKind;
   /** The kind as a person reads it; the payload's own word, unpunctuated. */
   readonly label: string;
   readonly count: number;
+  /** The names those components carry, for the ones that carry a name. */
+  readonly names: readonly string[];
 }
 
-/** An authored project document, exactly as the bundle carries it. */
-export interface ProjectDocument {
-  readonly id: string;
-  readonly key: string;
-  readonly name: string;
-  readonly revision: number;
-  /** The ticket prefix — `null` when the recorded payload carries none. */
-  readonly prefix: string | null;
-  /** The repository, at the length a person reads one. */
-  readonly repository: string | null;
-  /** The whole reference behind it, for the hover. */
-  readonly repositoryTitle: string | null;
-  /** The goals this project serves, named where the bundle names them. */
-  readonly goals: readonly string[];
-}
-
-/**
- * Every project scope in the bundle, in the order the export gave them.
- *
- * The record has an order and this screen does not overrule it. `SPEC.md`
- * (§ CompanyBundle, "export is normalized and deterministic") makes the export
- * order part of the answer rather than an accident of transport: the kernel
- * sorts resources by kind, key, revision and digest before an apply is stored,
- * and the export replays that stored sequence. So a scope appears here where the
- * company's own record puts it, and two reads of one bundle always agree.
- *
- * Nothing is filtered and nothing is re-ranked: every non-null scope renders,
- * once, in that order.
- */
-export function projectScopes(document: CompanyBundleDocument): readonly ProjectScope[] {
-  const keys = new Set(
-    document.resources
-      .map((resource) => resource.component.scope.project)
-      .filter((key): key is string => key !== null)
-  );
-  return [...keys].map((key) => ({
-    key,
-    resources: document.resources.filter((resource) => resource.component.scope.project === key),
-  }));
+export function projectsIn(document: CompanyBundleDocument): readonly ProjectFacts[] {
+  const goals = goalNames(document);
+  const found = new Map<string, ProjectFacts>();
+  for (const resource of document.resources) {
+    const key = resource.component.key.split(".")[0] ?? "";
+    if (resource.component.kind !== "project" || key === "" || found.has(key)) {
+      continue;
+    }
+    found.set(key, {
+      key,
+      name: text(resource, "display_name") ?? resource.component.key,
+      prefix: text(resource, "prefix"),
+      repository: readableRepository(text(resource, "repository_ref")),
+      goals: goalRefs(resource).map((reference) => goals.get(reference) ?? "an unrecorded goal"),
+      scoped: document.resources.filter((held) => held.component.scope.project === key),
+    });
+  }
+  return [...found.values()];
 }
 
 /**
- * A scope's components counted by kind, in the order the export gave the kinds.
- *
- * Same rule as `projectScopes`: the export is ordered by kind first, so the
- * groups arrive already grouped and already sequenced, and counting them keeps
- * that sequence. Ranking them by size would be a second answer to a question the
- * record has already answered, and picking a different order for an operator's
- * eye is an authored decision, not one this screen may make on its own.
+ * A project's components counted by kind, in the order the export gave the
+ * kinds. Same rule as the list itself: the export is ordered by kind first, so
+ * the groups arrive already grouped and already sequenced. Ranking them by size
+ * would be a second answer to a question the record has already answered.
  */
 export function kindCounts(resources: readonly CompanyBundleResource[]): readonly KindCount[] {
-  const counts = new Map<ComponentKind, number>();
+  const counts = new Map<ComponentKind, CompanyBundleResource[]>();
   for (const resource of resources) {
-    const kind = resource.component.kind;
-    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+    const held = counts.get(resource.component.kind) ?? [];
+    held.push(resource);
+    counts.set(resource.component.kind, held);
   }
-  return [...counts.entries()].map(([kind, count]) => ({
+  return [...counts.entries()].map(([kind, held]) => ({
     kind,
     label: kind.replace(/_/g, " "),
-    count,
+    count: held.length,
+    names: held
+      .map((resource) => text(resource, "display_name"))
+      .filter((name): name is string => name !== null),
   }));
 }
 
-export function projectDocuments(document: CompanyBundleDocument): readonly ProjectDocument[] {
-  const goals = goalNames(document);
-  return document.resources
-    .filter((resource) => resource.component.kind === "project")
-    .map((resource) => {
-      const repository = text(resource, "repository_ref");
-      return {
-        id: `${resource.component.key}@${String(resource.component.revision)}`,
-        key: resource.component.key,
-        name: text(resource, "display_name") ?? resource.component.key,
-        revision: resource.component.revision,
-        prefix: text(resource, "prefix"),
-        repository: repository === null ? null : readableRepository(repository),
-        repositoryTitle: repository,
-        goals: goalRefs(resource).map((reference) => goals.get(reference) ?? reference),
-      };
-    });
+/**
+ * The repository, at the length a person reads one.
+ *
+ * The record keeps `repository:github/acme/widgets`, optionally pinned to a
+ * commit. Neither the scheme nor the commit is something a person says out
+ * loud, and both are machine text, so what renders is the forge and the path —
+ * the part an operator would recognise from the address they cloned it from.
+ */
+export function readableRepository(reference: string | null): string | null {
+  if (reference === null) {
+    return null;
+  }
+  const path = reference.replace(/^repository:/, "");
+  return /^(.*)\/[0-9a-f]{40}$/.exec(path)?.[1] ?? path;
 }
 
 /**
- * The goal documents in the same bundle, under the exact `key@revision` a
- * project's `goal_refs` pins. A reference that resolves to nothing keeps its own
- * text rather than borrowing a name from a goal that only looks similar.
+ * The goal documents in the same bundle, under the exact reference a project's
+ * `goal_refs` pins. A reference that resolves to nothing is said to be
+ * unrecorded rather than rendered as its own machine text.
  */
 function goalNames(document: CompanyBundleDocument): ReadonlyMap<string, string> {
   const names = new Map<string, string>();
@@ -126,6 +117,13 @@ function goalNames(document: CompanyBundleDocument): ReadonlyMap<string, string>
     }
   }
   return names;
+}
+
+/** The goals this company records, as the references a payload pins them by. */
+export function goalRefsIn(document: CompanyBundleDocument): readonly string[] {
+  return document.resources
+    .filter((resource) => resource.component.kind === "goal")
+    .map((resource) => `${resource.component.key}@${String(resource.component.revision)}`);
 }
 
 function goalRefs(resource: CompanyBundleResource): readonly string[] {

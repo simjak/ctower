@@ -1,77 +1,126 @@
-import { useState } from "react";
+import { Plus } from "lucide-react";
 import type { ReactElement } from "react";
 import type { CompanyBundleExportResult } from "@ctower/client";
-import { Button, Chip, Mono, PageHead } from "../ui/primitives";
-import { shortDigest } from "../wizard/bundle";
-import { Documents } from "./Documents";
-import { projectDocuments, projectScopes } from "./read";
-import { ScopeDetail } from "./ScopeDetail";
-import { ScopeTable } from "./ScopeTable";
+import type { DestinationKey } from "../shell/destinations";
+import { Button, PageHead } from "../ui/primitives";
+import { useCeremony } from "../wizard/ceremony";
+import { ReviewPanel } from "../wizard/review/ReviewPanel";
+import { NewProject } from "./NewProject";
+import { ProjectCard } from "./ProjectCard";
+import { goalRefsIn, projectsIn } from "./read";
 import { useBoards } from "./useBoards";
 
-const PURPOSE = "What this company builds, and what each project owns.";
+const PURPOSE = "What this company builds. Open one to work in it.";
 
 /**
- * Projects, read from the company that is already in hand.
+ * Projects: the ones this company has, and one more.
  *
- * The portfolio costs no read: the active bundle answered before this screen
- * existed, and every project on it is a project some component declares itself
- * scoped to. What it does not carry is what is happening — so each project asks
- * its own board, and those answers arrive one at a time.
+ * This is the company workspace's own screen, and the only place a project is
+ * made. A project is not a runtime and it is not a harness: it is a thing the
+ * company has, so it is listed beside the company rather than beside the
+ * machinery its work runs on.
  *
- * Nothing here writes. Editing a project is the Company page's job, and a
- * control that cannot honour a press does not get drawn.
+ * The cards cost no read — the active bundle answered before this screen
+ * existed — but what is *happening* on each project is that project's own board,
+ * and those answers arrive one at a time and land on their own card.
+ *
+ * There is no `createProject` operation and there is not meant to be one. A
+ * project is a component of the company bundle, so making one is authoring a
+ * document into the recorded bundle and handing the result to the same
+ * check-plan-apply every other authoring screen runs.
  */
 export function ProjectsPage({
   result,
-  onGoCompany,
+  creating,
+  onCreating,
+  onApplied,
+  onGo,
 }: {
   readonly result: CompanyBundleExportResult;
-  /** The one place a project is authored, for the state where none is. */
-  readonly onGoCompany: () => void;
+  /** Whether the pop-up that makes a project is open. */
+  readonly creating: boolean;
+  readonly onCreating: (creating: boolean) => void;
+  readonly onApplied: () => void;
+  /** Opening a project scopes the whole project workspace to it. */
+  readonly onGo: (key: DestinationKey) => void;
 }): ReactElement {
-  const scopes = projectScopes(result.bundle);
-  const documents = projectDocuments(result.bundle);
-  const boards = useBoards(scopes.map((scope) => scope.key));
-  const [chosen, setChosen] = useState<string | null>(null);
-  const here = chosen ?? scopes[0]?.key ?? null;
-  const open = scopes.find((scope) => scope.key === here);
+  const ceremony = useCeremony(result.bundle, onApplied);
+  const projects = projectsIn(result.bundle);
+  const boards = useBoards(projects.map((project) => project.key));
+
+  if (ceremony.review !== null) {
+    return (
+      <ReviewPanel
+        review={ceremony.review}
+        applied={ceremony.applied}
+        armed={ceremony.armed}
+        onArm={ceremony.setArmed}
+        onApply={ceremony.apply}
+        onRetry={ceremony.retry}
+        onBack={ceremony.close}
+        backLabel="Back to projects"
+      />
+    );
+  }
 
   return (
     <>
       <PageHead title="Projects" subtitle={PURPOSE}>
-        <Chip>version {result.active_version}</Chip>
-        <Mono className="text-muted" title={result.bundle_digest}>
-          {shortDigest(result.bundle_digest)}
-        </Mono>
+        <Button
+          variant="primary"
+          onClick={(): void => {
+            onCreating(true);
+          }}
+        >
+          <Plus /> New project
+        </Button>
       </PageHead>
 
-      {scopes.length === 0 ? (
-        <Nothing onGoCompany={onGoCompany} />
+      {projects.length === 0 ? (
+        <Nothing onNew={onCreating} />
       ) : (
-        <>
-          <ScopeTable scopes={scopes} boards={boards} here={here} onGo={setChosen} />
-          {open === undefined ? null : (
-            <ScopeDetail scope={open} board={boards.get(open.key) ?? { kind: "asking" }} />
-          )}
-        </>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => (
+            <ProjectCard
+              key={project.key}
+              project={project}
+              board={boards.get(project.key) ?? { kind: "asking" }}
+              here={false}
+              onOpen={(): void => {
+                onGo("tickets");
+              }}
+            />
+          ))}
+        </div>
       )}
 
-      {documents.length === 0 ? null : <Documents documents={documents} />}
+      <NewProject
+        authoring={ceremony.authoring}
+        goals={goalRefsIn(result.bundle)}
+        company={result.bundle.company.display_name}
+        open={creating}
+        onOpenChange={onCreating}
+      />
     </>
   );
 }
 
 /**
- * A company with no project scope at all. It is a real state and not a broken
- * one: this tower has components and none of them belongs to a project.
+ * A company with no project at all. It is a real state and not a broken one,
+ * and the one action that changes it sits next to the sentence that says so.
  */
-function Nothing({ onGoCompany }: { readonly onGoCompany: () => void }): ReactElement {
+function Nothing({ onNew }: { readonly onNew: (creating: boolean) => void }): ReactElement {
   return (
     <div className="rounded-md border border-line bg-raised p-4">
-      <p className="m-0 text-sm text-fg">Nothing in this company is scoped to a project yet.</p>
-      <Button variant="primary" className="mt-3" onClick={onGoCompany}>
-        Open Company
+      <p className="m-0 text-sm text-fg">This company has no project yet.</p>
+      <Button
+        variant="primary"
+        className="mt-3"
+        onClick={(): void => {
+          onNew(true);
+        }}
+      >
+        <Plus /> New project
       </Button>
     </div>
   );

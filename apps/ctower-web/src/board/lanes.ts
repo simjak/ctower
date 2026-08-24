@@ -1,4 +1,4 @@
-import type { BoardCard, BoardLane, BoardView, CompanyBundleDocument } from "@ctower/client";
+import type { BoardCard, BoardLane, BoardView } from "@ctower/client";
 
 /**
  * The board's axis, and where every word on it comes from.
@@ -76,44 +76,4 @@ export function freshnessOf(view: BoardView): Freshness {
     };
   }
   return { kind: "current" };
-}
-
-export interface Project {
-  /** The work-plane key the board is read by. */
-  readonly key: string;
-  /** The name the definition gives it. */
-  readonly name: string;
-}
-
-/**
- * The projects this company's definition names, and how a definition key
- * becomes a board key.
- *
- * They are not the same string: the board reads `ctower`, the definition holds
- * `ctower.control-plane`. The record itself owns the rule that joins them —
- * `allocate_ticket_display_key` matches a project component by
- * `split_part(component_key, '.', 1)` — so the first segment is read here and
- * nothing is guessed. ctower has no operation that enumerates work-plane
- * projects, so this is what the definition knows, never a closed list.
- *
- * The order is the record's. The export is normalized and deterministic
- * (`SPEC.md`, § CompanyBundle): components are stored sorted by kind, key,
- * revision and digest, and the export replays that sequence, so first
- * appearance here is where the record puts each project — not which component
- * kind it happened to acquire first, and never an alphabetical guess this
- * screen would have to defend on its own.
- */
-export function projectsOf(document: CompanyBundleDocument): readonly Project[] {
-  const found = new Map<string, string>();
-  for (const resource of document.resources) {
-    if (resource.component.kind !== "project") {
-      continue;
-    }
-    const key = resource.component.key.split(".")[0];
-    const name = resource.payload.display_name;
-    if (key !== undefined && key !== "" && !found.has(key)) {
-      found.set(key, typeof name === "string" && name !== "" ? name : key);
-    }
-  }
-  return [...found].map(([key, name]) => ({ key, name }));
 }
