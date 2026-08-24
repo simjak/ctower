@@ -9,10 +9,17 @@
  * writes, the next has to be able to address. This walk takes the operator's
  * own sentence —
  *
- *     let me in → make a project → open my tickets → raise one → see it on the board
+ *     let me in → make a project → open my tickets → raise one → see it in the
+ *     list, in the columns, and on the board
  *
  * — and refuses to call it done until the last screen shows the thing the first
  * one wrote.
+ *
+ * Raising one is asserted as the operator's own sentence, not as a form fill:
+ * the pop-up may ask for exactly one thing (the title), the people it offers
+ * must be this company's own and only the calling seat may be live, and the
+ * ticket must land in the record's first lane — read back from the list, from
+ * the same screen's columns, and from the Board destination.
  *
  * **This walk writes.** That is the difference from `walk-web.mjs`, which never
  * touches a control that writes, and it is why the two are separate files
@@ -57,10 +64,13 @@
  *                         is the first the console offers. No operation
  *                         enumerates the projects a credential may write to, so
  *                         this is an input rather than something a walk can find
- *   JOURNEY_CUSTODIAN     the commander who takes the ticket; default is the
- *                         first the screen itself suggests. Same reason
  *   JOURNEY_SHOT_DIR      where screenshots and the report are written
  *   JOURNEY_TECH_TEXT     `fail` (default) or `report`
+ *   JOURNEY_STEPS         comma-separated step ids; default is the whole
+ *                         sentence. Authoring a project is the operator's act
+ *                         and raising a ticket is the commander's, and a console
+ *                         holds one credential, so each half is walked against
+ *                         the console the act belongs to
  */
 
 import assert from "node:assert/strict";
@@ -74,6 +84,21 @@ const TOKEN_FILE = process.env.JOURNEY_TOKEN_FILE ?? "/tmp/journey-session-token
 const SHOT_DIR = process.env.JOURNEY_SHOT_DIR ?? "/tmp/journey-shots";
 const REPORT = path.join(SHOT_DIR, "journey-walk-report.json");
 const TECH_TEXT_FAILS = (process.env.JOURNEY_TECH_TEXT ?? "fail") === "fail";
+
+/**
+ * Which steps to attempt, when the whole sentence cannot be walked at once.
+ *
+ * The journey crosses two authorities on purpose. Authoring a project is a
+ * company-bundle apply and is the **operator's** act; raising a ticket requires
+ * Commander custody and is the **commander's**. A console holds one credential,
+ * so one run cannot do both, and a walk that pretended otherwise would report a
+ * credential as a defect. Naming the steps lets each half be walked against the
+ * console the act actually belongs to, and the report says which half it was.
+ */
+const ONLY = (process.env.JOURNEY_STEPS ?? "")
+  .split(",")
+  .map((one) => one.trim())
+  .filter((one) => one !== "");
 
 /** How long the board is given to fold a ticket that was accepted. */
 const FOLD_CAP_MS = 45_000;
@@ -101,11 +126,18 @@ const PREFIX = Array.from(
   () => "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]
 ).join("");
 const RUN = `${PREFIX.toLowerCase()}${Date.now().toString(36).slice(-4)}`;
+// The key and the ticket prefix are derived from the name by the pop-up that
+// authors one — a key is machine text and asking for it is asking a question
+// with no right answer (`projects/draft.ts`). So the walk cannot choose them; it
+// chooses a *name* whose derivation lands where it needs to, and holds what that
+// produces so later steps can say what is and is not addressable. The name opens
+// with the run's three letters precisely because the prefix is the first three
+// letters of the name, and two active projects may not share one.
 const PROJECT = {
-  key: `journey-walk-${RUN}`,
-  name: `Journey walk ${RUN}`,
+  key: `${PREFIX.toLowerCase()}-journey-walk-${RUN}`,
+  name: `${PREFIX} journey walk ${RUN}`,
   prefix: PREFIX,
-  repository: "repository:github/ctower/journey-walk",
+  repository: "https://github.com/ctower/journey-walk",
 };
 const TICKET_TITLE = `Journey walk ${RUN} raised this`;
 
@@ -122,21 +154,28 @@ async function main() {
   const watched = watch(page, new URL(TARGET).origin);
   const journey = { page, watched, token, screens: [], facts: {} };
 
+  const walking = ONLY.length === 0 ? STEPS : STEPS.filter((step) => ONLY.includes(step.id));
+  assert.ok(walking.length > 0, `JOURNEY_STEPS names no step this walk has: ${ONLY.join(", ")}`);
+
   const results = [];
   try {
-    for (const step of STEPS) {
+    for (const step of walking) {
       const done = await take(journey, step);
       results.push(done);
-      if (done.status === "FAIL" && step.stops) {
-        // A journey is ordered. Once the thing a later step needs was never
-        // made, the rest would fail for a reason that is not their own, so they
-        // are reported as unreached rather than run and blamed.
-        for (const later of STEPS.slice(STEPS.indexOf(step) + 1)) {
+      // A journey is ordered. Once the thing a later step needs was never made,
+      // the rest would fail for a reason that is not their own, so they are
+      // reported as unreached rather than run and blamed. A step that was
+      // *blocked* stops the ones after it for the same reason a failed one
+      // does — the act did not happen either way — and the difference between
+      // the two stays on the step that earned it.
+      if (step.stops && (done.status === "FAIL" || done.status === "BLOCKED-BY-RULING")) {
+        for (const later of walking.slice(walking.indexOf(step) + 1)) {
           results.push({
             step: later.id,
             act: later.act,
             status: "UNREACHED",
-            note: `not attempted: ${step.id} did not complete`,
+            because: done.status,
+            note: `not attempted: ${step.id} ended ${done.status}`,
           });
         }
         break;
@@ -216,21 +255,17 @@ const STEPS = [
     stops: true,
     async run(journey) {
       const { page } = journey;
-      await page.locator('button:has(span:text-is("PROJECT"))').click();
-      const add = page.getByRole("menuitem", { name: /Add a project/ });
+      await page.getByRole("button", { name: /^Project: / }).click();
+      const add = page.getByRole("menuitem", { name: /New project/ });
       await add.waitFor();
       await seen(journey, "02-project-menu");
       await add.click();
       await settle(page, journey.watched);
       const address = new URL(page.url()).search;
-      assert.ok(address === "?at=harnesses", `"Add a project…" left the operator at "${address}"`);
-      const tab = page.getByRole("tab", { name: "Projects" });
-      assert.ok(
-        (await tab.getAttribute("aria-selected")) === "true",
-        "the screen a project is made on did not open on its Projects tab"
-      );
+      assert.ok(address === "?at=projects", `"New project…" left the operator at "${address}"`);
+      await page.getByRole("dialog").getByLabel("Project name").waitFor();
       await seen(journey, "03-project-form");
-      return "the project switcher leads to the form a project is authored in";
+      return "the project switcher leads to the pop-up a project is authored in";
     },
   },
   {
@@ -239,17 +274,13 @@ const STEPS = [
     stops: true,
     async run(journey) {
       const { page } = journey;
-      // The fields on this panel carry no accessible name, so they are found by
-      // the placeholder each one authors. Reported as its own finding.
-      await page.getByPlaceholder("Acme widgets").fill(PROJECT.name);
-      await page.getByPlaceholder("acme-widgets").fill(PROJECT.key);
-      await page.getByPlaceholder("ACW").fill(PROJECT.prefix);
-      await page.getByPlaceholder("repository:github/acme/widgets").fill(PROJECT.repository);
-      // The goal is chosen, never typed: a project must name one, and the ones
-      // this company has are the only ones it may name.
-      await page.locator("button[aria-pressed]").first().click();
-
-      await page.getByRole("button", { name: /Review changes/ }).click();
+      // Two things are typed and the rest is derived. A key and a ticket prefix
+      // are machine text, so the pop-up mints them from the name rather than
+      // asking a question with no right answer.
+      const form = page.getByRole("dialog");
+      await form.getByLabel("Project name").fill(PROJECT.name);
+      await form.getByPlaceholder("https://github.com/org/repo").fill(PROJECT.repository);
+      await form.getByRole("button", { name: "Create project" }).click();
       await settle(page, journey.watched);
       await seen(journey, "04-review-changes");
       const head = await page.locator("main h1").innerText();
@@ -289,7 +320,10 @@ const STEPS = [
     stops: false,
     async run(journey) {
       const { page } = journey;
-      await rail(page, "Tickets");
+      // The chooser by its own address rather than by the rail: the rail always
+      // carries the project the switcher is pointed at, so a rail click opens
+      // that project's screen instead of asking which one.
+      await page.goto(`${TARGET}?at=tickets`, { waitUntil: "domcontentloaded" });
       await settle(page, journey.watched);
       await seen(journey, "06-tickets-project-choice");
 
@@ -316,26 +350,25 @@ const STEPS = [
       await settle(page, journey.watched);
       await seen(journey, "07-authored-project-opened");
 
-      // Third fact: the board answers, the screen says in its own words why
-      // there is nothing here, and the console still refuses to offer the
-      // write — because nothing it can read says this project exists.
-      const shown = await page.locator("main").innerText();
-      assert.ok(shown.includes("0 tickets"), `the board did not answer for ${PROJECT.key}`);
+      // Third fact: its own screen opens, because the company now records a
+      // document for it — and the work plane still answers with nothing,
+      // because the document this console minted declares no component scoped
+      // to that key. The screen says so plainly rather than drawing a project
+      // that is half there.
+      const head = await page.locator("main h1").innerText();
       assert.ok(
-        shown.includes(
-          `This board answered with no ticket, and nothing in this company is scoped to ${PROJECT.key}.`
-        ),
-        `the board for ${PROJECT.key} did not say why it is empty: ${shown.split("\n").slice(0, 4).join(" ")}`
+        head === PROJECT.name,
+        `the authored project's own screen drew "${head}" rather than its name`
       );
-      const raise = page.getByRole("button", { name: "New ticket" });
+      const shown = await page.locator("main").innerText();
       assert.ok(
-        (await raise.count()) === 0,
-        `the console offered New ticket on ${PROJECT.key}, which it cannot show exists`
+        shown.includes("No ticket has been raised here yet."),
+        `the board for ${PROJECT.key} did not say it is empty: ${shown.split("\n").slice(0, 5).join(" ")}`
       );
       throw new Blocked(
-        `authored, and not addressable as work: the chooser does not offer ${PROJECT.key}, ` +
-          "the board it opens says nothing in this company is scoped to it, " +
-          "and it carries no way to raise a ticket. " +
+        `authored, and not yet addressable as work: the tickets chooser does not offer ` +
+          `${PROJECT.key}, and the project's own screen answers with no ticket because ` +
+          "the document this console authored declares no component scoped to it. " +
           "A project document key and a work-plane project key are different families and " +
           "nothing in the contract converts one into the other"
       );
@@ -351,6 +384,10 @@ const STEPS = [
       // screen is already Tickets, and a rail click on the destination the
       // operator is already at moves the address without remounting the page.
       await page.goto(`${TARGET}?at=tickets`, { waitUntil: "domcontentloaded" });
+      // The chooser cannot offer a project until the company read has landed,
+      // and a reload starts that read from nothing. Wait for the screen the
+      // offers live on rather than for the network to go quiet around it.
+      await page.getByLabel("Project key", { exact: true }).waitFor();
       await settle(page, journey.watched);
       const offered = await page.locator("main button.mono").allInnerTexts();
       assert.ok(offered.length > 0, "this company offers no project to open tickets on");
@@ -372,37 +409,142 @@ const STEPS = [
     },
   },
   {
-    id: "ticket-raised",
-    act: "a ticket is raised and the console shows the receipt",
+    id: "raise-pop-up-offers-the-record",
+    act: "the pop-up that raises one offers the company's own people and projects",
     stops: true,
     async run(journey) {
       const { page } = journey;
       await page.getByRole("button", { name: "New ticket" }).click();
-      await settle(page, journey.watched);
+      await page.getByRole("dialog").waitFor();
       await seen(journey, "09-new-ticket");
 
-      const custodian = process.env.JOURNEY_CUSTODIAN ?? (await suggested(page));
+      // The title is the only thing typed. Who takes it, what it came from and
+      // where it lands are the record's own answers, so none of them is a box.
+      const asked = await page.getByRole("dialog").locator("input, textarea").count();
       assert.ok(
-        custodian !== null,
-        "no custodian: the screen suggested none and none was given. No operation in the " +
-          "authored contract enumerates principals, so a walk cannot find one on the surface"
+        asked === 1,
+        `the pop-up asks for ${String(asked)} things; it may only ask for one`
       );
-      await page.getByLabel("Title").fill(TICKET_TITLE);
-      await page.getByLabel("Reference").fill(`journey-walk-${RUN}`);
-      await page.getByLabel("Custodian").fill(custodian);
-      await page.getByRole("button", { name: "Raise it" }).click();
+
+      // Who: one live row, because omitting the custodian is what makes the
+      // record hand the ticket to the calling seat. Everything else is a name
+      // this company records, drawn and refused rather than left out.
+      const people = await opened(journey, "Who takes it: Me", "09b-who-picker");
+      assert.ok(people[0]?.startsWith("Me"), `the people picker opens on ${String(people[0])}`);
+      assert.ok(
+        people.slice(1).every((row) => row.includes("cannot take one yet")),
+        "a name in the people picker is offered as though it could take a ticket"
+      );
+
+      // Where: the projects this company records, by name. The one the operator
+      // is standing in is already chosen, so the sentence is true before it is
+      // read rather than after it is answered.
+      const wheres = await opened(journey, /^Which project: /, "09c-where-picker");
+      assert.ok(wheres.length > 0, "the project picker offers nothing");
+
+      // How urgent: three words, and the record's own three priorities.
+      const urgency = await opened(journey, /^How urgent: /, "09d-urgency-picker");
+      assert.ok(
+        urgency.length === 3,
+        `the urgency picker offers ${String(urgency.length)} words, not the record's three`
+      );
+
+      journey.facts.raisePopUp = {
+        people: people.length,
+        projects: wheres.length,
+        urgencies: urgency.length,
+      };
+      return `the pop-up asks for one thing and offers ${String(people.length)} people, ${String(wheres.length)} projects and ${String(urgency.length)} urgencies`;
+    },
+  },
+  {
+    id: "ticket-raised",
+    act: "a ticket is raised with a title and nothing else, and the console shows the receipt",
+    ruling: "T-020",
+    stops: true,
+    async run(journey) {
+      const { page } = journey;
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Ticket title").fill(TICKET_TITLE);
+      await dialog.getByRole("button", { name: "Raise it" }).click();
       await settle(page, journey.watched);
       await seen(journey, "10-raised");
 
-      const shown = await page.locator("main").innerText();
+      const shown = await dialog.innerText();
+      // The record refuses this write for two reasons an open ruling owns, and
+      // for neither of them is the console at fault: a project key the work
+      // plane will not take (T-020's identifier families), and a caller who is
+      // not an eligible custodian. Raising a ticket is a Commander's act —
+      // `record/ticket_creation.py` requires Commander self-custody or an
+      // operator naming an eligible Commander, and no declared read enumerates
+      // one — so a console credentialled as the operator is refused here by
+      // design. Either way the walk asserts the words the surface drew rather
+      // than the act, and names what owes the answer.
+      if (shown.includes("No ticket was raised.")) {
+        const custody = shown.includes("Initial custody requires");
+        throw new Blocked(
+          `raising was refused on ${String(journey.facts.project)} and the pop-up drew the ` +
+            `record's own words: ${refusal(shown)}. ` +
+            (custody
+              ? "This console's credential is not an eligible custodian; raising is a " +
+                "Commander's act and no declared read enumerates one"
+              : "T-020 owns the identifier families this refuses on")
+        );
+      }
       assert.ok(
-        shown.includes("raised") || shown.includes("not yet durable"),
+        shown.includes("Raised") || shown.includes("Sent, and not confirmed yet"),
         `raising drew no receipt: ${shown.split("\n").slice(-4).join(" ")}`
       );
       journey.facts.ticket = TICKET_TITLE;
-      return shown.includes("raised")
+      // Back to the list, the way an operator leaves a pop-up they are done
+      // with. The receipt stays until they do; a command that unmounted its own
+      // answer would report nothing.
+      await dialog.getByRole("button", { name: "Discard" }).click();
+      await settle(page, journey.watched);
+      return shown.includes("Raised")
         ? "the ticket was raised and accepted"
-        : "the ticket was sent and is not yet durable";
+        : "the ticket was sent and is not yet confirmed durable";
+    },
+  },
+  {
+    id: "ticket-in-the-list",
+    act: "the ticket appears in the project's own list",
+    stops: true,
+    async run(journey) {
+      const { page } = journey;
+      const row = page.getByText(TICKET_TITLE);
+      const reads = await folded(journey, row, () => page.reload({ waitUntil: "networkidle" }));
+      await seen(journey, "11-list");
+      assert.ok(
+        reads !== null,
+        `the list never showed "${TICKET_TITLE}" within ${String(FOLD_CAP_MS / 1000)}s`
+      );
+      return `the row is in the list after ${String(reads)} ${reads === 1 ? "read" : "reads"}`;
+    },
+  },
+  {
+    id: "ticket-in-the-columns",
+    act: "the same ticket is a card in the Waiting column",
+    stops: false,
+    async run(journey) {
+      const { page } = journey;
+      // Inside the screen, not in the rail: `Board` is also a destination, and
+      // this toggle is the same tickets read drawn as columns.
+      await page.locator("main").getByRole("button", { name: "Board" }).click();
+      await settle(page, journey.watched);
+      await seen(journey, "12-columns");
+      // The record's own answer for a new ticket is the first lane, so this
+      // asserts the column rather than merely the card: a ticket that landed
+      // anywhere else would mean the console and `_board_sql` disagree.
+      const waiting = page.locator("section", {
+        has: page.getByRole("heading", { name: "Waiting" }),
+      });
+      const card = waiting.getByText(TICKET_TITLE);
+      assert.ok(
+        (await card.count()) > 0,
+        `"${TICKET_TITLE}" is not a card in the Waiting column of the board view`
+      );
+      return "the ticket is a card in the first column";
     },
   },
   {
@@ -411,27 +553,22 @@ const STEPS = [
     stops: false,
     async run(journey) {
       const { page } = journey;
-      await rail(page, "Board");
-      await settle(page, journey.watched);
-      await page.getByLabel("Project").fill(journey.facts.project);
-      await page.keyboard.press("Enter");
+      // By address, because a screen is a link: the Board reads whichever
+      // project the address names, and this is the one the ticket was raised
+      // on. The rail would read whichever project its switcher is pointed at,
+      // which is a different question.
+      await page.goto(`${TARGET}?at=board&project=${encodeURIComponent(journey.facts.project)}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.getByRole("button", { name: "Read again" }).waitFor();
       await settle(page, journey.watched);
 
-      // A write is not visible until the projection has folded it, so the board
-      // is asked again rather than judged on its first answer.
       const row = page.getByText(TICKET_TITLE);
-      const deadline = Date.now() + FOLD_CAP_MS;
-      let reads = 1;
-      while ((await row.count()) === 0 && Date.now() < deadline) {
-        await page.getByRole("button", { name: "Read again" }).click();
-        await settle(page, journey.watched);
-        reads += 1;
-      }
-      await seen(journey, "11-board");
-      assert.ok(
-        (await row.count()) > 0,
-        `the board never showed "${TICKET_TITLE}" after ${String(reads)} reads`
+      const reads = await folded(journey, row, () =>
+        page.getByRole("button", { name: "Read again" }).click()
       );
+      await seen(journey, "13-board");
+      assert.ok(reads !== null, `the board never showed "${TICKET_TITLE}"`);
       return `the row is on the board after ${String(reads)} ${reads === 1 ? "read" : "reads"}`;
     },
   },
@@ -440,23 +577,73 @@ const STEPS = [
 /** The step said it was blocked, and proved the surface said so honestly. */
 class Blocked extends Error {}
 
-function rail(page, label) {
-  return page
-    .locator(`nav[aria-label="Sections"] button:has(span.truncate:text-is("${label}"))`)
-    .click();
+/**
+ * One picker, opened, read and shut.
+ *
+ * Every row it offers is returned as the operator sees it, which is what makes
+ * "offers only real principals and projects" assertable rather than a claim.
+ * A disabled row is a row: it is drawn on purpose, and a walk that only looked
+ * at what it could click would miss the whole point of drawing it.
+ */
+async function opened(journey, name, shot) {
+  const { page } = journey;
+  await page.getByRole("dialog").getByRole("button", { name }).click();
+  const menu = page.getByRole("menu");
+  await menu.waitFor();
+  const rows = await menu.getByRole("menuitem").allInnerTexts();
+  await seen(journey, shot);
+  await page.keyboard.press("Escape");
+  await menu.waitFor({ state: "detached" });
+  return rows;
 }
 
-/** The custodians this board already has, which the screen offers as suggestions. */
-async function suggested(page) {
-  const options = await page
-    .locator("#ctower-custodians option")
-    .evaluateAll((all) => all.map((option) => option.getAttribute("value") ?? ""));
-  return options.find((option) => option !== "") ?? null;
+/**
+ * The refusal a pop-up drew, as one line: the registry's sentence and its code.
+ *
+ * The console renders a refusal as the registry's own words plus the code an
+ * operator will meet again in the log and in the CLI, so those are what the
+ * report carries — not a restatement this walk made up.
+ */
+function refusal(shown) {
+  const lines = shown
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const at = lines.indexOf("No ticket was raised.");
+  return at < 0 ? lines.join(" · ") : lines.slice(Math.max(0, at - 1), at + 2).join(" · ");
+}
+
+/**
+ * Ask again until the projection has folded the write, or give up saying so.
+ *
+ * A write is not visible until the record's own projection has caught up, so a
+ * screen judged on its first answer would be judged on a fact that had not
+ * arrived yet. This is the only place in the walk that waits, and it waits by
+ * asking rather than by sleeping.
+ */
+async function folded(journey, locator, again) {
+  const deadline = Date.now() + FOLD_CAP_MS;
+  let reads = 1;
+  while ((await locator.count()) === 0) {
+    if (Date.now() >= deadline) {
+      return null;
+    }
+    await again();
+    await settle(journey.page, journey.watched);
+    reads += 1;
+  }
+  return reads;
 }
 
 async function report(results, journey) {
   const techText = journey.screens.filter((screen) => screen.techText.length > 0);
-  const failed = results.filter((one) => one.status === "FAIL" || one.status === "UNREACHED");
+  // A step nobody reached because an open ruling stopped the one before it is
+  // not a defect in this console, so it does not enter the failure count. It is
+  // still reported as unreached, because the journey did not finish either.
+  const failed = results.filter(
+    (one) =>
+      one.status === "FAIL" || (one.status === "UNREACHED" && one.because !== "BLOCKED-BY-RULING")
+  );
   const blocked = results.filter((one) => one.status === "BLOCKED-BY-RULING");
   const written = {
     target: TARGET,

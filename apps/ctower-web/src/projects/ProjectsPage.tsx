@@ -74,6 +74,7 @@ export function ProjectsPage({
     return (
       <ProjectHome
         project={open}
+        document={result.bundle}
         onBack={(): void => {
           onGo("projects");
         }}
@@ -81,12 +82,6 @@ export function ProjectsPage({
         // Opening one from here travels there rather than growing a second one.
         onOpenTicket={(ticket): void => {
           onGo("tickets", { ticket });
-        }}
-        onRaiseTicket={(): void => {
-          onGo("tickets", { raise: "1" });
-        }}
-        onBoard={(): void => {
-          onGo("board");
         }}
       />
     );

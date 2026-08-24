@@ -40,7 +40,7 @@ export function AuditFeed({
   readonly projectKey: string;
   readonly ticketId: string;
 }): ReactElement {
-  const feed = useAudit(projectKey, ticketId);
+  const feed = useAudit(projectKey, ticketId, 0);
   const rows = feed.events.map(rowOf);
 
   if (rows.length === 0) {

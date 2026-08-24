@@ -321,15 +321,7 @@ function Here({
     case "crews":
       return <Cockpit document={seed.result.bundle} />;
     case "tickets":
-      return (
-        <TicketsPage
-          key={project}
-          document={seed.result.bundle}
-          onGoBoard={(): void => {
-            onGo("board");
-          }}
-        />
-      );
+      return <TicketsPage key={project} document={seed.result.bundle} />;
     case "board":
       return <BoardPage key={project} projectKey={project} onGoProjects={onGo} />;
     case "workflows":
