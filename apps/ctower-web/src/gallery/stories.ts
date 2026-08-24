@@ -1,3 +1,9 @@
+import type {
+  CompanyBundleDocument,
+  ComponentKind,
+  ComponentReference,
+  VersionedComponent,
+} from "@ctower/client";
 import type { Agent } from "../agents/AgentRow";
 
 /**
@@ -51,3 +57,105 @@ export const STAFF: readonly Agent[] = [
     status: null,
   },
 ];
+
+/**
+ * A company small enough to read whole, so the instructions surface can be
+ * looked at without a tower.
+ *
+ * It carries the one shape that surface is about: an agent profile that names a
+ * persona, a skill and a tool, plus the capability the skill pins. Every
+ * component is a real `VersionedComponent` and every payload satisfies its
+ * authored schema, because a fixture that would be refused by the registry
+ * proves nothing about a screen that authors against it.
+ */
+function componentOf(
+  kind: ComponentKind,
+  key: string,
+  requires: readonly ComponentReference[] = []
+): VersionedComponent {
+  return {
+    compatibility: { ctower: ">=0.1", requires },
+    content_digest: `sha256:${key.padEnd(24, "0")}`,
+    key,
+    kind,
+    lifecycle: "published",
+    payload_ref: `object:sha256:${key}`,
+    provenance: [{ digest: `sha256:${key}`, kind: "authored", source: "gallery/stories" }],
+    revision: 3,
+    schema: "ctower.versioned-component/v1",
+    schema_ref: `ctower.${kind}/v1`,
+    scope: { project: null, tenant: "acme" },
+  };
+}
+
+const CAPABILITY = componentOf("capability", "acme.read-tickets");
+
+const CAPABILITY_REF: ComponentReference = {
+  content_digest: CAPABILITY.content_digest,
+  key: CAPABILITY.key,
+  kind: CAPABILITY.kind,
+  revision: CAPABILITY.revision,
+};
+
+export const COMPANY: CompanyBundleDocument = {
+  assignments: [],
+  company: { display_name: "Acme", key: "acme" },
+  resources: [
+    {
+      component: CAPABILITY,
+      payload: {
+        schema: "ctower.capability/v1",
+        key: CAPABILITY.key,
+        display_name: "Read tickets",
+      },
+    },
+    {
+      component: componentOf("persona", "acme.ada"),
+      payload: {
+        schema: "ctower.persona/v1",
+        key: "acme.ada",
+        display_name: "Ada",
+        instructions_digest:
+          "sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0",
+      },
+    },
+    {
+      component: componentOf("skill", "acme.triage", [CAPABILITY_REF]),
+      payload: {
+        schema: "ctower.skill/v1",
+        key: "acme.triage",
+        display_name: "Triage the inbox",
+        instructions_digest:
+          "sha256:1f2e3d4c5b6a79808897a6b5c4d3e2f11f2e3d4c5b6a79808897a6b5c4d3e2f1",
+        capability_refs: [`${CAPABILITY.key}@${String(CAPABILITY.revision)}`],
+      },
+    },
+    {
+      component: componentOf("tool", "acme.board", [CAPABILITY_REF]),
+      payload: {
+        schema: "ctower.tool/v1",
+        key: "acme.board",
+        display_name: "The board",
+        capability: CAPABILITY.key,
+        authority: { grant: "none" },
+      },
+    },
+    {
+      component: componentOf("agent_profile", "acme.ada"),
+      payload: {
+        schema: "ctower.agent-profile/v1",
+        key: "acme.ada",
+        persona_ref: "acme.ada@3",
+        harness_ref: "acme.claude-code@3",
+        skill_refs: ["acme.triage@3"],
+        tool_refs: ["acme.board@3"],
+        execution: { loop_kind: "standard" },
+      },
+    },
+  ],
+  schema: "ctower.company-bundle/v1",
+  secret_binding_refs: [],
+};
+
+/** The agent profile the stories open. Machine text, and it never renders. */
+export const ADA = "acme.ada";
