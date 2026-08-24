@@ -47,8 +47,11 @@ pinned prompt digests, fixed DIRECTOR target, and next fires. Digest and sprint 
 Europe/Vilnius hours across DST. Corrected digests replace only the active trigger, so the command continues
 to list exactly five while prior revision/effect facts remain immutable. `beat-dispatch list` returns the immutable full-prompt
 effects. Both are online-only operator reads: they do not queue, mutate server custody, or accept caller
-schedule/prompt/target labels. Mission Control's sibling beat consumer performs ledger-deduplicated tmux
-delivery while a beat-specific lane-binding ceremony remains unapproved.
+schedule/prompt/target labels. `beat-dispatch retire <ctower.beat.*@revision> [--command-id <uuid>]` is the
+spool-protected operator/Commander mutation. It appends a retirement fact and removes the active trigger;
+unknown and foreign targets share `beat-routine-not-found`, while a new command for an already retired
+target returns `beat-routine-already-retired`. Mission Control's sibling beat consumer performs
+ledger-deduplicated tmux delivery while a beat-specific lane-binding ceremony remains unapproved.
 
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted
