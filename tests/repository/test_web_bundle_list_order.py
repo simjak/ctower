@@ -44,7 +44,14 @@ _WEB_SRC = _ROOT / "apps" / "ctower-web" / "src"
 # replaced the timeline history, so its entry moved with the surface.
 _INVENTORY: dict[str, tuple[str, ...]] = {
     "tickets/projects.ts": ("workProjectsIn",),
-    "board/lanes.ts": ("projectsOf",),
+    # T-024 (#…): the rail governs the project workspace, so the one place a
+    # project document is joined to the key that addresses it moved out of the
+    # board and into the shell. ``board/lanes.ts: projectsOf`` was inventoried
+    # here and is gone with the board's own project chooser; its entry moved
+    # with the surface rather than shrinking the denominator. The Projects
+    # screen's own reader over the same join is inventoried beside it.
+    "shell/ProjectSwitcher.tsx": ("projectChoices",),
+    "projects/read.ts": ("projectsIn",),
     "cockpit/roster.ts": ("rosterOf",),
     "workflows/compose.ts": ("projectKeys", "boundProjects"),
     "inbox/address.ts": ("routeTo", "seatsOffered"),

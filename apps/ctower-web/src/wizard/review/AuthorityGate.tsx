@@ -4,7 +4,6 @@ import { Card, CardBody, CardHeader, CardTitle, Mono } from "../../ui/primitives
 import { Checkbox } from "../../ui/form";
 import { Mark } from "../../ui/marks";
 import { cn } from "../../ui/cn";
-import { shortDigest } from "../bundle";
 import { movementOf } from "./actions";
 
 /**
@@ -42,14 +41,11 @@ export function AuthorityGate({
             : ` ${String(retiring)} ${retiring === 1 ? "component retires" : "components retire"} on apply.`}
         </p>
 
+        {/* Which edition of the company this command replaces. The plan and
+            bundle digests that pin it travel with the command and are checked
+            by the registry; they are machine text and do not render. */}
         <dl className="m-0 mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
-          <Term label="plan" value={shortDigest(plan.plan_digest)} title={plan.plan_digest} />
-          <Term
-            label="bundle"
-            value={shortDigest(plan.proposed_bundle_digest)}
-            title={plan.proposed_bundle_digest}
-          />
-          <Term label="expects version" value={String(plan.base_version)} />
+          <Term label="replaces version" value={String(plan.base_version)} />
         </dl>
 
         <label

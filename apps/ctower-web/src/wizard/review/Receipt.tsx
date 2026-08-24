@@ -133,13 +133,33 @@ function Written({ receipt }: { readonly receipt: CompanyBundleCommandResult }):
               it says so.
             </p>
           )}
-          <Line label="command" value={receipt.command_id} />
-          <Line
-            label="bundle"
-            value={shortDigest(receipt.bundle_digest)}
-            title={receipt.bundle_digest}
-          />
-          <Line label="plan" value={shortDigest(receipt.plan_digest)} title={receipt.plan_digest} />
+          <p className="m-0 text-sm text-fg">
+            {accepted
+              ? "This company's record now says what you reviewed."
+              : "The command is with ctower. Nothing has changed until it confirms."}
+          </p>
+          {/* The identifiers this command is correlated by. They are machine
+              text — a uuid and two digests — so they sit behind a disclosure
+              rather than on the screen, and an operator who needs to trace the
+              command in a log opens it deliberately. */}
+          <details className="mt-2">
+            <summary className="cursor-pointer list-none text-2xs text-muted hover:text-fg">
+              Record identifiers
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              <Line label="command" value={receipt.command_id} />
+              <Line
+                label="bundle"
+                value={shortDigest(receipt.bundle_digest)}
+                title={receipt.bundle_digest}
+              />
+              <Line
+                label="plan"
+                value={shortDigest(receipt.plan_digest)}
+                title={receipt.plan_digest}
+              />
+            </div>
+          </details>
         </CardBody>
       </Card>
     </>

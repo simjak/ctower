@@ -14,6 +14,8 @@ import { Standing } from "./Standing";
 import { TicketDetail } from "./TicketDetail";
 import { TicketTable } from "./TicketTable";
 import { workProjectsIn } from "./projects";
+import { ProjectHome } from "../projects/ProjectHome";
+import { projectsIn } from "../projects/read";
 
 /**
  * An empty board and an unknown project are the same answer.
@@ -37,8 +39,11 @@ const NO_CARDS =
  */
 export function TicketsPage({
   document,
+  onGoBoard,
 }: {
   readonly document: CompanyBundleDocument;
+  /** The board is a destination of its own; this screen points at it. */
+  readonly onGoBoard: () => void;
 }): ReactElement {
   const [place, go] = usePlace();
   const [reloadKey, setReloadKey] = useState(0);
@@ -91,6 +96,31 @@ export function TicketsPage({
           go({ project: place.project, ticket: null, raising: false });
         }}
         onMoved={reread}
+      />
+    );
+  }
+
+  // One tickets surface in the product. The rail's Tickets opens the project's
+  // own screen on its Tasks tab; the tab bar there is that screen's local
+  // navigation, not a second way to reach this read. A key the company records
+  // no project document for cannot open that screen — it has no name, no prefix
+  // and no repository — so it keeps the plain list, which is also the only place
+  // that can tell an empty project from a project nothing here records.
+  const project = projectsIn(document).find((held) => held.key === place.project);
+  if (project !== undefined) {
+    return (
+      <ProjectHome
+        project={project}
+        onBack={(): void => {
+          go({ project: null, ticket: null, raising: false });
+        }}
+        onOpenTicket={(ticket): void => {
+          go({ project: place.project, ticket, raising: false });
+        }}
+        onRaiseTicket={(): void => {
+          go({ ...place, raising: true });
+        }}
+        onBoard={onGoBoard}
       />
     );
   }

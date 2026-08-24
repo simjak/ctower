@@ -4,6 +4,11 @@ Approved by the operator 2026-08-21 via /design-consultation (rendered preview, 
 themes). This file is law for every visual decision in ctower-web. Deviations need the
 operator's explicit approval.
 
+**Precedence.** A later operator directive outranks this file. When the two conflict, the
+directive wins and this file is amended in the same PR that builds it — an unamended
+DESIGN.md is a stale law, not a veto. Everything the directive does not speak to still
+holds: the grid, the palette, the marks, the copy budget.
+
 ## Product Context
 - **What this is:** the operator console for ctower — the control plane commanding AI
   crews across the company's repositories.
@@ -13,9 +18,25 @@ operator's explicit approval.
   is wired to truth. Nothing decorates, nothing pretends.
 
 ## Architecture of the surface (binds IA, not just pixels)
-- **One app, one shell.** Permanent left sidebar with exactly five groups:
-  LIVE (Lanes, Inbox) · WORK (Tickets, Board, Workflows, Requests) · TEAM (Crews, Company) ·
-  RUNTIME (Harnesses, Projects) · SYSTEM (Admin).
+- **One app, one shell.** Permanent 200px left sidebar holding **two workspaces**, each a
+  list of named sections. The split is what a destination is *about*:
+  - **COMPANY** — true of the tenant however many projects it runs:
+    Company · Projects · Crews · Inbox · Harnesses · Admin.
+  - **PROJECT** — only ever about one project, and the **ProjectSwitcher dropdown at the
+    head of the section says which**: Tickets · Board · Workflows · Requests · Lanes.
+  A workspace holds *sections*, not a flat list — a section may name entity instances
+  (an agent list) as its rows. A project is a **scope**: choosing one re-points every
+  destination below it. An entity that is a **destination** is a rail row that navigates.
+  Both idioms are deliberate; neither is a draft of the other.
+- **The address carries both.** `?at=board&project=…` is where the operator is, so a
+  project screen is a link and the project survives being sent to someone else. A
+  company-workspace screen carries no project, because none would be true of it.
+- **One surface per read.** The rail's `Tickets` opens the project's own screen on its
+  Tasks tab. A tab bar inside a screen is that screen's local navigation, never a second
+  navigation system beside the rail.
+- **Projects are not runtime and not a harness.** They live in the company workspace,
+  listed as cards with a `New project` pop-up. The harness screen is the runtime the staff
+  run on and holds no project.
 - **First run** (no company): every destination locked; a **full-screen guided wizard**
   runs — five steps, **one question per screen**, thin progress bars, big type, an obvious
   Next. The order follows the runtime, not the org chart: **1 Name your organization → 2
@@ -61,6 +82,23 @@ They change in both places or neither, by an authored decision — never a UI re
 A state without a recorded fact draws NO mark (unknown is first-class; never borrow a
 neighbor's mark).
 
+## No technical text (operator, 2026-08-24 — binding on every screen)
+Nothing machine-owned renders. No component keys, no `@revision` tags, no digests, no
+schema names, no wire enums, no uuids, no `repository:` references, no file paths. A value
+the record needs but the operator did not type is **derived** (a key and a ticket prefix
+come from the name) or **hidden behind an explicit developer affordance** (a receipt's
+identifiers sit in a closed disclosure). What renders is the name a person gave the thing;
+a thing the record does not name renders as what kind of thing it is.
+
+This does not delete the operator's own inputs. A repository he typed renders as a link he
+can follow (`github/acme/widgets`), never as the reference behind it; a folder he chose
+renders by name. The ban is on machine syntax, not on his data.
+
+An affordance the record cannot honour yet is drawn **inert** — dimmed, dashed, not a
+control, with its reason on hover and on focus — the same law unbuilt destinations follow
+in the rail. It is never an input: a box that takes an answer and drops it is worse than
+an absence.
+
 ## Copy budget (D9 — the aesthetic in words)
 Chips ≤ 2 words. Field hints ≤ 1 line. Empty state = 1 sentence + 1 action. Errors =
 what happened + the one next action. Rationale NEVER renders — it lives in docs or
@@ -102,3 +140,10 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-22 | `Select` enters the component vocabulary | Every set this console offers is closed by the authored contract, so the control that offers one is the native control that already has a keyboard and a screen reader |
 | 2026-08-22 | WORK gains **Tickets** beside Board and Requests — awaiting the operator's ratification | His own ticket mockup (`mockups/ctower-ui/shot-ticket-*.png`) puts Tickets in WORK. A board and a list of tickets are two ways of reading the same record, and only one of them carries a ticket's own page |
 | 2026-08-22 | Where the operator is lives in the address (`?at=…&project=…&ticket=…`) | A screen has to be a link: a reload comes back to it, Back means back, and a screenshot is reproducible from its URL |
+| 2026-08-24 | **Superseded:** the five groups become two workspaces, COMPANY and PROJECT, the switcher governing the second | Operator directive (T-024): "namespace the pages by projects, basically company workspace and inside project workspace", pointing at the reference console's ORGANIZATION/PROJECT split |
+| 2026-08-24 | Projects leave RUNTIME for the company workspace, as cards | Operator: "projects are not runtime… projects are not harness". A project is a thing the company has, not machinery its work runs on |
+| 2026-08-24 | A project is made in a pop-up over the card list, document-style, with key and ticket prefix derived from the name | Operator's Paperclip New-project reference, verbatim "make the same". A key is machine text; asking for one is asking a question with no right answer |
+| 2026-08-24 | Schema errors surface inline on the field, and Review is unreachable while any remain | Operator: "this must be on the fly error not next page". The browser validates against the authored contract it imports, so the dead page is only ever a server refusal |
+| 2026-08-24 | A project has its own screen: Tasks · Overview · Configuration · Budget | Operator's three Paperclip project-home screenshots. Tasks is the project's tickets read, so the rail's Tickets opens it rather than growing a second list |
+| 2026-08-24 | No technical text on any rendered surface | Operator: "do not leave any technical text on UI". A console whose every screen is real has nothing to gain from showing the record's own spelling of a thing |
+| 2026-08-24 | A later operator directive outranks this file, and amends it in the same PR | Director ruling on this ticket. The design system is law until he says otherwise; a stale file is not a veto |

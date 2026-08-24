@@ -15,10 +15,12 @@ export interface EntityFact {
   readonly name: string;
   /** The authored key that pins it. */
   readonly key: string;
-  /** One line of supporting fact: a repository, a harness, a persona. */
+  /**
+   * One line of supporting fact, as a person reads it: a repository, the
+   * harness an agent runs on. Never a reference — a row says what a thing is,
+   * and the key that pins it is what the record is keyed by.
+   */
   readonly detail: string | null;
-  /** The full value behind `detail`, for the hover. */
-  readonly detailTitle: string | null;
   /** The seats or projects this component is bound to. */
   readonly subjects: readonly string[];
 }
@@ -33,7 +35,6 @@ export function projectFacts(document: CompanyBundleDocument): readonly EntityFa
         name: text(resource, "display_name") ?? resource.component.key,
         key: resource.component.key,
         detail: repository === null ? null : readableRepository(repository),
-        detailTitle: repository,
         subjects: subjectsOf(document.assignments, resource),
       };
     });
@@ -42,10 +43,13 @@ export function projectFacts(document: CompanyBundleDocument): readonly EntityFa
 /**
  * An agent is an authored profile plus the persona it speaks as. The persona's
  * display name is the name a person recognises, so it is resolved through the
- * profile's own `persona_ref` rather than guessed from the profile key.
+ * profile's own `persona_ref` rather than guessed from the profile key — and
+ * the harness it runs on is resolved the same way, through `harness_ref`. Both
+ * references are machine text; what the row says is what each one is called.
  */
 export function agentFacts(document: CompanyBundleDocument): readonly EntityFact[] {
-  const personas = personaNames(document);
+  const personas = namesOf(document, "persona");
+  const harnesses = namesOf(document, "harness");
   return document.resources
     .filter((resource) => resource.component.kind === "agent_profile")
     .map((resource) => {
@@ -53,10 +57,9 @@ export function agentFacts(document: CompanyBundleDocument): readonly EntityFact
       const harness = text(resource, "harness_ref");
       return {
         id: componentId(resource.component),
-        name: (persona === null ? null : (personas.get(persona) ?? null)) ?? resource.component.key,
+        name: (persona === null ? null : (personas.get(persona) ?? null)) ?? "Unnamed",
         key: resource.component.key,
-        detail: harness,
-        detailTitle: harness,
+        detail: harness === null ? null : (harnesses.get(harness) ?? null),
         subjects: subjectsOf(document.assignments, resource),
       };
     });
@@ -79,10 +82,11 @@ export function componentCounts(
     .sort((left, right) => right.count - left.count || left.kind.localeCompare(right.kind));
 }
 
-function personaNames(document: CompanyBundleDocument): ReadonlyMap<string, string> {
+/** What one kind of component is called, under the reference a payload pins it by. */
+function namesOf(document: CompanyBundleDocument, kind: string): ReadonlyMap<string, string> {
   const names = new Map<string, string>();
   for (const resource of document.resources) {
-    if (resource.component.kind !== "persona") {
+    if (resource.component.kind !== kind) {
       continue;
     }
     const name = text(resource, "display_name");
