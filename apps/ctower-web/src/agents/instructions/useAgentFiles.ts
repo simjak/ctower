@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  CompanyBundleCommandResult,
-  CompanyBundleDocument,
-  CompanyBundleResource,
-} from "@ctower/client";
+import type { CompanyBundleCommandResult, CompanyBundleDocument } from "@ctower/client";
 import { ASKING } from "../../api/client";
 import type { Answer } from "../../api/client";
 import { standingOf } from "../../wizard/standing";
@@ -38,7 +34,6 @@ import { idOf, resourceById } from "./read";
 export type Mode = "editing" | "review";
 
 export interface AgentFiles {
-  readonly files: readonly CompanyBundleResource[];
   readonly openId: string | null;
   readonly open: (id: string) => void;
   readonly draft: FileDraft | null;
@@ -59,11 +54,7 @@ export interface AgentFiles {
   readonly retry: (() => void) | null;
 }
 
-export function useAgentFiles(
-  document: CompanyBundleDocument,
-  files: readonly CompanyBundleResource[],
-  onApplied: () => void
-): AgentFiles {
+export function useAgentFiles(document: CompanyBundleDocument, onApplied: () => void): AgentFiles {
   const [draft, setDraftState] = useState<FileDraft | null>(null);
   const [mode, setMode] = useState<Mode>("editing");
   const [review, setReview] = useState<Answer<Standing>>(ASKING);
@@ -142,7 +133,6 @@ export function useAgentFiles(
   }, [supersede, clear]);
 
   return {
-    files,
     openId: draft === null ? null : idOf(draft.base.component),
     open,
     draft,
