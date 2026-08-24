@@ -92,7 +92,8 @@ a thing the record does not name renders as what kind of thing it is.
 
 This does not delete the operator's own inputs. A repository he typed renders as a link he
 can follow (`github/acme/widgets`), never as the reference behind it; a folder he chose
-renders by name. The ban is on machine syntax, not on his data.
+renders by name. The ban is on machine syntax, not on his data. Product names a person says
+out loud — "Claude Code", a model's name — are words, not wire, and stay.
 
 An affordance the record cannot honour yet is drawn **inert** — dimmed, dashed, not a
 control, with its reason on hover and on focus — the same law unbuilt destinations follow
@@ -123,12 +124,8 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 - Loading/error/empty states are honest and compact; no invented data, ever.
 - The screenshot gate: no screen reaches the operator until its own render passes
   side-by-side against this system.
-- **No wire vocabulary renders** (operator, 2026-08-24). A rendered surface carries ZERO
-  technical text: no component keys, no `@revision` suffixes, no digests, no schema names,
-  no uuids, no `repository:` refs, no file paths. Whatever the record needs is DERIVED from
-  what the operator chose or typed. Where a machine value genuinely has to be reachable it
-  sits behind an explicit developer affordance, never in the default render. Product names
-  a person says out loud — "Claude Code", a model's name — are words, not wire, and stay.
+- **No wire vocabulary renders** — its own section above, because it governs every screen
+  rather than one interaction.
 
 ## Decisions Log
 | Date | Decision | Rationale |
