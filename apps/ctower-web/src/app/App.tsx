@@ -11,7 +11,7 @@ import { InboxPage } from "../inbox/InboxPage";
 import { ProjectsPage } from "../projects/ProjectsPage";
 import { RequestsPage } from "../requests/RequestsPage";
 import { Shell } from "../shell/Shell";
-import { destinationFromSearch } from "../shell/destinations";
+import { addressFor, destinationFromSearch, projectFromSearch } from "../shell/destinations";
 import type { DestinationKey } from "../shell/destinations";
 import type { Org } from "../shell/OrgSwitcher";
 import { ProjectSwitcher, projectChoices, useCurrentProject } from "../shell/ProjectSwitcher";
@@ -62,27 +62,73 @@ export function App(): ReactElement {
   );
   const projects = projectsOf(seed);
   const { current, choose } = useCurrentProject(projects);
+  // Whether the operator is making a project. The pop-up is a moment, not a
+  // place, so it lives here rather than in the address: the rail's own "New
+  // project…" opens it on the Projects screen, and nothing else can.
+  const [creating, setCreating] = useState(false);
+  // Which project the Projects screen has open, if it has one. Entering a card
+  // is a place — `?at=projects&project=…` reopens that project's own screen —
+  // so it is the address that says so, and the rail's own Projects always
+  // means the whole list.
+  const [opened, setOpened] = useState<string | null>(() => openedIn(window.location.search));
+  const project = current?.key ?? null;
 
   const created = useCallback((): void => {
     setReloadKey((count) => count + 1);
   }, []);
 
-  const go = useCallback((key: DestinationKey): void => {
-    window.history.pushState(null, "", `?at=${key}`);
-    setHere(key);
-  }, []);
+  const go = useCallback(
+    (key: DestinationKey, place: Readonly<Record<string, string>> = {}): void => {
+      window.history.pushState(null, "", addressFor(key, project, place));
+      setHere(key);
+      setOpened(null);
+    },
+    [project]
+  );
+
+  // Entering a project scopes every project screen to it, which is what
+  // entering it is for.
+  const enterProject = useCallback(
+    (key: string): void => {
+      choose(key);
+      setOpened(key);
+      window.history.pushState(null, "", `?at=projects&project=${encodeURIComponent(key)}`);
+    },
+    [choose]
+  );
+
+  // Switching the project moves the whole project workspace at once, and it
+  // moves the address with it, so the screen someone is sent is the screen they
+  // open. It is a step in history rather than a replacement: Back goes back to
+  // the project the operator was on.
+  const chooseProject = useCallback(
+    (key: string): void => {
+      choose(key);
+      window.history.pushState(null, "", addressFor(here, key));
+    },
+    [choose, here]
+  );
 
   // Back and Forward move the shell, not just the page inside it, so the
-  // address and what is drawn cannot disagree about where the operator is.
+  // address and what is drawn cannot disagree about where the operator is. The
+  // project moves with it: it is half of where the operator is, and a Back that
+  // restored the destination while leaving the rail on another project would
+  // draw a screen the address does not describe.
   useEffect((): (() => void) => {
     const walked = (): void => {
-      setHere(destinationFromSearch(window.location.search) ?? "company");
+      const search = window.location.search;
+      setHere(destinationFromSearch(search) ?? "company");
+      setOpened(openedIn(search));
+      const asked = projectFromSearch(search);
+      if (asked !== null) {
+        choose(asked);
+      }
     };
     window.addEventListener("popstate", walked);
     return (): void => {
       window.removeEventListener("popstate", walked);
     };
-  }, []);
+  }, [choose]);
 
   // A restarted server mints a new token, so the one this tab holds stops
   // working mid-session. The chokepoint drops it and says so; the gate comes
@@ -134,13 +180,13 @@ export function App(): ReactElement {
           <ProjectSwitcher
             projects={projects}
             current={current}
-            onChoose={choose}
-            // A project is made on the harness screen, and that screen opens on
-            // its Projects tab. One place authors a project, and this is the
-            // way to it rather than a second form in the rail. It travels the
-            // way the rail does, so the address says where the operator went.
+            onChoose={chooseProject}
+            // One place makes a project: the Projects screen, in a pop-up over
+            // its list. This is the way to it rather than a second form in the
+            // rail, and it travels the way the rail does.
             onAdd={(): void => {
-              go("harnesses");
+              go("projects");
+              setCreating(true);
             }}
           />
         }
@@ -162,7 +208,11 @@ export function App(): ReactElement {
           <Here
             here={here}
             seed={seed.value}
-            project={current?.key ?? null}
+            project={project}
+            opened={opened}
+            creating={creating}
+            onCreating={setCreating}
+            onEnter={enterProject}
             onApplied={created}
             onGo={go}
           />
@@ -187,42 +237,69 @@ export function App(): ReactElement {
  * unbuilt key never actually arrives here; naming one costs a line and keeps
  * the guarantee that this file has to say which screen a destination is before
  * the rail can call it built.
+ *
+ * A project workspace screen carries the project as its React key. Each one
+ * opens on the project the address names and then keeps its own place inside
+ * it — which ticket is open, which priority is filtered — and that place means
+ * nothing under a different project. Re-keying retires the old screen instead
+ * of handing a second project a first project's state.
  */
 function Here({
   here,
   seed,
   project,
+  opened,
+  creating,
+  onCreating,
+  onEnter,
   onApplied,
   onGo,
 }: {
   readonly here: DestinationKey;
   readonly seed: Extract<Seed, { readonly kind: "exported" }>;
-  /** The project key the rail's switcher is pointed at, when this company has one. */
+  /** The project the rail's switcher is pointed at, when this company has one. */
   readonly project: string | null;
+  /** The project the Projects screen has open, when it has one. */
+  readonly opened: string | null;
+  /** Whether the Projects screen is showing the pop-up that makes one. */
+  readonly creating: boolean;
+  readonly onCreating: (creating: boolean) => void;
+  readonly onEnter: (key: string) => void;
   readonly onApplied: () => void;
-  /** Projects sends the operator to the one place a project is authored. */
-  readonly onGo: (key: DestinationKey) => void;
+  /** Where a screen sends the operator when the thing it needs is elsewhere. */
+  readonly onGo: (key: DestinationKey, place?: Readonly<Record<string, string>>) => void;
 }): ReactElement {
   switch (here) {
     case "requests":
-      return <RequestsPage />;
+      return <RequestsPage key={project} />;
     case "inbox":
       return <InboxPage />;
     case "crews":
       return <Cockpit document={seed.result.bundle} />;
     case "tickets":
-      return <TicketsPage document={seed.result.bundle} />;
+      return (
+        <TicketsPage
+          key={project}
+          document={seed.result.bundle}
+          onGoBoard={(): void => {
+            onGo("board");
+          }}
+        />
+      );
     case "board":
-      return <BoardPage company={seed.result.bundle} />;
+      return <BoardPage key={project} projectKey={project} onGoProjects={onGo} />;
     case "workflows":
-      return <WorkflowsPage seed={seed.result} onApplied={onApplied} />;
+      return <WorkflowsPage key={project} seed={seed.result} onApplied={onApplied} />;
     case "projects":
       return (
         <ProjectsPage
           result={seed.result}
-          onGoCompany={(): void => {
-            onGo("company");
-          }}
+          opened={opened}
+          creating={creating}
+          onCreating={onCreating}
+          onEnter={onEnter}
+          onApplied={onApplied}
+          onGo={onGo}
         />
       );
     case "admin":
@@ -230,7 +307,7 @@ function Here({
     case "company":
       return <CompanyPage seed={seed} onApplied={onApplied} />;
     case "harnesses":
-      return <HarnessPage recorded={seed.result.bundle} project={project} onApplied={onApplied} />;
+      return <HarnessPage recorded={seed.result.bundle} onApplied={onApplied} />;
     case "lanes":
       return <p className="m-0 py-6 text-sm text-muted">Not built yet.</p>;
   }
@@ -250,6 +327,15 @@ function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
   }
   const company = seed.value.result.bundle.company;
   return { name: company.display_name, key: company.key };
+}
+
+/**
+ * The project the Projects screen has open, read out of the address. Only that
+ * screen carries one: everywhere else `project` is which project the workspace
+ * is about, not which project's own screen is being looked at.
+ */
+function openedIn(search: string): string | null {
+  return destinationFromSearch(search) === "projects" ? projectFromSearch(search) : null;
 }
 
 /** The projects that company records, once the read has produced them. */

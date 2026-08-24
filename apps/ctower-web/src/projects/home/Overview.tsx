@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
-import type { BoardView, CompanyBundleResource } from "@ctower/client";
-import type { Answer } from "../api/client";
-import { Mark } from "../ui/marks";
-import { Card, CardBody, CardHeader, CardTitle, Chip, Mono } from "../ui/primitives";
-import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
+import type { BoardView } from "@ctower/client";
+import type { Answer } from "../../api/client";
+import { Mark } from "../../ui/marks";
+import { Card, CardBody, CardHeader, CardTitle, Chip } from "../../ui/primitives";
+import { Asking, Malformed, Refused, Unreachable } from "../../wizard/states";
+import { useBoard } from "../../tickets/reads";
 import {
   healthWord,
   LANE_MARK,
@@ -12,44 +13,46 @@ import {
   laneCount,
   priorityCount,
   PRIORITIES,
-} from "./board";
-import { kindCounts } from "./read";
-import type { ProjectScope } from "./read";
+} from "../board";
+import { kindCounts } from "../read";
+import type { ProjectFacts } from "../read";
 
 /**
- * One project, in the two things this tower knows about it: what is scoped to
- * it, which the bundle already answered, and what is on its board, which is its
- * own read and its own outcome.
+ * One project, in the two things this tower knows about it: what the company
+ * records under it, which the bundle already answered, and what is on its
+ * board, which is its own read and its own outcome.
  *
  * The two sit side by side and neither speaks for the other. A board that
- * refused leaves the scope column standing.
+ * refused leaves the record's own column standing.
  */
-export function ScopeDetail({
-  scope,
-  board,
-}: {
-  readonly scope: ProjectScope;
-  readonly board: Answer<BoardView>;
-}): ReactElement {
+export function Overview({ project }: { readonly project: ProjectFacts }): ReactElement {
+  const board = useBoard(project.key, 0);
+
   return (
-    <div className="mt-4 grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Scoped to {scope.key}</CardTitle>
+          <CardTitle>What is in it</CardTitle>
           <span className="flex-1" />
-          <Chip>{scope.resources.length} components</Chip>
+          <Chip>
+            {project.scoped.length} {project.scoped.length === 1 ? "component" : "components"}
+          </Chip>
         </CardHeader>
         <CardBody className="space-y-3">
-          {kindCounts(scope.resources).map((counted) => (
-            <Kind
-              key={counted.kind}
-              label={counted.label}
-              count={counted.count}
-              resources={scope.resources.filter(
-                (resource) => resource.component.kind === counted.kind
-              )}
-            />
-          ))}
+          {project.scoped.length === 0 ? (
+            <p className="m-0 text-sm text-muted">
+              Nothing this company records belongs to this project yet.
+            </p>
+          ) : (
+            kindCounts(project.scoped).map((counted) => (
+              <Kind
+                key={counted.kind}
+                label={counted.label}
+                count={counted.count}
+                names={counted.names}
+              />
+            ))
+          )}
         </CardBody>
       </Card>
 
@@ -64,21 +67,26 @@ export function ScopeDetail({
           ) : null}
         </CardHeader>
         <CardBody>
-          <Board board={board} project={scope.key} />
+          <Board board={board} project={project.name} />
         </CardBody>
       </Card>
     </div>
   );
 }
 
+/**
+ * One kind of thing, how many of them, and what they are called. A component
+ * whose payload named nothing contributes to the count and to nothing else —
+ * its key is machine text and would say nothing to the person reading this.
+ */
 function Kind({
   label,
   count,
-  resources,
+  names,
 }: {
   readonly label: string;
   readonly count: number;
-  readonly resources: readonly CompanyBundleResource[];
+  readonly names: readonly string[];
 }): ReactElement {
   return (
     <div>
@@ -87,27 +95,11 @@ function Kind({
         <span className="flex-1" />
         <span className="text-muted">{count}</span>
       </div>
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-        {resources.map((resource) => (
-          <Mono key={`${resource.component.key}@${String(resource.component.revision)}`}>
-            {pinned(resource)}
-          </Mono>
-        ))}
-      </div>
+      {names.length === 0 ? null : (
+        <p className="mt-1.5 mb-0 text-xs text-muted">{names.join(" · ")}</p>
+      )}
     </div>
   );
-}
-
-/**
- * A component's key at the revision that is active, and its lifecycle when that
- * is anything other than published — a deprecated document still scoped to a
- * project is exactly the fact a person opened this panel to find.
- */
-function pinned(resource: CompanyBundleResource): string {
-  const at = `${resource.component.key}@${String(resource.component.revision)}`;
-  return resource.component.lifecycle === "published"
-    ? at
-    : `${at} · ${resource.component.lifecycle}`;
 }
 
 function Board({
@@ -153,14 +145,6 @@ function Counted({ view }: { readonly view: BoardView }): ReactElement {
             {priority} {priorityCount(view, priority)}
           </Chip>
         ))}
-        <span className="flex-1" />
-        <span className="text-2xs text-muted">read at</span>
-        <Mono
-          className="text-muted"
-          title={`projection ${String(view.projection_watermark)} · source ${String(view.source_watermark)}`}
-        >
-          {view.projection_watermark} / {view.source_watermark}
-        </Mono>
       </div>
     </>
   );

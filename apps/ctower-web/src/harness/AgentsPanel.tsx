@@ -7,8 +7,8 @@ import { Button, Card, CardBody, CardHeader, CardTitle, Input, Mono } from "../u
 import { Field } from "../ui/form";
 import { EntityRow } from "../wizard/compose/EntityRow";
 import { agentFacts } from "../wizard/read";
+import type { Authoring } from "../wizard/ceremony";
 import { AUTHORED_HERE, choicesOf, Picker } from "./HarnessPage";
-import type { Authoring } from "./HarnessPage";
 
 /**
  * Agents: the ones this company has, and one more.
@@ -27,8 +27,7 @@ export function AgentsPanel({ authoring }: { readonly authoring: Authoring }): R
     harness: harnesses[0]?.value ?? "",
   }));
   const facts = agentFacts(authoring.recorded);
-  const ready =
-    draft.name.trim().length > 0 && draft.key.trim().length > 2 && draft.harness.length > 0;
+  const ready = keyFor(draft.name).length > 2 && draft.harness.length > 0;
 
   return (
     <div className="space-y-4">
@@ -54,28 +53,18 @@ export function AgentsPanel({ authoring }: { readonly authoring: Authoring }): R
           <CardTitle>Add an agent</CardTitle>
         </CardHeader>
         <CardBody className="space-y-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Name" hint="What this agent is called wherever it speaks.">
-              <Input
-                value={draft.name}
-                placeholder="Commander"
-                onChange={(event): void => {
-                  setDraft(named(draft, event.target.value));
-                }}
-              />
-            </Field>
-            <Field label="Key" hint="Lower-case letters, digits, dots and hyphens.">
-              <Input
-                className="font-mono"
-                value={draft.key}
-                placeholder="acme.commander"
-                spellCheck={false}
-                onChange={(event): void => {
-                  setDraft({ ...draft, key: event.target.value });
-                }}
-              />
-            </Field>
-          </div>
+          {/* The name, and nothing else about identity. The key the record
+              stores this agent under is derived from it: a key is machine text
+              and an operator has no way to prefer one. */}
+          <Field label="Name" hint="What this agent is called wherever it speaks.">
+            <Input
+              value={draft.name}
+              placeholder="Commander"
+              onChange={(event): void => {
+                setDraft({ ...draft, name: event.target.value });
+              }}
+            />
+          </Field>
 
           <Picker
             label="Harness"
@@ -109,18 +98,13 @@ export function AgentsPanel({ authoring }: { readonly authoring: Authoring }): R
 
 interface Draft {
   readonly name: string;
-  readonly key: string;
-  /** `key@revision` of the harness this agent is created on. */
+  /** The reference of the harness this agent is created on. It does not render. */
   readonly harness: string;
 }
 
-const BLANK: Draft = { name: "", key: "", harness: "" };
+const BLANK: Draft = { name: "", harness: "" };
 
-/** The key follows the name until the operator types their own. */
-function named(draft: Draft, name: string): Draft {
-  return { ...draft, name, key: draft.key === keyFor(draft.name) ? keyFor(name) : draft.key };
-}
-
+/** The key this agent is stored under, taken from its name. */
 function keyFor(name: string): string {
   return name
     .toLowerCase()
@@ -131,8 +115,8 @@ function keyFor(name: string): string {
 
 /** The recorded bundle with one authored agent in it, and nothing else moved. */
 function withAgent(authoring: Authoring, draft: Draft): CompanyBundleDocument {
-  const key = draft.key.trim();
   const name = draft.name.trim();
+  const key = keyFor(name);
   const persona = {
     schema: "ctower.persona/v1",
     key,

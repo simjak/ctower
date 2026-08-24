@@ -5,6 +5,7 @@
     "jsx": "react-jsx",
     "allowJs": false,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
