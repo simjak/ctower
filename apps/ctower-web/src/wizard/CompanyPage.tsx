@@ -18,10 +18,13 @@ import type { Seed } from "./useSeed";
 export function CompanyPage({
   seed,
   onApplied,
+  onCreateProject,
 }: {
   readonly seed: Seed;
   /** An accepted apply changed what is recorded; the page re-reads it. */
   readonly onApplied: () => void;
+  /** To the harness screen, where a project is authored. */
+  readonly onCreateProject: () => void;
 }): ReactElement {
   const company = useCompany(seed, onApplied);
   const digest = seed.kind === "exported" ? seed.result.bundle_digest : null;
@@ -54,7 +57,11 @@ export function CompanyPage({
         <StandingLine standing={company.standing} edits={company.edits} digest={digest} />
       </PageHead>
 
-      <DefinitionForm draft={company.draft} onDraft={company.setDraft} />
+      <DefinitionForm
+        draft={company.draft}
+        onDraft={company.setDraft}
+        onCreateProject={onCreateProject}
+      />
 
       {company.edits === 0 ? null : (
         <footer className="mt-6 flex items-center gap-2 border-t border-line pt-4">

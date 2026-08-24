@@ -1,5 +1,7 @@
 import type { CompanyBundleDocument, CompanyBundleResource } from "@ctower/client";
 import { componentId, subjectsOf } from "./bundle";
+import { repositoryOf } from "./repository";
+import type { Repository } from "./repository";
 
 /**
  * What a row on the form actually says.
@@ -13,12 +15,10 @@ export interface EntityFact {
   readonly id: string;
   /** The name a person gave this thing, when the payload carries one. */
   readonly name: string;
-  /** The authored key that pins it. */
+  /** The authored key that pins it. It addresses the row; it does not render. */
   readonly key: string;
-  /** One line of supporting fact: a repository, a harness, a persona. */
-  readonly detail: string | null;
-  /** The full value behind `detail`, for the hover. */
-  readonly detailTitle: string | null;
+  /** Where this project's code is, when the payload names a repository. */
+  readonly repository: Repository | null;
   /** The seats or projects this component is bound to. */
   readonly subjects: readonly string[];
 }
@@ -32,8 +32,7 @@ export function projectFacts(document: CompanyBundleDocument): readonly EntityFa
         id: componentId(resource.component),
         name: text(resource, "display_name") ?? resource.component.key,
         key: resource.component.key,
-        detail: repository === null ? null : readableRepository(repository),
-        detailTitle: repository,
+        repository: repository === null ? null : repositoryOf(repository),
         subjects: subjectsOf(document.assignments, resource),
       };
     });
@@ -50,13 +49,11 @@ export function agentFacts(document: CompanyBundleDocument): readonly EntityFact
     .filter((resource) => resource.component.kind === "agent_profile")
     .map((resource) => {
       const persona = text(resource, "persona_ref");
-      const harness = text(resource, "harness_ref");
       return {
         id: componentId(resource.component),
         name: (persona === null ? null : (personas.get(persona) ?? null)) ?? resource.component.key,
         key: resource.component.key,
-        detail: harness,
-        detailTitle: harness,
+        repository: null,
         subjects: subjectsOf(document.assignments, resource),
       };
     });

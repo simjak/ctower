@@ -200,7 +200,7 @@ function Here({
   /** The project key the rail's switcher is pointed at, when this company has one. */
   readonly project: string | null;
   readonly onApplied: () => void;
-  /** Projects sends the operator to the one place a project is authored. */
+  /** Projects and Company send the operator to the screens they point at. */
   readonly onGo: (key: DestinationKey) => void;
 }): ReactElement {
   switch (here) {
@@ -228,7 +228,17 @@ function Here({
     case "admin":
       return <AdminPage />;
     case "company":
-      return <CompanyPage seed={seed} onApplied={onApplied} />;
+      return (
+        <CompanyPage
+          seed={seed}
+          onApplied={onApplied}
+          // The rail's Add and the Projects card's Create go the same way,
+          // because there is one screen that authors a project and this is it.
+          onCreateProject={(): void => {
+            onGo("harnesses");
+          }}
+        />
+      );
     case "harnesses":
       return <HarnessPage recorded={seed.result.bundle} project={project} onApplied={onApplied} />;
     case "lanes":
