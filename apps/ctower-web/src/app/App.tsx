@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { AdminPage } from "../admin/AdminPage";
+import { AgentsPage } from "../agents/AgentsPage";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { BoardPage } from "../board/BoardPage";
@@ -71,6 +72,10 @@ export function App(): ReactElement {
   // so it is the address that says so, and the rail's own Projects always
   // means the whole list.
   const [opened, setOpened] = useState<string | null>(() => openedIn(window.location.search));
+  // Which agent the Agents screen has open, if it has one. Same rule as a
+  // project's own screen: opening one is a place, so the address says so and a
+  // reload comes back to it, while the rail's own Agents always means the list.
+  const [agent, setAgent] = useState<string | null>(() => agentIn(window.location.search));
   const project = current?.key ?? null;
 
   const created = useCallback((): void => {
@@ -82,12 +87,20 @@ export function App(): ReactElement {
       window.history.pushState(null, "", addressFor(key, project, place));
       setHere(key);
       setOpened(null);
+      setAgent(null);
     },
     [project]
   );
 
   // Entering a project scopes every project screen to it, which is what
   // entering it is for.
+  // Opening an agent scopes the Agents screen to it, which is what opening it
+  // is for.
+  const enterAgent = useCallback((key: string): void => {
+    setAgent(key);
+    window.history.pushState(null, "", `?at=agents&agent=${encodeURIComponent(key)}`);
+  }, []);
+
   const enterProject = useCallback(
     (key: string): void => {
       choose(key);
@@ -119,6 +132,7 @@ export function App(): ReactElement {
       const search = window.location.search;
       setHere(destinationFromSearch(search) ?? "company");
       setOpened(openedIn(search));
+      setAgent(agentIn(search));
       const asked = projectFromSearch(search);
       if (asked !== null) {
         choose(asked);
@@ -210,9 +224,11 @@ export function App(): ReactElement {
             seed={seed.value}
             project={project}
             opened={opened}
+            agent={agent}
             creating={creating}
             onCreating={setCreating}
             onEnter={enterProject}
+            onEnterAgent={enterAgent}
             onApplied={created}
             onGo={go}
           />
@@ -249,9 +265,11 @@ function Here({
   seed,
   project,
   opened,
+  agent,
   creating,
   onCreating,
   onEnter,
+  onEnterAgent,
   onApplied,
   onGo,
 }: {
@@ -261,10 +279,13 @@ function Here({
   readonly project: string | null;
   /** The project the Projects screen has open, when it has one. */
   readonly opened: string | null;
+  /** The agent the Agents screen has open, when it has one. */
+  readonly agent: string | null;
   /** Whether the Projects screen is showing the pop-up that makes one. */
   readonly creating: boolean;
   readonly onCreating: (creating: boolean) => void;
   readonly onEnter: (key: string) => void;
+  readonly onEnterAgent: (key: string) => void;
   readonly onApplied: () => void;
   /** Where a screen sends the operator when the thing it needs is elsewhere. */
   readonly onGo: (key: DestinationKey, place?: Readonly<Record<string, string>>) => void;
@@ -302,6 +323,20 @@ function Here({
           onGo={onGo}
         />
       );
+    case "agents":
+      return (
+        <AgentsPage
+          result={seed.result}
+          opened={agent}
+          creating={creating}
+          onCreating={onCreating}
+          onOpen={onEnterAgent}
+          onBack={(): void => {
+            onGo("agents");
+          }}
+          onApplied={onApplied}
+        />
+      );
     case "admin":
       return <AdminPage />;
     case "company":
@@ -336,6 +371,18 @@ function orgOf(seed: ReturnType<typeof seedForPreview>): Org | null {
  */
 function openedIn(search: string): string | null {
   return destinationFromSearch(search) === "projects" ? projectFromSearch(search) : null;
+}
+
+/**
+ * The agent the Agents screen has open, read out of the address. Only that
+ * screen carries one, and only when it is the screen being looked at.
+ */
+function agentIn(search: string): string | null {
+  if (destinationFromSearch(search) !== "agents") {
+    return null;
+  }
+  const asked = new URLSearchParams(search).get("agent");
+  return asked === null || asked === "" ? null : asked;
 }
 
 /** The projects that company records, once the read has produced them. */

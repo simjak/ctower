@@ -18,6 +18,7 @@ export type DestinationKey =
   | "company"
   | "projects"
   | "crews"
+  | "agents"
   | "harnesses"
   | "inbox"
   | "admin"
@@ -39,6 +40,7 @@ export const DESTINATIONS: readonly Destination[] = [
   { key: "company", label: "Company", workspace: "COMPANY", built: true },
   { key: "projects", label: "Projects", workspace: "COMPANY", built: true },
   { key: "crews", label: "Crews", workspace: "COMPANY", built: true },
+  { key: "agents", label: "Agents", workspace: "COMPANY", built: true },
   { key: "inbox", label: "Inbox", workspace: "COMPANY", built: true },
   { key: "harnesses", label: "Harnesses", workspace: "COMPANY", built: true },
   { key: "admin", label: "Admin", workspace: "COMPANY", built: true },
