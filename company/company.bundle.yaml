@@ -30,17 +30,17 @@ resources:
       key: ctower-control-plane
       scope: {tenant: ctower, project: ctower}
       revision: 1
-      content_digest: sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b
+      content_digest: sha256:34841e2b0566ef67dd3eb015012f4a64263271075bbec7e4b7a13846f6483481
       schema_ref: ctower.project/v1
       lifecycle: published
       compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
       provenance:
-        - {kind: authored, source: packs/components/projects/ctower-control-plane/v1.yaml, digest: sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b}
-      payload_ref: object:sha256:c087298da08ea3944ea9acc9449f6a4e07b92dd047b9bb1484933336ba5c2a2b
+        - {kind: authored, source: packs/components/projects/ctower-control-plane/v1.yaml, digest: sha256:34841e2b0566ef67dd3eb015012f4a64263271075bbec7e4b7a13846f6483481}
+      payload_ref: object:sha256:34841e2b0566ef67dd3eb015012f4a64263271075bbec7e4b7a13846f6483481
     payload:
       schema: ctower.project/v1
       key: ctower-control-plane
-      display_name: Ctower control plane
+      display_name: cTower
       prefix: CTW
       repository_ref: repository:github/simjak/ctower
       goal_refs: [company.trusted-delivery@1]
@@ -674,17 +674,17 @@ resources:
       key: manibo-delivery
       scope: {tenant: ctower, project: manibo}
       revision: 1
-      content_digest: sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef
+      content_digest: sha256:a5d36e16a0ee650bb80252fea72d44892bbf33ccd9d78c19a26fc4c13fd633c6
       schema_ref: ctower.project/v1
       lifecycle: published
       compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
       provenance:
-        - {kind: authored, source: packs/components/projects/manibo-delivery/v1.yaml, digest: sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef}
-      payload_ref: object:sha256:8706d9f6d43c60a2de2f671580165c15f027da8c74ad5bb87ef944fb3b69e9ef
+        - {kind: authored, source: packs/components/projects/manibo-delivery/v1.yaml, digest: sha256:a5d36e16a0ee650bb80252fea72d44892bbf33ccd9d78c19a26fc4c13fd633c6}
+      payload_ref: object:sha256:a5d36e16a0ee650bb80252fea72d44892bbf33ccd9d78c19a26fc4c13fd633c6
     payload:
       schema: ctower.project/v1
       key: manibo-delivery
-      display_name: Manibo delivery
+      display_name: Manibo
       prefix: MNB
       repository_ref: repository:gitlab/lastmachines/manibo/7653119987f124348de68b597ed4485029661ce1
       goal_refs: [company.trusted-delivery@1]
@@ -694,17 +694,17 @@ resources:
       key: cyklo-delivery
       scope: {tenant: ctower, project: cyklo}
       revision: 1
-      content_digest: sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1
+      content_digest: sha256:f5950a6dcc79ecaecb182cbd3254c0d30c7894a5bf259ffdd79c90955e8f3fa5
       schema_ref: ctower.project/v1
       lifecycle: published
       compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
       provenance:
-        - {kind: authored, source: packs/components/projects/cyklo-delivery/v1.yaml, digest: sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1}
-      payload_ref: object:sha256:bf5b3ded4c1a33bdb2ab1e6208b41442c437fc19f94e1104abf705b6be4259b1
+        - {kind: authored, source: packs/components/projects/cyklo-delivery/v1.yaml, digest: sha256:f5950a6dcc79ecaecb182cbd3254c0d30c7894a5bf259ffdd79c90955e8f3fa5}
+      payload_ref: object:sha256:f5950a6dcc79ecaecb182cbd3254c0d30c7894a5bf259ffdd79c90955e8f3fa5
     payload:
       schema: ctower.project/v1
       key: cyklo-delivery
-      display_name: BH.Loop delivery
+      display_name: Cyklo
       prefix: BHL
       repository_ref: repository:github/simjak/bh-loop/f0c5ed64eee237ff0d0eb4def801081397416857
       goal_refs: [company.trusted-delivery@1]
