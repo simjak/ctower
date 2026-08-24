@@ -119,7 +119,7 @@ function Planned({ proposal }: { readonly proposal: Proposal }): ReactElement {
           <Mono>{proposal.plan.base_version + 1}</Mono>
         </span>
       </div>
-      <PlanDiff plan={proposal.plan} />
+      <PlanDiff plan={proposal.plan} document={proposal.document} />
     </div>
   );
 }
