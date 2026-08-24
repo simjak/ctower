@@ -8,16 +8,21 @@ import { useCeremony } from "../wizard/ceremony";
 import { ReviewPanel } from "../wizard/review/ReviewPanel";
 import { AgentsPanel } from "./AgentsPanel";
 import { CrewPanel } from "./CrewPanel";
-import { FilesPanel } from "./FilesPanel";
 import { WorkspacesPanel } from "./WorkspacesPanel";
 
 /**
  * The harness screen: the runtime the staff run on.
  *
- * Agents, crews, and the files they carry — everything about *how* the work is
- * done, and nothing about *what* is being built. A project is not a harness, so
- * it is not here: it is a thing the company has, and the Projects screen in the
- * company workspace owns both listing one and making one.
+ * Agents, crews and the workspaces they run in — everything about *how* the
+ * work is done, and nothing about *what* is being built. A project is not a
+ * harness, so it is not here: it is a thing the company has, and the Projects
+ * screen in the company workspace owns both listing one and making one.
+ *
+ * What an agent is *told* is not here either, for the same reason and not for a
+ * new one. A persona, a skill and a tool belong to the agent that names them,
+ * not to the runtime it happens to run on, and the harness had no way to say
+ * which of them any one agent read — so the list has moved under the agent, to
+ * `agents/instructions`, and this screen does not keep a copy.
  *
  * Everything an operator declares here is one act at the record: the company
  * bundle is authored, checked, planned, and applied. There is no `createAgent`
@@ -65,7 +70,6 @@ export function HarnessPage({
       label: "Crew",
       element: <CrewPanel recorded={recorded} onRecorded={onApplied} />,
     },
-    { key: "files", label: "Agent files", element: <FilesPanel onApplied={onApplied} /> },
     { key: "workspaces", label: "Workspaces", element: <WorkspacesPanel /> },
     // One line per surface, and nothing else in this array.
   ];
@@ -87,7 +91,7 @@ export function HarnessPage({
  * this screen to say they are not built yet, so putting them in the sentence
  * that promises the work would be the pretending `DESIGN.md` forbids.
  */
-const PURPOSE = "Set up the runtime: the agents, crews and files this company runs work on.";
+const PURPOSE = "Set up the runtime: the agents and crews this company runs work on.";
 
 /**
  * What a component authored on this screen records about where it came from.
