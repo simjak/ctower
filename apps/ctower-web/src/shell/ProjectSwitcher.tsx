@@ -49,6 +49,10 @@ export function ProjectSwitcher({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
+          // The name of the project is what it shows; what the control *is* is
+          // only knowable from the section heading above it, which somebody
+          // reaching the button alone does not have.
+          aria-label={`Project: ${current === null ? "None yet" : current.name}`}
           className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-2.5 text-left hover:bg-raised"
         >
           <PrefixMark prefix={current?.prefix ?? null} />
