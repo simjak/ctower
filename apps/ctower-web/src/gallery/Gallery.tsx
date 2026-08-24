@@ -8,6 +8,7 @@ import { harnessChoices } from "../agents/harnesses";
 import type { HarnessFamily } from "../agents/harnesses";
 import { Card, PageHead } from "../ui/primitives";
 import { ThemeToggle } from "../app/ThemeToggle";
+import { CrewsBench } from "./t029/Bench";
 import { PAYROLL, STAFF } from "./stories";
 
 /**
@@ -18,8 +19,15 @@ import { PAYROLL, STAFF } from "./stories";
  * entry — and no read runs, so the bench answers to no tower and can be looked
  * at on any host. It exists so a component can be reviewed and screenshotted as
  * itself, in both themes, before any page decides where it goes.
+ *
+ * A feature under design gets its own bench behind `?bench=`, so a screenshot of
+ * one is reproducible from its address and reviewing a new screen does not mean
+ * scrolling past every component that came before it.
  */
 export function Gallery(): ReactElement {
+  if (new URLSearchParams(window.location.search).get("bench") === "t029") {
+    return <CrewsBench />;
+  }
   return (
     <main className="mx-auto max-w-[1000px] px-6 py-8">
       <PageHead title="Agent components" subtitle="Two components, on their own. Nothing is wired.">
