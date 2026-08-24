@@ -97,6 +97,15 @@ export function App(): ReactElement {
     [choose]
   );
 
+  // Making a project is one act with two ways in — the rail's own "New
+  // project…" and the Company page's Projects card — and both are this. A
+  // second handler is how two entry points to one act start disagreeing about
+  // where it happens.
+  const createProject = useCallback((): void => {
+    go("projects");
+    setCreating(true);
+  }, [go]);
+
   // Switching the project moves the whole project workspace at once, and it
   // moves the address with it, so the screen someone is sent is the screen they
   // open. It is a step in history rather than a replacement: Back goes back to
@@ -184,10 +193,7 @@ export function App(): ReactElement {
             // One place makes a project: the Projects screen, in a pop-up over
             // its list. This is the way to it rather than a second form in the
             // rail, and it travels the way the rail does.
-            onAdd={(): void => {
-              go("projects");
-              setCreating(true);
-            }}
+            onAdd={createProject}
           />
         }
         status={statusFor(seed.kind, previewing)}
@@ -212,6 +218,7 @@ export function App(): ReactElement {
             opened={opened}
             creating={creating}
             onCreating={setCreating}
+            onCreateProject={createProject}
             onEnter={enterProject}
             onApplied={created}
             onGo={go}
@@ -251,6 +258,7 @@ function Here({
   opened,
   creating,
   onCreating,
+  onCreateProject,
   onEnter,
   onApplied,
   onGo,
@@ -268,6 +276,8 @@ function Here({
   readonly onApplied: () => void;
   /** Where a screen sends the operator when the thing it needs is elsewhere. */
   readonly onGo: (key: DestinationKey, place?: Readonly<Record<string, string>>) => void;
+  /** The one act that makes a project, shared with the rail's own way to it. */
+  readonly onCreateProject: () => void;
 }): ReactElement {
   switch (here) {
     case "requests":
@@ -305,7 +315,7 @@ function Here({
     case "admin":
       return <AdminPage />;
     case "company":
-      return <CompanyPage seed={seed} onApplied={onApplied} />;
+      return <CompanyPage seed={seed} onApplied={onApplied} onCreateProject={onCreateProject} />;
     case "harnesses":
       return <HarnessPage recorded={seed.result.bundle} onApplied={onApplied} />;
     case "lanes":
