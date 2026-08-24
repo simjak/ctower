@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <!-- The same two families the app loads, so a component on the bench is
+         rendered in the type it will actually ship in. -->
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link
+      href="https://fonts.bunny.net/css?family=geist:400,500,600,700|jetbrains-mono:400,500,600"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>ctower — component bench</title>
+    <script>
+      // The app's own pre-paint theme script, so a dark screenshot is taken of
+      // the same first paint the operator gets.
+      try {
+        if (window.localStorage.getItem("ctower-theme") === "dark") {
+          document.documentElement.classList.add("theme-dark");
+        }
+      } catch {
+        /* a blocked storage partition must not break first paint */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/gallery/main.tsx"></script>
+  </body>
+</html>
