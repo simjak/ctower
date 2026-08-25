@@ -77,13 +77,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0063_routine_revision_activation.sql",
     "0064_console_output_reader_role.sql",
     "0065_console_view_grants.sql",
+    "0066_routine_retirement.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0065_console_view_grants.sql",
-    "schema_sha256": ("sha256:0ceed55272ecbb2f5a624a28e66816c50d1ff5a224025bc785468bb00a52b05a"),
+    "through": "0066_routine_retirement.sql",
+    "schema_sha256": ("sha256:86da22d7c57951f416cdc654f6cf3115d68496ee6511d6dcd381964b1ff9bbb3"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:546ac002f20bd7858804707aa943232826080d9b497b88fcf9c31d405d666edf"
+        "sum256:a536fd988402feeacc61e8d93e014fcd00164054605f1e5bafa4ed799aafcffb"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {
