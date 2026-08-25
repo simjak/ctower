@@ -113,6 +113,10 @@ def _config() -> DevelopmentConfig:
     return DevelopmentConfig.model_validate(_config_payload())
 
 
+def _loaded_revisions(_packs: Path, *, retired_routine_refs: tuple[str, ...]) -> tuple[object, ...]:
+    return ("raw", retired_routine_refs)
+
+
 def test_development_runtime_concerns_have_small_non_passthrough_interfaces() -> None:
     moved_names = {
         "DevelopmentFinalizerProgress",
@@ -422,14 +426,13 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
     monkeypatch.setattr(runtime_module, "_workflow_graph", lambda _packs: "workflow-graph")
     monkeypatch.setattr(runtime_module, "_policy_digests", lambda _packs: {"policy": "digest"})
     monkeypatch.setattr(runtime_module, "_synthetic_revision", lambda _items: "revision")
-    monkeypatch.setattr(runtime_module, "load_routine_revisions", lambda _packs: ("raw",))
+    monkeypatch.setattr(runtime_module, "load_routine_revisions", _loaded_revisions)
     for name in (
         "PostgresRecord",
         "PostgresProof",
         "PostgresWorkflowPolicyPins",
         "PostgresWork",
         "PostgresWorkflow",
-        "PostgresRuntime",
         "PostgresCatalog",
         "PostgresProjections",
         "PostgresAttention",
@@ -445,6 +448,8 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
             name,
             lambda *args, _name=name, **kwargs: (_name, args, kwargs),
         )
+    runtime_store = SimpleNamespace(fully_retired_routine_refs=lambda: ())
+    monkeypatch.setattr(runtime_module, "PostgresRuntime", lambda _dsn: runtime_store)
     monkeypatch.setattr(
         runtime_module,
         "create_app",
