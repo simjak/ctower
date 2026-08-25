@@ -383,7 +383,7 @@ def _install_runtime_boundaries(
     if dream_runtime is not None:
         install_dream_dispatch_routes(app, access, record, dream_runtime, recorder)
     if beat_runtime is not None:
-        install_beat_dispatch_routes(app, access, beat_runtime, recorder)
+        install_beat_dispatch_routes(app, access, record, beat_runtime, recorder)
     if console_runtime is not None:
         install_console_routes(app, access, console_runtime)
 
