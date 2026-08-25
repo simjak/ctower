@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import replace
 from datetime import UTC, datetime, time
 from pathlib import Path
@@ -18,6 +19,7 @@ from ctower_kernel.runtime import (
 )
 
 ROOT = Path(__file__).parents[3]
+_ACTIVE_PACK_COUNT_AFTER_ONE_RETIREMENT = 11
 
 
 def test_wall_clock_once_records_dst_gap_and_uses_earlier_repeated_offset() -> None:
@@ -155,6 +157,26 @@ def test_loaded_hour_specific_beats_preserve_vilnius_wall_clock_across_dst() -> 
         datetime(2026, 12, 11, 12, 23, tzinfo=UTC),
         datetime(2026, 12, 11, 18, 23, tzinfo=UTC),
     )
+
+
+def test_pack_loader_requires_active_packs_but_allows_a_retired_pack_to_be_absent(
+    tmp_path: Path,
+) -> None:
+    packs = tmp_path / "packs"
+    shutil.copytree(ROOT / "packs", packs)
+    missing = packs / "routines/ctower.beat.health/v1.yaml"
+    missing.unlink()
+
+    with pytest.raises(FileNotFoundError):
+        load_routine_revisions(packs)
+
+    loaded = load_routine_revisions(
+        packs,
+        retired_routine_refs=("ctower.beat.health@1",),
+    )
+
+    assert "ctower.beat.health@1" not in {revision.routine_ref for revision in loaded}
+    assert len(loaded) == _ACTIVE_PACK_COUNT_AFTER_ONE_RETIREMENT
 
 
 def test_minute_hour_set_rejects_invalid_or_missing_marks() -> None:
