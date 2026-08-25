@@ -18,6 +18,7 @@ class EventKind(StrEnum):
     WORKFLOW_CHANGED = "workflow.changed"
     WORK_CHANGED = "work.changed"
     ROUTINE_OCCURRENCE_RECORDED = "routine.occurrence_recorded"
+    ROUTINE_RETIRED = "routine.retired"
     DREAM_DISPATCH_CONSUMED = "runtime.dream_dispatch_consumed"
     DREAM_LANE_BOUND = "runtime.dream_lane_bound"
     POISON_DISPOSITION_RECORDED = "attention.poison_disposition_recorded"
