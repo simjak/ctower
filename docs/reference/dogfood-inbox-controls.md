@@ -79,7 +79,9 @@ is a different capability with no authored command behind it.
 
 ## How it is verified
 
-D42 as amended by D44 activates exactly one required suite for this boundary, `dogfood-inbox-controls`.
+D42 as amended by D44 and D57 activates exactly one required suite for this boundary,
+`dogfood-surface-e2e`. The rename preserves every Inbox-control assertion and adds the terminal reader's
+isolated running-surface drive; it does not activate product `browser-e2e`.
 
 Each control's transport is proved against the real module with the network boundary stubbed: retry,
 exhaustion, one reused `Idempotency-Key`, a transient status arriving as `text/plain` or with no body at
