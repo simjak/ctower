@@ -18,6 +18,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ctowerctl.spool import _keyring
+from ctowerctl.spool._chain import RecoverySnapshot
 from ctowerctl.spool._corruption import (
     CorruptDispositionError,
     dispose_corrupt,
@@ -138,12 +139,14 @@ class Spool:
         tree: SafeTree,
         path: Path,
         identity_binding: str | None = None,
+        recovery_snapshot: RecoverySnapshot | None = None,
     ) -> None:
         self._origin_digest = origin_digest
         self._config = config
         self._tree = tree
         self._path = path
         self._identity_binding = identity_binding
+        self._recovery_snapshot = recovery_snapshot
 
     @classmethod
     def for_origin(cls, origin: str, config: SpoolConfig | None = None) -> Spool:
@@ -175,6 +178,7 @@ class Spool:
             self._tree,
             self._path,
             binding,
+            self._recovery_snapshot,
         )
 
     def enqueue(self, command: SpoolCommand) -> SpoolEntry:
@@ -322,7 +326,7 @@ class Spool:
         """Replace a wholly old accepted chain with one authenticated anchor."""
 
         try:
-            with self._session() as session:
+            with self._session(automatic_compaction=False) as session:
                 return compact_accepted(
                     session,
                     now=datetime.now(UTC),
@@ -386,13 +390,46 @@ class Spool:
         return self._identity_binding
 
     @contextmanager
-    def _session(self) -> Iterator[Session]:
+    def _session(self, *, automatic_compaction: bool = True) -> Iterator[Session]:
         with self._tree.locked(self._config.lock_timeout_seconds) as store:
-            yield recover_session(
+            session = recover_session(
                 store,
                 self._origin_digest,
                 maximum_record_bytes=self._config.max_command_bytes,
+                snapshot=self._recovery_snapshot,
             )
+            try:
+                if automatic_compaction:
+                    compact_accepted(
+                        session,
+                        now=datetime.now(UTC),
+                        horizon=timedelta(days=self._config.accepted_horizon_days),
+                    )
+                yield session
+                session.checkpoint_recovery()
+            except BaseException:
+                self._recovery_snapshot = None
+                raise
+            else:
+                self._recovery_snapshot = RecoverySnapshot(
+                    session.metadata,
+                    session.head,
+                    session.keys,
+                    tuple(session.records),
+                    session.corrupt_records,
+                    tuple(
+                        sorted(
+                            (
+                                cast(RecoveredRecord, item).stored
+                                for item in (*session.records, *session.corrupt_records)
+                            ),
+                            key=lambda item: item.sequence,
+                        )
+                    ),
+                    session.recovery_cursor,
+                    session.maximum_record_bytes,
+                    session.torn_evidence,
+                )
 
 
 def _new_envelope(
@@ -428,14 +465,7 @@ def _semantic_digest(command: SpoolCommand) -> str:
 
 
 def _find_command_id(session: Session, command_id: UUID) -> RecoveredRecord | None:
-    return next(
-        (
-            record
-            for record in session.commands()
-            if command_payload(record).command_id == str(command_id)
-        ),
-        None,
-    )
+    return session.command_by_id(str(command_id))
 
 
 def _idempotent_entry(
