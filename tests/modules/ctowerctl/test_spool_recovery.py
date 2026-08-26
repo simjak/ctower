@@ -1,6 +1,7 @@
 import io
 import os
 import time
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -10,12 +11,13 @@ import pytest
 
 from ctowerctl import interface
 from ctowerctl._output import ExitCode
-from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, SpoolConfig, _keyring
+from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, SpoolConfig, SpoolError, _keyring
 from ctowerctl.spool import _replay as replay
 from ctowerctl.spool import interface as spool_interface
 from ctowerctl.spool._crypto import RecordType
 from ctowerctl.spool._models import QuarantineReceipt
 from ctowerctl.spool._recovery import RecoveredRecord, Session, utc_text
+from ctowerctl.spool._store import LockedStore
 
 __all__: tuple[str, ...] = ()
 _CREDENTIAL, _ORIGIN = "synthetic-recovery-identity", "https://recovery.example/api"
@@ -84,6 +86,63 @@ def test_recovery_cursor_tamper_fails_closed(protected_state: Path) -> None:
     assert status.health == "state_unknown" and status.reason_codes == ("chain_integrity",)
 
 
+def test_warm_cache_reauthenticates_same_identity_ciphertext_tamper(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = LockedStore._stored_file
+    identities: dict[tuple[str, str], tuple[int, int, int]] = {}
+
+    def stable_identity(self: LockedStore, directory: str, name: str):
+        stored = original(self, directory, name)  # type: ignore[arg-type]
+        identity = identities.setdefault((directory, name), stored.identity)
+        return replace(stored, identity=identity)
+
+    monkeypatch.setattr(LockedStore, "_stored_file", stable_identity)
+    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
+    spool.enqueue(_command("tamper"))
+    assert protected_state in spool._path.parents and spool.status().health == "healthy"
+    path = next(spool._path.joinpath("pending").glob("*.command.rec"))
+    data = bytearray(path.read_bytes())
+    data[len(data) // 2] ^= 1
+    path.write_bytes(data)
+
+    status = spool.status()
+
+    assert status.health == "degraded" and status.reason_codes == ("corrupt_record",)
+    assert not tuple(spool._path.joinpath("pending").glob("*.command.rec"))
+
+
+def test_discard_recovers_when_cursor_checkpoint_fails_after_unlink(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
+    spool.enqueue(_command("discard"))
+    executor = MagicMock()
+    executor.execute.return_value = ReplayResponse(status_code=403, problem_code="x")
+    spool.drain(executor)
+    entry = spool.list_entries()[0]
+    assert entry.state == "quarantine"
+    original = LockedStore.write_control
+
+    def fail_cursor(self: LockedStore, name: str, data: bytes) -> None:
+        if name == "recovery":
+            raise OSError("cursor checkpoint fault")
+        original(self, name, data)
+
+    with monkeypatch.context() as fault:
+        fault.setattr(LockedStore, "write_control", fail_cursor)
+        with pytest.raises(SpoolError):
+            spool.discard(entry.sequence or 0, "reviewed")
+    assert not tuple(spool._path.rglob("*.command.rec"))
+    assert tuple(spool._path.rglob("*.disposition.rec"))
+
+    fresh = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
+    assert fresh.status().health == "healthy"
+    assert fresh.list_entries() == ()
+
+
 def test_compaction_survives_corruption_and_scan_bound_crash(
     protected_state: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -123,6 +182,23 @@ def test_compaction_survives_corruption_and_scan_bound_crash(
         assert spool.status().health == "state_unknown"
     assert (status := spool.status()).chain_status == "healthy" and status.accepted_count == 0
     assert status.health == "degraded" and status.reason_codes == ("torn_write",)
+
+
+def test_retention_recompacts_without_repeated_session_removal(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SpoolConfig(state_path=protected_state / "repeated")
+    spool = Spool.for_origin(_ORIGIN, config).bind_credential(_CREDENTIAL)
+    for index in range(2):
+        spool.enqueue(_command(f"generation-{index}"))
+        with monkeypatch.context() as clock:
+            clock.setattr(replay, "datetime", _PastDateTime)
+            assert spool.drain(_Accepting()).accepted == 1
+        with monkeypatch.context() as linear:
+            linear.setattr(Session, "remove", MagicMock(side_effect=AssertionError))
+            assert spool.status().accepted_count == 0
+        assert len(tuple(spool._path.joinpath("anchors").glob("*.anchor.rec"))) == 1
 
 
 def _append_pending(spool: Spool, session: Session, text: str) -> RecoveredRecord:
