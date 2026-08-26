@@ -53,10 +53,14 @@ export function ProjectGroup({
  * gets no line rather than a line of zeroes, because "0 working · 0 at a gate"
  * is a sentence that looks like a fault and is not one.
  */
-function WorkLine({ sessions }: { readonly sessions: Answer<ProjectSessionPage> }): ReactElement {
+function WorkLine({
+  sessions,
+}: {
+  readonly sessions: Answer<ProjectSessionPage>;
+}): ReactElement | null {
   const work = workOf(sessions);
   if (work === null) {
-    return <span className="shrink-0" />;
+    return null;
   }
   if (work.kind === "asking") {
     return <span className="shrink-0 text-xs text-muted">Asking…</span>;
@@ -71,9 +75,7 @@ function WorkLine({ sessions }: { readonly sessions: Answer<ProjectSessionPage> 
     work.gated === 0 ? null : `${String(work.gated)} at a gate`,
     work.tokens === 0 ? null : `${spend(work.tokens)} tokens`,
   ].filter((one) => one !== null);
-  return said.length === 0 ? (
-    <span className="shrink-0" />
-  ) : (
+  return said.length === 0 ? null : (
     <span
       className="shrink-0 text-xs text-muted tabular-nums"
       title={`${work.tokens.toLocaleString()} tokens recorded`}
