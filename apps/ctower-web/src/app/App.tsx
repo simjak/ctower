@@ -7,7 +7,7 @@ import { agentsIn } from "../agents/read";
 import type { AgentFacts } from "../agents/read";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
-import { BoardPage } from "../board/BoardPage";
+import { BoardPage } from "../tickets/BoardPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { HarnessPage } from "../harness/HarnessPage";
 import { Overlay } from "../firstrun/Overlay";
@@ -89,17 +89,26 @@ export function App(): ReactElement {
 
   const go = useCallback(
     (key: DestinationKey, place: Readonly<Record<string, string>> = {}): void => {
-      window.history.pushState(null, "", addressFor(key, project, place));
+      // A screen may name the project it is about rather than inherit it. The
+      // tickets list can be open on a key the switcher is not pointed at — it
+      // has its own chooser for exactly the keys the switcher cannot offer — so
+      // asking for that project's board has to move the rail as well as the
+      // address, or the three would disagree about which project is being read.
+      const { project: named, ...rest } = place;
+      if (named !== undefined && named !== project) {
+        choose(named);
+      }
+      window.history.pushState(null, "", addressFor(key, named ?? project, rest));
       setHere(key);
       setOpened(null);
-      setAgent(place.agent ?? null);
+      setAgent(rest.agent ?? null);
       // A pop-up is a moment, not a place. Two screens now share this one flag,
       // so leaving the screen that opened it has to close it — otherwise the
       // pop-up that makes an agent reopens as the one that makes a project.
       // `createProject` sets it after this runs, so its own way in still works.
       setCreating(false);
     },
-    [project]
+    [choose, project]
   );
 
   // Entering a project scopes every project screen to it, which is what
@@ -321,9 +330,11 @@ function Here({
     case "crews":
       return <Cockpit document={seed.result.bundle} />;
     case "tickets":
-      return <TicketsPage key={project} document={seed.result.bundle} />;
+      return <TicketsPage key={project} document={seed.result.bundle} onGo={onGo} />;
     case "board":
-      return <BoardPage key={project} projectKey={project} onGoProjects={onGo} />;
+      return (
+        <BoardPage key={project} projectKey={project} document={seed.result.bundle} onGo={onGo} />
+      );
     case "workflows":
       return <WorkflowsPage key={project} seed={seed.result} onApplied={onApplied} />;
     case "projects":

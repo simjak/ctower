@@ -93,8 +93,9 @@ const REPORT = path.join(SHOT_DIR, "walk-web-report.json");
  * no pattern authored here could know it. Accepting anything would let a
  * Tickets destination that opened *another* project's screen walk clean, so the
  * walk asks the rail which project this workspace is about and holds the head to
- * that. `Tickets` is the other truth: a project key the company records no
- * document for has no name to draw, and keeps the plain list.
+ * that. `Tickets` and `Board` are the other truth: a project key the company
+ * records no document for has no name to draw, and a company with no project at
+ * all has no board to read, so each screen says what it is instead.
  */
 const PROJECT_NAME = "the project the rail says this workspace is about";
 
@@ -109,7 +110,7 @@ const PROJECT_NAME = "the project the rail says this workspace is about";
 const HEADING = {
   inbox: /^Inbox$/,
   tickets: PROJECT_NAME,
-  board: /^Board$/,
+  board: PROJECT_NAME,
   workflows: /^Workflows$/,
   requests: /^Requests$/,
   crews: /^Crews$/,
@@ -422,7 +423,7 @@ async function headOfProject(page) {
     "the rail draws no project dropdown, so nothing says which project this workspace is about"
   );
   const named = (await chooser.innerText()).trim();
-  return new RegExp(`^(${named.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|Tickets)$`);
+  return new RegExp(`^(${named.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|Tickets|Board)$`);
 }
 
 /**

@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type { BoardCard, CompanyBundleDocument } from "@ctower/client";
 import { PageHead } from "../ui/primitives";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
+import type { DestinationKey } from "../shell/destinations";
 import { usePlace } from "./address";
 import { ProjectChoice } from "./ProjectChoice";
 import { useBoard, useTicket } from "./reads";
@@ -27,11 +28,24 @@ import { projectsIn } from "../projects/read";
  */
 export function TicketsPage({
   document,
+  onGo,
 }: {
   readonly document: CompanyBundleDocument;
+  /**
+   * Where the shell goes when this screen names another destination. The
+   * columns are one — `Board` is a rail row, so asking for that shape is asking
+   * to be somewhere else, and only the shell can move the rail with it.
+   */
+  readonly onGo: (key: DestinationKey, place?: Readonly<Record<string, string>>) => void;
 }): ReactElement {
   const [place, go] = usePlace();
   const scopes = workProjectsIn(document);
+  // The columns are the Board destination on *this* screen's project, which is
+  // not always the switcher's: the chooser here offers the keys the switcher
+  // cannot, so the project travels with the request rather than being inherited.
+  const showColumns = (): void => {
+    onGo("board", place.project === null ? {} : { project: place.project });
+  };
 
   if (place.project === null) {
     return (
@@ -72,6 +86,7 @@ export function TicketsPage({
         onBack={(): void => {
           go({ project: null, ticket: null });
         }}
+        onShowColumns={showColumns}
         onOpenTicket={(ticket): void => {
           go({ project: place.project, ticket });
         }}
@@ -86,6 +101,8 @@ export function TicketsPage({
         projectKey={place.project}
         document={document}
         recorded={scopes.includes(place.project)}
+        shape="list"
+        onShape={showColumns}
         onOpen={(ticket): void => {
           go({ project: place.project, ticket });
         }}
