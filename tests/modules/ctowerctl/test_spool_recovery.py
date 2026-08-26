@@ -45,6 +45,7 @@ def protected_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path / "state"
 
 
+@pytest.mark.no_cover
 @pytest.mark.parametrize("case", [(5_000, 0, 2.0), (1_111, 8_000, 1.0)])
 def test_inbox_notify_warm_recovery_meets_fleet_bounds(
     protected_state: Path,
@@ -57,9 +58,8 @@ def test_inbox_notify_warm_recovery_meets_fleet_bounds(
         seed.setattr(os, "fsync", lambda _descriptor: None)
         _seed_quarantined(spool, count, text_bytes=text_bytes)
     records = tuple(protected_state.rglob("*.rec"))
-    total_bytes = sum(record.stat().st_size for record in records)
     assert len(records) == count * 2
-    assert total_bytes >= (11 * 1024 * 1024 if text_bytes else 0)
+    assert sum(r.stat().st_size for r in records) >= (11 * 1024 * 1024 if text_bytes else 0)
     spool._path.joinpath("recovery").unlink()
     executor = MagicMock(observations={})
     executor.execute.return_value = ReplayResponse(status_code=403, problem_code="x")
