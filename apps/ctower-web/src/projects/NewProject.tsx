@@ -5,11 +5,12 @@ import type { ReactElement, ReactNode } from "react";
 import type { CompanyBundleDocument } from "@ctower/client";
 import { resourceOf } from "../mint/component";
 import { cn } from "../ui/cn";
+import { Hint } from "../ui/form";
 import { Button, Input } from "../ui/primitives";
 import type { Authoring } from "../wizard/ceremony";
 import { BLANK, payloadOf, problemAt, problemsIn } from "./draft";
 import type { Draft } from "./draft";
-import { PROJECT_SCHEMA_REF } from "./schema";
+import { PROJECT_SCHEMA_REF, REQUIRED } from "./schema";
 import { Inert } from "./Inert";
 
 /**
@@ -128,7 +129,11 @@ export function NewProject({
             </Inert>
 
             <div className="mt-6 space-y-5">
-              <Labelled label="Repo URL" note="required">
+              <Labelled
+                label="Repo URL"
+                note={REPOSITORY_IS_REQUIRED ? "required" : "optional"}
+                why={REPOSITORY_IS_REQUIRED ? REPOSITORY_REASON : undefined}
+              >
                 <Input
                   value={draft.repoUrl}
                   placeholder="https://github.com/org/repo"
@@ -199,21 +204,55 @@ export function NewProject({
   );
 }
 
-/** A field with its label and the reference's own optional/required note. */
+/**
+ * Whether the record still insists a project name a repository.
+ *
+ * Read from the contract rather than written down, so the word under the field
+ * is the same fact the validator enforces. The day `repository_ref` leaves the
+ * schema's required list, this field says `optional` and asks nothing further —
+ * the copy cannot outlive the rule it describes.
+ */
+const REPOSITORY_IS_REQUIRED = REQUIRED.includes("repository_ref");
+
+/**
+ * Why a project that is not software still has to name a repository.
+ *
+ * The operator asked exactly that, and the honest answer is that this is the
+ * record's shape and not a judgement about his project: a project payload is
+ * six fields and one of them is the repository. Saying so is the whole fix
+ * available on this screen — making the field genuinely optional is a change to
+ * the project component contract, not to a form.
+ */
+const REPOSITORY_REASON =
+  "A recorded project names one repository, whatever kind of work it does. There is nowhere to keep a project without one yet.";
+
+/**
+ * A field with its label, the reference's own optional/required note, and — when
+ * the note would otherwise be a demand nobody explained — the reason behind it.
+ *
+ * D9 keeps rationale off the screen and reachable on the control, so the reason
+ * opens on hover and on focus rather than sitting under the field as a
+ * paragraph. A note that says `required` and nothing else is the console giving
+ * an order; a note a person can ask "why" of is the record explaining itself.
+ */
 function Labelled({
   label,
   note,
+  why,
   children,
 }: {
   readonly label: string;
   readonly note: string;
+  /** Why the note reads the way it does, in one line, or nothing to explain. */
+  readonly why?: string | undefined;
   readonly children: ReactNode;
 }): ReactElement {
   return (
     <div className="min-w-0">
-      <div className="mb-1.5 flex items-baseline gap-2">
+      <div className="mb-1.5 flex items-center gap-2">
         <span className="text-2xs text-muted">{label}</span>
         <span className="text-2xs text-muted/70 italic">{note}</span>
+        {why === undefined ? null : <Hint text={why} />}
       </div>
       {children}
     </div>

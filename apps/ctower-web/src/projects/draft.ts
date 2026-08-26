@@ -3,8 +3,8 @@ import { GOALS_AT_LEAST, NAME_LENGTH, patternFor, PROJECT_SCHEMA_REF, REQUIRED }
 /**
  * A project being written, and what the record will make of it.
  *
- * The operator types a name and, if there is one, the address they would clone
- * the code from. Everything else the record insists on is derived here — the
+ * The operator types a name and the address of the repository the record files
+ * this project under. Everything else the record insists on is derived here — the
  * key it is stored under, the prefix its tickets carry, the reference form of
  * the repository — because none of those is a decision: they are the same fact
  * spelled the way the record spells it, and asking someone to spell it twice is
@@ -20,7 +20,7 @@ export interface Draft {
   readonly name: string;
   /** What this project is for, in the operator's own words. */
   readonly description: string;
-  /** The address the code is cloned from, as a person would paste it. */
+  /** The repository this project is filed under, as a person would paste it. */
   readonly repoUrl: string;
   /** Where the code sits on this machine. */
   readonly localFolder: string;
@@ -135,21 +135,35 @@ export function problemsIn(draft: Draft, taken: readonly string[]): readonly Pro
  * fields a project must carry, so a project without one cannot be recorded and
  * the field says required rather than optional. The alternative — accepting an
  * empty field and refusing at Review — is the dead page this ticket exists to
- * remove.
+ * remove, and deriving a stand-in reference for a project that has no
+ * repository would put a fact nobody stated into the record.
+ *
+ * The operator's question — why a project that is not software engineering must
+ * name a repository — has no answer this module can give, because the answer is
+ * that the record's project shape says so. So the messages say that, in words,
+ * and the field's own note carries the same reason where he asks it. Making the
+ * field genuinely optional is a change to the project component contract; this
+ * guard reads the contract, so the day it lands the field softens by itself.
  */
 function repositoryProblems(draft: Draft): readonly Problem[] {
   if (!REQUIRED.includes("repository_ref")) {
     return [];
   }
   if (draft.repoUrl.trim() === "") {
-    return [{ slot: "repoUrl", message: "Name the repository this project's work lands in." }];
+    return [
+      {
+        slot: "repoUrl",
+        message:
+          "A recorded project names one repository. Give the address of the one this work belongs to.",
+      },
+    ];
   }
   const reference = repositoryRefOf(draft.repoUrl);
   if (reference === null || !patternFor("repository_ref").test(reference)) {
     return [
       {
         slot: "repoUrl",
-        message: "That is not an address this can read. Paste the one you would clone from.",
+        message: "That is not an address this can read. Paste the repository's own web address.",
       },
     ];
   }
