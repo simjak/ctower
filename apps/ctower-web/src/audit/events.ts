@@ -297,3 +297,15 @@ const RELATION_WORD: Readonly<Record<string, string>> = {
 function relationWord(kind: string): string {
   return RELATION_WORD[kind] ?? kind;
 }
+
+/**
+ * A recorded instant, as the record holds it: UTC, to the minute.
+ *
+ * Not the reader's locale. Two people looking at the same feed must be looking
+ * at the same instant, and the record's own zone is the only one both of them
+ * can check against the log.
+ */
+export function instant(iso: string): string {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? iso : `${at.toISOString().slice(0, 16).replace("T", " ")}Z`;
+}

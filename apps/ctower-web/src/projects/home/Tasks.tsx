@@ -19,14 +19,26 @@ import type { ProjectFacts } from "../read";
 export function Tasks({
   project,
   document,
+  onShowColumns,
   onOpen,
 }: {
   readonly project: ProjectFacts;
   /** The company record the people and project pickers are drawn from. */
   readonly document: CompanyBundleDocument;
+  /** Where the toggle goes for the other shape: the Board destination. */
+  readonly onShowColumns: () => void;
   readonly onOpen: (ticketId: string) => void;
 }): ReactElement {
   // This project has a document in the company record, so it demonstrably
   // exists and a ticket may be raised on it.
-  return <TicketsView projectKey={project.key} document={document} recorded onOpen={onOpen} />;
+  return (
+    <TicketsView
+      projectKey={project.key}
+      document={document}
+      recorded
+      shape="list"
+      onShape={onShowColumns}
+      onOpen={onOpen}
+    />
+  );
 }
