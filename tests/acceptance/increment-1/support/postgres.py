@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
+import contextlib
 import os
 import shutil
+import signal
 import socket
+import subprocess
+import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -68,6 +73,7 @@ def start_postgres() -> PostgresServer:
         port=port,
         admin_dsn=f"postgresql://postgres@127.0.0.1:{port}/ctower",
     )
+    _register_crash_teardown(server)
     try:
         asyncio.run(
             _compose(
@@ -78,9 +84,78 @@ def start_postgres() -> PostgresServer:
         )
         _wait_for_postgres(server)
     except Exception:
-        asyncio.run(_compose(server, "down", "--volumes"))
+        _teardown_compose_project(server.project)
         raise
     return server
+
+
+# A killed CI runner must not leak its Compose project: every started fixture is
+# torn down by an atexit hook plus SIGTERM/SIGINT handlers (the CI kill paths),
+# in addition to the normal stop_postgres call. The teardown is idempotent and
+# never raises — it runs best-effort under any interpreter state.
+_CRASH_TEARDOWN_PROJECTS: set[str] = set()
+_CRASH_TEARDOWN_LOCK = threading.Lock()
+_CRASH_TEARDOWN_GUARD_LOCK = threading.Lock()
+
+
+def _teardown_compose_project(project: str) -> None:
+    """Remove one verifier-owned Compose project; idempotent, never raises."""
+
+    with _CRASH_TEARDOWN_LOCK:
+        if project not in _CRASH_TEARDOWN_PROJECTS:
+            return
+        _CRASH_TEARDOWN_PROJECTS.discard(project)
+    docker = shutil.which("docker")
+    if docker is None:
+        return
+    with contextlib.suppress(Exception):  # teardown is best-effort by contract
+        subprocess.run(  # noqa: S603 — fixed argv built from shutil.which("docker")
+            (
+                docker,
+                "compose",
+                "-p",
+                project,
+                "-f",
+                str(COMPOSE),
+                "down",
+                "-v",
+                "--remove-orphans",
+            ),
+            cwd=ROOT,
+            env={**os.environ, "CTOWER_POSTGRES_PORT": "55432"},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=120,
+            check=False,
+        )
+
+
+def _register_crash_teardown(server: PostgresServer) -> None:
+    """Arm atexit + signal teardown so a dying runner cannot leak the project."""
+
+    with _CRASH_TEARDOWN_LOCK:
+        _CRASH_TEARDOWN_PROJECTS.add(server.project)
+
+    def _sweep(*_args: object) -> None:
+        for project in list(_CRASH_TEARDOWN_PROJECTS):
+            _teardown_compose_project(project)
+
+    def _on_signal(signum: int, _frame: object) -> None:
+        _sweep()
+        # Re-raise the default disposition so exit status stays truthful.
+        signal.signal(signum, signal.SIG_DFL)
+        os.kill(os.getpid(), signum)
+
+    with _CRASH_TEARDOWN_GUARD_LOCK:
+        if not getattr(_register_crash_teardown, "_armed", False):
+            atexit.register(_sweep)
+            for name in ("SIGTERM", "SIGINT"):
+                number = getattr(signal, name, None)
+                if number is None:
+                    continue
+                with contextlib.suppress(OSError, ValueError):
+                    signal.signal(number, _on_signal)
+            _register_crash_teardown._armed = True  # type: ignore[attr-defined]
 
 
 def _wait_for_postgres(server: PostgresServer) -> None:
@@ -101,7 +176,7 @@ def _wait_for_postgres(server: PostgresServer) -> None:
 def stop_postgres(server: PostgresServer) -> None:
     """Remove only one verifier-owned composition and its ephemeral volume."""
 
-    asyncio.run(_compose(server, "down", "--volumes"))
+    _teardown_compose_project(server.project)
 
 
 def postgres_17_command(server: PostgresServer, *arguments: str) -> tuple[str, ...]:
