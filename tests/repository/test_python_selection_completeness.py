@@ -123,39 +123,44 @@ class PythonSelectionCompletenessTests(unittest.TestCase):
         lines = justfile.splitlines()
         starts = [i for i, line in enumerate(lines) if line.startswith("python-check:")]
         assert len(starts) == 1, "expected exactly one python-check recipe"
-        selections: list[dict[str, set[str]]] = []
-        exclusions: set[str] = set()
         commands = (
             "{{python}} -m ruff format",
             "{{python}} -m ruff check",
             "{{python}} -m mypy",
         )
+        selections: list[dict[str, set[str]]] = []
+        exclusions: set[str] = set()
         for line in lines[starts[0] + 1 :]:
             if line and not line.startswith((" ", "\t")):
                 break
             stripped = line.strip()
             if not any(stripped.startswith(command) for command in commands):
                 continue
-            paths: set[str] = set()
-            line_exclusions: set[str] = set()
-            tokens = stripped.split()[3:]
-            index = 0
-            while index < len(tokens):
-                token = tokens[index]
-                index += 1
-                if token.startswith("--exclude"):
-                    value = token.removeprefix("--exclude=")
-                    if value == token and index < len(tokens):
-                        value = tokens[index]
-                        index += 1
-                    line_exclusions.add(value.rstrip("/"))
-                    exclusions.add(value.rstrip("/"))
-                    continue
-                if token.startswith("-") or "=" in token:
-                    continue
-                paths.add(token.rstrip("/"))
+            paths, line_exclusions = self._parse_selection_tokens(stripped.split()[3:])
             selections.append({"paths": paths, "excludes": line_exclusions})
+            exclusions.update(line_exclusions)
         return selections, exclusions
+
+    def _parse_selection_tokens(self, tokens: list[str]) -> tuple[set[str], set[str]]:
+        """Split one command's tokens into (selected paths, --exclude values)."""
+        paths: set[str] = set()
+        exclusions: set[str] = set()
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            index += 1
+            value = token.removeprefix("--exclude=")
+            if value != token:
+                exclusions.add(value.rstrip("/"))
+                continue
+            if token.startswith("--exclude") and index < len(tokens):
+                exclusions.add(tokens[index].rstrip("/"))
+                index += 1
+                continue
+            if token.startswith("-") or "=" in token:
+                continue
+            paths.add(token.rstrip("/"))
+        return paths, exclusions
 
     def _line_selects(self, path: str, line: dict[str, set[str]]) -> bool:
         """A line selects a path when it names the path or an ancestor dir and
