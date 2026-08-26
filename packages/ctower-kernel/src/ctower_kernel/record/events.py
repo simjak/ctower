@@ -61,6 +61,7 @@ from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.request_events import RequestChangedPayload
 from ctower_kernel.record.request_events import _validate_identity as _validate_request_identity
+from ctower_kernel.record.routine_events import RoutineRetiredPayload
 from ctower_kernel.record.ruling_events import RulingRecordedPayload
 from ctower_kernel.record.ruling_events import _validate_identity as _validate_ruling_identity
 from ctower_kernel.record.session_events import (
@@ -257,6 +258,7 @@ type EventPayload = (
     | WorkflowChangedPayload
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
+    | RoutineRetiredPayload
     | DreamDispatchConsumedPayload
     | DreamLaneBoundPayload
     | PoisonDispositionRecordedPayload
@@ -416,6 +418,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             "routine-occurrence",
             _WORKER,
         ),
+        EventCatalogEntry(EventKind.ROUTINE_RETIRED, RoutineRetiredPayload, "routine-retirement"),
         EventCatalogEntry(
             EventKind.DREAM_DISPATCH_CONSUMED,
             DreamDispatchConsumedPayload,
@@ -569,6 +572,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_ticket_identity(event)
     _validate_catalog_identity(event)
     _validate_occurrence_identity(event)
+    _validate_routine_retirement_identity(event)
     validate_dream_runtime_identity(event.aggregate_id, event.payload)
     _validate_poison_identity(event)
     _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
@@ -607,6 +611,13 @@ def _validate_occurrence_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.payload.occurrence_id
     ):
         raise ValueError("Routine aggregate and occurrence identity must match")
+
+
+def _validate_routine_retirement_identity(event: EventEnvelope) -> None:
+    if isinstance(event.payload, RoutineRetiredPayload) and (
+        event.aggregate_id != event.payload.retirement_id
+    ):
+        raise ValueError("Routine aggregate and retirement identity must match")
 
 
 def _validate_poison_identity(event: EventEnvelope) -> None:
