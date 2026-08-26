@@ -289,6 +289,16 @@ class Spool:
         except _EXPECTED_LOCAL_FAILURES as error:
             raise _spool_error(error) from error
 
+    def entry(self, command_id: UUID) -> SpoolEntry | None:
+        """Read one redacted command identity without projecting the entire spool."""
+
+        try:
+            with self._session() as session:
+                record = session.command_by_id(str(command_id))
+                return spool_entry(record, session) if record is not None else None
+        except _EXPECTED_LOCAL_FAILURES as error:
+            raise _spool_error(error) from error
+
     def drain(self, executor: ReplayExecutor) -> DrainReport:
         """Replay globally in order and stop at the first durable barrier."""
 
@@ -322,7 +332,7 @@ class Spool:
         """Replace a wholly old accepted chain with one authenticated anchor."""
 
         try:
-            with self._session() as session:
+            with self._session(automatic_compaction=False) as session:
                 return compact_accepted(
                     session,
                     now=datetime.now(UTC),
@@ -386,13 +396,21 @@ class Spool:
         return self._identity_binding
 
     @contextmanager
-    def _session(self) -> Iterator[Session]:
+    def _session(self, *, automatic_compaction: bool = True) -> Iterator[Session]:
         with self._tree.locked(self._config.lock_timeout_seconds) as store:
-            yield recover_session(
+            session = recover_session(
                 store,
                 self._origin_digest,
                 maximum_record_bytes=self._config.max_command_bytes,
             )
+            if automatic_compaction:
+                compact_accepted(
+                    session,
+                    now=datetime.now(UTC),
+                    horizon=timedelta(days=self._config.accepted_horizon_days),
+                )
+            yield session
+            session.checkpoint_recovery()
 
 
 def _new_envelope(
@@ -428,14 +446,7 @@ def _semantic_digest(command: SpoolCommand) -> str:
 
 
 def _find_command_id(session: Session, command_id: UUID) -> RecoveredRecord | None:
-    return next(
-        (
-            record
-            for record in session.commands()
-            if command_payload(record).command_id == str(command_id)
-        ),
-        None,
-    )
+    return session.command_by_id(str(command_id))
 
 
 def _idempotent_entry(

@@ -486,7 +486,7 @@ def _parse_record_name(name: str) -> re.Match[str]:
 
 
 def _validate_control_name(name: str) -> None:
-    if name not in {"metadata", "head"}:
+    if name not in {"metadata", "head", "recovery"}:
         raise StorageError("invalid spool control filename")
 
 

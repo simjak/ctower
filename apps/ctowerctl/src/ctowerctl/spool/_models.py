@@ -17,6 +17,7 @@ __all__ = [
     "Head",
     "Metadata",
     "QuarantineReceipt",
+    "RecoveryCursor",
     "ServerRefusal",
 ]
 
@@ -38,6 +39,13 @@ class Head(_DiskPayload):
     format_version: Literal[1]
     sequence: Annotated[int, Field(ge=0)]
     record_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+
+class RecoveryCursor(_DiskPayload):
+    format_version: Literal[1]
+    sequence: Annotated[int, Field(ge=0)]
+    record_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    state_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
 class CommandEnvelope(_DiskPayload):

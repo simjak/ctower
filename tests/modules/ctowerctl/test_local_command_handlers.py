@@ -507,6 +507,9 @@ class _FakeSpool:
         self.list_calls.append((state, limit))
         return self.entries
 
+    def entry(self, command_id: UUID) -> SpoolEntry | None:
+        return next((entry for entry in self.entries if entry.command_id == command_id), None)
+
     def doctor(self) -> SpoolDoctorReport:
         return self.doctor_result
 

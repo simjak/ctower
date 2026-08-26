@@ -96,10 +96,7 @@ def _back_off(
 
 
 def _current_entry(spool: Spool, command_id: UUID) -> SpoolEntry:
-    entry = next(
-        (item for item in spool.list_entries(limit=10_000) if item.command_id == command_id),
-        None,
-    )
+    entry = spool.entry(command_id)
     if entry is None:
         raise SpoolError("local_failure", "spooled command disappeared")
     return entry

@@ -123,7 +123,7 @@ def test_interface_retries_only_notification_mutations_and_surfaces_exhaustion(
     ) -> MutationRetryResult:
         retry_calls.append(command_id)
         entry = _entry(command_id, SpoolState.PENDING)
-        spool.entry = entry
+        spool.current_entry = entry
         return MutationRetryResult(
             _report(SpoolState.PENDING, "temporary_server_response"),
             entry,
@@ -218,18 +218,21 @@ class _RetrySpool:
         assert limit == _ENTRY_SCAN_LIMIT
         return (self._entry,)
 
+    def entry(self, command_id: UUID) -> SpoolEntry | None:
+        return self._entry if self._entry.command_id == command_id else None
+
 
 class _ExecutionSpool:
     def __init__(self) -> None:
-        self.entry = _entry(uuid4(), SpoolState.PENDING)
+        self.current_entry = _entry(uuid4(), SpoolState.PENDING)
         self.drain_calls = 0
 
     def bind_credential(self, _credential: str) -> Self:
         return self
 
     def enqueue(self, command: SpoolCommand) -> SpoolEntry:
-        self.entry = _entry(command.command_id, SpoolState.PENDING)
-        return self.entry
+        self.current_entry = _entry(command.command_id, SpoolState.PENDING)
+        return self.current_entry
 
     def drain(self, _executor: ReplayExecutor) -> DrainReport:
         self.drain_calls += 1
@@ -242,7 +245,10 @@ class _ExecutionSpool:
         limit: int,
     ) -> tuple[SpoolEntry, ...]:
         assert limit == _ENTRY_SCAN_LIMIT
-        return (self.entry,)
+        return (self.current_entry,)
+
+    def entry(self, command_id: UUID) -> SpoolEntry | None:
+        return self.current_entry if self.current_entry.command_id == command_id else None
 
 
 class _ClientContext:
