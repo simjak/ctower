@@ -282,3 +282,41 @@ jobs:
 
       - name: Run canonical release gate
         run: just verify
+
+      - name: Sweep leaked ctower-i1 Compose projects
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          job_started="${RUNNER_STARTED_AT:-$(date +%s)}"
+          now="$(date +%s)"
+          swept=0
+          while IFS= read -r line; do
+            [[ -n "${line}" ]] || continue
+            project="$(printf '%s' "${line}" | jq -r '.Name // empty')"
+            case "${project}" in
+              ctower-i1-*) ;;
+              *) continue ;;
+            esac
+            created="$(printf '%s' "${line}" | jq -r '.Created // empty')"
+            if [[ -n "${created}" && "${created}" =~ ^[0-9]+$ ]]; then
+              age=$((now - created))
+              if (( age < 0 )); then
+                printf 'skipping %s: creation timestamp is in the future (age=%ss)\n' \
+                  "${project}" "${age}"
+                continue
+              fi
+            else
+              age=-1
+            fi
+            if (( age >= 0 && age <= 60 )); then
+              printf 'skipping %s: younger than the sweep grace window (age=%ss)\n' \
+                "${project}" "${age}"
+              continue
+            fi
+            printf 'tearing down leaked Compose project: %s\n' "${project}"
+            docker compose -p "${project}" down -v --remove-orphans --timeout 30 || true
+            docker rm -f "$(docker ps -aq --filter "name=${project}")" 2>/dev/null || true
+            swept=$((swept + 1))
+          done < <(docker compose ls --format json | jq -c '.')
+          printf 'ctower-i1 compose teardown sweep complete: swept=%d\n' "${swept}"
