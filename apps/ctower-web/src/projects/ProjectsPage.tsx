@@ -78,6 +78,12 @@ export function ProjectsPage({
         onBack={(): void => {
           onGo("projects");
         }}
+        // The columns are the Board destination, the same one the rail carries.
+        // This screen travels there rather than growing a second board inside a
+        // tab the rail cannot point at.
+        onShowColumns={(): void => {
+          onGo("board");
+        }}
         // A ticket has its own page, and it lives on the Tickets destination.
         // Opening one from here travels there rather than growing a second one.
         onOpenTicket={(ticket): void => {
