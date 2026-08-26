@@ -48,8 +48,13 @@ export interface AgentFacts {
   readonly tools: readonly string[];
   /** The projects this agent holds a seat in, by the key a read takes. */
   readonly projects: readonly string[];
-  /** How many seats the bundle assigns this agent to. */
-  readonly seats: number;
+  /**
+   * The seats the bundle assigns this agent to, as the subjects that name them.
+   * They travel and do not render: the Agents page counts them, and the Crews
+   * page draws one row per seat, because two seats in one project are two
+   * crews rather than one person listed twice.
+   */
+  readonly seats: readonly string[];
 }
 
 export function agentsIn(document: CompanyBundleDocument): readonly AgentFacts[] {
@@ -73,7 +78,7 @@ export function agentsIn(document: CompanyBundleDocument): readonly AgentFacts[]
       skills: allNamed(skills, refs(resource, "skill_refs")),
       tools: allNamed(tools, refs(resource, "tool_refs")),
       projects: projectsOf(document, resource),
-      seats: seatsOf(document, resource).length,
+      seats: seatsOf(document, resource),
     }));
 }
 

@@ -184,7 +184,7 @@ function Configuration({ agent }: { readonly agent: AgentFacts }): ReactElement 
       <Setting label="Harness" value={agent.harness} reason={UNBUILT.harnessName} />
       <Setting
         label="Seats"
-        value={agent.seats === 0 ? null : String(agent.seats)}
+        value={agent.seats.length === 0 ? null : String(agent.seats.length)}
         reason="This agent is assigned to no seat, so nothing has been given to it to do."
       />
       <Setting
