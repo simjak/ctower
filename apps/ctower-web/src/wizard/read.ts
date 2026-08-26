@@ -1,7 +1,7 @@
 import type { CompanyBundleDocument, CompanyBundleResource } from "@ctower/client";
 import { componentId, subjectsOf } from "./bundle";
-import { repositoryOf } from "./repository";
-import type { Repository } from "./repository";
+import { repositoryOf } from "../repository/read";
+import type { Repository } from "../repository/read";
 
 /**
  * What a row on the form actually says.
