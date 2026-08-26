@@ -16,6 +16,7 @@ from urllib.parse import SplitResult, urlsplit
 __all__: tuple[str, ...] = ()
 
 _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_BEAT_ROUTINE_REF = re.compile(r"^ctower\.beat\.[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 
 
 def _positive_int(value: str) -> int:
@@ -51,6 +52,12 @@ def _sha256_digest(value: str) -> str:
         raise argparse.ArgumentTypeError(
             "digest must be 'sha256:' followed by exactly 64 lowercase hex digits"
         )
+    return value
+
+
+def _beat_routine_ref(value: str) -> str:
+    if _BEAT_ROUTINE_REF.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError("value must be a versioned ctower.beat Routine reference")
     return value
 
 
