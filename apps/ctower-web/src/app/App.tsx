@@ -8,6 +8,7 @@ import type { AgentFacts } from "../agents/read";
 import { sessionToken, SESSION_REFUSED_EVENT } from "../api/session";
 import { Admission } from "./Admission";
 import { BoardPage } from "../board/BoardPage";
+import { CrewsPage } from "../crews/CrewsPage";
 import { FirstRun } from "../firstrun/FirstRun";
 import { HarnessPage } from "../harness/HarnessPage";
 import { Overlay } from "../firstrun/Overlay";
@@ -23,7 +24,6 @@ import type { ProjectChoice } from "../shell/ProjectSwitcher";
 import { TicketsPage } from "../tickets/TicketsPage";
 import { TooltipScope } from "../ui/form";
 import { Chip } from "../ui/primitives";
-import { Cockpit } from "../cockpit/Cockpit";
 import { CompanyPage } from "../wizard/CompanyPage";
 import { WorkflowsPage } from "../workflows/WorkflowsPage";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
@@ -227,7 +227,6 @@ export function App(): ReactElement {
           />
         }
         status={statusFor(seed.kind, previewing)}
-        fill={here === "crews"}
       >
         {seed.kind === "asking" ? <Asking what="Reading this company" /> : null}
         {seed.kind === "refused" ? (
@@ -319,7 +318,7 @@ function Here({
     case "inbox":
       return <InboxPage />;
     case "crews":
-      return <Cockpit document={seed.result.bundle} />;
+      return <CrewsPage document={seed.result.bundle} />;
     case "tickets":
       return <TicketsPage key={project} document={seed.result.bundle} />;
     case "board":

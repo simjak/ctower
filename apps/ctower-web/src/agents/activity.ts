@@ -1,5 +1,5 @@
 import type { TicketSession } from "@ctower/client";
-import { livenessOf } from "../cockpit/liveness";
+import { livenessOf } from "./liveness";
 import type { MarkName } from "../ui/marks";
 
 /**

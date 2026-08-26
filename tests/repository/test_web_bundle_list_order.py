@@ -56,11 +56,16 @@ _INVENTORY: dict[str, tuple[str, ...]] = {
     # through one reader, so the rail and the page cannot disagree about who
     # works here or in what order.
     "agents/read.ts": ("agentsIn",),
-    "cockpit/roster.ts": ("rosterOf",),
+    # T-029: the three-pane cockpit on the ``crews`` destination is deleted and
+    # the Crews page is the roster it could not draw. Both of its bundle-backed
+    # readers moved with the surface — ``cockpit/roster.ts: rosterOf`` and
+    # ``cockpit/useSessions.ts: sessionsOfProject`` are these two entries —
+    # rather than shrinking the denominator.
+    "crews/roster.ts": ("rosterOf",),
     "workflows/compose.ts": ("projectKeys", "boundProjects"),
     "inbox/address.ts": ("routeTo", "seatsOffered"),
     "tickets/workflow.ts": ("workflowFrom",),
-    "cockpit/useSessions.ts": ("sessionsOfProject",),
+    "crews/useSessions.ts": ("sessionsOfProject",),
     # T-027: the tickets table became the frozen design's two readings of one
     # `getBoard` answer — the list you walk down and the six columns. Both are
     # inventoried, because either could re-rank the record on its own; the

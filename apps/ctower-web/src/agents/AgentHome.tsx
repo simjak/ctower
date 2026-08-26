@@ -4,9 +4,9 @@ import type { ReactElement } from "react";
 import { cn } from "../ui/cn";
 import { Button, Chip } from "../ui/primitives";
 import { Inert } from "../projects/Inert";
-import { sessionsOfProject, useSessions } from "../cockpit/useSessions";
+import { sessionsOfProject, useSessions } from "../crews/useSessions";
 import type { Answer } from "../api/client";
-import type { TicketSession } from "@ctower/client";
+import type { ProjectSessionPage, TicketSession } from "@ctower/client";
 import { Dashboard } from "./Dashboard";
 import { Held } from "./Held";
 import { Instructions } from "./instructions/Instructions";
@@ -184,7 +184,7 @@ function Configuration({ agent }: { readonly agent: AgentFacts }): ReactElement 
       <Setting label="Harness" value={agent.harness} reason={UNBUILT.harnessName} />
       <Setting
         label="Seats"
-        value={agent.seats === 0 ? null : String(agent.seats)}
+        value={agent.seats.length === 0 ? null : String(agent.seats.length)}
         reason="This agent is assigned to no seat, so nothing has been given to it to do."
       />
       <Setting
@@ -239,18 +239,17 @@ function Unbuilt({ reason }: { readonly reason: string }): ReactElement {
  */
 function workOf(
   agent: AgentFacts,
-  sessions: ReadonlyMap<string, Answer<readonly TicketSession[]>>
+  sessions: ReadonlyMap<string, Answer<ProjectSessionPage>>
 ): Answer<readonly TicketSession[]> {
   if (agent.projects.length === 0) {
     return { kind: "answered", value: [] };
   }
-  const answers = agent.projects.map((project) => sessionsOfProject(sessions.get(project)));
-  const unanswered = answers.find((answer) => answer.kind !== "answered");
-  if (unanswered !== undefined) {
-    return unanswered;
+  const runs: TicketSession[] = [];
+  for (const answer of agent.projects.map((project) => sessionsOfProject(sessions.get(project)))) {
+    if (answer.kind !== "answered") {
+      return answer;
+    }
+    runs.push(...answer.value.sessions);
   }
-  return {
-    kind: "answered",
-    value: answers.flatMap((answer) => (answer.kind === "answered" ? answer.value : [])),
-  };
+  return { kind: "answered", value: runs };
 }

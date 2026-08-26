@@ -98,7 +98,7 @@ function staff(told: Partial<AgentFacts> & Pick<AgentFacts, "key" | "name">): Ag
     skills: [],
     tools: [],
     projects: [],
-    seats: 0,
+    seats: [],
     ...told,
   };
 }
