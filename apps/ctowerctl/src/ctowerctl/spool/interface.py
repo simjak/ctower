@@ -322,7 +322,7 @@ class Spool:
         """Replace a wholly old accepted chain with one authenticated anchor."""
 
         try:
-            with self._session() as session:
+            with self._session(automatic_compaction=False) as session:
                 return compact_accepted(
                     session,
                     now=datetime.now(UTC),
@@ -386,13 +386,21 @@ class Spool:
         return self._identity_binding
 
     @contextmanager
-    def _session(self) -> Iterator[Session]:
+    def _session(self, *, automatic_compaction: bool = True) -> Iterator[Session]:
         with self._tree.locked(self._config.lock_timeout_seconds) as store:
-            yield recover_session(
+            session = recover_session(
                 store,
                 self._origin_digest,
                 maximum_record_bytes=self._config.max_command_bytes,
             )
+            if automatic_compaction and not session.corrupt_records:
+                compact_accepted(
+                    session,
+                    now=datetime.now(UTC),
+                    horizon=timedelta(days=self._config.accepted_horizon_days),
+                )
+            yield session
+            session.checkpoint_recovery()
 
 
 def _new_envelope(
