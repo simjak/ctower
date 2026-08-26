@@ -1,10 +1,9 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { instant } from "../board/history";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { Mark } from "../ui/marks";
 import { Button, Chip, Mono } from "../ui/primitives";
-import { rowOf } from "./events";
+import { instant, rowOf } from "./events";
 import type { AuditRow, Fact } from "./events";
 import { useAudit } from "./useAudit";
 

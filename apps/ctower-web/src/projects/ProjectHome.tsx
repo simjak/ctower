@@ -33,6 +33,7 @@ export function ProjectHome({
   document,
   opensOn = "tickets",
   onBack,
+  onShowColumns,
   onOpenTicket,
 }: {
   readonly project: ProjectFacts;
@@ -42,6 +43,13 @@ export function ProjectHome({
   readonly opensOn?: TabKey;
   /** Where the trail goes back to. */
   readonly onBack: () => void;
+  /**
+   * Where the tickets tab's toggle goes when it is asked for the columns. That
+   * shape is the Board destination, which the rail carries a row for, so only
+   * the shell can move to it — a tab that drew the columns in place would leave
+   * the rail saying the operator is somewhere they are not.
+   */
+  readonly onShowColumns: () => void;
   readonly onOpenTicket: (ticketId: string) => void;
 }): ReactElement {
   const [here, setHere] = useState<TabKey>(opensOn);
@@ -86,7 +94,13 @@ export function ProjectHome({
         ))}
       </div>
 
-      <Panel here={here} project={project} document={document} onOpenTicket={onOpenTicket} />
+      <Panel
+        here={here}
+        project={project}
+        document={document}
+        onShowColumns={onShowColumns}
+        onOpenTicket={onOpenTicket}
+      />
     </>
   );
 }
@@ -104,16 +118,25 @@ function Panel({
   here,
   project,
   document,
+  onShowColumns,
   onOpenTicket,
 }: {
   readonly here: TabKey;
   readonly project: ProjectFacts;
   readonly document: CompanyBundleDocument;
+  readonly onShowColumns: () => void;
   readonly onOpenTicket: (ticketId: string) => void;
 }): ReactElement {
   switch (here) {
     case "tickets":
-      return <Tasks project={project} document={document} onOpen={onOpenTicket} />;
+      return (
+        <Tasks
+          project={project}
+          document={document}
+          onShowColumns={onShowColumns}
+          onOpen={onOpenTicket}
+        />
+      );
     case "overview":
       return <Overview project={project} />;
     case "configuration":
