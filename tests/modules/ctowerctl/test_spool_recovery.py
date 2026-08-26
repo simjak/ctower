@@ -15,18 +15,23 @@ import pytest
 
 from ctowerctl import interface
 from ctowerctl._output import ExitCode
-from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, _keyring
+from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, SpoolConfig, _keyring
 from ctowerctl.spool import _replay as replay
 from ctowerctl.spool import interface as spool_interface
 from ctowerctl.spool._crypto import RecordType
 from ctowerctl.spool._models import QuarantineReceipt
-from ctowerctl.spool._recovery import utc_text
+from ctowerctl.spool._recovery import RecoveredRecord, Session, recover_session, utc_text
 
 __all__: tuple[str, ...] = ()
 
-_SEEDED_COMMANDS = 500
-_WARM_RECOVERY_LIMIT_SECONDS = 1.0
+_TEN_THOUSAND_RECORD_COMMANDS = 5_000
+_TEN_THOUSAND_RECORD_LIMIT_SECONDS = 2.0
+_ELEVEN_MIB_COMMANDS = 1_111
+_ELEVEN_MIB_TEXT_BYTES = 8_000
+_ELEVEN_MIB = 11 * 1024 * 1024
+_ELEVEN_MIB_LIMIT_SECONDS = 1.0
 _ACCEPTED_RECORDS = 2
+_BULK_REPAIR_COMMANDS = 100
 _CREDENTIAL = "synthetic-recovery-identity"
 _ORIGIN = "https://recovery.example/api"
 
@@ -94,15 +99,16 @@ def protected_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return state
 
 
-def test_inbox_notify_warm_recovery_is_bounded_by_new_work(
+def test_inbox_notify_ten_thousand_record_recovery_is_under_two_seconds(
     protected_state: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
     with monkeypatch.context() as seed:
         seed.setattr(os, "fsync", lambda _descriptor: None)
-        _seed_quarantined(spool, _SEEDED_COMMANDS)
-    assert len(tuple(_origin_root(protected_state).rglob("*.rec"))) == _SEEDED_COMMANDS * 2
+        _seed_quarantined(spool, _TEN_THOUSAND_RECORD_COMMANDS)
+    records = tuple(_origin_root(protected_state).rglob("*.rec"))
+    assert len(records) == _TEN_THOUSAND_RECORD_COMMANDS * 2
     monkeypatch.setattr(interface, "CtowerClient", _ClientContext)
     monkeypatch.setattr(interface, "GeneratedReplayExecutor", _BarrierExecutor)
 
@@ -111,7 +117,42 @@ def test_inbox_notify_warm_recovery_is_bounded_by_new_work(
 
     assert first_code is ExitCode.PERMANENT
     assert second_code is ExitCode.PERMANENT
-    assert second_elapsed < _WARM_RECOVERY_LIMIT_SECONDS
+    print(
+        "T033_PERF "
+        f"records={len(records)} second_seconds={second_elapsed:.6f} "
+        f"limit={_TEN_THOUSAND_RECORD_LIMIT_SECONDS:.1f}"
+    )
+    assert second_elapsed < _TEN_THOUSAND_RECORD_LIMIT_SECONDS
+
+
+def test_inbox_notify_eleven_mib_warm_recovery_is_under_one_second(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
+    with monkeypatch.context() as seed:
+        seed.setattr(os, "fsync", lambda _descriptor: None)
+        _seed_quarantined(
+            spool,
+            _ELEVEN_MIB_COMMANDS,
+            text_bytes=_ELEVEN_MIB_TEXT_BYTES,
+        )
+    records = tuple(_origin_root(protected_state).rglob("*.rec"))
+    assert sum(record.stat().st_size for record in records) >= _ELEVEN_MIB
+    monkeypatch.setattr(interface, "CtowerClient", _ClientContext)
+    monkeypatch.setattr(interface, "GeneratedReplayExecutor", _BarrierExecutor)
+
+    first_code, _first_elapsed = _notify()
+    second_code, second_elapsed = _notify()
+
+    assert first_code is ExitCode.PERMANENT
+    assert second_code is ExitCode.PERMANENT
+    print(
+        "T033_PERF "
+        f"bytes={sum(record.stat().st_size for record in records)} "
+        f"second_seconds={second_elapsed:.6f} limit={_ELEVEN_MIB_LIMIT_SECONDS:.1f}"
+    )
+    assert second_elapsed < _ELEVEN_MIB_LIMIT_SECONDS
 
 
 def test_recovery_cursor_tamper_fails_closed(
@@ -148,12 +189,115 @@ def test_old_accepted_history_compacts_on_an_ordinary_session(
     assert len(tuple(root.joinpath("anchors").glob("*.anchor.rec"))) == 1
 
 
-def _seed_quarantined(spool: Spool, count: int) -> None:
+def test_automatic_compaction_preserves_corrupt_disposition(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
+    spool.enqueue(_command("old accepted"))
+    with monkeypatch.context() as clock:
+        clock.setattr(replay, "datetime", _PastDateTime)
+        assert spool.drain(_Accepting()).accepted == 1
+    with spool._session(automatic_compaction=False) as session:
+        corrupt = _append_pending(spool, session, "corrupt")
+    path = next(_origin_root(protected_state).joinpath("pending").glob("*.command.rec"))
+    data = bytearray(path.read_bytes())
+    data[len(data) // 2] ^= 1
+    path.write_bytes(data)
+
+    inventory = spool.list_entries()
+
+    artifact = next(entry for entry in inventory if entry.sequence == corrupt.stored.sequence)
+    spool.discard(
+        corrupt.stored.sequence, "reviewed corrupt", artifact_digest=artifact.artifact_digest
+    )
+    assert spool.status().health == "healthy"
+
+
+def test_interrupted_compaction_recovers_at_scan_bound(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SpoolConfig(
+        state_path=protected_state / "bounded",
+        max_live_commands=50,
+        max_scan_entries=100,
+    )
+    spool = Spool.for_origin(_ORIGIN, config).bind_credential(_CREDENTIAL)
+    monkeypatch.setattr(os, "fsync", lambda _descriptor: None)
+    for index in range(50):
+        spool.enqueue(_command(f"accepted-{index}"))
+    with monkeypatch.context() as clock:
+        clock.setattr(replay, "datetime", _PastDateTime)
+        assert spool.drain(_Accepting()).accepted == 50
+
+    def interrupted_unlink(*_args: object, **_kwargs: object) -> None:
+        raise OSError("stop")
+
+    with monkeypatch.context() as fault:
+        fault.setattr(os, "unlink", interrupted_unlink)
+        assert spool.status().health == "state_unknown"
+
+    assert spool.status().health == "healthy"
+
+
+def test_bulk_transition_repair_bypasses_per_record_session_scans(
+    protected_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
+    monkeypatch.setattr(os, "fsync", lambda _descriptor: None)
+    with spool._tree.locked(spool._config.lock_timeout_seconds) as store:
+        session = recover_session(
+            store,
+            spool._origin_digest,
+            maximum_record_bytes=spool._config.max_command_bytes,
+        )
+        for index in range(_BULK_REPAIR_COMMANDS):
+            record = _append_pending(spool, session, f"repair-{index}")
+            session.append(
+                RecordType.QUARANTINE_RECEIPT,
+                "quarantine",
+                QuarantineReceipt(
+                    schema_version=2,
+                    command_sequence=record.stored.sequence,
+                    command_hash=record.opened.record_hash,
+                    reason_code="temporary_server_response",
+                    response_digest=None,
+                    quarantined_at=utc_text(),
+                    refusal=None,
+                ),
+            )
+    monkeypatch.setattr(
+        Session, "move", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError)
+    )
+
+    assert spool.status().quarantine_count == _BULK_REPAIR_COMMANDS
+
+
+def _append_pending(spool: Spool, session: Session, text: str) -> RecoveredRecord:
+    command = _command(text)
+    binding = spool._identity_binding
+    assert binding is not None
+    return session.append(
+        RecordType.COMMAND,
+        "pending",
+        spool_interface._new_envelope(
+            command,
+            spool._origin_digest,
+            30,
+            spool_interface._semantic_digest(command),
+            binding,
+        ),
+    )
+
+
+def _seed_quarantined(spool: Spool, count: int, *, text_bytes: int = 0) -> None:
     binding = spool._identity_binding
     assert binding is not None
     with spool._session() as session:
         for index in range(count):
-            command = _command(f"seed-{index}")
+            command = _command(f"seed-{index}" + "x" * text_bytes)
             envelope = spool_interface._new_envelope(
                 command,
                 spool._origin_digest,
