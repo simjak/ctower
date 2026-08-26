@@ -61,7 +61,16 @@ _INVENTORY: dict[str, tuple[str, ...]] = {
     "inbox/address.ts": ("routeTo", "seatsOffered"),
     "tickets/workflow.ts": ("workflowFrom",),
     "cockpit/useSessions.ts": ("sessionsOfProject",),
-    "tickets/TicketTable.tsx": ("TicketTable",),
+    # T-027: the tickets table became the frozen design's two readings of one
+    # `getBoard` answer — the list you walk down and the six columns. Both are
+    # inventoried, because either could re-rank the record on its own; the
+    # ``tickets/TicketTable.tsx: TicketTable`` entry moved here with the
+    # surface rather than shrinking the denominator.
+    "tickets/TicketList.tsx": ("TicketList",),
+    "tickets/TicketBoard.tsx": ("TicketBoard",),
+    # The people and the projects the pop-up that raises a ticket offers are
+    # bundle-backed lists like any other, and the record's order is the offer's.
+    "tickets/who.ts": ("staffIn", "whereIn"),
 }
 
 # Any ordering construct inside an inventoried reader is a re-sort of recorded

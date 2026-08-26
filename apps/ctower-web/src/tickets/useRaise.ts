@@ -5,31 +5,30 @@ import type { Answer } from "../api/client";
 import { commandKeyFor } from "../api/commandKey";
 
 /**
- * Raising a ticket, and the one field the operator should not have to type.
+ * Raising a ticket, and the three fields that is actually made of.
  *
- * `createTicket` resolves the ticket's project from the custodian Commander's
- * own project seat, and refuses when the `project_key` on the command
- * disagrees with it. So the project is sent — the operator said which board
- * they are on and the record is the one that checks it — and the custodian is
- * asked for, because no operation in the authored contract enumerates
- * principals. The custodians already on this board are offered as suggestions,
- * which is a recorded fact rather than a guess.
+ * The operator types one thing. Everything else on the command is either what
+ * he chose with a word — which project, how urgent — or a fact the record
+ * already holds and this console must not ask him for:
+ *
+ * - **who takes it** is omitted. `createTicket` assigns the calling principal
+ *   when `initial_custodian_id` is absent (`ctower_api/interface.py`), so "Me"
+ *   is the record's own answer rather than a box this console filled in. There
+ *   is no read that enumerates principals, so any other name would be typed
+ *   blind — which is exactly what the deleted form asked for.
+ * - **where it came from** is this console. `source.kind` is a free string in
+ *   the authored contract, so the truth fits: it was raised here. The old
+ *   default said `github-issue` about a ticket no issue ever existed for.
  */
 export interface Draft {
   readonly title: string;
   readonly priority: Priority;
-  readonly sourceKind: string;
-  readonly sourceRef: string;
-  readonly custodian: string;
+  /** The project it is raised on — the switcher's answer, changeable in the pop-up. */
+  readonly project: string;
 }
 
-export const BLANK: Draft = {
-  title: "",
-  priority: "P1",
-  sourceKind: "github-issue",
-  sourceRef: "",
-  custodian: "",
-};
+/** What this console is, said the way the record's own `source` field takes it. */
+const SOURCE = { kind: "ui", ref: "ctower-web/tickets" } as const;
 
 export interface Raise {
   readonly draft: Draft;
@@ -41,15 +40,19 @@ export interface Raise {
 }
 
 export function useRaise(projectKey: string): Raise {
-  const [draft, setDraftState] = useState<Draft>(BLANK);
+  const [draft, setDraftState] = useState<Draft>({
+    title: "",
+    priority: "P1",
+    project: projectKey,
+  });
   const [sent, setSent] = useState<Answer<TicketCommandResult> | null>(null);
 
   const send = useCallback((): void => {
     setSent({ kind: "asking" });
     void (async (): Promise<void> => {
-      setSent(await raised(projectKey, draft));
+      setSent(await raised(draft));
     })();
-  }, [draft, projectKey]);
+  }, [draft]);
 
   const setDraft = useCallback((next: Draft): void => {
     setDraftState(next);
@@ -59,40 +62,29 @@ export function useRaise(projectKey: string): Raise {
   return {
     draft,
     setDraft,
-    armed: filled(draft),
+    armed: draft.title.trim() !== "",
     sent,
     send,
     retry: sent !== null && resendable(sent) ? send : null,
   };
 }
 
-function filled(draft: Draft): boolean {
-  return (
-    draft.title.trim() !== "" &&
-    draft.sourceKind.trim() !== "" &&
-    draft.sourceRef.trim() !== "" &&
-    draft.custodian.trim() !== ""
-  );
-}
-
 /**
- * The command, under a key derived from the act. Raising the same title from
- * the same source for the same custodian twice is one ticket, and a retry
- * after an answer nobody saw cannot become a second one.
+ * The command, under a key derived from the act. Raising the same title at the
+ * same urgency on the same project twice is one ticket, and a retry after an
+ * answer nobody saw cannot become a second one.
  */
-async function raised(projectKey: string, draft: Draft): Promise<Answer<TicketCommandResult>> {
-  const source = { kind: draft.sourceKind.trim(), ref: draft.sourceRef.trim() };
+async function raised(draft: Draft): Promise<Answer<TicketCommandResult>> {
   return ask(() =>
     commands.createTicket({
       IdempotencyKey: commandKeyFor(
-        `raise:${projectKey}:${draft.custodian.trim()}:${source.kind}:${source.ref}:${draft.title.trim()}`
+        `raise:${draft.project}:${draft.priority}:${draft.title.trim()}`
       ),
       body: {
         title: draft.title.trim(),
         priority: draft.priority,
-        project_key: projectKey,
-        source,
-        initial_custodian_id: draft.custodian.trim(),
+        project_key: draft.project,
+        source: SOURCE,
       },
     })
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, Folder } from "lucide-react";
 import type { ReactElement } from "react";
+import type { CompanyBundleDocument } from "@ctower/client";
 import { cn } from "../ui/cn";
 import { Button, Chip } from "../ui/primitives";
 import { Budget } from "./home/Budget";
@@ -13,10 +14,11 @@ import type { ProjectFacts } from "./read";
  * One project's own screen: the tickets on it, what the company records under
  * it, what it is configured as, and what it costs.
  *
- * Four tabs, and they are four different questions. Tasks opens first because
+ * Four tabs, and they are four different questions. Tickets opens first because
  * it is the one an operator arrives with — this is the project's tickets read,
- * the same record the Board and the Tickets screen serve, presented as the list
- * you work down.
+ * the same record the Board serves, presented as the list you work down and as
+ * the columns you scan. The tab is named for the one noun this product uses;
+ * "Tasks" was a word from the reference console and named nothing here.
  *
  * A tab is a place inside a screen and not a screen of its own, so it does not
  * enter the address: the address says which project, and the rail says which
@@ -28,20 +30,19 @@ import type { ProjectFacts } from "./read";
  */
 export function ProjectHome({
   project,
-  opensOn = "tasks",
+  document,
+  opensOn = "tickets",
   onBack,
   onOpenTicket,
-  onRaiseTicket,
-  onBoard,
 }: {
   readonly project: ProjectFacts;
+  /** The company record the tickets tab draws its people and projects from. */
+  readonly document: CompanyBundleDocument;
   /** The tab the screen opens on; the operator moves it from there. */
   readonly opensOn?: TabKey;
   /** Where the trail goes back to. */
   readonly onBack: () => void;
   readonly onOpenTicket: (ticketId: string) => void;
-  readonly onRaiseTicket: () => void;
-  readonly onBoard: () => void;
 }): ReactElement {
   const [here, setHere] = useState<TabKey>(opensOn);
 
@@ -85,21 +86,15 @@ export function ProjectHome({
         ))}
       </div>
 
-      <Panel
-        here={here}
-        project={project}
-        onOpenTicket={onOpenTicket}
-        onRaiseTicket={onRaiseTicket}
-        onBoard={onBoard}
-      />
+      <Panel here={here} project={project} document={document} onOpenTicket={onOpenTicket} />
     </>
   );
 }
 
-export type TabKey = "tasks" | "overview" | "configuration" | "budget";
+export type TabKey = "tickets" | "overview" | "configuration" | "budget";
 
 const TABS: readonly { readonly key: TabKey; readonly label: string }[] = [
-  { key: "tasks", label: "Tasks" },
+  { key: "tickets", label: "Tickets" },
   { key: "overview", label: "Overview" },
   { key: "configuration", label: "Configuration" },
   { key: "budget", label: "Budget" },
@@ -108,21 +103,17 @@ const TABS: readonly { readonly key: TabKey; readonly label: string }[] = [
 function Panel({
   here,
   project,
+  document,
   onOpenTicket,
-  onRaiseTicket,
-  onBoard,
 }: {
   readonly here: TabKey;
   readonly project: ProjectFacts;
+  readonly document: CompanyBundleDocument;
   readonly onOpenTicket: (ticketId: string) => void;
-  readonly onRaiseTicket: () => void;
-  readonly onBoard: () => void;
 }): ReactElement {
   switch (here) {
-    case "tasks":
-      return (
-        <Tasks project={project} onOpen={onOpenTicket} onRaise={onRaiseTicket} onBoard={onBoard} />
-      );
+    case "tickets":
+      return <Tasks project={project} document={document} onOpen={onOpenTicket} />;
     case "overview":
       return <Overview project={project} />;
     case "configuration":
