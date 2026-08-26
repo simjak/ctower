@@ -1,5 +1,4 @@
 import type { ReactElement, ReactNode } from "react";
-import { cn } from "../ui/cn";
 import { ThemeToggle } from "../app/ThemeToggle";
 import { OrgSwitcher } from "./OrgSwitcher";
 import type { Org } from "./OrgSwitcher";
@@ -19,7 +18,6 @@ export function Shell({
   project,
   agents,
   status,
-  fill = false,
   children,
 }: {
   readonly here: DestinationKey;
@@ -37,12 +35,6 @@ export function Shell({
   /** The company's staff, drawn as a section of the company workspace. */
   readonly agents?: ReactNode;
   readonly status?: ReactNode;
-  /**
-   * A workspace rather than a page: it takes the height of the viewport and
-   * scrolls inside its own panes. A page keeps the ordinary flow, where the
-   * document is as long as it needs to be.
-   */
-  readonly fill?: boolean;
   readonly children: ReactNode;
 }): ReactElement {
   return (
@@ -67,18 +59,7 @@ export function Shell({
           <Rail here={here} lockReason={lockReason} onGo={onGo} project={project} agents={agents} />
         </div>
         <main className="min-w-0">
-          <div
-            className={cn(
-              "mx-auto flex max-w-[1200px] flex-col px-6 py-5",
-              // A workspace owns the viewport and scrolls inside its own panes.
-              // Without the clip here the panes still clip visually, but the
-              // document itself stays scrollable and the operator can drag the
-              // whole console up into blank space below it.
-              fill && "h-[calc(100dvh-52px)] overflow-hidden"
-            )}
-          >
-            {children}
-          </div>
+          <div className="mx-auto flex max-w-[1200px] flex-col px-6 py-5">{children}</div>
         </main>
       </div>
     </div>

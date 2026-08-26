@@ -8,7 +8,7 @@ import type { MarkName } from "../ui/marks";
  * the same state, and it changes in both places or neither.
  *
  * An agent with no recorded state draws NO mark and says `unknown` in words.
- * That is the same law the cockpit's sessions follow: unknown is first-class,
+ * That is the same law the crews page's sessions follow: unknown is first-class,
  * and borrowing the neighbouring glyph is how a read that never answered gets
  * rendered as a state that did.
  */

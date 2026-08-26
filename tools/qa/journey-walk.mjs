@@ -15,6 +15,12 @@
  * — and refuses to call it done until the last screen shows the thing the first
  * one wrote.
  *
+ * One step beside that sentence is about the company rather than about the
+ * project it authors: the operator reads his crews, grouped under the name each
+ * project gave itself, and reaches the way to make one. It needs nothing the
+ * later steps make and stops nothing when it fails, so a console whose roster
+ * is broken still reports honestly on everything else.
+ *
  * Raising one is asserted as the operator's own sentence, not as a form fill:
  * the pop-up may ask for exactly one thing (the title), the people it offers
  * must be this company's own and only the calling seat may be live, and the
@@ -247,6 +253,61 @@ const STEPS = [
       await journey.page.locator('nav[aria-label="Sections"]').waitFor();
       await seen(journey, "01-admitted");
       return how;
+    },
+  },
+  {
+    // The one company-workspace question in this file, and it stands alone: it
+    // is about the tenant rather than about the project the rest of the
+    // sentence authors, so it needs nothing the later steps make and stops
+    // nothing when it fails. `JOURNEY_STEPS=admission,crews-are-a-roster`
+    // walks it by itself.
+    id: "crews-are-a-roster",
+    act: "the operator reads his crews, grouped by the name each project gave itself",
+    stops: false,
+    async run(journey) {
+      const { page } = journey;
+      const writes = [];
+      const written = (request) => {
+        if (request.method() !== "GET" && request.url().includes("/v1/")) {
+          writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
+        }
+      };
+      page.on("request", written);
+      try {
+        await page.goto(`${TARGET}?at=crews`, { waitUntil: "domcontentloaded" });
+        await settle(page, journey.watched);
+        await seen(journey, "01b-crews");
+        const head = await page.locator("main h1").innerText();
+        assert.ok(head === "Crews", `the crews destination drew "${head}"`);
+
+        // Every group is a project under the name the record gives it, and a
+        // roster with nothing in it says so in a sentence. Both are screens
+        // this walk accepts; what it refuses is the one this replaced, where
+        // the projects were keys in monospace and no pane could be filled.
+        const groups = await page.locator("main h2").allInnerTexts();
+        const rows = await page.locator("main .chip").allInnerTexts();
+        assert.ok(
+          (await page.locator("main .mono").count()) === 0,
+          "the crews screen renders machine-owned text; the roster names people and projects"
+        );
+
+        // The way to make one, and the words that say why it ends elsewhere.
+        await page.getByRole("button", { name: "New crew" }).click();
+        const said = await page.getByRole("dialog").innerText();
+        await seen(journey, "01c-new-crew");
+        for (const words of ["no read gives it back", "your own command line"]) {
+          assert.ok(said.includes(words), `the way to make a crew never says "${words}"`);
+        }
+        await page.keyboard.press("Escape");
+        await settle(page, journey.watched);
+
+        assert.deepEqual(writes, [], `the crews screen sent ${writes.join(", ")}`);
+        return groups.length === 0
+          ? "the company records no project, and the roster says so"
+          : `${String(groups.length)} projects, ${String(rows.length)} crews, and no write`;
+      } finally {
+        page.off("request", written);
+      }
     },
   },
   {
