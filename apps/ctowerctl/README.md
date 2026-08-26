@@ -85,7 +85,6 @@ chained, and keyed only through an allowlisted operating-system credential backe
 path requires an active D-Bus session, Secret Service, and an unlocked collection. There is no plaintext,
 file, environment, or `keyrings.alt` fallback. A missing or locked keyring exits `74` before enqueue/send and
 does not change existing ciphertext; reads and the unspooled commands can continue.
-Recovery checkpoints a metadata-MAC-authenticated chain cursor after recovery moves are durable; a missing, stale, or invalid cursor reopens and authenticates the chain. Ordinary spool sessions automatically compact wholly old accepted history to its authenticated anchor at the existing retention horizon, while corruption and quarantine still require explicit disposition.
 Each command also carries only a keyed opaque identity for the stdin credential used at enqueue. Replay
 compares the current stdin credential before every send. Rotation or a different principal quarantines the
 old command with zero network sends; restore the original identity and explicitly retry, or discard and
