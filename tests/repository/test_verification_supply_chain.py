@@ -179,6 +179,16 @@ class VerificationSupplyChainTests(unittest.TestCase):
         self.assertIn("workflow-check", check.partition(":")[2].split())
         self.assertEqual(self._recipe_body(justfile, "workflow-check"), ["actionlint"])
 
+    def test_verify_always_sweeps_both_postgres_fixture_families(self) -> None:
+        workflow = self._read(".github/workflows/verify.yml")
+        marker = "      - name: Sweep leaked"
+
+        self.assertEqual(workflow.count(marker), 1)
+        sweep = workflow.partition(marker)[2]
+        self.assertIn("        if: always()", sweep)
+        self.assertIn("ctower-i1-*", sweep)
+        self.assertIn("ctower-migration-*", sweep)
+
     def test_python_tools_follow_the_configured_interpreter(self) -> None:
         justfile = self._read("justfile")
         python_check = self._recipe_body(justfile, "python-check")

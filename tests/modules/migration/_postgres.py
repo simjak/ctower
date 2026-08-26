@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
+import contextlib
 import os
 import shutil
+import signal
 import socket
+import subprocess
+import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -24,6 +29,12 @@ from ctower_kernel.record.postgres import apply_migrations, provision_database_r
 __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[3]
 COMPOSE = ROOT / "deploy/development/compose.yaml"
+
+# Every project minted here gets process-local cleanup on normal interpreter exit
+# and SIGTERM/SIGINT. Those paths share one idempotent, best-effort registry.
+_CRASH_TEARDOWN_PROJECTS: set[str] = set()
+_CRASH_TEARDOWN_LOCK = threading.Lock()
+_CRASH_TEARDOWN_GUARD_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,14 +56,17 @@ def isolated_database() -> Iterator[Database]:
     project = f"ctower-migration-{os.getpid()}-{uuid4().hex[:10]}"
     environment = {**os.environ, "CTOWER_POSTGRES_PORT": str(port)}
     command = [docker, "compose", "-p", project, "-f", str(COMPOSE)]
-    _compose(command, environment, "up", "-d")
     cluster_dsn = f"postgresql://postgres@127.0.0.1:{port}/ctower"
     database_name = f"ctower_migration_{uuid4().hex}"
+    database_created = False
+    _register_crash_teardown(project)
     try:
+        _compose(command, environment, "up", "-d")
         _wait_for_postgres(cluster_dsn)
         provision_database_roles(cluster_dsn)
         with psycopg.connect(cluster_dsn, autocommit=True) as connection:
             connection.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+        database_created = True
         base = f"127.0.0.1:{port}/{database_name}"
         yield _setup_database(
             f"postgresql://postgres@{base}",
@@ -61,13 +75,75 @@ def isolated_database() -> Iterator[Database]:
             f"postgresql://ctower_projection_runtime@{base}",
         )
     finally:
-        with psycopg.connect(cluster_dsn, autocommit=True) as connection:
-            connection.execute(
-                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
-                    sql.Identifier(database_name)
-                )
-            )
-        _compose(command, environment, "down", "--volumes")
+        try:
+            if database_created:
+                with psycopg.connect(cluster_dsn, autocommit=True) as connection:
+                    connection.execute(
+                        sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
+                            sql.Identifier(database_name)
+                        )
+                    )
+        finally:
+            _teardown_compose_project(project)
+
+
+def _teardown_compose_project(project: str) -> None:
+    """Remove one migration-fixture Compose project; idempotent, never raises."""
+
+    with _CRASH_TEARDOWN_LOCK:
+        if project not in _CRASH_TEARDOWN_PROJECTS:
+            return
+        _CRASH_TEARDOWN_PROJECTS.discard(project)
+    docker = shutil.which("docker")
+    if docker is None:
+        return
+    with contextlib.suppress(Exception):  # teardown is best-effort by contract
+        subprocess.run(  # noqa: S603 — fixed argv built from shutil.which("docker")
+            (
+                docker,
+                "compose",
+                "-p",
+                project,
+                "-f",
+                str(COMPOSE),
+                "down",
+                "-v",
+                "--remove-orphans",
+            ),
+            cwd=ROOT,
+            env={**os.environ, "CTOWER_POSTGRES_PORT": "55432"},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=120,
+            check=False,
+        )
+
+
+def _register_crash_teardown(project: str) -> None:
+    """Arm atexit + signal teardown for normal and signal-driven runner exits."""
+
+    with _CRASH_TEARDOWN_LOCK:
+        _CRASH_TEARDOWN_PROJECTS.add(project)
+
+    def _sweep(*_args: object) -> None:
+        for registered_project in list(_CRASH_TEARDOWN_PROJECTS):
+            _teardown_compose_project(registered_project)
+
+    def _on_signal(signum: int, _frame: object) -> None:
+        _sweep()
+        signal.signal(signum, signal.SIG_DFL)
+        os.kill(os.getpid(), signum)
+
+    with _CRASH_TEARDOWN_GUARD_LOCK:
+        if not getattr(_register_crash_teardown, "_armed", False):
+            atexit.register(_sweep)
+            for name in ("SIGTERM", "SIGINT"):
+                number = getattr(signal, name, None)
+                if number is None:
+                    continue
+                with contextlib.suppress(OSError, ValueError):
+                    signal.signal(number, _on_signal)
+            _register_crash_teardown._armed = True  # type: ignore[attr-defined]
 
 
 @contextmanager
@@ -86,6 +162,7 @@ def isolated_fresh_database_pair() -> Iterator[tuple[str, str]]:
         f"ctower_role_a_{uuid4().hex}",
         f"ctower_role_b_{uuid4().hex}",
     )
+    _register_crash_teardown(project)
     try:
         _compose(command, environment, "up", "-d")
         _wait_for_postgres(cluster_dsn)
@@ -99,7 +176,7 @@ def isolated_fresh_database_pair() -> Iterator[tuple[str, str]]:
             f"postgresql://postgres@127.0.0.1:{port}/{database_names[1]}",
         )
     finally:
-        _compose(command, environment, "down", "--volumes")
+        _teardown_compose_project(project)
 
 
 def semantic_counts(database: Database) -> tuple[int, ...]:
