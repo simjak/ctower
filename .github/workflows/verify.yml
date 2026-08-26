@@ -283,14 +283,14 @@ jobs:
       - name: Run canonical release gate
         run: just verify
 
-      - name: Sweep leaked ctower-i1 Compose projects
+      - name: Sweep leaked test Compose projects
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           now="$(date +%s)"
           swept=0
-          # Enumerate Compose projects, keep only this harness's greppable prefix,
+          # Enumerate Compose projects, keep only the test harnesses' greppable prefixes,
           # and derive each project's age from its own containers' Created stamps
           # (compose ls does not expose a creation timestamp). The grace window is
           # deliberately wide (2h): it must cover a full CI job plus runner clock
@@ -299,7 +299,7 @@ jobs:
           # live work, so it only sweeps what it can prove is stale.
           while IFS= read -r project; do
             case "${project}" in
-              ctower-i1-*) ;;
+              ctower-i1-*|ctower-migration-*) ;;
               *) continue ;;
             esac
             youngest=""
@@ -334,4 +334,4 @@ jobs:
             done < <(docker ps -aq --filter "name=${project}")
             swept=$((swept + 1))
           done < <(docker compose ls --format json | jq -r '.[] | select(.Name != null) | .Name')
-          printf 'ctower-i1 compose teardown sweep complete: swept=%d\n' "${swept}"
+          printf 'ctower test compose teardown sweep complete: swept=%d\n' "${swept}"
