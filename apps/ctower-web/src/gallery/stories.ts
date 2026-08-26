@@ -5,6 +5,8 @@ import type {
   VersionedComponent,
 } from "@ctower/client";
 import type { AgentFacts } from "../agents/read";
+import type { ProjectFacts } from "../projects/read";
+import { repositoryOf } from "../repository/read";
 /**
  * The staff the bench draws with.
  *
@@ -204,3 +206,37 @@ export const COMPANY: CompanyBundleDocument = {
 
 /** The agent profile the stories open. Machine text, and it never renders. */
 export const ADA = "acme.ada";
+
+/**
+ * The project the Configuration bench draws with, and it is a real one.
+ *
+ * These are the words of `packs/components/projects/ctower.control-plane` — the
+ * name, the ticket prefix, the repository, the one goal it serves. The tab
+ * renders a row only where the bundle answers, so the fixture has to be the
+ * record's own answer or the bench would prove nothing about the screen.
+ */
+export const CONTROL_PLANE: ProjectFacts = {
+  goals: ["Trusted delivery"],
+  key: "ctower",
+  name: "Ctower control plane",
+  prefix: "CTW",
+  repository: repositoryOf("repository:github/simjak/ctower"),
+  scoped: [],
+};
+
+/**
+ * The same tab over a project the record says less about.
+ *
+ * `ctower.project/v1` requires all six of its fields, so this is the shape a
+ * payload takes the day one of them becomes optional — and it is the state this
+ * screen exists to get right. Every row it cannot answer is **absent**: no
+ * `Not set`, no dashed box, no Codebase card at all.
+ */
+export const BARE: ProjectFacts = {
+  goals: [],
+  key: "atlas",
+  name: "Atlas",
+  prefix: null,
+  repository: null,
+  scoped: [],
+};

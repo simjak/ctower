@@ -1,4 +1,6 @@
 import type { CompanyBundleDocument, CompanyBundleResource, ComponentKind } from "@ctower/client";
+import { repositoryOf } from "../repository/read";
+import type { Repository } from "../repository/read";
 
 /**
  * What the active bundle records about a project.
@@ -26,10 +28,8 @@ export interface ProjectFacts {
   readonly name: string;
   /** The ticket prefix — `null` when the recorded payload carries none. */
   readonly prefix: string | null;
-  /** The repository, as a person reads one; `null` when none is recorded. */
-  readonly repository: string | null;
-  /** Where that repository is served, when this console can say honestly. */
-  readonly repositoryUrl: string | null;
+  /** Where this project's code is; `null` when the record names no repository. */
+  readonly repository: Repository | null;
   /** The goals this project serves, named where the bundle names them. */
   readonly goals: readonly string[];
   /** Everything this company records under this project. */
@@ -59,8 +59,7 @@ export function projectsIn(document: CompanyBundleDocument): readonly ProjectFac
       key,
       name: text(resource, "display_name") ?? resource.component.key,
       prefix: text(resource, "prefix"),
-      repository: readableRepository(repository),
-      repositoryUrl: repositoryUrl(repository),
+      repository: repository === null ? null : repositoryOf(repository),
       goals: goalRefs(resource).map((reference) => goals.get(reference) ?? "an unrecorded goal"),
       scoped: document.resources.filter((held) => held.component.scope.project === key),
     });
@@ -89,48 +88,6 @@ export function kindCounts(resources: readonly CompanyBundleResource[]): readonl
       .map((resource) => text(resource, "display_name"))
       .filter((name): name is string => name !== null),
   }));
-}
-
-/**
- * The repository, at the length a person reads one.
- *
- * The record keeps `repository:github/acme/widgets`, optionally pinned to a
- * commit. Neither the scheme nor the commit is something a person says out
- * loud, and both are machine text, so what renders is the forge and the path —
- * the part an operator would recognise from the address they cloned it from.
- */
-export function readableRepository(reference: string | null): string | null {
-  if (reference === null) {
-    return null;
-  }
-  const path = reference.replace(/^repository:/, "");
-  return /^(.*)\/[0-9a-f]{40}$/.exec(path)?.[1] ?? path;
-}
-
-/**
- * The forges whose web address this console is willing to build, and why the
- * list is two entries long rather than a rule.
- *
- * A reference names a forge by one label — `github`, `gitlab` — and the record
- * says nothing about where that forge is served from. Turning a label into a
- * host is a guess for every forge except the ones whose host everybody knows,
- * so exactly those are listed. Anything else renders as text: a link that might
- * be wrong is worse than no link.
- */
-const FORGE_HOST: Readonly<Record<string, string>> = {
-  github: "github.com",
-  gitlab: "gitlab.com",
-};
-
-/** The address this repository is cloned from, when one can be built honestly. */
-export function repositoryUrl(reference: string | null): string | null {
-  const path = readableRepository(reference);
-  const forge = path?.split("/")[0] ?? "";
-  const host = FORGE_HOST[forge];
-  if (path === null || host === undefined) {
-    return null;
-  }
-  return `https://${host}/${path.slice(forge.length + 1)}`;
 }
 
 /**

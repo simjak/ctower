@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import type { ReactElement } from "react";
 import { Button, Chip } from "../../ui/primitives";
 import type { EntityFact } from "../read";
-import { RepositoryLink } from "./RepositoryLink";
+import { RepositoryLink } from "../../repository/RepositoryLink";
 
 /**
  * One project or one agent.
@@ -40,7 +40,9 @@ export function EntityRow({
             that is what its harness is called; for a project it is the
             repository, which is also somewhere to go, so it draws as a link
             rather than as a sentence about one. A row never carries both. */}
-        {fact.repository === null ? null : <RepositoryLink repository={fact.repository} />}
+        {fact.repository === null ? null : (
+          <RepositoryLink repository={fact.repository} className="mt-0.5 text-muted" />
+        )}
         {fact.detail === null ? null : (
           <div className="mt-0.5 min-w-0 truncate text-xs text-muted">{fact.detail}</div>
         )}

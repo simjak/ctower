@@ -12,10 +12,11 @@ import { FileList } from "../agents/instructions/FileList";
 import { draftOf } from "../agents/instructions/compose";
 import type { FileDraft } from "../agents/instructions/compose";
 import { resourceById } from "../agents/instructions/read";
+import { Configuration } from "../projects/home/Configuration";
 import { Card, PageHead } from "../ui/primitives";
 import { TooltipScope } from "../ui/form";
 import { ThemeToggle } from "../app/ThemeToggle";
-import { ADA, COMPANY, PAYROLL, STAFF } from "./stories";
+import { ADA, BARE, COMPANY, CONTROL_PLANE, PAYROLL, STAFF } from "./stories";
 /**
  * The bench: two components, alone, in every state they have.
  *
@@ -31,7 +32,7 @@ export function Gallery(): ReactElement {
     // and needs its own, or every field hint on it throws instead of opening.
     <TooltipScope>
       <main className="mx-auto max-w-[1000px] px-6 py-8">
-        <PageHead title="Agent components" subtitle="Components on their own. Nothing is wired.">
+        <PageHead title="Components" subtitle="Components on their own. Nothing is wired.">
           <ThemeToggle />
         </PageHead>
         <div className="space-y-8">
@@ -39,6 +40,7 @@ export function Gallery(): ReactElement {
           <RowStories />
           <RailStories />
           <InstructionStories />
+          <ConfigurationStories />
         </div>
       </main>
     </TooltipScope>
@@ -159,6 +161,35 @@ function InstructionStories(): ReactElement {
         )}
       </div>
     </Story>
+  );
+}
+
+/**
+ * A project's Configuration tab, at the two sizes the record produces.
+ *
+ * The tab is a pure read over one project's recorded facts, so the whole of it
+ * fits on the bench and can be judged in both themes without a tower. What the
+ * two stories prove together is the rule the screen is built on: a row renders
+ * where the bundle answers and is absent where it does not — the second draws
+ * one card, one row, and no Codebase card at all, rather than a column of
+ * `Not set`.
+ */
+function ConfigurationStories(): ReactElement {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Story
+        title="Configuration — everything the record holds"
+        note="Four facts, two cards, one line."
+      >
+        <Configuration project={CONTROL_PLANE} />
+      </Story>
+      <Story
+        title="Configuration — a project the record says less about"
+        note="Unanswered rows are absent, not empty."
+      >
+        <Configuration project={BARE} />
+      </Story>
+    </div>
   );
 }
 

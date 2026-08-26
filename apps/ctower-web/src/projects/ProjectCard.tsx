@@ -48,7 +48,7 @@ export function ProjectCard({
       </div>
 
       <p className="m-0 mt-2 truncate text-xs text-muted">
-        {project.repository ?? "No repository recorded"}
+        {project.repository?.label ?? "No repository recorded"}
       </p>
 
       <div className="mt-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-xs">
