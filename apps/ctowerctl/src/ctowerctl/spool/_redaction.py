@@ -357,16 +357,11 @@ def _quarantine_outcome(
     session: Session,
     command: RecoveredRecord,
 ) -> tuple[str | None, ServerRefusal | None]:
-    outcomes: list[tuple[str, ServerRefusal | None]] = []
-    for record in session.records:
-        if record.opened.header.record_type != "quarantine_receipt":
-            continue
-        payload = record.opened.payload
-        if payload.get("command_sequence") == command.stored.sequence:
-            outcomes.append(
-                (_string_field(payload, "reason_code"), _canonical_refusal(payload.get("refusal")))
-            )
-    return outcomes[-1] if outcomes else (None, None)
+    receipt = session.quarantine_receipt(command.stored.sequence)
+    if receipt is None:
+        return None, None
+    payload = receipt.opened.payload
+    return _string_field(payload, "reason_code"), _canonical_refusal(payload.get("refusal"))
 
 
 def _oldest_age(entries: tuple[SpoolEntry, ...]) -> float | None:

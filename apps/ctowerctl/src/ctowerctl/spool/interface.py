@@ -28,6 +28,7 @@ from ctowerctl.spool._identity import credential_binding, same_binding
 from ctowerctl.spool._recovery import (
     CommandEnvelope,
     Disposition,
+    RecordCache,
     RecoveredRecord,
     RecoveryError,
     Session,
@@ -138,12 +139,14 @@ class Spool:
         tree: SafeTree,
         path: Path,
         identity_binding: str | None = None,
+        record_cache: RecordCache | None = None,
     ) -> None:
         self._origin_digest = origin_digest
         self._config = config
         self._tree = tree
         self._path = path
         self._identity_binding = identity_binding
+        self._record_cache = record_cache
 
     @classmethod
     def for_origin(cls, origin: str, config: SpoolConfig | None = None) -> Spool:
@@ -175,6 +178,7 @@ class Spool:
             self._tree,
             self._path,
             binding,
+            self._record_cache,
         )
 
     def enqueue(self, command: SpoolCommand) -> SpoolEntry:
@@ -322,7 +326,7 @@ class Spool:
         """Replace a wholly old accepted chain with one authenticated anchor."""
 
         try:
-            with self._session() as session:
+            with self._session(automatic_compaction=False) as session:
                 return compact_accepted(
                     session,
                     now=datetime.now(UTC),
@@ -386,12 +390,25 @@ class Spool:
         return self._identity_binding
 
     @contextmanager
-    def _session(self) -> Iterator[Session]:
+    def _session(self, *, automatic_compaction: bool = True) -> Iterator[Session]:
         with self._tree.locked(self._config.lock_timeout_seconds) as store:
-            yield recover_session(
+            record_cache, self._record_cache = self._record_cache, None
+            session = recover_session(
                 store,
                 self._origin_digest,
                 maximum_record_bytes=self._config.max_command_bytes,
+                record_cache=record_cache,
+            )
+            if automatic_compaction and not session.corrupt_records:
+                compact_accepted(
+                    session,
+                    now=datetime.now(UTC),
+                    horizon=timedelta(days=self._config.accepted_horizon_days),
+                )
+            yield session
+            session.checkpoint_recovery()
+            self._record_cache = RecordCache(
+                session.metadata.key_id, {record.stored: record for record in session.records}
             )
 
 
