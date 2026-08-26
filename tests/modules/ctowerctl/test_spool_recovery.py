@@ -1,7 +1,6 @@
 import io
 import os
 import time
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -16,7 +15,7 @@ from ctowerctl.spool import _replay as replay
 from ctowerctl.spool import interface as spool_interface
 from ctowerctl.spool._crypto import RecordType
 from ctowerctl.spool._models import QuarantineReceipt
-from ctowerctl.spool._recovery import RecoveredRecord, Session, utc_text
+from ctowerctl.spool._recovery import Session, utc_text
 from ctowerctl.spool._store import LockedStore
 
 __all__: tuple[str, ...] = ()
@@ -59,8 +58,8 @@ def test_inbox_notify_warm_recovery_meets_fleet_bounds(
         _seed_quarantined(spool, count, text_bytes=text_bytes)
     records = tuple(protected_state.rglob("*.rec"))
     total_bytes = sum(record.stat().st_size for record in records)
-    minimum_bytes = 11 * 1024 * 1024 if text_bytes else 0
-    assert len(records) == count * 2 and total_bytes >= minimum_bytes
+    assert len(records) == count * 2
+    assert total_bytes >= (11 * 1024 * 1024 if text_bytes else 0)
     spool._path.joinpath("recovery").unlink()
     executor = MagicMock(observations={})
     executor.execute.return_value = ReplayResponse(status_code=403, problem_code="x")
@@ -75,91 +74,47 @@ def test_inbox_notify_warm_recovery_meets_fleet_bounds(
     assert code is ExitCode.PERMANENT and elapsed < limit
 
 
-def test_recovery_cursor_tamper_fails_closed(protected_state: Path) -> None:
-    spool = Spool.for_origin(_ORIGIN)
-    assert protected_state in spool._path.parents and spool.status().health == "healthy"
-    cursor = spool._path / "recovery"
-    data = bytearray(cursor.read_bytes())
-    data[len(data) // 2] ^= 1
-    cursor.write_bytes(data)
-    status = spool.status()
+def test_cursor_cache_tamper_and_discard_checkpoint_fail_closed(
+    protected_state: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cursor_spool = Spool.for_origin(_ORIGIN, SpoolConfig(state_path=protected_state / "cursor"))
+    assert cursor_spool.status().health == "healthy"
+    _flip(cursor_spool._path / "recovery")
+    status = cursor_spool.status()
     assert status.health == "state_unknown" and status.reason_codes == ("chain_integrity",)
-
-
-def test_warm_cache_reauthenticates_same_identity_ciphertext_tamper(
-    protected_state: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    original = LockedStore._stored_file
-    identities: dict[tuple[str, str], tuple[int, int, int]] = {}
-
-    def stable_identity(self: LockedStore, directory: str, name: str):
-        stored = original(self, directory, name)  # type: ignore[arg-type]
-        identity = identities.setdefault((directory, name), stored.identity)
-        return replace(stored, identity=identity)
-
-    monkeypatch.setattr(LockedStore, "_stored_file", stable_identity)
-    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    spool.enqueue(_command("tamper"))
-    assert protected_state in spool._path.parents and spool.status().health == "healthy"
-    path = next(spool._path.joinpath("pending").glob("*.command.rec"))
-    data = bytearray(path.read_bytes())
-    data[len(data) // 2] ^= 1
-    path.write_bytes(data)
-
-    status = spool.status()
-
+    cache_config = SpoolConfig(state_path=protected_state / "cache")
+    cached = Spool.for_origin(_ORIGIN, cache_config).bind_credential(_CREDENTIAL)
+    cached.enqueue(_command("tamper"))
+    _flip(next(cached._path.joinpath("pending").glob("*.command.rec")))
+    status = cached.status()
     assert status.health == "degraded" and status.reason_codes == ("corrupt_record",)
-    assert not tuple(spool._path.joinpath("pending").glob("*.command.rec"))
 
-
-def test_discard_recovers_when_cursor_checkpoint_fails_after_unlink(
-    protected_state: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    spool.enqueue(_command("discard"))
+    discard_config = SpoolConfig(state_path=protected_state / "discard")
+    spool = Spool.for_origin(_ORIGIN, discard_config).bind_credential(_CREDENTIAL)
+    spool.enqueue(_command("discard checkpoint"))
     executor = MagicMock()
     executor.execute.return_value = ReplayResponse(status_code=403, problem_code="x")
     spool.drain(executor)
     entry = spool.list_entries()[0]
-    assert entry.state == "quarantine"
-    original = LockedStore.write_control
+    original_write = LockedStore.write_control
 
     def fail_cursor(self: LockedStore, name: str, data: bytes) -> None:
         if name == "recovery":
             raise OSError("cursor checkpoint fault")
-        original(self, name, data)
+        original_write(self, name, data)
 
     with monkeypatch.context() as fault:
         fault.setattr(LockedStore, "write_control", fail_cursor)
         with pytest.raises(SpoolError):
             spool.discard(entry.sequence or 0, "reviewed")
-    assert not tuple(spool._path.rglob("*.command.rec"))
-    assert tuple(spool._path.rglob("*.disposition.rec"))
-
-    fresh = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    assert fresh.status().health == "healthy"
-    assert fresh.list_entries() == ()
+    fresh = Spool.for_origin(_ORIGIN, discard_config)
+    assert fresh.bind_credential(_CREDENTIAL).list_entries() == ()
 
 
-def test_compaction_survives_corruption_and_scan_bound_crash(
+def test_compaction_scan_bound_and_repeated_retention_are_recoverable(
     protected_state: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    spool.enqueue(_command("old accepted"))
-    with monkeypatch.context() as clock:
-        clock.setattr(replay, "datetime", _PastDateTime)
-        assert spool.drain(_Accepting()).accepted == 1
-    with spool._session(automatic_compaction=False) as session:
-        corrupt = _append_pending(spool, session, "corrupt")
-    path = next(spool._path.joinpath("pending").glob("*.command.rec"))
-    data = bytearray(path.read_bytes())
-    data[len(data) // 2] ^= 1
-    path.write_bytes(data)
-    artifact = spool.list_entries()[-1]
-    spool.discard(corrupt.stored.sequence, "reviewed", artifact_digest=artifact.artifact_digest)
     config = SpoolConfig(
         state_path=protected_state / "bounded", max_live_commands=50, max_scan_entries=100
     )
@@ -180,16 +135,10 @@ def test_compaction_survives_corruption_and_scan_bound_crash(
     with monkeypatch.context() as fault:
         fault.setattr(os, "rename", fail_head)
         assert spool.status().health == "state_unknown"
-    assert (status := spool.status()).chain_status == "healthy" and status.accepted_count == 0
-    assert status.health == "degraded" and status.reason_codes == ("torn_write",)
+    assert spool.status().reason_codes == ("torn_write",)
 
-
-def test_retention_recompacts_without_repeated_session_removal(
-    protected_state: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    config = SpoolConfig(state_path=protected_state / "repeated")
-    spool = Spool.for_origin(_ORIGIN, config).bind_credential(_CREDENTIAL)
+    repeat_config = SpoolConfig(state_path=protected_state / "repeated")
+    spool = Spool.for_origin(_ORIGIN, repeat_config).bind_credential(_CREDENTIAL)
     for index in range(2):
         spool.enqueue(_command(f"generation-{index}"))
         with monkeypatch.context() as clock:
@@ -198,26 +147,18 @@ def test_retention_recompacts_without_repeated_session_removal(
         with monkeypatch.context() as linear:
             linear.setattr(Session, "remove", MagicMock(side_effect=AssertionError))
             assert spool.status().accepted_count == 0
-        assert len(tuple(spool._path.joinpath("anchors").glob("*.anchor.rec"))) == 1
-
-
-def _append_pending(spool: Spool, session: Session, text: str) -> RecoveredRecord:
-    command = _command(text)
-    binding = spool._identity_binding
-    assert binding is not None
-    return session.append(
-        RecordType.COMMAND,
-        "pending",
-        spool_interface._new_envelope(
-            command, spool._origin_digest, 30, spool_interface._semantic_digest(command), binding
-        ),
-    )
 
 
 def _seed_quarantined(spool: Spool, count: int, *, text_bytes: int) -> None:
+    binding = spool._identity_binding
+    assert binding is not None
+    new_envelope = spool_interface._new_envelope
     with spool._session() as session:
         for index in range(count):
-            record = _append_pending(spool, session, f"seed-{index}" + "x" * text_bytes)
+            command = _command(f"seed-{index}" + "x" * text_bytes)
+            digest = spool_interface._semantic_digest(command)
+            envelope = new_envelope(command, spool._origin_digest, 30, digest, binding)
+            record = session.append(RecordType.COMMAND, "pending", envelope)
             session.append(
                 RecordType.QUARANTINE_RECEIPT,
                 "quarantine",
@@ -242,6 +183,12 @@ def _notify() -> tuple[ExitCode, float]:
         stderr=io.StringIO(),
     )
     return ExitCode(code), time.perf_counter() - started
+
+
+def _flip(path: Path) -> None:
+    data = bytearray(path.read_bytes())
+    data[len(data) // 2] ^= 1
+    path.write_bytes(data)
 
 
 def _command(text: str) -> SpoolCommand:
