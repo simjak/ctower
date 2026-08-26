@@ -1,25 +1,29 @@
 import { useCallback, useState } from "react";
-import { Columns3, LayoutList, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
-import type { BoardCard, CompanyBundleDocument } from "@ctower/client";
-import { Button, Input } from "../ui/primitives";
-import { cn } from "../ui/cn";
+import type { BoardCard, BoardView, CompanyBundleDocument } from "@ctower/client";
+import { Button, Chip, Input } from "../ui/primitives";
+import { projectsIn } from "../projects/read";
 import { Asking, Malformed, Refused, Unreachable } from "../wizard/states";
 import { RaiseTicket } from "./RaiseTicket";
 import { useRaisings } from "./raised";
 import { useBoard } from "./reads";
+import { catchingUpWords, standingWords } from "./standing";
 import { TicketBoard } from "./TicketBoard";
 import { TicketList } from "./TicketList";
+import { ViewToggle } from "./ViewToggle";
+import type { TicketShape } from "./ViewToggle";
 import { staffIn, whereIn } from "./who";
 
 /**
  * A project's tickets, read once and drawn two ways.
  *
- * The list and the columns are one `getBoard` answer, so the two cannot
- * disagree about what is on this project — which is why the toggle sits beside
- * them rather than being a destination that asks again. Which of the two is
- * showing is a place inside this screen and not a screen of its own, so it
- * stays out of the address, the same rule the project tabs above it follow.
+ * The list and the columns are one `getBoard` answer — the same feed
+ * `ctowerctl board query` serves — so the two shapes cannot disagree about what
+ * is on this project, and the toggle between them is a switch rather than a
+ * second read. Which shape is showing is the rail's own question, because the
+ * rail carries a row for each: the caller says which, and moving between them
+ * moves the address and the rail together.
  *
  * The search narrows what already arrived. The authored contract declares no
  * ticket search, so filtering here never pretends to have asked ctower a
@@ -30,6 +34,8 @@ export function TicketsView({
   projectKey,
   document,
   recorded,
+  shape,
+  onShape,
   onOpen,
 }: {
   readonly projectKey: string;
@@ -45,10 +51,12 @@ export function TicketsView({
    * exists is a write on a guess.
    */
   readonly recorded: boolean;
+  /** Which of the two shapes this mount draws; the rail says which it is. */
+  readonly shape: TicketShape;
+  readonly onShape: (shape: TicketShape) => void;
   readonly onOpen: (ticketId: string) => void;
 }): ReactElement {
   const [typed, setTyped] = useState("");
-  const [columns, setColumns] = useState(false);
   const [raising, setRaising] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const board = useBoard(projectKey, reloadKey);
@@ -65,6 +73,10 @@ export function TicketsView({
 
   return (
     <>
+      {shape === "board" ? (
+        <Whose projectKey={projectKey} document={document} board={board} />
+      ) : null}
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {recorded ? (
           <Button
@@ -86,26 +98,7 @@ export function TicketsView({
           }}
         />
         <span className="flex-1" />
-        <div className="flex items-center gap-0.5 rounded-md bg-raised p-0.5">
-          <View
-            here={!columns}
-            label="List"
-            onChoose={(): void => {
-              setColumns(false);
-            }}
-          >
-            <LayoutList />
-          </View>
-          <View
-            here={columns}
-            label="Board"
-            onChoose={(): void => {
-              setColumns(true);
-            }}
-          >
-            <Columns3 />
-          </View>
-        </div>
+        <ViewToggle shape={shape} onShape={onShape} />
       </div>
 
       {board.kind === "asking" ? <Asking what="Reading this project's tickets" /> : null}
@@ -124,7 +117,7 @@ export function TicketsView({
           cards={kept}
           total={cards.length}
           searching={typed.trim() !== ""}
-          columns={columns}
+          shape={shape}
           raisings={raisings}
           now={now}
           empty={
@@ -162,11 +155,45 @@ export function TicketsView({
   );
 }
 
+/**
+ * Whose board this is, and how it stands.
+ *
+ * Only the columns draw it. The Board is a destination of its own, so it has to
+ * say which project it is about; the list is a tab inside that project's own
+ * screen, which has already said so above it, and a second title there would be
+ * the console answering one question twice.
+ */
+function Whose({
+  projectKey,
+  document,
+  board,
+}: {
+  readonly projectKey: string;
+  readonly document: CompanyBundleDocument;
+  readonly board: ReturnType<typeof useBoard>;
+}): ReactElement {
+  const facts = projectsIn(document).find((held) => held.key === projectKey);
+  const view: BoardView | null = board.kind === "answered" ? board.value : null;
+  const behind = view === null ? null : catchingUpWords(view);
+  return (
+    <header className="mb-4 flex flex-wrap items-center gap-3">
+      <h1 className="m-0 min-w-0 truncate text-xl leading-tight font-bold tracking-[-0.02em]">
+        {facts?.name ?? projectKey}
+      </h1>
+      {facts?.prefix === undefined || facts.prefix === null ? null : <Chip>{facts.prefix}</Chip>}
+      {view === null ? null : (
+        <span className="text-sm text-muted">{standingWords(view.cards)}</span>
+      )}
+      {behind === null ? null : <span className="text-sm text-muted">{behind}</span>}
+    </header>
+  );
+}
+
 function Answered({
   cards,
   total,
   searching,
-  columns,
+  shape,
   raisings,
   now,
   empty,
@@ -175,7 +202,7 @@ function Answered({
   readonly cards: readonly BoardCard[];
   readonly total: number;
   readonly searching: boolean;
-  readonly columns: boolean;
+  readonly shape: TicketShape;
   readonly raisings: ReturnType<typeof useRaisings>;
   readonly now: number;
   /** What a board with no card is, which is two different facts. */
@@ -190,35 +217,10 @@ function Answered({
   if (cards.length === 0 && searching) {
     return <p className="m-0 py-6 text-sm text-muted">No ticket here matches that.</p>;
   }
-  return columns ? (
+  return shape === "board" ? (
     <TicketBoard cards={cards} onOpen={onOpen} />
   ) : (
     <TicketList cards={cards} raisings={raisings} now={now} onOpen={onOpen} />
-  );
-}
-
-function View({
-  here,
-  label,
-  onChoose,
-  children,
-}: {
-  readonly here: boolean;
-  readonly label: string;
-  readonly onChoose: () => void;
-  readonly children: ReactElement;
-}): ReactElement {
-  return (
-    <Button
-      variant="quiet"
-      size="sm"
-      aria-label={label}
-      aria-pressed={here}
-      onClick={onChoose}
-      className={cn(here && "bg-card text-fg")}
-    >
-      {children}
-    </Button>
   );
 }
 

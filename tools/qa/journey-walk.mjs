@@ -104,6 +104,18 @@ const ONLY = (process.env.JOURNEY_STEPS ?? "")
 const FOLD_CAP_MS = 45_000;
 
 /**
+ * The board's columns, in the order work moves through them.
+ *
+ * Six, because the contract's `BoardLane` is closed at six, and these are the
+ * operator's words for them rather than the record's spellings — the vocabulary
+ * he froze on the ticket screens, which a board of the same tickets says too.
+ * Authored here beside the heads for the same reason those are: what a screen
+ * *says* is product text, and a walk that read it off the product could never
+ * catch the product changing it.
+ */
+const LANE_WORDS = ["Waiting", "Ready to start", "Being worked on", "In review", "Stuck", "Done"];
+
+/**
  * The one sentence the Tickets screen offers about a key the work plane does
  * not know. It is the authored wording this walk asserts in place of the act
  * that T-020 blocks, so if the sentence is ever reworded this walk says so
@@ -524,55 +536,88 @@ const STEPS = [
   },
   {
     id: "ticket-in-the-columns",
-    act: "the same ticket is a card in the Waiting column",
+    act: "the toggle beside the list opens the same tickets as columns, and the rail moves with it",
     stops: false,
     async run(journey) {
       const { page } = journey;
-      // Inside the screen, not in the rail: `Board` is also a destination, and
-      // this toggle is the same tickets read drawn as columns.
+      // Inside the screen, not in the rail. The toggle is a switch between two
+      // shapes of one read, and the columns are a destination the rail carries
+      // a row for — so asking for them has to move the rail and the address as
+      // well as the shape, or the three would disagree about where the operator
+      // is standing.
       await page.locator("main").getByRole("button", { name: "Board" }).click();
       await settle(page, journey.watched);
       await seen(journey, "12-columns");
+
+      const asked = new URLSearchParams(new URL(page.url()).search);
+      assert.ok(
+        asked.get("at") === "board" && asked.get("project") === journey.facts.project,
+        `the toggle left the address at "${new URL(page.url()).search}"`
+      );
+      const rail = await page
+        .locator('nav[aria-label="Sections"] button[aria-current="page"]')
+        .innerText();
+      assert.ok(rail.trim() === "Board", `the rail still says the operator is on "${rail.trim()}"`);
+
       // The record's own answer for a new ticket is the first lane, so this
       // asserts the column rather than merely the card: a ticket that landed
       // anywhere else would mean the console and `_board_sql` disagree.
-      const waiting = page.locator("section", {
-        has: page.getByRole("heading", { name: "Waiting" }),
-      });
-      const card = waiting.getByText(TICKET_TITLE);
+      const card = columnOf(page, "Waiting").getByText(TICKET_TITLE);
       assert.ok(
         (await card.count()) > 0,
         `"${TICKET_TITLE}" is not a card in the Waiting column of the board view`
       );
-      return "the ticket is a card in the first column";
+      return "the toggle moved the rail to Board, and the ticket is a card in the first column";
     },
   },
   {
     id: "board-shows-the-row",
-    act: "the board shows the row the ticket made",
+    act: "the Board opens by its own address, on every lane the record keeps, with the seeded row on it",
     stops: false,
     async run(journey) {
       const { page } = journey;
       // By address, because a screen is a link: the Board reads whichever
       // project the address names, and this is the one the ticket was raised
-      // on. The rail would read whichever project its switcher is pointed at,
-      // which is a different question.
+      // on. Opening it fresh is the operator's own morning — nothing here
+      // inherits the state the toggle left behind.
       await page.goto(`${TARGET}?at=board&project=${encodeURIComponent(journey.facts.project)}`, {
         waitUntil: "domcontentloaded",
       });
-      await page.getByRole("button", { name: "Read again" }).waitFor();
+      // The columns are the screen, so the screen has arrived when they have. A
+      // board that answered with nothing still draws all six.
+      await columnOf(page, "Waiting").waitFor();
       await settle(page, journey.watched);
 
-      const row = page.getByText(TICKET_TITLE);
-      const reads = await folded(journey, row, () =>
-        page.getByRole("button", { name: "Read again" }).click()
+      // Every lane the record keeps has a column, in the order work moves
+      // through them, at zero as readily as at ten: a lane whose column came
+      // and went as work moved would be a board an operator has to re-learn
+      // every morning, and a seventh would be one nothing could ever arrive in.
+      const drawn = (await page.locator("main h2").allInnerTexts()).map((word) =>
+        word.trim().toLowerCase()
       );
+      assert.deepEqual(
+        drawn,
+        LANE_WORDS.map((word) => word.toLowerCase()),
+        `the board drew the columns ${drawn.join(", ")}`
+      );
+
+      // The seeded row, read back off the board it should have folded into.
+      // Re-read by reloading: this screen has no button that asks again, and
+      // the operator's own way to ask a still screen for new facts is the one
+      // the browser already gives them.
+      const card = columnOf(page, "Waiting").getByText(TICKET_TITLE);
+      const reads = await folded(journey, card, () => page.reload({ waitUntil: "networkidle" }));
       await seen(journey, "13-board");
       assert.ok(reads !== null, `the board never showed "${TICKET_TITLE}"`);
-      return `the row is on the board after ${String(reads)} ${reads === 1 ? "read" : "reads"}`;
+      return `${String(LANE_WORDS.length)} columns, and the row is on the board after ${String(reads)} ${reads === 1 ? "read" : "reads"}`;
     },
   },
 ];
+
+/** One column of the board, found by the lane word at its head. */
+function columnOf(page, lane) {
+  return page.locator("section", { has: page.getByRole("heading", { name: lane, exact: true }) });
+}
 
 /** The step said it was blocked, and proved the surface said so honestly. */
 class Blocked extends Error {}
