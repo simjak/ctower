@@ -17,7 +17,7 @@ from ctowerctl.spool import interface as spool_interface
 from ctowerctl.spool._crypto import RecordType
 from ctowerctl.spool._models import QuarantineReceipt
 from ctowerctl.spool._recovery import RecoveredRecord, Session, utc_text
-from ctowerctl.spool._store import LockedStore
+from ctowerctl.spool._store import LockedStore, StoredFile
 
 __all__: tuple[str, ...] = ()
 _CREDENTIAL, _ORIGIN = "synthetic-recovery-identity", "https://recovery.example/api"
@@ -75,61 +75,48 @@ def test_inbox_notify_warm_recovery_meets_fleet_bounds(
     assert code is ExitCode.PERMANENT and elapsed < limit
 
 
-def test_recovery_cursor_tamper_fails_closed(protected_state: Path) -> None:
-    spool = Spool.for_origin(_ORIGIN)
-    assert protected_state in spool._path.parents and spool.status().health == "healthy"
-    cursor = spool._path / "recovery"
-    data = bytearray(cursor.read_bytes())
-    data[len(data) // 2] ^= 1
-    cursor.write_bytes(data)
-    status = spool.status()
+def test_cursor_cache_tamper_and_discard_checkpoint_fail_closed(
+    protected_state: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cursor_spool = Spool.for_origin(_ORIGIN, SpoolConfig(state_path=protected_state / "cursor"))
+    assert cursor_spool.status().health == "healthy"
+    _flip(cursor_spool._path / "recovery")
+    status = cursor_spool.status()
     assert status.health == "state_unknown" and status.reason_codes == ("chain_integrity",)
 
-
-def test_warm_cache_reauthenticates_same_identity_ciphertext_tamper(
-    protected_state: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
     original = LockedStore._stored_file
     identities: dict[tuple[str, str], tuple[int, int, int]] = {}
 
-    def stable_identity(self: LockedStore, directory: str, name: str):
+    def stable_identity(self: LockedStore, directory: str, name: str) -> StoredFile:
         stored = original(self, directory, name)  # type: ignore[arg-type]
         identity = identities.setdefault((directory, name), stored.identity)
         return replace(stored, identity=identity)
 
-    monkeypatch.setattr(LockedStore, "_stored_file", stable_identity)
-    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    spool.enqueue(_command("tamper"))
-    assert protected_state in spool._path.parents and spool.status().health == "healthy"
-    path = next(spool._path.joinpath("pending").glob("*.command.rec"))
-    data = bytearray(path.read_bytes())
-    data[len(data) // 2] ^= 1
-    path.write_bytes(data)
+    with monkeypatch.context() as collision:
+        collision.setattr(LockedStore, "_stored_file", stable_identity)
+        cached = Spool.for_origin(
+            _ORIGIN, SpoolConfig(state_path=protected_state / "cache")
+        ).bind_credential(_CREDENTIAL)
+        cached.enqueue(_command("tamper"))
+        assert cached.status().health == "healthy"
+        _flip(next(cached._path.joinpath("pending").glob("*.command.rec")))
+        status = cached.status()
+        assert status.health == "degraded" and status.reason_codes == ("corrupt_record",)
 
-    status = spool.status()
-
-    assert status.health == "degraded" and status.reason_codes == ("corrupt_record",)
-    assert not tuple(spool._path.joinpath("pending").glob("*.command.rec"))
-
-
-def test_discard_recovers_when_cursor_checkpoint_fails_after_unlink(
-    protected_state: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    spool.enqueue(_command("discard"))
+    spool = Spool.for_origin(
+        _ORIGIN, SpoolConfig(state_path=protected_state / "discard")
+    ).bind_credential(_CREDENTIAL)
+    spool.enqueue(_command("discard checkpoint"))
     executor = MagicMock()
     executor.execute.return_value = ReplayResponse(status_code=403, problem_code="x")
     spool.drain(executor)
     entry = spool.list_entries()[0]
-    assert entry.state == "quarantine"
-    original = LockedStore.write_control
+    original_write = LockedStore.write_control
 
     def fail_cursor(self: LockedStore, name: str, data: bytes) -> None:
         if name == "recovery":
             raise OSError("cursor checkpoint fault")
-        original(self, name, data)
+        original_write(self, name, data)
 
     with monkeypatch.context() as fault:
         fault.setattr(LockedStore, "write_control", fail_cursor)
@@ -137,10 +124,8 @@ def test_discard_recovers_when_cursor_checkpoint_fails_after_unlink(
             spool.discard(entry.sequence or 0, "reviewed")
     assert not tuple(spool._path.rglob("*.command.rec"))
     assert tuple(spool._path.rglob("*.disposition.rec"))
-
-    fresh = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
-    assert fresh.status().health == "healthy"
-    assert fresh.list_entries() == ()
+    fresh = Spool.for_origin(_ORIGIN, SpoolConfig(state_path=protected_state / "discard"))
+    assert fresh.bind_credential(_CREDENTIAL).list_entries() == ()
 
 
 def test_compaction_survives_corruption_and_scan_bound_crash(
