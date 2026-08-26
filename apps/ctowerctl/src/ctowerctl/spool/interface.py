@@ -18,6 +18,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ctowerctl.spool import _keyring
+from ctowerctl.spool._chain import RecordCache
 from ctowerctl.spool._corruption import (
     CorruptDispositionError,
     dispose_corrupt,
@@ -28,7 +29,6 @@ from ctowerctl.spool._identity import credential_binding, same_binding
 from ctowerctl.spool._recovery import (
     CommandEnvelope,
     Disposition,
-    RecordCache,
     RecoveredRecord,
     RecoveryError,
     Session,
@@ -407,9 +407,8 @@ class Spool:
                 )
             yield session
             session.checkpoint_recovery()
-            self._record_cache = RecordCache(
-                session.metadata.key_id, {record.stored: record for record in session.records}
-            )
+            records = {record.stored: record for record in session.records}
+            self._record_cache = (session.metadata.key_id, records)
 
 
 def _new_envelope(
