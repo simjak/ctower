@@ -179,13 +179,14 @@ class LockedStore:
         name: str,
         data: bytes,
         head: bytes,
-    ) -> None:
+    ) -> StoredFile:
         _parse_record_name(name)
         destination = self._directories[directory]
         self._atomic_write("tmp", destination, name, data)
         os.fsync(destination)
         self._atomic_write("tmp", self._root_fd, "head", head)
         os.fsync(self._root_fd)
+        return self._stored_file(directory, name)
 
     def read_file(self, stored: StoredFile, *, maximum: int) -> bytes:
         return _read_checked(self._directories[stored.directory], stored.name, maximum)
@@ -204,25 +205,13 @@ class LockedStore:
                 if sequence in seen_sequences:
                     raise StorageError("duplicate durable record sequence")
                 seen_sequences.add(sequence)
-                file_descriptor = os.open(
-                    name,
-                    _FILE_READ_FLAGS,
-                    dir_fd=self._directories[directory],
+                records.append(self._stored_file(directory, name))
+                recoverable_anchor_overflow = (
+                    len(records) == self._scan_limit + 1
+                    and directory == "anchors"
+                    and match.group("kind") == "anchor"
                 )
-                try:
-                    details = _verify_file(file_descriptor, exact_mode=0o600)
-                finally:
-                    os.close(file_descriptor)
-                records.append(
-                    StoredFile(
-                        directory=directory,
-                        name=name,
-                        sequence=sequence,
-                        kind=match.group("kind"),
-                        size=details.st_size,
-                    )
-                )
-                if len(records) > self._scan_limit:
+                if len(records) > self._scan_limit and not recoverable_anchor_overflow:
                     raise ScanLimitError("durable records exceed bounded scan policy")
         return tuple(sorted(records, key=lambda item: item.sequence))
 
@@ -239,13 +228,7 @@ class LockedStore:
         )
         os.fsync(source_fd)
         os.fsync(destination_fd)
-        return StoredFile(
-            directory=destination,
-            name=stored.name,
-            sequence=stored.sequence,
-            kind=stored.kind,
-            size=stored.size,
-        )
+        return self._stored_file(destination, stored.name)
 
     def remove(self, stored: StoredFile) -> None:
         os.unlink(stored.name, dir_fd=self._directories[stored.directory])
@@ -286,6 +269,25 @@ class LockedStore:
         """Release checked subdirectory descriptors; flock/root are caller-owned."""
 
         self.__exit__(None, None, None)
+
+    def _stored_file(self, directory: DirectoryName, name: str) -> StoredFile:
+        match = _parse_record_name(name)
+        file_descriptor = os.open(
+            name,
+            _FILE_READ_FLAGS,
+            dir_fd=self._directories[directory],
+        )
+        try:
+            details = _verify_file(file_descriptor, exact_mode=0o600)
+        finally:
+            os.close(file_descriptor)
+        return StoredFile(
+            directory=directory,
+            name=name,
+            sequence=int(match.group("sequence")),
+            kind=match.group("kind"),
+            size=details.st_size,
+        )
 
     def _scan_names(self, directory: DirectoryName) -> tuple[str, ...]:
         with os.scandir(self._directories[directory]) as entries:
@@ -486,7 +488,7 @@ def _parse_record_name(name: str) -> re.Match[str]:
 
 
 def _validate_control_name(name: str) -> None:
-    if name not in {"metadata", "head"}:
+    if name not in {"metadata", "head", "recovery"}:
         raise StorageError("invalid spool control filename")
 
 
