@@ -639,12 +639,12 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
-id = "dogfood-inbox-controls"
+id = "dogfood-surface-e2e"
 owner = "CT-I1-007"
 phase = "CT-I1-007"
 status = "required"
 path = "tests/dogfood"
-patterns = ["test_*.py"]
+patterns = ["test_inbox_controls_render.py", "test_terminal_read_e2e.py"]
 command = ["{python}", "-m", "pytest", "tests/dogfood", "-q"]
 timeout_seconds = 900
 
