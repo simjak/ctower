@@ -26,7 +26,7 @@ export interface Where {
 }
 
 export function staffIn(document: CompanyBundleDocument): readonly Staff[] {
-  return agentsIn(document).map((listed) => ({ key: listed.key, name: listed.agent.name }));
+  return agentsIn(document).map((listed) => ({ key: listed.key, name: listed.name }));
 }
 
 /**
