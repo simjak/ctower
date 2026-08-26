@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from typing import Annotated, Literal, cast
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from ctowerctl.spool import _crypto
 from ctowerctl.spool._crypto import GENESIS_HASH, OpenedRecord
 from ctowerctl.spool._models import (
     CompactionAnchor,
     CorruptDisposition,
     Disposition,
     Head,
+    Metadata,
 )
-from ctowerctl.spool._redaction import canonical_json
-from ctowerctl.spool._store import StoredFile
+from ctowerctl.spool._redaction import JsonObject, canonical_json, digest_json
+from ctowerctl.spool._store import LockedStore, StoredFile
 
 __all__ = [
     "ChainValidation",
@@ -24,12 +28,22 @@ __all__ = [
 ]
 
 
-class ChainError(RuntimeError):
-    """An authenticated sequence/hash relationship cannot be proven."""
-
+class RecoveryError(RuntimeError):
     def __init__(self, message: str, *, code: str = "chain_integrity") -> None:
         super().__init__(message)
         self.code = code
+
+
+class ChainError(RecoveryError):
+    """An authenticated sequence/hash relationship cannot be proven."""
+
+
+class RecoveryCursor(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    format_version: Literal[1]
+    sequence: Annotated[int, Field(ge=0)]
+    record_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    state_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +60,19 @@ class CorruptRecord:
     artifact_digest: str
     expected_record_hash: str = ""
     expected_predecessor_hash: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class RecoverySnapshot:
+    metadata: Metadata
+    head: Head
+    keys: _crypto.KeySet
+    records: tuple[RecoveredRecord, ...]
+    corrupt_records: tuple[CorruptRecord, ...]
+    stored_records: tuple[StoredFile, ...]
+    recovery_cursor: RecoveryCursor | None
+    maximum_record_bytes: int
+    torn_evidence: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +139,149 @@ def validate_record_chain(
         logical_hashes=logical_hashes,
         active_corrupt=tuple(active),
     )
+
+
+def read_recovery_cursor(store: LockedStore, keys: _crypto.KeySet) -> RecoveryCursor | None:
+    if not store.exists_control("recovery"):
+        return None
+    try:
+        return RecoveryCursor.model_validate(
+            _crypto.verify_signed_document(store.read_control("recovery"), keys.metadata_mac),
+            strict=True,
+        )
+    except (_crypto.CryptoError, ValidationError) as error:
+        raise RecoveryError("spool recovery cursor is invalid or unauthenticated") from error
+
+
+def load_or_create_head(store: LockedStore, keys: _crypto.KeySet) -> Head:
+    if not store.exists_control("head"):
+        if store.scan_records():
+            raise RecoveryError("spool head is missing while records exist")
+        head = Head(format_version=_crypto.FORMAT_VERSION, sequence=0, record_hash=GENESIS_HASH)
+        store.write_control(
+            "head",
+            _crypto.sign_document(
+                cast(JsonObject, head.model_dump(mode="json")), keys.metadata_mac
+            ),
+        )
+        return head
+    try:
+        return Head.model_validate(
+            _crypto.verify_signed_document(store.read_control("head"), keys.metadata_mac),
+            strict=True,
+        )
+    except (_crypto.CryptoError, ValidationError) as error:
+        raise RecoveryError("spool head is invalid or unauthenticated") from error
+
+
+def load_recovery_cursor(
+    cursor: RecoveryCursor | None,
+    head: Head,
+    records: Sequence[RecoveredRecord],
+    logical_hashes: dict[int, str],
+) -> RecoveryCursor | None:
+    if cursor is None:
+        return None
+    if cursor.sequence > head.sequence:
+        raise RecoveryError("spool recovery cursor is ahead of the durable head")
+    expected_hash = GENESIS_HASH if cursor.sequence == 0 else logical_hashes.get(cursor.sequence)
+    if expected_hash is None:
+        expected_hash = _compacted_cursor_hash(records, cursor.sequence)
+    if expected_hash != cursor.record_hash:
+        raise RecoveryError("spool recovery cursor does not match the durable chain")
+    return cursor
+
+
+def cursor_covers_current_state(
+    cursor: RecoveryCursor | None,
+    head: Head,
+    records: Sequence[RecoveredRecord],
+) -> bool:
+    return (
+        cursor is not None
+        and cursor.sequence == head.sequence
+        and cursor.record_hash == head.record_hash
+        and cursor.state_digest == state_digest(records)
+    )
+
+
+def state_digest(records: Sequence[RecoveredRecord]) -> str:
+    return digest_json(
+        {
+            "commands": [
+                {"sequence": record.stored.sequence, "state": record.stored.directory}
+                for record in records
+                if record.opened.header.record_type == "command"
+            ]
+        }
+    )
+
+
+def recover_compaction(
+    store: LockedStore,
+    records: list[RecoveredRecord],
+    *,
+    repair: bool,
+) -> list[RecoveredRecord]:
+    anchors = tuple(record for record in records if record.opened.header.record_type == "anchor")
+    if not anchors:
+        return records
+    if len(anchors) != 1:
+        raise RecoveryError("multiple compaction anchors are ambiguous")
+    anchor_record = anchors[0]
+    anchor = _payload(anchor_record, CompactionAnchor)
+    if (
+        anchor.covered_from != 1
+        or anchor_record.stored.sequence != anchor.covered_through + 1
+        or anchor_record.opened.header.predecessor_hash != anchor.terminal_hash
+    ):
+        raise RecoveryError("compaction anchor range or predecessor is invalid")
+    covered = [
+        record
+        for record in records
+        if anchor.covered_from <= record.stored.sequence <= anchor.covered_through
+    ]
+    if covered and not repair:
+        raise RecoveryError("compaction deletion recovery is required")
+    for record in covered:
+        store.remove(record.stored)
+        records.remove(record)
+    return records
+
+
+def snapshot_matches(
+    snapshot: RecoverySnapshot,
+    metadata: Metadata,
+    head: Head,
+    keys: _crypto.KeySet,
+    stored_records: tuple[StoredFile, ...],
+    recovery_cursor: RecoveryCursor | None,
+    maximum_record_bytes: int,
+    torn_evidence: int,
+) -> bool:
+    return (
+        snapshot.metadata == metadata
+        and snapshot.head == head
+        and snapshot.keys == keys
+        and snapshot.recovery_cursor == recovery_cursor
+        and snapshot.maximum_record_bytes == maximum_record_bytes
+        and snapshot.torn_evidence == torn_evidence
+        and snapshot.stored_records == stored_records
+    )
+
+
+def _compacted_cursor_hash(
+    records: Sequence[RecoveredRecord],
+    sequence: int,
+) -> str | None:
+    anchor_record = next(
+        (record for record in records if record.opened.header.record_type == "anchor"),
+        None,
+    )
+    if anchor_record is None:
+        return None
+    anchor = _payload(anchor_record, CompactionAnchor)
+    return anchor.terminal_hash if anchor.covered_through == sequence else None
 
 
 def _chain_start(first: _ChainRecord) -> tuple[int, str]:
