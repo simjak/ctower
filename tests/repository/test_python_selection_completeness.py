@@ -16,7 +16,13 @@ asserts:
    path, a mypy path, or a suite whose ``patterns`` claim it;
 2. every tracked ``test_*.py`` living under some suite's ``path`` is claimed by
    that suite's ``patterns`` — a directory LOOKING gated while its explicit file
-   enumeration silently omits a module is the same defect one level deeper.
+   enumeration silently omits a module is the same defect one level deeper;
+3. every ``--exclude`` on a ``python-check`` line is DELIBERATE: named in
+   ``_DELIBERATE_LINT_EXCLUSIONS`` below with an owner-held reason. An exclusion
+   the guard merely tolerates silently is T-032's hole — the next ``--exclude``
+   of a path no other line names would ship unseen while every gate reports
+   SUCCESS, so the guard parses the exclusions instead of counting their
+   arguments as selected paths.
 """
 
 from __future__ import annotations
@@ -30,17 +36,50 @@ from typing import cast
 
 _DOCUMENTED_EXCLUSIONS = ("generated/", "tests/repository/fixtures/")
 
+# Deliberate, owner-held `--exclude` arguments on the python-check lines.
+# Every exclusion the justfile carries MUST be named here with its reason, and
+# every name here MUST still be live on a python-check line — an exclusion is
+# never selected-by-accident and never outlives its reason silently.
+_DELIBERATE_LINT_EXCLUSIONS = {
+    "tests/acceptance/increment-1/conftest.py": (
+        "two conftest modules share this basename and mypy's module discovery "
+        "cannot disambiguate them without MYPYPATH/explicit-package-bases "
+        "rework (T-032); the file stays format- and lint-checked by both ruff "
+        "lines."
+    ),
+}
+
 
 class PythonSelectionCompletenessTests(unittest.TestCase):
     root = Path(__file__).parents[2]
 
+    def test_every_lint_exclusion_is_deliberate(self) -> None:
+        _, exclusions = self._lint_selection()
+        unrecorded = sorted(exclusions - set(_DELIBERATE_LINT_EXCLUSIONS))
+        self.assertEqual(
+            unrecorded,
+            [],
+            "--exclude arguments on python-check lines that NO deliberate "
+            "exception records (add the path to _DELIBERATE_LINT_EXCLUSIONS "
+            "with a reason, or drop the exclusion):\n  " + "\n  ".join(unrecorded),
+        )
+        stale = sorted(set(_DELIBERATE_LINT_EXCLUSIONS) - exclusions)
+        self.assertEqual(
+            stale,
+            [],
+            "_DELIBERATE_LINT_EXCLUSIONS names paths no python-check line "
+            "excludes anymore (drop the stale entries):\n  " + "\n  ".join(stale),
+        )
+
     def test_every_tracked_python_path_is_selected_by_some_gate(self) -> None:
-        lint_paths = self._lint_selection_paths()
+        lint_lines, _ = self._lint_selection()
         unselected: list[str] = []
         for path in self._tracked_python_files():
             if path.startswith(_DOCUMENTED_EXCLUSIONS):
                 continue
-            if self._lint_selects(path, lint_paths) or self._suite_claims(path):
+            if any(self._line_selects(path, line) for line in lint_lines):
+                continue
+            if self._suite_claims(path):
                 continue
             unselected.append(path)
         self.assertEqual(
@@ -73,34 +112,64 @@ class PythonSelectionCompletenessTests(unittest.TestCase):
         )
         return sorted(line for line in completed.stdout.splitlines() if line)
 
-    def _lint_selection_paths(self) -> set[str]:
-        """Path arguments named by the three python-check lines, derived from justfile."""
+    def _lint_selection(self) -> tuple[list[dict[str, set[str]]], set[str]]:
+        """Per-line path selections and the union of --exclude arguments.
+
+        Derived from the justfile's three python-check commands. A ``--exclude``
+        argument is returned as an EXCLUSION, never as a selected path: the
+        guard's notion of "selected" matches the command's (T-032).
+        """
         justfile = (self.root / "justfile").read_text(encoding="utf-8")
         lines = justfile.splitlines()
         starts = [i for i, line in enumerate(lines) if line.startswith("python-check:")]
         assert len(starts) == 1, "expected exactly one python-check recipe"
-        paths: set[str] = set()
         commands = (
             "{{python}} -m ruff format",
             "{{python}} -m ruff check",
             "{{python}} -m mypy",
         )
+        selections: list[dict[str, set[str]]] = []
+        exclusions: set[str] = set()
         for line in lines[starts[0] + 1 :]:
             if line and not line.startswith((" ", "\t")):
                 break
             stripped = line.strip()
             if not any(stripped.startswith(command) for command in commands):
                 continue
-            for token in stripped.split()[3:]:
-                if token.startswith("-") or "=" in token:
-                    continue
-                paths.add(token.rstrip("/"))
-        return paths
+            paths, line_exclusions = self._parse_selection_tokens(stripped.split()[3:])
+            selections.append({"paths": paths, "excludes": line_exclusions})
+            exclusions.update(line_exclusions)
+        return selections, exclusions
 
-    def _lint_selects(self, path: str, lint_paths: set[str]) -> bool:
-        """A selection argument covers a path when it is the path or an ancestor dir."""
+    def _parse_selection_tokens(self, tokens: list[str]) -> tuple[set[str], set[str]]:
+        """Split one command's tokens into (selected paths, --exclude values)."""
+        paths: set[str] = set()
+        exclusions: set[str] = set()
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            index += 1
+            value = token.removeprefix("--exclude=")
+            if value != token:
+                exclusions.add(value.rstrip("/"))
+                continue
+            if token.startswith("--exclude") and index < len(tokens):
+                exclusions.add(tokens[index].rstrip("/"))
+                index += 1
+                continue
+            if token.startswith("-") or "=" in token:
+                continue
+            paths.add(token.rstrip("/"))
+        return paths, exclusions
+
+    def _line_selects(self, path: str, line: dict[str, set[str]]) -> bool:
+        """A line selects a path when it names the path or an ancestor dir and
+        does not exclude the path or one of its ancestors."""
         parts = path.split("/")
-        return any("/".join(parts[:i]) in lint_paths for i in range(1, len(parts) + 1))
+        prefixes = {"/".join(parts[:i]) for i in range(1, len(parts) + 1)}
+        if prefixes & line["excludes"]:
+            return False
+        return bool(prefixes & line["paths"])
 
     def _suites(self) -> list[dict[str, object]]:
         with (self.root / "tools/checks/expected-suites.toml").open("rb") as handle:
