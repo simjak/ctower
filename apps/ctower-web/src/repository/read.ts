@@ -6,12 +6,13 @@
  * repository's own name and, when the host is one this console can address, a
  * link to it — nothing else reaches a screen.
  *
- * The Projects surface keeps its own reader in `projects/read.ts`, and the two
- * disagree on purpose about one thing: it renders `github/acme/widgets`, naming
- * the forge in the text, and this one renders `acme/widgets` and lets the mark
- * name the forge. Two readers of one reference is one too many and the tree
- * should end with a single module — but which label survives is a design
- * decision about two screens, not a merge conflict to settle quietly here.
+ * This is the whole tree's reader. The Projects surface kept a second one that
+ * disagreed about the label — it named the forge in the text where this one
+ * lets the mark name it — and two readers of one reference is one too many:
+ * two screens showing one repository were agreeing only by coincidence. The
+ * design decision the second reader was waiting on is the one already in
+ * `DESIGN.md` (2026-08-24): a repository renders as its own name and carries
+ * its forge's mark. So the label is `acme/widgets`, everywhere.
  */
 
 /** The hosts this console can address, and what a person calls each one. */

@@ -1,23 +1,29 @@
-import { ExternalLink } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
+import { RepositoryLink } from "../../repository/RepositoryLink";
 import { Card, CardBody, CardHeader, CardTitle, Chip } from "../../ui/primitives";
-import { Inert } from "../Inert";
 import type { ProjectFacts } from "../read";
 
 /**
- * What this project is, as the record holds it.
+ * What this project is, as the record holds it — and nothing else.
  *
- * Every row is either a fact the bundle carries or an affordance that says why
- * it carries none. A `ctower.project/v1` payload is a closed shape — a name, a
- * ticket prefix, a repository, the goals it serves — so the rows the reference
- * console fills from a wider record are drawn and are inert, with the reason on
- * them. Drawing an editable box over a field the record cannot keep would take
- * an operator's answer and drop it.
+ * A recorded project is a closed shape: a name, a ticket prefix, the goals it
+ * serves, the repository its work belongs to. This tab used to draw the
+ * reference console's whole configuration screen over that shape and mark the
+ * seven fields the record has nowhere to keep as inert. The operator read the
+ * result as a broken page rather than as an honest one, and he was right: one
+ * inert control among live ones says *not yet*, and a card of them says *this
+ * screen does not work*.
  *
- * Nothing here writes. Changing a recorded project means authoring a new
- * revision of its document through the same check-plan-apply the Projects
- * screen runs, and no screen does that yet; a control that cannot honour a
- * press is not drawn as though it could.
+ * So a row renders exactly when the bundle answers it, and is **absent**
+ * otherwise — not dimmed, not dashed, not `Not set`. Under the cards, one
+ * muted line names what a project cannot yet record, which is the same fact in
+ * a tenth of the space and without a single dead affordance. The rows come back
+ * the day the record can hold them.
+ *
+ * Nothing here writes. Changing a recorded project authors a new revision of
+ * its document through the same check-plan-apply the Projects screen runs, and
+ * no screen does that yet — so this tab offers no control at all rather than
+ * one that cannot honour a press.
  */
 export function Configuration({ project }: { readonly project: ProjectFacts }): ReactElement {
   return (
@@ -26,108 +32,57 @@ export function Configuration({ project }: { readonly project: ProjectFacts }): 
         <CardHeader>
           <CardTitle>Details</CardTitle>
         </CardHeader>
-        <CardBody className="space-y-0">
+        <CardBody className="space-y-0 py-1">
           <Row label="Name">{project.name}</Row>
-          <Row label="Ticket prefix">
-            {project.prefix ?? <span className="text-muted">Not recorded</span>}
-          </Row>
-          <Row label="Description">
-            <Inert reason="A recorded project has nowhere to keep a description yet.">
-              Not set
-            </Inert>
-          </Row>
-          <Row label="Status">
-            <Inert reason="A recorded project holds no status.">Not set</Inert>
-          </Row>
-          <Row label="Goals">
-            <span className="flex flex-wrap items-center gap-1.5">
-              {project.goals.map((goal) => (
-                <Chip key={goal} tone="amber">
-                  {goal}
-                </Chip>
-              ))}
-              <Inert
-                className="chip"
-                reason="Changing which goals a project serves records a new revision of it. No screen authors one yet."
-              >
-                + Goal
-              </Inert>
-            </span>
-          </Row>
-          <Row label="Environment">
-            <Inert reason="A recorded project carries no environment of its own.">Not set</Inert>
-          </Row>
-          <Row label="Created">
-            <Inert reason="The bundle records what a project is, not when it was written.">
-              Not recorded
-            </Inert>
-          </Row>
+          {project.prefix === null ? null : <Row label="Ticket prefix">{project.prefix}</Row>}
+          {project.goals.length === 0 ? null : (
+            <Row label="Goals">
+              <span className="flex flex-wrap items-center gap-1.5">
+                {project.goals.map((goal) => (
+                  <Chip key={goal} tone="amber">
+                    {goal}
+                  </Chip>
+                ))}
+              </span>
+            </Row>
+          )}
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Codebase</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-0">
-          <Row label="Repository">
-            <Repository project={project} />
-          </Row>
-          <Row label="Local folder">
-            <Inert reason="A recorded project has no local folder, and a browser cannot read one.">
-              Not set
-            </Inert>
-          </Row>
-        </CardBody>
-      </Card>
+      {project.repository === null ? null : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Codebase</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-0 py-1">
+            <Row label="Repository">
+              {/* Where the code is, as somewhere a person can actually go: the
+                  repository's own name, its forge's mark, and the way to it.
+                  What never renders is the reference the record keeps —
+                  `repository:` is machine syntax nobody typed. */}
+              <RepositoryLink repository={project.repository} className="text-fg" />
+            </Row>
+          </CardBody>
+        </Card>
+      )}
 
-      <Card className="border-danger/50">
-        <CardHeader className="border-danger/50">
-          <CardTitle className="text-danger">Danger zone</CardTitle>
-        </CardHeader>
-        <CardBody className="flex flex-wrap items-center gap-3">
-          <p className="m-0 min-w-0 flex-1 text-sm text-muted">
-            Archiving hides a project from the rail and from every chooser. Nothing is deleted: the
-            record only ever grows.
-          </p>
-          <Inert
-            className="rounded-sm border border-danger/60 px-4 py-2 text-sm font-semibold"
-            reason="Archiving records a superseding revision of this project. No screen authors one yet."
-          >
-            Archive project
-          </Inert>
-        </CardBody>
-      </Card>
+      <p className="m-0 text-2xs text-muted">{WAITING}</p>
     </div>
   );
 }
 
 /**
- * Where the code is, as somewhere a person can actually go.
+ * The one line that replaced seven dead rows.
  *
- * A link when this console knows the forge's address, and the same words
- * without one when it does not. What never renders is the reference the record
- * keeps: `repository:` is machine syntax nobody typed.
+ * It names the four things the reference console configures here and this
+ * record cannot yet hold, without drawing a row, a control or a promise for any
+ * of them. Archiving sits in the same sentence as the rest and for the same
+ * reason: this company's registry answers every plan that retires a component
+ * with a refusal, so an archive control could only ever build a document
+ * nothing will accept.
  */
-function Repository({ project }: { readonly project: ProjectFacts }): ReactElement {
-  if (project.repository === null) {
-    return <span className="text-muted">Not set</span>;
-  }
-  if (project.repositoryUrl === null) {
-    return <>{project.repository}</>;
-  }
-  return (
-    <a
-      href={project.repositoryUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-1.5 text-fg underline decoration-line underline-offset-2 hover:decoration-amber"
-    >
-      <ExternalLink aria-hidden className="size-3.5 shrink-0 text-muted" />
-      {project.repository}
-    </a>
-  );
-}
+const WAITING =
+  "This is everything a project is recorded as today. A description, a status, its own variables and archiving one all wait on a record that can hold them.";
 
 function Row({
   label,

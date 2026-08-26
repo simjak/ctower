@@ -105,6 +105,13 @@ control, with its reason on hover and on focus — the same law unbuilt destinat
 in the rail. It is never an input: a box that takes an answer and drops it is worse than
 an absence.
 
+**Inert is for one affordance among live ones, and it does not scale** (operator,
+2026-08-24). One dimmed control beside working ones reads as *not yet*; a card of them
+reads as *this screen is broken*. So a surface whose rows come from a record that holds
+none of them does not draw those rows at all — not dimmed, not dashed, **absent** — and
+collapses what is missing into one muted line beneath the cards. A row renders where the
+record answers it and nowhere else, and the rows return the day the record can hold them.
+
 ## Copy budget (D9 — the aesthetic in words)
 Chips ≤ 2 words. Field hints ≤ 1 line. Empty state = 1 sentence + 1 action. Errors =
 what happened + the one next action. Rationale NEVER renders — it lives in docs or
@@ -168,4 +175,6 @@ behind a focusable (i) disclosure. Reasons are reachable, never rendered-by-defa
 | 2026-08-24 | A ticket is raised in a pop-up over the list, document-style: one heading you type, one sentence of who/where/how urgent, one button | Operator's Paperclip New-task reference, frozen 2026-08-24. Raising one is a moment, not a place, so it stays out of the address — the same idiom the Projects screen uses to make a project |
 | 2026-08-24 | The list and the columns are one read behind a toggle inside the screen, and the rail's Board stays a destination of its own | Two ways of reading one project's tickets may not become two reads that can disagree. The rail's Board is a different question: any project, not this one |
 | 2026-08-24 | **Superseded:** a ticket's ladder draws the steps ahead of it | The stages were thought unreadable. A workflow is a component of the company document, which `exportCompanyBundle` already answers with, so the whole ladder is knowable and the move control offers the declared next steps rather than asking for a typed stage |
+| 2026-08-26 | A row renders where the record answers it and is **absent** where it does not; what is missing collapses into one muted line. Inert stays for one affordance among live ones | Operator walk (T-026 defect #3): "Not set everywhere; nothing is wired… UI built ahead of the record = a mocked screen wearing honest words". Seven inert rows in one card stopped reading as honesty and started reading as a broken page |
+| 2026-08-26 | One repository reader for the whole tree: the label is `acme/widgets` and the forge is named by its mark, everywhere one is drawn | The Projects surface and the Company page each read the same reference and disagreed about the label, so two screens showing one repository agreed only by coincidence. The 2026-08-24 row above already ruled which label survives |
 | 2026-08-24 | `Developer details` is the one affordance a machine-owned value may sit behind, and it is named for who opens it | The company header's digest and the company's key are both real and both unreadable to an operator. Deleting them would lose the record's identity; hiding them behind a friendly word would only move the noise. The disclosure says who it is for, so an operator who never opens it never meets a hash |
