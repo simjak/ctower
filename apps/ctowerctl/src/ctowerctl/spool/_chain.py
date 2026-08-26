@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from typing import Annotated, Literal, cast
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from ctowerctl.spool import _crypto
 from ctowerctl.spool._crypto import GENESIS_HASH, OpenedRecord
 from ctowerctl.spool._models import (
     CompactionAnchor,
     CorruptDisposition,
     Disposition,
     Head,
+    QuarantineReceipt,
 )
-from ctowerctl.spool._redaction import canonical_json
-from ctowerctl.spool._store import StoredFile
+from ctowerctl.spool._redaction import JsonObject, canonical_json, digest_json
+from ctowerctl.spool._store import LockedStore, StorageError, StoredFile
 
 __all__ = [
     "ChainValidation",
@@ -32,10 +37,22 @@ class ChainError(RuntimeError):
         self.code = code
 
 
+class RecoveryCursor(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    format_version: Literal[1]
+    sequence: Annotated[int, Field(ge=0)]
+    record_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    state_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+
 @dataclass(frozen=True, slots=True)
 class RecoveredRecord:
     stored: StoredFile
     opened: OpenedRecord
+    ciphertext_digest: str
+
+
+type RecordCache = tuple[str, dict[StoredFile, RecoveredRecord]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +72,7 @@ class ChainValidation:
 
 
 type _ChainRecord = RecoveredRecord | CorruptRecord
+type _RecordIndex = dict[int, RecoveredRecord]
 
 
 def validate_record_chain(
@@ -112,6 +130,100 @@ def validate_record_chain(
         logical_hashes=logical_hashes,
         active_corrupt=tuple(active),
     )
+
+
+def load_recovery_cursor(
+    store: LockedStore,
+    keys: _crypto.KeySet,
+    head: Head,
+    records: Sequence[RecoveredRecord],
+    logical_hashes: dict[int, str],
+) -> RecoveryCursor | None:
+    if not store.exists_control("recovery"):
+        return None
+    try:
+        cursor = RecoveryCursor.model_validate(
+            _crypto.verify_signed_document(store.read_control("recovery"), keys.metadata_mac),
+            strict=True,
+        )
+    except (_crypto.CryptoError, ValidationError) as error:
+        raise ChainError("spool recovery cursor is invalid or unauthenticated") from error
+    if cursor.sequence > head.sequence:
+        raise ChainError("spool recovery cursor is ahead of the durable head")
+    expected_hash = GENESIS_HASH if cursor.sequence == 0 else logical_hashes.get(cursor.sequence)
+    if expected_hash is None:
+        anchors = (item for item in records if item.opened.header.record_type == "anchor")
+        anchor = next(anchors, None)
+        if anchor is not None:
+            payload = _payload(anchor, CompactionAnchor)
+            if payload.covered_through == cursor.sequence:
+                expected_hash = payload.terminal_hash
+    if expected_hash != cursor.record_hash:
+        raise ChainError("spool recovery cursor does not match the durable chain")
+    return cursor
+
+
+def state_digest(records: Sequence[RecoveredRecord]) -> str:
+    commands = [
+        {"sequence": record.stored.sequence, "state": record.stored.directory}
+        for record in records
+        if record.opened.header.record_type == "command"
+    ]
+    return digest_json(cast(JsonObject, {"commands": commands}))
+
+
+def transition_command(commands: _RecordIndex, sequence: int) -> RecoveredRecord:
+    command = commands.get(sequence)
+    if command is None:
+        raise ChainError("durable transition targets a missing command")
+    return command
+
+
+def quarantine_receipts(records: Sequence[RecoveredRecord]) -> dict[int, RecoveredRecord]:
+    return {
+        _payload(record, QuarantineReceipt).command_sequence: record
+        for record in records
+        if record.opened.header.record_type == "quarantine_receipt"
+    }
+
+
+def read_record(store: LockedStore, stored: StoredFile, maximum: int) -> bytes:
+    try:
+        return store.read_file(stored, maximum=maximum)
+    except StorageError as error:
+        raise ChainError("spool record cannot be read safely") from error
+
+
+def reuse_cached(
+    store: LockedStore, stored: StoredFile, maximum: int, cached: RecoveredRecord
+) -> RecoveredRecord | None:
+    data = read_record(store, stored, maximum)
+    return cached if hashlib.sha256(data).hexdigest() == cached.ciphertext_digest else None
+
+
+def recover_compaction(
+    store: LockedStore,
+    records: list[RecoveredRecord],
+    *,
+    repair: bool,
+) -> list[RecoveredRecord]:
+    anchors = tuple(record for record in records if record.opened.header.record_type == "anchor")
+    if not anchors:
+        return records
+    anchor_record = anchors[-1]
+    anchor = _payload(anchor_record, CompactionAnchor)
+    record_sequence = anchor_record.stored.sequence
+    predecessor = anchor_record.opened.header.predecessor_hash
+    identity = (anchor.covered_from, record_sequence, predecessor)
+    if identity != (1, anchor.covered_through + 1, anchor.terminal_hash):
+        raise ChainError("compaction anchor range or predecessor is invalid")
+    covered = records[: records.index(anchor_record)]
+    if covered and not repair:
+        raise ChainError("compaction deletion recovery is required")
+    for record in covered:
+        store.remove(record.stored)
+    del records[: len(covered)]
+    return records
 
 
 def _chain_start(first: _ChainRecord) -> tuple[int, str]:

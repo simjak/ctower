@@ -10,10 +10,19 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ValidationError
 
 from ctowerctl.spool import _keyring
+from ctowerctl.spool._chain import ChainError as RecoveryError
 from ctowerctl.spool._chain import (
-    ChainError,
     CorruptRecord,
+    RecordCache,
     RecoveredRecord,
+    RecoveryCursor,
+    load_recovery_cursor,
+    quarantine_receipts,
+    read_record,
+    recover_compaction,
+    reuse_cached,
+    state_digest,
+    transition_command,
     validate_record_chain,
 )
 from ctowerctl.spool._crypto import (
@@ -62,14 +71,6 @@ __all__ = [
 ]
 
 
-class RecoveryError(RuntimeError):
-    """The spool cannot safely infer one durable state."""
-
-    def __init__(self, message: str, *, code: str = "chain_integrity") -> None:
-        super().__init__(message)
-        self.code = code
-
-
 class Session:
     """One fully verified, flock-protected mutable spool session."""
 
@@ -81,18 +82,18 @@ class Session:
         keys: KeySet,
         records: list[RecoveredRecord],
         corrupt_records: tuple[CorruptRecord, ...],
+        recovery_cursor: RecoveryCursor | None,
         *,
         maximum_record_bytes: int,
         torn_evidence: int,
     ) -> None:
         self.store = store
-        self.metadata = metadata
-        self.head = head
-        self.keys = keys
+        self.metadata, self.head, self.keys = metadata, head, keys
         self.records = records
         self.corrupt_records = corrupt_records
-        self.maximum_record_bytes = maximum_record_bytes
-        self.torn_evidence = torn_evidence
+        self.recovery_cursor = recovery_cursor
+        self._quarantine_receipts: dict[int, RecoveredRecord] | None = None
+        self.maximum_record_bytes, self.torn_evidence = maximum_record_bytes, torn_evidence
 
     def append(
         self,
@@ -123,31 +124,17 @@ class Session:
             cast(JsonObject, next_head.model_dump(mode="json")),
             self.keys.metadata_mac,
         )
-        self.store.append_record(directory, sealed.filename, sealed.data, head_data)
-        stored = StoredFile(
-            directory=directory,
-            name=sealed.filename,
-            sequence=sequence,
-            kind=record_type.value,
-            size=len(sealed.data),
-        )
-        recovered = RecoveredRecord(
-            stored=stored,
-            opened=OpenedRecord(
-                header=sealed.header,
-                payload=body,
-                record_hash=sealed.record_hash,
-            ),
-        )
+        stored = self.store.append_record(directory, sealed.filename, sealed.data, head_data)
+        opened = OpenedRecord(sealed.header, body, sealed.record_hash)
+        recovered = RecoveredRecord(stored, opened, hashlib.sha256(sealed.data).hexdigest())
         self.records.append(recovered)
+        self._quarantine_receipts = None
         self.head = next_head
         return recovered
 
     def move(self, record: RecoveredRecord, destination: DirectoryName) -> RecoveredRecord:
-        moved = RecoveredRecord(
-            stored=self.store.move(record.stored, destination),
-            opened=record.opened,
-        )
+        stored = self.store.move(record.stored, destination)
+        moved = RecoveredRecord(stored, record.opened, record.ciphertext_digest)
         self.records[self.records.index(record)] = moved
         return moved
 
@@ -167,6 +154,11 @@ class Session:
             None,
         )
 
+    def quarantine_receipt(self, command_sequence: int) -> RecoveredRecord | None:
+        if self._quarantine_receipts is None:
+            self._quarantine_receipts = quarantine_receipts(self.records)
+        return self._quarantine_receipts.get(command_sequence)
+
     def verify_corrupt_artifact(self, corrupt: CorruptRecord) -> None:
         data = self.store.read_file(corrupt.stored, maximum=self.maximum_record_bytes)
         if (
@@ -177,11 +169,25 @@ class Session:
 
     def verify_doctor_state(self) -> None:
         """Require evidence-free state for the non-mutating doctor result."""
-
         if self.torn_evidence:
             raise RecoveryError("torn-write evidence requires explicit disposition")
         if self.corrupt_records:
             raise RecoveryError("corrupt quarantine requires explicit disposition")
+
+    def checkpoint_recovery(self) -> None:
+        if self.recovery_cursor is not None and self.recovery_cursor.sequence == self.head.sequence:
+            return
+        cursor = RecoveryCursor(
+            format_version=FORMAT_VERSION,
+            sequence=self.head.sequence,
+            record_hash=self.head.record_hash,
+            state_digest=state_digest(self.records),
+        )
+        if cursor == self.recovery_cursor:
+            return
+        body = cast(JsonObject, cursor.model_dump(mode="json"))
+        self.store.write_control("recovery", sign_document(body, self.keys.metadata_mac))
+        self.recovery_cursor = cursor
 
 
 def recover_session(
@@ -190,21 +196,29 @@ def recover_session(
     *,
     maximum_record_bytes: int,
     repair: bool = True,
+    record_cache: RecordCache | None = None,
 ) -> Session:
     """Initialize or fully authenticate one spool and resolve completed transitions."""
-
     metadata, keys = _load_or_create_metadata(store, origin_digest)
     head = _load_or_create_head(store, keys)
     temporary_count = store.recover_temps() if repair else store.temporary_count()
+    torn_evidence = store.quarantine_evidence_count() + temporary_count * (not repair)
+    cached = record_cache[1] if record_cache and record_cache[0] == metadata.key_id else None
     recovered, discovered_corrupt = _open_records(
         store,
         metadata,
         keys,
+        store.scan_records(),
         maximum_record_bytes,
+        record_cache=cached,
         repair=repair,
     )
-    recovered = _recover_compaction(store, recovered, repair=repair)
-    head, active_corrupt = _validate_chain(
+    if recovered and (head.sequence, head.record_hash) == (
+        recovered[-1].stored.sequence,
+        recovered[-1].opened.record_hash,
+    ):
+        recovered = recover_compaction(store, recovered, repair=repair)
+    head, active_corrupt, logical_hashes = _validate_chain(
         store,
         keys,
         head,
@@ -212,6 +226,8 @@ def recover_session(
         discovered_corrupt,
         repair=repair,
     )
+    recovery_cursor = load_recovery_cursor(store, keys, head, recovered, logical_hashes)
+    recovered = recover_compaction(store, recovered, repair=repair)
     session = Session(
         store,
         metadata,
@@ -219,16 +235,26 @@ def recover_session(
         keys,
         recovered,
         active_corrupt,
+        recovery_cursor,
         maximum_record_bytes=maximum_record_bytes,
-        torn_evidence=store.quarantine_evidence_count() + (0 if repair else temporary_count),
+        torn_evidence=torn_evidence,
     )
-    _recover_transitions(session, repair=repair)
+    expected_cursor = RecoveryCursor(
+        format_version=FORMAT_VERSION,
+        sequence=head.sequence,
+        record_hash=head.record_hash,
+        state_digest=state_digest(recovered),
+    )
+    if recovery_cursor != expected_cursor:
+        _recover_transitions(session, repair=repair)
+        session.recovery_cursor = None
+    if repair:
+        session.checkpoint_recovery()
     return session
 
 
 def command_payload(record: RecoveredRecord) -> CommandEnvelope:
     """Validate the encrypted command body after record authentication."""
-
     try:
         payload = CommandEnvelope.model_validate(record.opened.payload, strict=True)
         UUID(payload.command_id)
@@ -243,7 +269,6 @@ def command_payload(record: RecoveredRecord) -> CommandEnvelope:
 
 def utc_text(value: datetime | None = None) -> str:
     """Canonical UTC timestamp for encrypted payloads."""
-
     timestamp = value or datetime.now(UTC)
     if timestamp.tzinfo is None:
         raise ValueError("spool timestamps must be timezone-aware")
@@ -319,13 +344,19 @@ def _open_records(
     store: LockedStore,
     metadata: Metadata,
     keys: KeySet,
+    stored_records: tuple[StoredFile, ...],
     maximum_record_bytes: int,
     *,
+    record_cache: dict[StoredFile, RecoveredRecord] | None,
     repair: bool,
 ) -> tuple[list[RecoveredRecord], list[CorruptRecord]]:
     recovered: list[RecoveredRecord] = []
     corrupt: list[CorruptRecord] = []
-    for stored in store.scan_records():
+    for stored in stored_records:
+        cached = record_cache.get(stored) if record_cache is not None else None
+        if cached is not None and reuse_cached(store, stored, maximum_record_bytes, cached):
+            recovered.append(cached)
+            continue
         result = _open_stored_record(
             store,
             stored,
@@ -350,10 +381,7 @@ def _open_stored_record(
     *,
     repair: bool,
 ) -> RecoveredRecord | CorruptRecord:
-    try:
-        data = store.read_file(stored, maximum=maximum_record_bytes)
-    except StorageError as error:
-        raise RecoveryError("spool record cannot be read safely") from error
+    data = read_record(store, stored, maximum_record_bytes)
     try:
         opened = open_record(data, keys, metadata.key_id)
     except CryptoError as error:
@@ -361,7 +389,7 @@ def _open_stored_record(
     if opened.header.sequence != stored.sequence or opened.header.record_type != stored.kind:
         raise RecoveryError("record filename does not match its authenticated header")
     _validate_location(stored)
-    return RecoveredRecord(stored=stored, opened=opened)
+    return RecoveredRecord(stored, opened, hashlib.sha256(data).hexdigest())
 
 
 def _corrupt_record(
@@ -390,13 +418,10 @@ def _validate_chain(
     corrupt: list[CorruptRecord],
     *,
     repair: bool,
-) -> tuple[Head, tuple[CorruptRecord, ...]]:
+) -> tuple[Head, tuple[CorruptRecord, ...], dict[int, str]]:
     if not records and not corrupt:
         return _empty_chain(head)
-    try:
-        validation = validate_record_chain(records, corrupt, head)
-    except ChainError as error:
-        raise RecoveryError(str(error), code=error.code) from error
+    validation = validate_record_chain(records, corrupt, head)
     last_sequence = max(
         [item.stored.sequence for item in records] + [item.stored.sequence for item in corrupt]
     )
@@ -408,13 +433,13 @@ def _validate_chain(
         last_sequence,
         repair=repair,
     )
-    return head, validation.active_corrupt
+    return head, validation.active_corrupt, validation.logical_hashes
 
 
-def _empty_chain(head: Head) -> tuple[Head, tuple[CorruptRecord, ...]]:
+def _empty_chain(head: Head) -> tuple[Head, tuple[CorruptRecord, ...], dict[int, str]]:
     if head.sequence != 0 or head.record_hash != GENESIS_HASH:
         raise RecoveryError("spool head names a missing durable record")
-    return head, ()
+    return head, (), {}
 
 
 def _recover_head(
@@ -446,38 +471,6 @@ def _recover_head(
     return next_head
 
 
-def _recover_compaction(
-    store: LockedStore,
-    records: list[RecoveredRecord],
-    *,
-    repair: bool,
-) -> list[RecoveredRecord]:
-    anchors = tuple(record for record in records if record.opened.header.record_type == "anchor")
-    if not anchors:
-        return records
-    if len(anchors) != 1:
-        raise RecoveryError("multiple compaction anchors are ambiguous")
-    anchor_record = anchors[0]
-    anchor = _payload(anchor_record, CompactionAnchor)
-    if (
-        anchor.covered_from != 1
-        or anchor_record.stored.sequence != anchor.covered_through + 1
-        or anchor_record.opened.header.predecessor_hash != anchor.terminal_hash
-    ):
-        raise RecoveryError("compaction anchor range or predecessor is invalid")
-    covered = [
-        record
-        for record in records
-        if anchor.covered_from <= record.stored.sequence <= anchor.covered_through
-    ]
-    if covered and not repair:
-        raise RecoveryError("compaction deletion recovery is required")
-    for record in covered:
-        store.remove(record.stored)
-        records.remove(record)
-    return records
-
-
 def _head_matches_record(head: Head, logical_hashes: dict[int, str]) -> bool:
     if head.sequence == 0:
         return head.record_hash == GENESIS_HASH
@@ -485,54 +478,75 @@ def _head_matches_record(head: Head, logical_hashes: dict[int, str]) -> bool:
 
 
 def _recover_transitions(session: Session, *, repair: bool) -> None:
-    for command in tuple(session.commands()):
-        actions = _actions_for(session.records, command)
-        state = "pending"
-        for action in actions:
-            state = _next_state(state, action)
+    commands = {command.stored.sequence: command for command in session.commands()}
+    discarded = {
+        disposition.command_sequence: disposition.command_hash
+        for record in session.records
+        if record.opened.header.record_type == "disposition"
+        if (disposition := _payload(record, Disposition)).action == "discard"
+    }
+    states = dict.fromkeys(commands, "pending")
+    for record in session.records:
+        transition = _transition_for(record, commands, discarded)
+        if transition is None:
+            continue
+        command_sequence, action = transition
+        if command_sequence not in states:
+            if action == "discard":
+                continue
+            raise RecoveryError("durable transition targets a missing command")
+        states[command_sequence] = _next_state(states[command_sequence], action)
+    if not repair:
+        if any(
+            states[sequence] != command.stored.directory for sequence, command in commands.items()
+        ):
+            raise RecoveryError("durable transition recovery is required")
+        return
+    repaired: list[RecoveredRecord] = []
+    for record in session.records:
+        updated = record
+        state = states.get(record.stored.sequence, record.stored.directory)
         if state == "discarded":
-            if not repair:
-                raise RecoveryError("discard recovery is required")
-            session.remove(command)
-        elif state != command.stored.directory:
-            if not repair:
-                raise RecoveryError("durable transition recovery is required")
-            session.move(command, cast(DirectoryName, state))
+            session.store.remove(record.stored)
+            continue
+        if state != record.stored.directory:
+            stored = session.store.move(record.stored, cast(DirectoryName, state))
+            updated = RecoveredRecord(stored, record.opened, record.ciphertext_digest)
+        repaired.append(updated)
+    session.records = repaired
 
 
-def _actions_for(
-    records: list[RecoveredRecord],
-    command: RecoveredRecord,
-) -> tuple[str, ...]:
-    actions: list[str] = []
-    for record in records:
-        action = _action_for(record, command)
-        if action is not None:
-            actions.append(action)
-    return tuple(actions)
-
-
-def _action_for(record: RecoveredRecord, command: RecoveredRecord) -> str | None:
+def _transition_for(
+    record: RecoveredRecord,
+    commands: dict[int, RecoveredRecord],
+    discarded: dict[int, str],
+) -> tuple[int, str] | None:
     record_type = record.opened.header.record_type
     if record_type == "accepted_receipt":
         accepted = _payload(record, AcceptedReceipt)
-        if accepted.command_sequence == command.stored.sequence:
-            _verify_command_binding(command, accepted.command_hash)
-            if accepted.command_id != command_payload(command).command_id:
-                raise RecoveryError("accepted receipt binds a different command ID")
-            if accepted.response_digest != digest_json({"response": accepted.response}):
-                raise RecoveryError("accepted receipt response digest does not match")
-            return "accepted"
-    elif record_type == "quarantine_receipt":
+        command = transition_command(commands, accepted.command_sequence)
+        _verify_command_binding(command, accepted.command_hash)
+        if accepted.command_id != command_payload(command).command_id:
+            raise RecoveryError("accepted receipt binds a different command ID")
+        if accepted.response_digest != digest_json({"response": accepted.response}):
+            raise RecoveryError("accepted receipt response digest does not match")
+        return accepted.command_sequence, "accepted"
+    if record_type == "quarantine_receipt":
         quarantined = _payload(record, QuarantineReceipt)
-        if quarantined.command_sequence == command.stored.sequence:
-            _verify_command_binding(command, quarantined.command_hash)
-            return "quarantined"
-    elif record_type == "disposition":
+        missing = quarantined.command_sequence not in commands
+        if missing and discarded.get(quarantined.command_sequence) == quarantined.command_hash:
+            return None
+        command = transition_command(commands, quarantined.command_sequence)
+        _verify_command_binding(command, quarantined.command_hash)
+        return quarantined.command_sequence, "quarantined"
+    if record_type == "disposition":
         disposition = _payload(record, Disposition)
-        if disposition.command_sequence == command.stored.sequence:
-            _verify_command_binding(command, disposition.command_hash)
-            return disposition.action
+        target_command = commands.get(disposition.command_sequence)
+        if target_command is not None:
+            _verify_command_binding(target_command, disposition.command_hash)
+        elif disposition.action != "discard":
+            raise RecoveryError("durable transition targets a missing command")
+        return disposition.command_sequence, disposition.action
     return None
 
 

@@ -27,7 +27,7 @@ def compact_accepted(session: Session, *, now: datetime, horizon: timedelta) -> 
     if not receipts or any(now - parse_utc(receipt.accepted_at) < horizon for receipt in receipts):
         return 0
     if any(
-        record.opened.header.record_type not in {"command", "accepted_receipt"}
+        record.opened.header.record_type not in {"anchor", "command", "accepted_receipt"}
         for record in session.records
     ):
         return 0
@@ -35,14 +35,16 @@ def compact_accepted(session: Session, *, now: datetime, horizon: timedelta) -> 
     terminal = covered[-1]
     anchor = CompactionAnchor(
         schema_version=1,
-        covered_from=covered[0].stored.sequence,
+        covered_from=1,
         covered_through=terminal.stored.sequence,
         terminal_hash=terminal.opened.record_hash,
         created_at=utc_text(now),
     )
     session.append(RecordType.ANCHOR, "anchors", anchor)
+    targets = {record.stored for record in covered}
     for record in covered:
-        session.remove(record)
+        session.store.remove(record.stored)
+    session.records = [record for record in session.records if record.stored not in targets]
     return len(covered)
 
 
