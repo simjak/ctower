@@ -282,3 +282,53 @@ jobs:
 
       - name: Run canonical release gate
         run: just verify
+
+      - name: Sweep leaked ctower-i1 Compose projects
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date +%s)"
+          swept=0
+          # Enumerate Compose projects, keep only this harness's greppable prefix,
+          # and derive each project's age from its own containers' Created stamps
+          # (compose ls does not expose a creation timestamp). The grace window is
+          # deliberately wide (2h): it must cover a full CI job plus runner clock
+          # skew, because the sweep's one job is killing projects that are OLD,
+          # not young. Ambiguity resolves to skip — this step shares the host with
+          # live work, so it only sweeps what it can prove is stale.
+          while IFS= read -r project; do
+            case "${project}" in
+              ctower-i1-*) ;;
+              *) continue ;;
+            esac
+            youngest=""
+            while IFS= read -r created_at; do
+              [[ -n "${created_at}" ]] || continue
+              # docker's CreatedAt ends with a zone name ("+0200 CEST") that GNU
+              # date rejects; strip the trailing name and parse the offset.
+              created_epoch="$(date -u -d "${created_at% *}" +%s 2>/dev/null)" || created_epoch=""
+              [[ -n "${created_epoch}" ]] || continue
+              if [[ -z "${youngest}" ]] || ((created_epoch < youngest)); then
+                youngest="${created_epoch}"
+              fi
+            done < <(docker ps -a \
+              --filter "label=com.docker.compose.project=${project}" \
+              --format '{{.CreatedAt}}')
+            if [[ -z "${youngest}" ]]; then
+              printf 'skipping %s: no container timestamps could be parsed\n' "${project}"
+              continue
+            fi
+            age=$((now - youngest))
+            if ((age < 7200)); then
+              printf 'skipping %s: younger than the two-hour grace window (computed age=%ss)\n' \
+                "${project}" "${age}"
+              continue
+            fi
+            printf 'tearing down leaked Compose project: %s\n' "${project}"
+            docker compose -p "${project}" down -v --remove-orphans --timeout 30 || true
+            # Name-scoped fallback for the crash path where compose state is lost.
+            docker rm -f $(docker ps -aq --filter "name=${project}") 2>/dev/null || true
+            swept=$((swept + 1))
+          done < <(docker compose ls --format json | jq -r '.[] | select(.Name != null) | .Name')
+          printf 'ctower-i1 compose teardown sweep complete: swept=%d\n' "${swept}"
