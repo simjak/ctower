@@ -407,9 +407,8 @@ class Spool:
                 )
             yield session
             session.checkpoint_recovery()
-            self._record_cache = RecordCache(
-                session.metadata.key_id, {record.stored: record for record in session.records}
-            )
+            records = {record.stored: record for record in session.records}
+            self._record_cache = (session.metadata.key_id, records)
 
 
 def _new_envelope(

@@ -81,7 +81,6 @@ class StoredFile:
     sequence: int
     kind: str
     size: int
-    identity: tuple[int, int, int]
 
 
 class SafeTree:
@@ -181,13 +180,14 @@ class LockedStore:
         data: bytes,
         head: bytes,
     ) -> StoredFile:
-        _parse_record_name(name)
+        match = _parse_record_name(name)
         destination = self._directories[directory]
         self._atomic_write("tmp", destination, name, data)
         os.fsync(destination)
         self._atomic_write("tmp", self._root_fd, "head", head)
         os.fsync(self._root_fd)
-        return self._stored_file(directory, name)
+        sequence, kind = int(match.group("sequence")), match.group("kind")
+        return StoredFile(directory, name, sequence, kind, len(data))
 
     def read_file(self, stored: StoredFile, *, maximum: int) -> bytes:
         return _read_checked(self._directories[stored.directory], stored.name, maximum)
@@ -206,11 +206,19 @@ class LockedStore:
                 if sequence in seen_sequences:
                     raise StorageError("duplicate durable record sequence")
                 seen_sequences.add(sequence)
-                records.append(self._stored_file(directory, name))
-                recoverable_anchor_overflow = (len(records), directory, match.group("kind")) == (
-                    self._scan_limit + 1,
-                    "anchors",
-                    "anchor",
+                directory_fd = self._directories[directory]
+                file_descriptor = os.open(name, _FILE_READ_FLAGS, dir_fd=directory_fd)
+                try:
+                    details = _verify_file(file_descriptor, exact_mode=0o600)
+                finally:
+                    os.close(file_descriptor)
+                records.append(
+                    StoredFile(directory, name, sequence, match.group("kind"), details.st_size)
+                )
+                recoverable_anchor_overflow = (
+                    len(records) == self._scan_limit + 1
+                    and directory == "anchors"
+                    and match.group("kind") == "anchor"
                 )
                 if len(records) > self._scan_limit and not recoverable_anchor_overflow:
                     raise ScanLimitError("durable records exceed bounded scan policy")
@@ -229,7 +237,7 @@ class LockedStore:
         )
         os.fsync(source_fd)
         os.fsync(destination_fd)
-        return self._stored_file(destination, stored.name)
+        return StoredFile(destination, stored.name, stored.sequence, stored.kind, stored.size)
 
     def remove(self, stored: StoredFile) -> None:
         os.unlink(stored.name, dir_fd=self._directories[stored.directory])
@@ -270,26 +278,6 @@ class LockedStore:
         """Release checked subdirectory descriptors; flock/root are caller-owned."""
 
         self.__exit__(None, None, None)
-
-    def _stored_file(self, directory: DirectoryName, name: str) -> StoredFile:
-        match = _parse_record_name(name)
-        file_descriptor = os.open(
-            name,
-            _FILE_READ_FLAGS,
-            dir_fd=self._directories[directory],
-        )
-        try:
-            details = _verify_file(file_descriptor, exact_mode=0o600)
-        finally:
-            os.close(file_descriptor)
-        return StoredFile(
-            directory=directory,
-            name=name,
-            sequence=int(match.group("sequence")),
-            kind=match.group("kind"),
-            size=details.st_size,
-            identity=(details.st_dev, details.st_ino, details.st_ctime_ns),
-        )
 
     def _scan_names(self, directory: DirectoryName) -> tuple[str, ...]:
         with os.scandir(self._directories[directory]) as entries:

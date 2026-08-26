@@ -16,9 +16,11 @@ from ctowerctl.spool._chain import (
     RecordCache,
     RecoveredRecord,
     RecoveryCursor,
-    load_or_create_head,
     load_recovery_cursor,
+    quarantine_receipts,
+    read_record,
     recover_compaction,
+    reuse_cached,
     state_digest,
     transition_command,
     validate_record_chain,
@@ -124,24 +126,16 @@ class Session:
             self.keys.metadata_mac,
         )
         stored = self.store.append_record(directory, sealed.filename, sealed.data, head_data)
-        recovered = RecoveredRecord(
-            stored=stored,
-            opened=OpenedRecord(
-                header=sealed.header,
-                payload=body,
-                record_hash=sealed.record_hash,
-            ),
-        )
+        opened = OpenedRecord(sealed.header, body, sealed.record_hash)
+        recovered = RecoveredRecord(stored, opened, hashlib.sha256(sealed.data).hexdigest())
         self.records.append(recovered)
         self._quarantine_receipts = None
         self.head = next_head
         return recovered
 
     def move(self, record: RecoveredRecord, destination: DirectoryName) -> RecoveredRecord:
-        moved = RecoveredRecord(
-            stored=self.store.move(record.stored, destination),
-            opened=record.opened,
-        )
+        stored = self.store.move(record.stored, destination)
+        moved = RecoveredRecord(stored, record.opened, record.ciphertext_digest)
         self.records[self.records.index(record)] = moved
         return moved
 
@@ -162,17 +156,8 @@ class Session:
         )
 
     def quarantine_receipt(self, command_sequence: int) -> RecoveredRecord | None:
-        """Return the latest verified receipt without rescanning history per command."""
         if self._quarantine_receipts is None:
-            receipts: dict[int, RecoveredRecord] = {}
-            for record in self.records:
-                if record.opened.header.record_type != "quarantine_receipt":
-                    continue
-                sequence = record.opened.payload.get("command_sequence")
-                if not isinstance(sequence, int) or isinstance(sequence, bool):
-                    raise RecoveryError("durable record payload schema is unknown or invalid")
-                receipts[sequence] = record
-            self._quarantine_receipts = receipts
+            self._quarantine_receipts = quarantine_receipts(self.records)
         return self._quarantine_receipts.get(command_sequence)
 
     def verify_corrupt_artifact(self, corrupt: CorruptRecord) -> None:
@@ -191,7 +176,6 @@ class Session:
             raise RecoveryError("corrupt quarantine requires explicit disposition")
 
     def checkpoint_recovery(self) -> None:
-        """Advance the authenticated cursor only after transition moves are durable."""
         if self.recovery_cursor is not None and self.recovery_cursor.sequence == self.head.sequence:
             return
         cursor = RecoveryCursor(
@@ -203,8 +187,7 @@ class Session:
         if cursor == self.recovery_cursor:
             return
         body = cast(JsonObject, cursor.model_dump(mode="json"))
-        data = sign_document(body, self.keys.metadata_mac)
-        self.store.write_control("recovery", data)
+        self.store.write_control("recovery", sign_document(body, self.keys.metadata_mac))
         self.recovery_cursor = cursor
 
 
@@ -218,10 +201,10 @@ def recover_session(
 ) -> Session:
     """Initialize or fully authenticate one spool and resolve completed transitions."""
     metadata, keys = _load_or_create_metadata(store, origin_digest)
-    head = load_or_create_head(store, keys)
+    head = _load_or_create_head(store, keys)
     temporary_count = store.recover_temps() if repair else store.temporary_count()
     torn_evidence = store.quarantine_evidence_count() + temporary_count * (not repair)
-    cached = record_cache.records_for(metadata.key_id) if record_cache else None
+    cached = record_cache[1] if record_cache and record_cache[0] == metadata.key_id else None
     recovered, discovered_corrupt = _open_records(
         store,
         metadata,
@@ -244,13 +227,7 @@ def recover_session(
         discovered_corrupt,
         repair=repair,
     )
-    recovery_cursor = load_recovery_cursor(
-        store,
-        keys,
-        head,
-        recovered,
-        logical_hashes,
-    )
+    recovery_cursor = load_recovery_cursor(store, keys, head, recovered, logical_hashes)
     recovered = recover_compaction(store, recovered, repair=repair)
     session = Session(
         store,
@@ -278,7 +255,6 @@ def recover_session(
 
 def command_payload(record: RecoveredRecord) -> CommandEnvelope:
     """Validate the encrypted command body after record authentication."""
-
     try:
         payload = CommandEnvelope.model_validate(record.opened.payload, strict=True)
         UUID(payload.command_id)
@@ -293,7 +269,6 @@ def command_payload(record: RecoveredRecord) -> CommandEnvelope:
 
 def utc_text(value: datetime | None = None) -> str:
     """Canonical UTC timestamp for encrypted payloads."""
-
     timestamp = value or datetime.now(UTC)
     if timestamp.tzinfo is None:
         raise ValueError("spool timestamps must be timezone-aware")
@@ -346,6 +321,25 @@ def _load_or_create_metadata(store: LockedStore, origin_digest: str) -> tuple[Me
     return metadata, keys
 
 
+def _load_or_create_head(store: LockedStore, keys: KeySet) -> Head:
+    if not store.exists_control("head"):
+        if store.scan_records():
+            raise RecoveryError("spool head is missing while records exist")
+        head = Head(format_version=FORMAT_VERSION, sequence=0, record_hash=GENESIS_HASH)
+        store.write_control(
+            "head",
+            sign_document(cast(JsonObject, head.model_dump(mode="json")), keys.metadata_mac),
+        )
+        return head
+    try:
+        return Head.model_validate(
+            verify_signed_document(store.read_control("head"), keys.metadata_mac),
+            strict=True,
+        )
+    except (CryptoError, ValidationError) as error:
+        raise RecoveryError("spool head is invalid or unauthenticated") from error
+
+
 def _open_records(
     store: LockedStore,
     metadata: Metadata,
@@ -360,7 +354,7 @@ def _open_records(
     corrupt: list[CorruptRecord] = []
     for stored in stored_records:
         cached = record_cache.get(stored) if record_cache is not None else None
-        if cached is not None:
+        if cached is not None and reuse_cached(store, stored, maximum_record_bytes, cached):
             recovered.append(cached)
             continue
         result = _open_stored_record(
@@ -387,10 +381,7 @@ def _open_stored_record(
     *,
     repair: bool,
 ) -> RecoveredRecord | CorruptRecord:
-    try:
-        data = store.read_file(stored, maximum=maximum_record_bytes)
-    except StorageError as error:
-        raise RecoveryError("spool record cannot be read safely") from error
+    data = read_record(store, stored, maximum_record_bytes)
     try:
         opened = open_record(data, keys, metadata.key_id)
     except CryptoError as error:
@@ -398,7 +389,7 @@ def _open_stored_record(
     if opened.header.sequence != stored.sequence or opened.header.record_type != stored.kind:
         raise RecoveryError("record filename does not match its authenticated header")
     _validate_location(stored)
-    return RecoveredRecord(stored=stored, opened=opened)
+    return RecoveredRecord(stored, opened, hashlib.sha256(data).hexdigest())
 
 
 def _corrupt_record(
@@ -488,9 +479,15 @@ def _head_matches_record(head: Head, logical_hashes: dict[int, str]) -> bool:
 
 def _recover_transitions(session: Session, *, repair: bool) -> None:
     commands = {command.stored.sequence: command for command in session.commands()}
+    discarded = {
+        disposition.command_sequence: disposition.command_hash
+        for record in session.records
+        if record.opened.header.record_type == "disposition"
+        if (disposition := _payload(record, Disposition)).action == "discard"
+    }
     states = dict.fromkeys(commands, "pending")
     for record in session.records:
-        transition = _transition_for(record, commands)
+        transition = _transition_for(record, commands, discarded)
         if transition is None:
             continue
         command_sequence, action = transition
@@ -514,15 +511,15 @@ def _recover_transitions(session: Session, *, repair: bool) -> None:
             continue
         if state != record.stored.directory:
             stored = session.store.move(record.stored, cast(DirectoryName, state))
-            updated = RecoveredRecord(stored, record.opened)
+            updated = RecoveredRecord(stored, record.opened, record.ciphertext_digest)
         repaired.append(updated)
     session.records = repaired
-    session._quarantine_receipts = None
 
 
 def _transition_for(
     record: RecoveredRecord,
     commands: dict[int, RecoveredRecord],
+    discarded: dict[int, str],
 ) -> tuple[int, str] | None:
     record_type = record.opened.header.record_type
     if record_type == "accepted_receipt":
@@ -536,6 +533,9 @@ def _transition_for(
         return accepted.command_sequence, "accepted"
     if record_type == "quarantine_receipt":
         quarantined = _payload(record, QuarantineReceipt)
+        missing = quarantined.command_sequence not in commands
+        if missing and discarded.get(quarantined.command_sequence) == quarantined.command_hash:
+            return None
         command = transition_command(commands, quarantined.command_sequence)
         _verify_command_binding(command, quarantined.command_hash)
         return quarantined.command_sequence, "quarantined"
