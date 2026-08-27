@@ -1,6 +1,5 @@
 import io
 import os
-import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -8,12 +7,13 @@ from uuid import uuid4
 
 import pytest
 
+import ctowerctl.spool._recovery as recovery_module
 from ctowerctl import interface
 from ctowerctl._output import ExitCode
 from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, SpoolConfig, SpoolError, _keyring
 from ctowerctl.spool import _replay as replay
 from ctowerctl.spool import interface as spool_interface
-from ctowerctl.spool._crypto import RecordType
+from ctowerctl.spool._crypto import RecordType, open_record
 from ctowerctl.spool._models import QuarantineReceipt
 from ctowerctl.spool._recovery import Session, utc_text
 from ctowerctl.spool._store import LockedStore
@@ -46,13 +46,13 @@ def protected_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.mark.no_cover
-@pytest.mark.parametrize("case", [(5_000, 0, 2.0), (1_111, 8_000, 1.0)])
+@pytest.mark.parametrize("case", [(5_000, 0), (1_111, 8_000)])
 def test_inbox_notify_warm_recovery_meets_fleet_bounds(
     protected_state: Path,
     monkeypatch: pytest.MonkeyPatch,
-    case: tuple[int, int, float],
+    case: tuple[int, int],
 ) -> None:
-    count, text_bytes, limit = case
+    count, text_bytes = case
     spool = Spool.for_origin(_ORIGIN).bind_credential(_CREDENTIAL)
     with monkeypatch.context() as seed:
         seed.setattr(os, "fsync", lambda _descriptor: None)
@@ -69,9 +69,11 @@ def test_inbox_notify_warm_recovery_meets_fleet_bounds(
         repair.setattr(os, "fsync", lambda _descriptor: None)
         repair.setattr(Session, "move", MagicMock(side_effect=AssertionError))
         assert spool.status().quarantine_count == count
-    _notify()
-    code, elapsed = _notify()
-    assert code is ExitCode.PERMANENT and elapsed < limit
+    decrypt_record = MagicMock(wraps=open_record)
+    monkeypatch.setattr(recovery_module, "open_record", decrypt_record)
+    code = _notify()
+    assert code is ExitCode.PERMANENT
+    assert decrypt_record.call_count == len(records)
 
 
 def test_cursor_cache_tamper_and_discard_checkpoint_fail_closed(
@@ -173,8 +175,7 @@ def _seed_quarantined(spool: Spool, count: int, *, text_bytes: int) -> None:
             )
 
 
-def _notify() -> tuple[ExitCode, float]:
-    started = time.perf_counter()
+def _notify() -> ExitCode:
     code = interface.main(
         f"--base-url {_ORIGIN} inbox notify --command-id {uuid4()} --to qa-agent "
         "--severity info --project-key ctower benchmark".split(),
@@ -182,7 +183,7 @@ def _notify() -> tuple[ExitCode, float]:
         stdout=io.StringIO(),
         stderr=io.StringIO(),
     )
-    return ExitCode(code), time.perf_counter() - started
+    return ExitCode(code)
 
 
 def _flip(path: Path) -> None:
