@@ -6,7 +6,7 @@ import os
 import signal
 import subprocess
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 
 __all__ = ["ProcessTimeoutError", "pipeline", "run"]
@@ -32,6 +32,8 @@ def run(
     capture_output: bool = False,
     discard_output: bool = False,
     inherited_descriptors: Sequence[int] = (),
+    environment: Mapping[str, str] | None = None,
+    working_directory: str | os.PathLike[str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run one process group and terminate all owned descendants on timeout."""
 
@@ -52,6 +54,8 @@ def run(
         start_new_session=True,
         text=True,
         pass_fds=tuple(inherited_descriptors),
+        env=environment,
+        cwd=working_directory,
     )
     try:
         stdout, stderr = process.communicate(input=input_text, timeout=timeout_seconds)

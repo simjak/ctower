@@ -42,7 +42,7 @@ _TERMINAL_REFERENCES = (
         "tools.process_execution",
     }
 )
-_EXPECTED_ADAPTER_CALLS = {"pipeline": 2, "run": 16}
+_EXPECTED_ADAPTER_CALLS = {"pipeline": 4, "run": 26}
 # Every authored async subprocess creation site production-wide, keyed by (path, operation).
 # A new call site must be added here deliberately, alongside proof it is bounded — the
 # assertion below fails loudly on an unreviewed addition instead of silently inventorying it.
@@ -88,6 +88,22 @@ class BoundedProcessExecutionTests(unittest.TestCase):
     def test_process_deadline_is_required_and_terminates_descendants(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             _assert_deadline_terminates_descendants(Path(name))
+
+    def test_process_context_is_explicit_and_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            result = process_execution.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; print(os.getcwd()); print(os.environ['REHEARSAL_MARKER'])",
+                ],
+                timeout_seconds=2.0,
+                check=True,
+                capture_output=True,
+                environment={"REHEARSAL_MARKER": "bound"},
+                working_directory=name,
+            )
+        self.assertEqual(result.stdout, f"{name}\nbound\n")
 
 
 def _assert_production_process_inventory() -> None:

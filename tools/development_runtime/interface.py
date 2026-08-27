@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import shutil
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -51,6 +52,11 @@ from tools.development_runtime.installation import (
 )
 from tools.development_runtime.primary import start_primary
 from tools.development_runtime.reconcile import reconcile_runtime
+from tools.development_runtime.rehearsal import (
+    add_rehearsal_arguments,
+    parse_rehearsal_arguments,
+    run_upgrade_rehearsal,
+)
 
 __all__ = ["keyring_unlock_main", "main"]
 
@@ -111,6 +117,8 @@ def main() -> None:
             print(json.dumps(expose_cli(), sort_keys=True))
         case "checkpoint" | "restore":
             print(run_checkpoint_command(arguments))
+        case "upgrade-rehearsal":
+            run_upgrade_rehearsal(parse_rehearsal_arguments(sys.argv[2:]))
         case _:
             print(json.dumps(observe(), sort_keys=True))
 
@@ -135,6 +143,12 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("reconcile-runtime")
     commands.add_parser("expose-cli")
     add_checkpoint_commands(commands)
+    rehearsal = commands.add_parser(
+        "upgrade-rehearsal",
+        help="prove a schema upgrade on a disposable clone before a freeze",
+        description="prove a schema upgrade on a disposable clone before a freeze",
+    )
+    add_rehearsal_arguments(rehearsal)
     commands.add_parser("observe")
     return parser
 
