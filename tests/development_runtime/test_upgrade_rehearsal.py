@@ -67,7 +67,13 @@ class TestEntrypointWiring:
             check=False,
         )
         assert finished.returncode == 0, finished.stderr
-        for expected in ("--target-ref", "--target-source", "--base-ref", "--scenario", "--offline-fixture"):
+        for expected in (
+            "--target-ref",
+            "--target-source",
+            "--base-ref",
+            "--scenario",
+            "--offline-fixture",
+        ):
             assert expected in finished.stdout
 
 
@@ -75,10 +81,9 @@ class TestLiveReadOnlyGuard:
     def test_select_shaped_statements_reach_the_connection(self) -> None:
         connection = _FakeConnection()
         assert rehearsal.live_read(connection, "SELECT count(*) FROM events") == [("ignored",)]
-        assert (
-            rehearsal.live_read(connection, "  WITH total AS (SELECT 1) SELECT * FROM total")
-            == [("ignored",)]
-        )
+        assert rehearsal.live_read(
+            connection, "  WITH total AS (SELECT 1) SELECT * FROM total"
+        ) == [("ignored",)]
 
     def test_non_select_heads_are_refused_by_name(self) -> None:
         connection = _FakeConnection()
@@ -122,8 +127,11 @@ class TestRefusalClassification:
         result = rehearsal.RehearsalResult(name="as-of-attempt")
         rehearsal._record_outcome(
             result,
-            {"ok": False, "code": "advance-precondition-mismatch",
-             "detail": "record-position-history-unprovable, more detail"},
+            {
+                "ok": False,
+                "code": "advance-precondition-mismatch",
+                "detail": "record-position-history-unprovable, more detail",
+            },
         )
         assert result.first_failing_precondition == "record-position-history-unprovable"
         assert not result.passed
@@ -132,8 +140,11 @@ class TestRefusalClassification:
         result = rehearsal.RehearsalResult(name="as-of-attempt")
         rehearsal._record_outcome(
             result,
-            {"ok": False, "code": "ledger-schema-mismatch",
-             "detail": "attested=a live_canonical=b live_superseded_raw=c"},
+            {
+                "ok": False,
+                "code": "ledger-schema-mismatch",
+                "detail": "attested=a live_canonical=b live_superseded_raw=c",
+            },
         )
         assert result.first_failing_precondition == "ledger-schema-mismatch"
 
@@ -147,15 +158,22 @@ class TestRefusalClassification:
         shaped = rehearsal.RehearsalResult(name="drifted-history-refuses")
         rehearsal._record_drifted_refusal(
             shaped,
-            {"ok": False, "code": "ledger-schema-mismatch",
-             "detail": "attested=a live_canonical=b live_superseded_raw=c"},
+            {
+                "ok": False,
+                "code": "ledger-schema-mismatch",
+                "detail": "attested=a live_canonical=b live_superseded_raw=c",
+            },
         )
         assert shaped.passed
 
         missing_name = rehearsal.RehearsalResult(name="drifted-history-refuses")
         rehearsal._record_drifted_refusal(
             missing_name,
-            {"ok": False, "code": "ledger-schema-mismatch", "detail": "attested=a live_canonical=b"},
+            {
+                "ok": False,
+                "code": "ledger-schema-mismatch",
+                "detail": "attested=a live_canonical=b",
+            },
         )
         assert not missing_name.passed
         assert "live_superseded_raw" in missing_name.reason
@@ -183,7 +201,7 @@ class TestKernelBridge:
     def test_the_live_dsn_travels_through_the_environment_only(self) -> None:
         captured: list[tuple[list[str], dict[str, str]]] = []
 
-        def fake_run(arguments, *, timeout, capture_output, text, env, check):  # noqa: ANN001
+        def fake_run(arguments, *, timeout, capture_output, text, env, check, cwd):  # noqa: ANN001
             captured.append((list(arguments), dict(env)))
             return SimpleNamespace(returncode=0, stdout=json.dumps({"ok": True}) + "\n", stderr="")
 
@@ -235,10 +253,14 @@ class TestOfflineRehearsalEndToEnd:
             rehearsal.parse_rehearsal_arguments(
                 [
                     "--offline-fixture",
-                    "--target-source", str(_REPO_ROOT),
-                    "--base-ref", "HEAD",
-                    "--scenario", "as-of-attempt",
-                    "--json", str(evidence),
+                    "--target-source",
+                    str(_REPO_ROOT),
+                    "--base-ref",
+                    "HEAD",
+                    "--scenario",
+                    "as-of-attempt",
+                    "--json",
+                    str(evidence),
                 ]
             )
         )
@@ -251,10 +273,15 @@ class TestOfflineRehearsalEndToEnd:
             rehearsal.parse_rehearsal_arguments(
                 [
                     "--offline-fixture",
-                    "--target-source", str(_REPO_ROOT),
-                    "--base-ref", "HEAD",
-                    "--scenario", "drifted-history-refuses",
+                    "--target-source",
+                    str(_REPO_ROOT),
+                    "--base-ref",
+                    "HEAD",
+                    "--scenario",
+                    "drifted-history-refuses",
                 ]
             )
         )
-        assert drifted == 0, "the drifted negative scenario PASSES exactly when the refusal has teeth"
+        assert drifted == 0, (
+            "the drifted negative scenario PASSES exactly when the refusal has teeth"
+        )

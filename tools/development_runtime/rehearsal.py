@@ -14,26 +14,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tools.development_runtime._rehearsal_live import (
-    LiveProperties,
-    live_read,
-    probe_live,
-    resolve_live_dsn,
-)
-from tools.development_runtime._rehearsal_vocabulary import (
-    COMPOSE_RELATIVE,
-    LIVE_DSN_ENVIRON,
-    EXIT_LIVE_BLOCKED,
-    EXIT_NO_CLAIM,
-    EXIT_PASS,
-    EXIT_REHEARSAL_FAIL,
-    FIXTURE_ROUTINE_EVENTS,
-    FIXTURE_TICKETS,
-    OFFLINE_FIXTURE_ENDPOINT,
-    SCENARIO_NAMES,
-    UpgradeRehearsalError,
-)
-from tools.development_runtime._rehearsal_bridge import kernel_call, kernel_worker, open_database
+from tools.development_runtime._rehearsal_bridge import kernel_call, kernel_worker
 from tools.development_runtime._rehearsal_cluster import (
     Clone,
     describe_source,
@@ -47,23 +28,42 @@ from tools.development_runtime._rehearsal_fixture import (
     clone_ledger,
     seed_fixture_history,
 )
+from tools.development_runtime._rehearsal_live import (
+    LiveProperties,
+    live_read,
+    probe_live,
+    resolve_live_dsn,
+)
+from tools.development_runtime._rehearsal_report import emit_json, render
 from tools.development_runtime._rehearsal_scenarios import (
     RehearsalResult,
     _record_drifted_refusal,
     _record_outcome,
     run_scenario,
 )
-from tools.development_runtime._rehearsal_report import emit_json, render
+from tools.development_runtime._rehearsal_vocabulary import (
+    COMPOSE_RELATIVE,
+    EXIT_LIVE_BLOCKED,
+    EXIT_NO_CLAIM,
+    EXIT_PASS,
+    EXIT_REHEARSAL_FAIL,
+    FIXTURE_ROUTINE_EVENTS,
+    FIXTURE_TICKETS,
+    LIVE_DSN_ENVIRON,
+    OFFLINE_FIXTURE_ENDPOINT,
+    SCENARIO_NAMES,
+    UpgradeRehearsalError,
+)
 
 __all__ = [
-    "Clone",
     "LIVE_DSN_ENVIRON",
-    "_record_drifted_refusal",
-    "_record_outcome",
-    "_verdict",
+    "Clone",
     "LiveProperties",
     "RehearsalResult",
     "UpgradeRehearsalError",
+    "_record_drifted_refusal",
+    "_record_outcome",
+    "_verdict",
     "kernel_call",
     "live_read",
     "parse_rehearsal_arguments",
@@ -258,8 +258,7 @@ def _verdict(live: LiveProperties, results: list[RehearsalResult]) -> int:
         )
         return EXIT_LIVE_BLOCKED
     print(
-        "VERDICT: PASS — the pending set applies on a clone that carries history. "
-        "Freeze is earned."
+        "VERDICT: PASS — the pending set applies on a clone that carries history. Freeze is earned."
     )
     return EXIT_PASS
 
@@ -267,4 +266,3 @@ def _verdict(live: LiveProperties, results: list[RehearsalResult]) -> int:
 if __name__ == "__main__":
     sys.exit(run_upgrade_rehearsal(_rehearsal_parser().parse_args()))
 
-from tools.development_runtime._rehearsal_bridge import kernel_worker as _kernel_worker  # noqa: E402

@@ -49,7 +49,9 @@ def resolve_replay_checkpoint(spec: str | None) -> ProductCheckpoint | None:
         if not records:
             return None
         latest = records[-1]
-        _require_checkpoint_artifact(latest.checkpoint_id, artifact_path(latest.checkpoint_id), latest.artifact_sha256)
+        _require_checkpoint_artifact(
+            latest.checkpoint_id, artifact_path(latest.checkpoint_id), latest.artifact_sha256
+        )
         return ProductCheckpoint(
             checkpoint_id=latest.checkpoint_id,
             artifact=artifact_path(latest.checkpoint_id),
@@ -74,7 +76,9 @@ def resolve_replay_checkpoint(spec: str | None) -> ProductCheckpoint | None:
         )
     for record in read_records():
         if record.checkpoint_id == spec:
-            _require_checkpoint_artifact(record.checkpoint_id, artifact_path(record.checkpoint_id), record.artifact_sha256)
+            _require_checkpoint_artifact(
+                record.checkpoint_id, artifact_path(record.checkpoint_id), record.artifact_sha256
+            )
             return ProductCheckpoint(
                 checkpoint_id=record.checkpoint_id,
                 artifact=artifact_path(record.checkpoint_id),
@@ -86,7 +90,9 @@ def resolve_replay_checkpoint(spec: str | None) -> ProductCheckpoint | None:
                     f"({record.generation_migration_id} @ {record.generation[:16]}…)"
                 ),
             )
-    raise UpgradeRehearsalError(f"unknown development checkpoint id or missing artifact path: {spec}")
+    raise UpgradeRehearsalError(
+        f"unknown development checkpoint id or missing artifact path: {spec}"
+    )
 
 
 def _require_checkpoint_artifact(checkpoint_id: str, artifact: Path, artifact_sha256: str) -> None:
@@ -105,15 +111,25 @@ def _require_checkpoint_artifact(checkpoint_id: str, artifact: Path, artifact_sh
 def restore_product_checkpoint(clone: Clone, checkpoint: ProductCheckpoint) -> None:
     """Replace the clone's ctower database with the recorded encrypted checkpoint."""
 
-    _require_checkpoint_artifact(checkpoint.checkpoint_id, checkpoint.artifact, checkpoint.artifact_sha256)
+    _require_checkpoint_artifact(
+        checkpoint.checkpoint_id, checkpoint.artifact, checkpoint.artifact_sha256
+    )
     secret = _checkpoint_passphrase()
     docker = docker_path()
     gpg = gpg_path()
     decrypt = subprocess.Popen(  # noqa: S603 - fixed argv, no shell
         [
-            gpg, "--batch", "--quiet", "--yes", "--no-symkey-cache",
-            "--pinentry-mode", "loopback", "--passphrase-fd", "0",
-            "--decrypt", str(checkpoint.artifact),
+            gpg,
+            "--batch",
+            "--quiet",
+            "--yes",
+            "--no-symkey-cache",
+            "--pinentry-mode",
+            "loopback",
+            "--passphrase-fd",
+            "0",
+            "--decrypt",
+            str(checkpoint.artifact),
         ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -128,9 +144,21 @@ def restore_product_checkpoint(clone: Clone, checkpoint: ProductCheckpoint) -> N
         assert decrypt.stdout is not None
         finished = subprocess.run(  # noqa: S603 - fixed argv, no shell
             [
-                docker, "exec", "--interactive", "--user", "postgres", clone.container,
-                "psql", "--no-psqlrc", "--quiet", "--set", "ON_ERROR_STOP=1",
-                "--username", "postgres", "--dbname", "postgres",
+                docker,
+                "exec",
+                "--interactive",
+                "--user",
+                "postgres",
+                clone.container,
+                "psql",
+                "--no-psqlrc",
+                "--quiet",
+                "--set",
+                "ON_ERROR_STOP=1",
+                "--username",
+                "postgres",
+                "--dbname",
+                "postgres",
             ],
             stdin=decrypt.stdout,
             capture_output=True,
@@ -164,5 +192,3 @@ def _file_sha256(path: Path) -> str:
         while chunk := stream.read(1 << 20):
             digest.update(chunk)
     return digest.hexdigest()
-
-

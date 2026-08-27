@@ -7,6 +7,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from tools.development_runtime._rehearsal_bridge import kernel_call
+from tools.development_runtime._rehearsal_checkpoint import (
+    resolve_replay_checkpoint,
+    restore_product_checkpoint,
+)
 from tools.development_runtime._rehearsal_cluster import (
     Clone,
     _live_ports,
@@ -14,6 +19,7 @@ from tools.development_runtime._rehearsal_cluster import (
     disposable_cluster,
 )
 from tools.development_runtime._rehearsal_fixture import (
+    _clone_ledger_attestation,
     checkpoint_round_trip,
     clone_counts,
     clone_ledger,
@@ -29,8 +35,6 @@ from tools.development_runtime._rehearsal_vocabulary import (
     REQUIRED_DRIFT_DIGEST_NAMES,
     UpgradeRehearsalError,
 )
-from tools.development_runtime._rehearsal_bridge import kernel_call
-from tools.development_runtime._rehearsal_checkpoint import resolve_replay_checkpoint, restore_product_checkpoint
 
 __all__ = ["RehearsalResult", "run_scenario"]
 
@@ -257,5 +261,3 @@ def _record_drifted_refusal(result: RehearsalResult, applied: dict[str, Any]) ->
         f"refused with {code or 'an untyped error'}, expected ledger-schema-mismatch with "
         f"{', '.join(REQUIRED_DRIFT_DIGEST_NAMES)}; missing {', '.join(missing) or 'none'}"
     )
-
-
