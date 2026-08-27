@@ -23,7 +23,11 @@ to its secured predecessor and live verified healthy. The attempt is archived at
    stops the sequence.
 3. Any recorded-state repair the runbook for this upgrade requires (refusal-guarded: verify the
    expected pre-state; any surprise stops).
-4. **Rehearsal gate:** `tools/ctower-upgrade-rehearsal` must exit 0 against live-now.
+4. **Rehearsal gate:** the new runtime's
+   `ctower-private-vps upgrade-rehearsal` verb must exit 0 against live-now. The helper reads
+   live through an enforced read-only session, reproduces its properties on disposable
+   PostgreSQL 17 tmpfs clones, applies the complete pending set with the target ref's kernel,
+   and runs that same kernel's named adoption checks. It never applies DDL to live.
 5. `database-up` through the pending set, using the **new** runtime's tooling, still not serving.
 6. **Start serving, then verify the serve path itself:** protected reads (the exact class step 1
    of the failed attempt caught), every board route, one real read+write round-trip, replication,
@@ -40,10 +44,9 @@ cached per dsn once confirmed — never a per-request query storm) and return th
 `credential-authentication-unavailable: requires generation >= 0039` refusal in place of the
 2026-08-03 failure, on every generation short of 0039.
 
-An earlier version of this section named a `tools/ctower-upgrade-rehearsal` harness as the
-intended home for the serve-on-old-schema case; that tool was never committed to this
-repository. This repository's own catch is instead a committed migration-contract test,
+The serve-on-old-schema catch remains the committed migration-contract test
 `tests/modules/migration/test_credential_generation_gate.py`, which ledgers a disposable database
 through the pre-0039 generation and proves all three entry points above refuse by name rather
-than propagate `UndefinedTable`. Step 4's rehearsal gate is a separate, externally-owned check
-against a live-now database; it is unchanged by gh#259.
+than propagate `UndefinedTable`. Step 4 is complementary: the product release helper now owns
+the live-now clone rehearsal as a first-class verb, while the migration-contract test keeps the
+specific gh#259 refusal pinned without needing a live instance.

@@ -11,34 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-__all__ = [
-    "CHECKPOINT_ARTIFACT_NAME",
-    "CHECKPOINT_RESTORE_TIMEOUT_SECONDS",
-    "COMPOSE_PROJECT_PREFIX",
-    "COMPOSE_RELATIVE",
-    "DATABASE_NAME",
-    "EXIT_LIVE_BLOCKED",
-    "EXIT_NO_CLAIM",
-    "EXIT_PASS",
-    "EXIT_REHEARSAL_FAIL",
-    "FIXTURE_PROJECTS",
-    "FIXTURE_ROUTINE_EVENTS",
-    "FIXTURE_TICKETS",
-    "KERNEL_CALL_TIMEOUT_SECONDS",
-    "KERNEL_SOURCE_RELATIVE",
-    "LIVE_DSN_ENVIRON",
-    "LIVE_DSN_SENTINEL",
-    "LIVE_READ_PREFIXES",
-    "LIVE_FORBIDDEN",
-    "MANIFEST_RELATIVE",
-    "OFFLINE_FIXTURE_ENDPOINT",
-    "REPARSED_CONSTRAINT",
-    "REPARSED_TABLE",
-    "REQUIRED_DRIFT_DIGEST_NAMES",
-    "REPO_ROOT",
-    "SCENARIO_NAMES",
-    "UpgradeRehearsalError",
-]
+__all__: tuple[str, ...] = ()
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KERNEL_SOURCE_RELATIVE = Path("packages/ctower-kernel/src")

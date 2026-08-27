@@ -4,21 +4,22 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
-import subprocess
 import time
 import uuid
-from dataclasses import dataclass
+from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 import psycopg
-from psycopg import sql
 
+import tools.process_execution as process_execution  # noqa: PLR0402
+from ctower_api.development_config import load_config
 from tools.development_runtime._rehearsal_vocabulary import (
     BASE_REF_SEARCH_DEPTH,
     COMPOSE_PROJECT_PREFIX,
-    COMPOSE_RELATIVE,
     DATABASE_NAME,
     MANIFEST_RELATIVE,
     REPO_ROOT,
@@ -34,9 +35,9 @@ __all__ = [
     "source_tree",
 ]
 
-# ---------------------------------------------------------------------------
-# disposable cluster + source trees
-# ---------------------------------------------------------------------------
+_COMPOSE_TIMEOUT_SECONDS = 120.0
+_GIT_TIMEOUT_SECONDS = 60.0
+_NETWORK_PRUNE_TIMEOUT_SECONDS = 30.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,18 +50,27 @@ class Clone:
 
 
 @contextmanager
-def disposable_cluster(compose_file: Path, forbidden_ports: set[int], keep: bool):
-    """One throwaway PostgreSQL 17 cluster on tmpfs, on a port that cannot be the live instance."""
+def disposable_cluster(
+    compose_file: Path,
+    forbidden_ports: set[int],
+    *,
+    keep: bool,
+) -> Iterator[Clone]:
+    """Yield one tmpfs PostgreSQL 17 cluster on a port that cannot be live's."""
 
     docker = docker_path()
     port = _free_port(forbidden_ports)
     project = f"{COMPOSE_PROJECT_PREFIX}{uuid.uuid4().hex[:10]}"
     environment = {**os.environ, "CTOWER_POSTGRES_PORT": str(port)}
     compose = [docker, "compose", "-p", project, "-f", str(compose_file)]
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [*compose, "up", "-d"], env=environment, check=True, capture_output=True
-    )
     try:
+        process_execution.run(
+            [*compose, "up", "-d"],
+            timeout_seconds=_COMPOSE_TIMEOUT_SECONDS,
+            check=True,
+            capture_output=True,
+            environment=environment,
+        )
         base = f"127.0.0.1:{port}/{DATABASE_NAME}"
         clone = Clone(
             container=f"{project}-postgres-1",
@@ -75,8 +85,12 @@ def disposable_cluster(compose_file: Path, forbidden_ports: set[int], keep: bool
         if keep:
             print(f"    kept disposable cluster {project} on 127.0.0.1:{port}")
         else:
-            subprocess.run(  # noqa: S603 - fixed argv, no shell
-                [*compose, "down", "--volumes"], env=environment, capture_output=True, check=False
+            process_execution.run(
+                [*compose, "down", "--volumes"],
+                timeout_seconds=_COMPOSE_TIMEOUT_SECONDS,
+                check=False,
+                capture_output=True,
+                environment=environment,
             )
 
 
@@ -102,16 +116,22 @@ def _wait_for_postgres(dsn: str) -> None:
 
 
 @contextmanager
-def source_tree(ref: str | None, path: Path | None, run_root: Path, label: str):
-    """Yield a source tree for a ref (temporary worktree) or use an existing checkout as it stands."""
+def source_tree(
+    ref: str | None,
+    path: Path | None,
+    run_root: Path,
+    label: str,
+) -> Iterator[Path]:
+    """Yield an existing checkout or a temporary detached worktree for one ref."""
 
     if path is not None:
         yield path.resolve()
         return
+    git = _git_path()
     destination = run_root / label
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
+    process_execution.run(
         [
-            "git",
+            git,
             "-C",
             str(REPO_ROOT),
             "worktree",
@@ -120,49 +140,44 @@ def source_tree(ref: str | None, path: Path | None, run_root: Path, label: str):
             str(destination),
             ref or "HEAD",
         ],
+        timeout_seconds=_GIT_TIMEOUT_SECONDS,
         check=True,
         capture_output=True,
     )
     try:
         yield destination
     finally:
-        subprocess.run(  # noqa: S603 - fixed argv, no shell
-            ["git", "-C", str(REPO_ROOT), "worktree", "remove", "--force", str(destination)],
-            capture_output=True,
+        process_execution.run(
+            [git, "-C", str(REPO_ROOT), "worktree", "remove", "--force", str(destination)],
+            timeout_seconds=_GIT_TIMEOUT_SECONDS,
             check=False,
+            capture_output=True,
         )
 
 
 def resolve_base_ref(terminal_migration: str) -> str:
-    """The newest commit whose manifest terminates exactly where the live ledger terminates."""
+    """Return the newest commit whose manifest ends where the live ledger ends."""
 
-    listed = subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [
-            "git",
-            "-C",
-            str(REPO_ROOT),
-            "rev-list",
-            "origin/main",
-            "--",
-            str(MANIFEST_RELATIVE),
-        ],
+    git = _git_path()
+    listed = process_execution.run(
+        [git, "-C", str(REPO_ROOT), "rev-list", "origin/main", "--", str(MANIFEST_RELATIVE)],
+        timeout_seconds=_GIT_TIMEOUT_SECONDS,
         check=True,
         capture_output=True,
-        text=True,
     ).stdout.split()
     for commit in listed[:BASE_REF_SEARCH_DEPTH]:
-        blob = subprocess.run(  # noqa: S603 - fixed argv, no shell
-            ["git", "-C", str(REPO_ROOT), "show", f"{commit}:{MANIFEST_RELATIVE}"],
-            capture_output=True,
-            text=True,
+        blob = process_execution.run(
+            [git, "-C", str(REPO_ROOT), "show", f"{commit}:{MANIFEST_RELATIVE}"],
+            timeout_seconds=_GIT_TIMEOUT_SECONDS,
             check=False,
+            capture_output=True,
         ).stdout
         try:
             baseline = json.loads(blob)["adoption_baseline"]["through"]
         except (json.JSONDecodeError, KeyError):
             continue
         if baseline == terminal_migration:
-            return commit
+            return str(commit)
     raise UpgradeRehearsalError(
         f"no ctower commit carries a manifest terminating at {terminal_migration}; "
         "the live ledger position cannot be reconstructed"
@@ -170,35 +185,42 @@ def resolve_base_ref(terminal_migration: str) -> str:
 
 
 def describe_source(path: Path, ref: str | None) -> str:
-    head = subprocess.run(  # noqa: S603 - fixed argv, no shell
-        ["git", "-C", str(path), "rev-parse", "--short", "HEAD"],
-        capture_output=True,
-        text=True,
+    git = _git_path()
+    head = process_execution.run(
+        [git, "-C", str(path), "rev-parse", "--short", "HEAD"],
+        timeout_seconds=_GIT_TIMEOUT_SECONDS,
         check=True,
+        capture_output=True,
     ).stdout.strip()
-    dirty = subprocess.run(  # noqa: S603 - fixed argv, no shell
-        ["git", "-C", str(path), "status", "--porcelain"],
-        capture_output=True,
-        text=True,
+    dirty = process_execution.run(
+        [git, "-C", str(path), "status", "--porcelain"],
+        timeout_seconds=_GIT_TIMEOUT_SECONDS,
         check=True,
+        capture_output=True,
     ).stdout.strip()
     suffix = " +uncommitted" if dirty else ""
     return f"{ref or path}@{head}{suffix}"
 
 
-def _live_ports(offline: bool) -> set[int]:
+def _live_ports(*, offline: bool) -> set[int]:
     if offline:
         return set()
-    from ctower_api.development_config import load_config
-
     config = load_config()
     return {config.primary_port, config.standby_port}
 
 
 def _prune_docker_networks() -> None:
     docker = docker_path()
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [docker, "network", "prune", "-f"], check=True, capture_output=True
+    process_execution.run(
+        [docker, "network", "prune", "-f"],
+        timeout_seconds=_NETWORK_PRUNE_TIMEOUT_SECONDS,
+        check=True,
+        capture_output=True,
     )
 
 
+def _git_path() -> str:
+    git = shutil.which("git")
+    if git is None:
+        raise UpgradeRehearsalError("git is required for ref-bound rehearsal source trees")
+    return git
