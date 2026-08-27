@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-import subprocess
 import uuid
 from datetime import UTC, datetime
 
 import psycopg
 from psycopg import sql
 
+import tools.process_execution as process_execution  # noqa: PLR0402
+from tools.development_runtime._rehearsal_cluster import Clone
+from tools.development_runtime._rehearsal_live import LiveProperties
 from tools.development_runtime._rehearsal_vocabulary import (
+    DATABASE_NAME,
     FIXTURE_PROJECTS,
     FIXTURE_ROUTINE_EVENTS,
     FIXTURE_TICKETS,
@@ -18,8 +21,9 @@ from tools.development_runtime._rehearsal_vocabulary import (
     REPARSED_TABLE,
     UpgradeRehearsalError,
 )
-from tools.development_runtime._rehearsal_cluster import Clone
 from tools.development_runtime.host_commands import docker_path
+
+_CHECKPOINT_ROUND_TRIP_TIMEOUT_SECONDS = 900.0
 
 __all__ = [
     "checkpoint_round_trip",
@@ -44,7 +48,9 @@ def seed_fixture_history(clone: Clone, live: LiveProperties) -> dict[str, int]:
         tenant, operator, commander = _seed_principals(connection, now)
         position = _seed_tickets(connection, tenant, operator, commander, tickets, now)
         position = _seed_work_event(connection, tenant, operator, position, now)
-        position, drifting = _seed_routine_events(connection, tenant, operator, routine, position, now)
+        position, drifting = _seed_routine_events(
+            connection, tenant, operator, routine, position, now
+        )
         _seed_untracked_link(connection, tenant, drifting)
         _seed_projections(connection, tenant)
         connection.execute(
@@ -82,7 +88,7 @@ def _seed_tickets(
     count: int,
     now: datetime,
 ) -> int:
-    """One created ticket per row, with the event, link, command result and outbox row it carries."""
+    """Create one ticket and its event, command result, link, and outbox row."""
 
     for index in range(1, count + 1):
         project = FIXTURE_PROJECTS[index % len(FIXTURE_PROJECTS)]
@@ -224,7 +230,10 @@ def _append_event(
             event_id, tenant_id, stream_id, aggregate_id, sequence, kind, schema_version,
             actor_principal_id, client_command_id, request_sha256, correlation_id, causation_id,
             origin, server_time, payload, prev_hash, event_hash, record_position
-        ) VALUES (%s, %s, %s, %s, %s, %s, 1, %s, %s, %s, %s, NULL, %s, %s, '{}'::jsonb, %s, %s, %s)
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, 1, %s, %s, %s, %s, NULL,
+            %s, %s, '{}'::jsonb, %s, %s, %s
+        )
         """,
         (
             event,
@@ -353,16 +362,13 @@ def clone_counts(clone: Clone) -> dict[str, int]:
                 "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"
             ).fetchall()
         ]
-        return {
-            table: int(
-                connection.execute(
-                    sql.SQL("SELECT count(*) FROM {}").format(
-                        sql.Identifier(table)
-                    )
-                ).fetchone()[0]
-            )
-            for table in tables
-        }
+        counts: dict[str, int] = {}
+        for table in tables:
+            row = connection.execute(
+                sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
+            ).fetchone()
+            counts[table] = int(row[0]) if row and row[0] is not None else 0
+        return counts
 
 
 def clone_ledger(clone: Clone) -> tuple[int, str | None]:
@@ -381,7 +387,7 @@ def _clone_ledger_attestation(clone: Clone) -> str:
             "SELECT result_schema_sha256 FROM ctower_schema_migrations "
             "ORDER BY migration_id DESC LIMIT 1"
         ).fetchone()
-    return str(row[0]) if row and row[0] else ""  # type: ignore[unreachable]
+    return str(row[0]) if row and row[0] else ""
 
 
 def checkpoint_round_trip(clone: Clone) -> None:
@@ -393,23 +399,39 @@ def checkpoint_round_trip(clone: Clone) -> None:
     """
 
     docker = docker_path()
-    dumped = subprocess.run(  # noqa: S603 - fixed argv, no shell
+    process_execution.pipeline(
         [
-            docker, "exec", "--user", "postgres", clone.container, "pg_dump", "--create",
-            "--clean", "--if-exists", "--quote-all-identifiers", "--dbname", DATABASE_NAME,
+            docker,
+            "exec",
+            "--user",
+            "postgres",
+            clone.container,
+            "pg_dump",
+            "--create",
+            "--clean",
+            "--if-exists",
+            "--quote-all-identifiers",
+            "--dbname",
+            DATABASE_NAME,
         ],
-        check=True,
-        capture_output=True,
-    ).stdout
-    subprocess.run(  # noqa: S603 - fixed argv, no shell
         [
-            docker, "exec", "--interactive", "--user", "postgres", clone.container, "psql",
-            "--no-psqlrc", "--quiet", "--set", "ON_ERROR_STOP=1", "--username", "postgres",
-            "--dbname", "postgres",
+            docker,
+            "exec",
+            "--interactive",
+            "--user",
+            "postgres",
+            clone.container,
+            "psql",
+            "--no-psqlrc",
+            "--quiet",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "--username",
+            "postgres",
+            "--dbname",
+            "postgres",
         ],
-        input=dumped,
-        check=True,
-        capture_output=True,
+        timeout_seconds=_CHECKPOINT_ROUND_TRIP_TIMEOUT_SECONDS,
     )
 
 
@@ -436,5 +458,3 @@ def inject_genuine_schema_drift(clone: Clone) -> None:
                 sql.Identifier(REPARSED_CONSTRAINT),
             )
         )
-
-

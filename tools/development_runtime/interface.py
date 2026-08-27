@@ -53,6 +53,7 @@ from tools.development_runtime.installation import (
 from tools.development_runtime.primary import start_primary
 from tools.development_runtime.reconcile import reconcile_runtime
 from tools.development_runtime.rehearsal import (
+    add_rehearsal_arguments,
     parse_rehearsal_arguments,
     run_upgrade_rehearsal,
 )
@@ -147,7 +148,7 @@ def _parser() -> argparse.ArgumentParser:
         help="prove a schema upgrade on a disposable clone before a freeze",
         description="prove a schema upgrade on a disposable clone before a freeze",
     )
-    _add_rehearsal_arguments(rehearsal)
+    add_rehearsal_arguments(rehearsal)
     commands.add_parser("observe")
     return parser
 
@@ -680,40 +681,3 @@ def _config_home() -> Path:
 
 def _state_home() -> Path:
     return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
-
-
-def _add_rehearsal_arguments(parser: argparse.ArgumentParser) -> None:
-    """Mirror the rehearsal module's own parser so `--help` shows the full surface."""
-
-    from tools.development_runtime._rehearsal_vocabulary import SCENARIO_NAMES
-
-    parser.add_argument("--target-ref", default="origin/main")
-    parser.add_argument(
-        "--target-source",
-        type=Path,
-        default=None,
-        help="use an existing checkout as it stands, uncommitted changes included",
-    )
-    parser.add_argument(
-        "--base-ref",
-        default=None,
-        help="default: the newest commit whose manifest ends at the live terminal",
-    )
-    parser.add_argument("--scenario", choices=(*SCENARIO_NAMES, "all"), default="all")
-    parser.add_argument(
-        "--offline-fixture",
-        action="store_true",
-        help="do not probe live; derive clone properties from the supplied --base-ref",
-    )
-    parser.add_argument(
-        "--replay-checkpoint",
-        default=None,
-        help="product checkpoint id (or a path to its database.sql.gpg artifact) to replay",
-    )
-    parser.add_argument("--json", type=Path, default=None)
-    parser.add_argument("--keep", action="store_true", help="leave the disposable cluster running")
-    parser.add_argument("--kernel-op", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("--kernel-source", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("--dsn", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("--admin-dsn", dest="admin_dsn", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("--migrator-dsn", dest="migrator_dsn", default=None, help=argparse.SUPPRESS)
