@@ -7,12 +7,15 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from ctower_api.development_config import load_config
+from ctower_api.development_secrets import load_secret
 from tools.development_runtime._rehearsal_cluster import Clone
 from tools.development_runtime._rehearsal_vocabulary import (
     CHECKPOINT_ARTIFACT_NAME,
     CHECKPOINT_RESTORE_TIMEOUT_SECONDS,
     UpgradeRehearsalError,
 )
+from tools.development_runtime.checkpoint_ledger import artifact_path, read_records
 from tools.development_runtime.host_commands import docker_path, gpg_path
 
 __all__ = ["ProductCheckpoint", "resolve_replay_checkpoint", "restore_product_checkpoint"]
@@ -42,14 +45,14 @@ def resolve_replay_checkpoint(spec: str | None) -> ProductCheckpoint | None:
     None only when no spec was given and the product ledger holds no checkpoint.
     """
 
-    from tools.development_runtime.checkpoint_ledger import artifact_path, read_records
-
     if spec is None:
         records = read_records()
         if not records:
             return None
         latest = records[-1]
-        _require_checkpoint_artifact(latest.checkpoint_id, artifact_path(latest.checkpoint_id), latest.artifact_sha256)
+        _require_checkpoint_artifact(
+            latest.checkpoint_id, artifact_path(latest.checkpoint_id), latest.artifact_sha256
+        )
         return ProductCheckpoint(
             checkpoint_id=latest.checkpoint_id,
             artifact=artifact_path(latest.checkpoint_id),
@@ -74,7 +77,9 @@ def resolve_replay_checkpoint(spec: str | None) -> ProductCheckpoint | None:
         )
     for record in read_records():
         if record.checkpoint_id == spec:
-            _require_checkpoint_artifact(record.checkpoint_id, artifact_path(record.checkpoint_id), record.artifact_sha256)
+            _require_checkpoint_artifact(
+                record.checkpoint_id, artifact_path(record.checkpoint_id), record.artifact_sha256
+            )
             return ProductCheckpoint(
                 checkpoint_id=record.checkpoint_id,
                 artifact=artifact_path(record.checkpoint_id),
@@ -86,7 +91,9 @@ def resolve_replay_checkpoint(spec: str | None) -> ProductCheckpoint | None:
                     f"({record.generation_migration_id} @ {record.generation[:16]}…)"
                 ),
             )
-    raise UpgradeRehearsalError(f"unknown development checkpoint id or missing artifact path: {spec}")
+    raise UpgradeRehearsalError(
+        f"unknown development checkpoint id or missing artifact path: {spec}"
+    )
 
 
 def _require_checkpoint_artifact(checkpoint_id: str, artifact: Path, artifact_sha256: str) -> None:
@@ -105,40 +112,65 @@ def _require_checkpoint_artifact(checkpoint_id: str, artifact: Path, artifact_sh
 def restore_product_checkpoint(clone: Clone, checkpoint: ProductCheckpoint) -> None:
     """Replace the clone's ctower database with the recorded encrypted checkpoint."""
 
-    _require_checkpoint_artifact(checkpoint.checkpoint_id, checkpoint.artifact, checkpoint.artifact_sha256)
+    _require_checkpoint_artifact(
+        checkpoint.checkpoint_id, checkpoint.artifact, checkpoint.artifact_sha256
+    )
     secret = _checkpoint_passphrase()
     docker = docker_path()
     gpg = gpg_path()
     decrypt = subprocess.Popen(  # noqa: S603 - fixed argv, no shell
         [
-            gpg, "--batch", "--quiet", "--yes", "--no-symkey-cache",
-            "--pinentry-mode", "loopback", "--passphrase-fd", "0",
-            "--decrypt", str(checkpoint.artifact),
+            gpg,
+            "--batch",
+            "--quiet",
+            "--yes",
+            "--no-symkey-cache",
+            "--pinentry-mode",
+            "loopback",
+            "--passphrase-fd",
+            "0",
+            "--decrypt",
+            str(checkpoint.artifact),
         ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
     )
+    decrypt_input = decrypt.stdin
+    decrypt_output = decrypt.stdout
+    if decrypt_input is None or decrypt_output is None:
+        decrypt.kill()
+        raise UpgradeRehearsalError("gpg did not expose the checkpoint decrypt pipeline")
     try:
-        assert decrypt.stdin is not None
-        decrypt.stdin.write(secret.encode("utf-8"))
-        decrypt.stdin.close()
+        decrypt_input.write(secret.encode("utf-8"))
+        decrypt_input.close()
     except BrokenPipeError:
         pass
     try:
-        assert decrypt.stdout is not None
         finished = subprocess.run(  # noqa: S603 - fixed argv, no shell
             [
-                docker, "exec", "--interactive", "--user", "postgres", clone.container,
-                "psql", "--no-psqlrc", "--quiet", "--set", "ON_ERROR_STOP=1",
-                "--username", "postgres", "--dbname", "postgres",
+                docker,
+                "exec",
+                "--interactive",
+                "--user",
+                "postgres",
+                clone.container,
+                "psql",
+                "--no-psqlrc",
+                "--quiet",
+                "--set",
+                "ON_ERROR_STOP=1",
+                "--username",
+                "postgres",
+                "--dbname",
+                "postgres",
             ],
-            stdin=decrypt.stdout,
+            stdin=decrypt_output,
             capture_output=True,
             timeout=CHECKPOINT_RESTORE_TIMEOUT_SECONDS,
             check=False,
         )
     finally:
-        decrypt.stdout.close()
+        decrypt_output.close()
         try:
             decrypt.wait(timeout=120)
         except subprocess.TimeoutExpired:
@@ -151,9 +183,6 @@ def restore_product_checkpoint(clone: Clone, checkpoint: ProductCheckpoint) -> N
 
 
 def _checkpoint_passphrase() -> str:
-    from ctower_api.development_config import load_config
-    from ctower_api.development_secrets import load_secret
-
     config = load_config()
     return load_secret(config.postgres_admin_secret_ref)
 
@@ -164,5 +193,3 @@ def _file_sha256(path: Path) -> str:
         while chunk := stream.read(1 << 20):
             digest.update(chunk)
     return digest.hexdigest()
-
-

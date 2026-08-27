@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import psycopg
 from psycopg import sql
 
+from ctower_api.development_config import load_config
+from ctower_api.development_secrets import development_dsn
 from tools.development_runtime._rehearsal_vocabulary import (
-    LIVE_DSN_ENVIRON,
     LIVE_DSN_SENTINEL,
     LIVE_FORBIDDEN,
     LIVE_READ_PREFIXES,
@@ -28,12 +29,6 @@ __all__ = [
     "probe_live",
     "resolve_live_dsn",
 ]
-
-__all_dummy__ = None  # marker removed below
-
-# ---------------------------------------------------------------------------
-# live probe -- read-only, standby-first, no rows leave the box
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,9 +66,6 @@ def resolve_live_dsn() -> tuple[str, str]:
     (world-readable in /proc), and it is never printed.
     """
 
-    from ctower_api.development_config import load_config
-    from ctower_api.development_secrets import development_dsn
-
     config = load_config()
     for standby in (True, False):
         dsn = development_dsn(config, "postgres", standby=standby)
@@ -104,7 +96,7 @@ def assert_read_only(connection: psycopg.Connection[tuple[object, ...]]) -> bool
 
 
 @contextmanager
-def live_connection():
+def live_connection() -> Iterator[tuple[psycopg.Connection[tuple[object, ...]], str, bool]]:
     """Open the live instance so that the server itself refuses any write."""
 
     guarded, endpoint = resolve_live_dsn()
@@ -125,12 +117,17 @@ def live_read(
     body = re.sub(r"'[^']*'", "''", statement)
     forbidden = LIVE_FORBIDDEN.search(body)
     if forbidden is not None:
-        raise UpgradeRehearsalError(f"refused a live statement carrying {forbidden.group(1).upper()}")
+        raise UpgradeRehearsalError(
+            f"refused a live statement carrying {forbidden.group(1).upper()}"
+        )
     return connection.execute(statement, parameters).fetchall()
 
 
 def probe_live(target_source: Path) -> LiveProperties:
     """Derive the property list the rehearsal must reproduce."""
+
+    # Lazy import breaks the live-probe/kernel-bridge cycle while keeping one guarded read door.
+    from tools.development_runtime._rehearsal_bridge import kernel_call  # noqa: PLC0415
 
     with live_connection() as (connection, endpoint, recovery):
         version = str(live_read(connection, "SELECT version()")[0][0]).split(" (")[0]
@@ -165,8 +162,18 @@ def probe_live(target_source: Path) -> LiveProperties:
         }
     # The sentinel keeps the DSN out of argv; the resolved secret travels in the environment.
     guarded, _endpoint = resolve_live_dsn()
-    fingerprint = kernel_call(target_source, "fingerprint", live_dsn=guarded, dsn=LIVE_DSN_SENTINEL)
-    vector = kernel_call(target_source, "semantics", live_dsn=guarded, dsn=LIVE_DSN_SENTINEL)
+    fingerprint = kernel_call(
+        target_source,
+        "fingerprint",
+        live_dsn=guarded,
+        dsn=LIVE_DSN_SENTINEL,
+    )
+    vector = kernel_call(
+        target_source,
+        "semantics",
+        live_dsn=guarded,
+        dsn=LIVE_DSN_SENTINEL,
+    )
     rejected = tuple(name for name, verdict in vector["checks"].items() if verdict == "reject")
     attestation = str(ledger[2])
     digest = str(fingerprint["fingerprint"])
@@ -196,9 +203,7 @@ def probe_live(target_source: Path) -> LiveProperties:
     )
 
 
-def _live_count(
-    connection: psycopg.Connection[tuple[object, ...]], table: str
-) -> int:
+def _live_count(connection: psycopg.Connection[tuple[object, ...]], table: str) -> int:
     statement = (
         sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)).as_string(connection)
     )
@@ -206,5 +211,3 @@ def _live_count(
     if not rows or rows[0][0] is None:
         raise UpgradeRehearsalError(f"live count for {table} returned no answer")
     return int(rows[0][0])
-
-

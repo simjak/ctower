@@ -12,9 +12,12 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
+import psycopg
 import pytest
 
 import tools.development_runtime.rehearsal as rehearsal  # noqa: PLR0402
@@ -24,6 +27,9 @@ from tools.development_runtime.host_commands import docker_path
 __all__: tuple[str, ...] = ()
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+_EXIT_PASS = 0
+_EXIT_REHEARSAL_FAIL = 2
+_EXIT_LIVE_BLOCKED = 3
 
 
 class _FakeCursor:
@@ -42,8 +48,33 @@ class _FakeConnection:
         self._rows = rows or [("ignored",)]
 
     def execute(self, statement: str, parameters: tuple[object, ...] = ()) -> _FakeCursor:
+        del parameters
         self.executed.append(statement)
         return _FakeCursor(self._rows)
+
+
+def _fake_connection() -> psycopg.Connection[tuple[object, ...]]:
+    return cast(psycopg.Connection[tuple[object, ...]], _FakeConnection())
+
+
+def _live(
+    blockers: tuple[tuple[str, str], ...] = (),
+) -> rehearsal.LiveProperties:
+    return rehearsal.LiveProperties(
+        endpoint="offline-fixture",
+        in_recovery=False,
+        server_version="test",
+        ledger_rows=0,
+        terminal_migration="",
+        ledger_attestation="",
+        schema_fingerprint="",
+        schema_records={},
+        table_counts={},
+        rejected_checks=(),
+        event_kinds={},
+        link_subject_kinds={},
+        blockers=blockers,
+    )
 
 
 class TestEntrypointWiring:
@@ -67,28 +98,33 @@ class TestEntrypointWiring:
             check=False,
         )
         assert finished.returncode == 0, finished.stderr
-        for expected in ("--target-ref", "--target-source", "--base-ref", "--scenario", "--offline-fixture"):
+        for expected in (
+            "--target-ref",
+            "--target-source",
+            "--base-ref",
+            "--scenario",
+            "--offline-fixture",
+        ):
             assert expected in finished.stdout
 
 
 class TestLiveReadOnlyGuard:
     def test_select_shaped_statements_reach_the_connection(self) -> None:
-        connection = _FakeConnection()
+        connection = _fake_connection()
         assert rehearsal.live_read(connection, "SELECT count(*) FROM events") == [("ignored",)]
-        assert (
-            rehearsal.live_read(connection, "  WITH total AS (SELECT 1) SELECT * FROM total")
-            == [("ignored",)]
-        )
+        assert rehearsal.live_read(
+            connection, "  WITH total AS (SELECT 1) SELECT * FROM total"
+        ) == [("ignored",)]
 
     def test_non_select_heads_are_refused_by_name(self) -> None:
-        connection = _FakeConnection()
+        connection = _fake_connection()
         with pytest.raises(rehearsal.UpgradeRehearsalError, match="non-read"):
             rehearsal.live_read(connection, "INSERT INTO events VALUES (1)")
         with pytest.raises(rehearsal.UpgradeRehearsalError, match="non-read"):
             rehearsal.live_read(connection, "update events SET kind = 'x'")
 
     def test_write_verbs_hidden_after_a_select_are_refused(self) -> None:
-        connection = _FakeConnection()
+        connection = _fake_connection()
         for statement in (
             "SELECT * FROM events; DROP TABLE events",
             "WITH deleted AS (DELETE FROM events RETURNING 1) SELECT * FROM deleted",
@@ -98,7 +134,7 @@ class TestLiveReadOnlyGuard:
                 rehearsal.live_read(connection, statement)
 
     def test_string_literals_cannot_smuggle_or_hide_write_verbs(self) -> None:
-        connection = _FakeConnection()
+        connection = _fake_connection()
         # A quoted literal containing a forbidden word must NOT trip the guard...
         assert rehearsal.live_read(connection, "SELECT 'insert into foo' AS note") == [("ignored",)]
         # ...but literals cannot hide a real trailing write.
@@ -108,7 +144,7 @@ class TestLiveReadOnlyGuard:
     def test_session_state_functions_are_refused(self) -> None:
         """The mission-control guard missed this: `\\bSET\\b` cannot match `set_config`."""
 
-        connection = _FakeConnection()
+        connection = _fake_connection()
         with pytest.raises(rehearsal.UpgradeRehearsalError, match="carrying"):
             rehearsal.live_read(
                 connection, "SELECT set_config('default_transaction_read_only', 'off', true)"
@@ -122,8 +158,11 @@ class TestRefusalClassification:
         result = rehearsal.RehearsalResult(name="as-of-attempt")
         rehearsal._record_outcome(
             result,
-            {"ok": False, "code": "advance-precondition-mismatch",
-             "detail": "record-position-history-unprovable, more detail"},
+            {
+                "ok": False,
+                "code": "advance-precondition-mismatch",
+                "detail": "record-position-history-unprovable, more detail",
+            },
         )
         assert result.first_failing_precondition == "record-position-history-unprovable"
         assert not result.passed
@@ -132,8 +171,11 @@ class TestRefusalClassification:
         result = rehearsal.RehearsalResult(name="as-of-attempt")
         rehearsal._record_outcome(
             result,
-            {"ok": False, "code": "ledger-schema-mismatch",
-             "detail": "attested=a live_canonical=b live_superseded_raw=c"},
+            {
+                "ok": False,
+                "code": "ledger-schema-mismatch",
+                "detail": "attested=a live_canonical=b live_superseded_raw=c",
+            },
         )
         assert result.first_failing_precondition == "ledger-schema-mismatch"
 
@@ -147,15 +189,22 @@ class TestRefusalClassification:
         shaped = rehearsal.RehearsalResult(name="drifted-history-refuses")
         rehearsal._record_drifted_refusal(
             shaped,
-            {"ok": False, "code": "ledger-schema-mismatch",
-             "detail": "attested=a live_canonical=b live_superseded_raw=c"},
+            {
+                "ok": False,
+                "code": "ledger-schema-mismatch",
+                "detail": "attested=a live_canonical=b live_superseded_raw=c",
+            },
         )
         assert shaped.passed
 
         missing_name = rehearsal.RehearsalResult(name="drifted-history-refuses")
         rehearsal._record_drifted_refusal(
             missing_name,
-            {"ok": False, "code": "ledger-schema-mismatch", "detail": "attested=a live_canonical=b"},
+            {
+                "ok": False,
+                "code": "ledger-schema-mismatch",
+                "detail": "attested=a live_canonical=b",
+            },
         )
         assert not missing_name.passed
         assert "live_superseded_raw" in missing_name.reason
@@ -168,40 +217,42 @@ class TestRefusalClassification:
 
 class TestVerdict:
     def test_exit_codes_preserve_the_gate_contract(self) -> None:
-        healthy_live = SimpleNamespace(blockers=())
+        healthy_live = _live()
         passed = [rehearsal.RehearsalResult(name="s", passed=True)]
-        assert rehearsal._verdict(healthy_live, passed) == 0
+        assert rehearsal._verdict(healthy_live, passed) == _EXIT_PASS
         failed = [rehearsal.RehearsalResult(name="s", passed=False, blocked=False)]
-        assert rehearsal._verdict(healthy_live, failed) == 2
-        blocked_live = SimpleNamespace(blockers=(("ledger-schema-mismatch", "detail"),))
-        assert rehearsal._verdict(blocked_live, passed) == 3
+        assert rehearsal._verdict(healthy_live, failed) == _EXIT_REHEARSAL_FAIL
+        blocked_live = _live((("ledger-schema-mismatch", "detail"),))
+        assert rehearsal._verdict(blocked_live, passed) == _EXIT_LIVE_BLOCKED
         blocked_scenario = [rehearsal.RehearsalResult(name="s", passed=False, blocked=True)]
-        assert rehearsal._verdict(healthy_live, blocked_scenario) == 3
+        assert rehearsal._verdict(healthy_live, blocked_scenario) == _EXIT_LIVE_BLOCKED
 
 
 class TestKernelBridge:
-    def test_the_live_dsn_travels_through_the_environment_only(self) -> None:
+    def test_the_live_dsn_travels_through_the_environment_only(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
         captured: list[tuple[list[str], dict[str, str]]] = []
 
-        def fake_run(arguments, *, timeout, capture_output, text, env, check):  # noqa: ANN001
-            captured.append((list(arguments), dict(env)))
+        def fake_run(arguments: Sequence[str], **options: object) -> SimpleNamespace:
+            environment = cast(dict[str, str], options["env"])
+            captured.append((list(arguments), environment))
             return SimpleNamespace(returncode=0, stdout=json.dumps({"ok": True}) + "\n", stderr="")
 
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(rehearsal.subprocess, "run", fake_run)
-        try:
-            rehearsal.kernel_call(
-                Path("/tmp/source"),
-                "install",
-                live_dsn="postgresql://secret-user:secret-password@127.0.0.1:55432/ctower",
-                admin_dsn="postgresql://postgres@127.0.0.1:1/ctower",
-                migrator_dsn="postgresql://ctower_migrator@127.0.0.1:1/ctower",
-            )
-        finally:
-            monkeypatch.undo()
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        credential_marker = "credential-marker"
+        rehearsal.kernel_call(
+            tmp_path / "source",
+            "install",
+            live_dsn=f"postgresql://secret-user:{credential_marker}@127.0.0.1:55432/ctower",
+            admin_dsn="postgresql://postgres@127.0.0.1:1/ctower",
+            migrator_dsn="postgresql://ctower_migrator@127.0.0.1:1/ctower",
+        )
 
         argv, environment = captured[0]
-        assert all("secret-password" not in part for part in argv)
+        assert all(credential_marker not in part for part in argv)
         assert environment[rehearsal.LIVE_DSN_ENVIRON].startswith("postgresql://secret-user")
 
 
@@ -235,10 +286,14 @@ class TestOfflineRehearsalEndToEnd:
             rehearsal.parse_rehearsal_arguments(
                 [
                     "--offline-fixture",
-                    "--target-source", str(_REPO_ROOT),
-                    "--base-ref", "HEAD",
-                    "--scenario", "as-of-attempt",
-                    "--json", str(evidence),
+                    "--target-source",
+                    str(_REPO_ROOT),
+                    "--base-ref",
+                    "HEAD",
+                    "--scenario",
+                    "as-of-attempt",
+                    "--json",
+                    str(evidence),
                 ]
             )
         )
@@ -251,10 +306,15 @@ class TestOfflineRehearsalEndToEnd:
             rehearsal.parse_rehearsal_arguments(
                 [
                     "--offline-fixture",
-                    "--target-source", str(_REPO_ROOT),
-                    "--base-ref", "HEAD",
-                    "--scenario", "drifted-history-refuses",
+                    "--target-source",
+                    str(_REPO_ROOT),
+                    "--base-ref",
+                    "HEAD",
+                    "--scenario",
+                    "drifted-history-refuses",
                 ]
             )
         )
-        assert drifted == 0, "the drifted negative scenario PASSES exactly when the refusal has teeth"
+        assert drifted == 0, (
+            "the drifted negative scenario PASSES exactly when the refusal has teeth"
+        )

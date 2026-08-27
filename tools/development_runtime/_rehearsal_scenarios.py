@@ -7,6 +7,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from tools.development_runtime._rehearsal_bridge import kernel_call
+from tools.development_runtime._rehearsal_checkpoint import (
+    resolve_replay_checkpoint,
+    restore_product_checkpoint,
+)
 from tools.development_runtime._rehearsal_cluster import (
     Clone,
     _live_ports,
@@ -14,6 +19,7 @@ from tools.development_runtime._rehearsal_cluster import (
     disposable_cluster,
 )
 from tools.development_runtime._rehearsal_fixture import (
+    _clone_ledger_attestation,
     checkpoint_round_trip,
     clone_counts,
     clone_ledger,
@@ -29,8 +35,6 @@ from tools.development_runtime._rehearsal_vocabulary import (
     REQUIRED_DRIFT_DIGEST_NAMES,
     UpgradeRehearsalError,
 )
-from tools.development_runtime._rehearsal_bridge import kernel_call
-from tools.development_runtime._rehearsal_checkpoint import resolve_replay_checkpoint, restore_product_checkpoint
 
 __all__ = ["RehearsalResult", "run_scenario"]
 
@@ -68,12 +72,12 @@ def run_scenario(
     keep: bool,
     replay_checkpoint: str | None = None,
 ) -> RehearsalResult:
-    """Build the clone, prove it is faithful, then apply the pending set exactly as ``database-up``."""
+    """Build a faithful clone, then apply the pending set exactly as ``database-up``."""
 
     result = RehearsalResult(name=name, passed=False)
     _prune_docker_networks()
-    forbidden = _live_ports(live.endpoint == OFFLINE_FIXTURE_ENDPOINT)
-    with disposable_cluster(base / COMPOSE_RELATIVE, forbidden, keep) as clone:
+    forbidden = _live_ports(offline=live.endpoint == OFFLINE_FIXTURE_ENDPOINT)
+    with disposable_cluster(base / COMPOSE_RELATIVE, forbidden, keep=keep) as clone:
         installed = kernel_call(
             base, "install", admin_dsn=clone.admin_dsn, migrator_dsn=clone.migrator_dsn
         )
@@ -144,14 +148,15 @@ def _note_split_brain(result: RehearsalResult) -> None:
     result.notes.append(
         "SPLIT-BRAIN REPRODUCED: the schema transaction committed "
         f"({result.schema_digest_before[:20]}… -> {result.schema_digest_after[:20]}…) while the "
-        f"ledger still terminates at {result.ledger_after[1]} — recovery needs a restore, not a retry"
+        f"ledger still terminates at {result.ledger_after[1]} — "
+        "recovery needs a restore, not a retry"
     )
 
 
 def _assert_shape(
     name: str, clone: Clone, live: LiveProperties, target: Path, result: RehearsalResult
 ) -> None:
-    """The clone must stand where live stands: same ledger position, and for as-live-now, same schema."""
+    """Require the clone to match live's ledger, plus schema for as-live-now."""
 
     rows, terminal = result.ledger_before
     if (rows, terminal) != (live.ledger_rows, live.terminal_migration):
@@ -201,7 +206,8 @@ def _assert_fixture_faithful(result: RehearsalResult, live: LiveProperties) -> N
     extra = sorted(set(result.fixture_vector) - set(live.rejected_checks))
     raise UpgradeRehearsalError(
         "fixture-infidelity: the clone's precondition vector differs from live "
-        f"(live-only: {missing or 'none'}; clone-only: {extra or 'none'}); refusing to make a claim"
+        f"(live-only: {missing or 'none'}; clone-only: {extra or 'none'}); "
+        "refusing to make a claim"
     )
 
 
@@ -257,5 +263,3 @@ def _record_drifted_refusal(result: RehearsalResult, applied: dict[str, Any]) ->
         f"refused with {code or 'an untyped error'}, expected ledger-schema-mismatch with "
         f"{', '.join(REQUIRED_DRIFT_DIGEST_NAMES)}; missing {', '.join(missing) or 'none'}"
     )
-
-
