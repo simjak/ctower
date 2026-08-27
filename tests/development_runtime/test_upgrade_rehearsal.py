@@ -23,7 +23,6 @@ import pytest
 import tools.development_runtime.rehearsal as rehearsal  # noqa: PLR0402
 import tools.process_execution as process_execution  # noqa: PLR0402
 from tools.development_runtime import interface as runtime_interface
-from tools.development_runtime.host_commands import docker_path
 
 __all__: tuple[str, ...] = ()
 
@@ -300,7 +299,6 @@ class TestDisposableCloneCleanup:
         assert any(command[-2:] == ("down", "--volumes") for command in calls)
 
 
-@pytest.mark.skipif(not Path(docker_path()).exists(), reason="docker is required")
 class TestOfflineRehearsalEndToEnd:
     def test_head_to_head_rehearsal_passes_and_drift_refuses(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
