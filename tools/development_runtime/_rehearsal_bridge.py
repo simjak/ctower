@@ -22,6 +22,7 @@ from tools.development_runtime._rehearsal_vocabulary import (
     KERNEL_SOURCE_RELATIVE,
     LIVE_DSN_ENVIRON,
     LIVE_DSN_SENTINEL,
+    REHEARSAL_IMPORT_ROOTS,
     UpgradeRehearsalError,
 )
 
@@ -64,7 +65,13 @@ def kernel_call(
     kernel_source = str((source / KERNEL_SOURCE_RELATIVE).resolve())
     environment = {
         **os.environ,
-        "PYTHONPATH": os.pathsep.join([kernel_source, str(_repo_root())]),
+        "PYTHONPATH": os.pathsep.join(
+            [
+                kernel_source,
+                str(_repo_root()),
+                *[str((_repo_root() / relative).resolve()) for relative in REHEARSAL_IMPORT_ROOTS],
+            ]
+        ),
     }
     if live_dsn is not None:
         environment[LIVE_DSN_ENVIRON] = live_dsn

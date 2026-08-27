@@ -15,6 +15,14 @@ __all__: tuple[str, ...] = ()
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KERNEL_SOURCE_RELATIVE = Path("packages/ctower-kernel/src")
+# Source roots a rehearsal child must inherit to re-enter the host tooling: the verify runner
+# carries no editable install, so ctower_api, ctowerctl, and the generated names resolve only
+# through these paths (pytest's pythonpath ini augments just the in-process interpreter).
+REHEARSAL_IMPORT_ROOTS = (
+    Path("apps/ctower-api/src"),
+    Path("apps/ctowerctl/src"),
+    Path("generated/python"),
+)
 COMPOSE_RELATIVE = Path("deploy/development/compose.yaml")
 MANIFEST_RELATIVE = Path("packages/ctower-kernel/migrations/manifest.json")
 CHECKPOINT_ARTIFACT_NAME = "database.sql.gpg"
