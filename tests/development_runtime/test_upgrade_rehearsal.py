@@ -183,7 +183,7 @@ class TestKernelBridge:
     def test_the_live_dsn_travels_through_the_environment_only(self) -> None:
         captured: list[tuple[list[str], dict[str, str]]] = []
 
-        def fake_run(arguments, *, timeout, capture_output, text, env, check):  # noqa: ANN001
+        def fake_run(arguments, *, timeout, capture_output, text, env, check, cwd):  # noqa: ANN001
             captured.append((list(arguments), dict(env)))
             return SimpleNamespace(returncode=0, stdout=json.dumps({"ok": True}) + "\n", stderr="")
 
