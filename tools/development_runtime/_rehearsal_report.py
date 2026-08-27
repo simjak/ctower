@@ -61,9 +61,8 @@ def _render_scenario(result: RehearsalResult, live: LiveProperties) -> None:
     print(f"  after upgrade     {_counts_line(result.counts_after)}")
     uncovered = [t for t in live.non_empty_tables if not result.counts_before.get(t)]
     if uncovered:
-        print(
-            f"  live tables the fixture does NOT populate ({len(uncovered)}): {', '.join(uncovered)}"
-        )
+        names = ", ".join(uncovered)
+        print(f"  live tables the fixture does NOT populate ({len(uncovered)}): {names}")
     print(f"  result            {result.reason}")
     if result.first_failing_precondition:
         print(f"  FIRST FAILING PRECONDITION BY NAME: {result.first_failing_precondition}")
@@ -117,5 +116,3 @@ def emit_json(
         ],
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-

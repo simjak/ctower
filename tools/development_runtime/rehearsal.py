@@ -14,28 +14,10 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tools.development_runtime._rehearsal_live import (
-    LiveProperties,
-    live_read,
-    probe_live,
-    resolve_live_dsn,
-)
-from tools.development_runtime._rehearsal_vocabulary import (
-    COMPOSE_RELATIVE,
-    LIVE_DSN_ENVIRON,
-    EXIT_LIVE_BLOCKED,
-    EXIT_NO_CLAIM,
-    EXIT_PASS,
-    EXIT_REHEARSAL_FAIL,
-    FIXTURE_ROUTINE_EVENTS,
-    FIXTURE_TICKETS,
-    OFFLINE_FIXTURE_ENDPOINT,
-    SCENARIO_NAMES,
-    UpgradeRehearsalError,
-)
-from tools.development_runtime._rehearsal_bridge import kernel_call, kernel_worker, open_database
+from tools.development_runtime._rehearsal_bridge import kernel_call, kernel_worker
 from tools.development_runtime._rehearsal_cluster import (
     Clone,
+    _prune_docker_networks,
     describe_source,
     disposable_cluster,
     resolve_base_ref,
@@ -47,23 +29,43 @@ from tools.development_runtime._rehearsal_fixture import (
     clone_ledger,
     seed_fixture_history,
 )
+from tools.development_runtime._rehearsal_live import (
+    LiveProperties,
+    live_read,
+    probe_live,
+    resolve_live_dsn,
+)
+from tools.development_runtime._rehearsal_report import emit_json, render
 from tools.development_runtime._rehearsal_scenarios import (
     RehearsalResult,
     _record_drifted_refusal,
     _record_outcome,
     run_scenario,
 )
-from tools.development_runtime._rehearsal_report import emit_json, render
+from tools.development_runtime._rehearsal_vocabulary import (
+    COMPOSE_RELATIVE,
+    EXIT_LIVE_BLOCKED,
+    EXIT_NO_CLAIM,
+    EXIT_PASS,
+    EXIT_REHEARSAL_FAIL,
+    FIXTURE_ROUTINE_EVENTS,
+    FIXTURE_TICKETS,
+    LIVE_DSN_ENVIRON,
+    OFFLINE_FIXTURE_ENDPOINT,
+    SCENARIO_NAMES,
+    UpgradeRehearsalError,
+)
 
 __all__ = [
-    "Clone",
     "LIVE_DSN_ENVIRON",
-    "_record_drifted_refusal",
-    "_record_outcome",
-    "_verdict",
+    "Clone",
     "LiveProperties",
     "RehearsalResult",
     "UpgradeRehearsalError",
+    "_record_drifted_refusal",
+    "_record_outcome",
+    "_verdict",
+    "add_rehearsal_arguments",
     "kernel_call",
     "live_read",
     "parse_rehearsal_arguments",
@@ -88,6 +90,13 @@ def _rehearsal_parser() -> argparse.ArgumentParser:
         prog="upgrade-rehearsal",
         description="prove a schema upgrade on a disposable clone before a freeze",
     )
+    add_rehearsal_arguments(parser)
+    return parser
+
+
+def add_rehearsal_arguments(parser: argparse.ArgumentParser) -> None:
+    """Declare the one canonical CLI surface for the rehearsal verb."""
+
     parser.add_argument("--target-ref", default="origin/main")
     parser.add_argument(
         "--target-source",
@@ -118,7 +127,6 @@ def _rehearsal_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dsn", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--admin-dsn", dest="admin_dsn", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--migrator-dsn", dest="migrator_dsn", default=None, help=argparse.SUPPRESS)
-    return parser
 
 
 def run_upgrade_rehearsal(arguments: argparse.Namespace) -> int:
@@ -164,7 +172,7 @@ def _drive(arguments: argparse.Namespace, run_root: Path) -> int:
             base_ref = arguments.base_ref or resolve_base_ref(live.terminal_migration)
         with source_tree(base_ref, None, run_root, "base") as base:
             if arguments.offline_fixture:
-                live = _offline_fixture_properties(base, target, arguments.keep)
+                live = _offline_fixture_properties(base, target, keep=arguments.keep)
             names = SCENARIO_NAMES if arguments.scenario == "all" else (arguments.scenario,)
             results = [
                 run_scenario(
@@ -188,10 +196,13 @@ def _drive(arguments: argparse.Namespace, run_root: Path) -> int:
     return _verdict(live, results)
 
 
-def _offline_fixture_properties(base: Path, target: Path, keep: bool) -> LiveProperties:
+def _offline_fixture_properties(
+    base: Path,
+    target: Path,
+    *,
+    keep: bool,
+) -> LiveProperties:
     """Construct the clone-property contract without touching live."""
-
-    from tools.development_runtime._rehearsal_cluster import _prune_docker_networks
 
     _prune_docker_networks()
     fixture_counts = {
@@ -213,7 +224,7 @@ def _offline_fixture_properties(base: Path, target: Path, keep: bool) -> LivePro
         link_subject_kinds={},
         blockers=(),
     )
-    with disposable_cluster(base / COMPOSE_RELATIVE, set(), keep) as clone:
+    with disposable_cluster(base / COMPOSE_RELATIVE, set(), keep=keep) as clone:
         installed = kernel_call(
             base, "install", admin_dsn=clone.admin_dsn, migrator_dsn=clone.migrator_dsn
         )
@@ -258,13 +269,10 @@ def _verdict(live: LiveProperties, results: list[RehearsalResult]) -> int:
         )
         return EXIT_LIVE_BLOCKED
     print(
-        "VERDICT: PASS — the pending set applies on a clone that carries history. "
-        "Freeze is earned."
+        "VERDICT: PASS — the pending set applies on a clone that carries history. Freeze is earned."
     )
     return EXIT_PASS
 
 
 if __name__ == "__main__":
     sys.exit(run_upgrade_rehearsal(_rehearsal_parser().parse_args()))
-
-from tools.development_runtime._rehearsal_bridge import kernel_worker as _kernel_worker  # noqa: E402
