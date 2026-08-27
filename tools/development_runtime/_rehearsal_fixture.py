@@ -10,7 +10,10 @@ from datetime import UTC, datetime
 import psycopg
 from psycopg import sql
 
+from tools.development_runtime._rehearsal_cluster import Clone
+from tools.development_runtime._rehearsal_live import LiveProperties
 from tools.development_runtime._rehearsal_vocabulary import (
+    DATABASE_NAME,
     FIXTURE_PROJECTS,
     FIXTURE_ROUTINE_EVENTS,
     FIXTURE_TICKETS,
@@ -18,7 +21,6 @@ from tools.development_runtime._rehearsal_vocabulary import (
     REPARSED_TABLE,
     UpgradeRehearsalError,
 )
-from tools.development_runtime._rehearsal_cluster import Clone
 from tools.development_runtime.host_commands import docker_path
 
 __all__ = [
@@ -44,7 +46,9 @@ def seed_fixture_history(clone: Clone, live: LiveProperties) -> dict[str, int]:
         tenant, operator, commander = _seed_principals(connection, now)
         position = _seed_tickets(connection, tenant, operator, commander, tickets, now)
         position = _seed_work_event(connection, tenant, operator, position, now)
-        position, drifting = _seed_routine_events(connection, tenant, operator, routine, position, now)
+        position, drifting = _seed_routine_events(
+            connection, tenant, operator, routine, position, now
+        )
         _seed_untracked_link(connection, tenant, drifting)
         _seed_projections(connection, tenant)
         connection.execute(
@@ -356,9 +360,7 @@ def clone_counts(clone: Clone) -> dict[str, int]:
         return {
             table: int(
                 connection.execute(
-                    sql.SQL("SELECT count(*) FROM {}").format(
-                        sql.Identifier(table)
-                    )
+                    sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
                 ).fetchone()[0]
             )
             for table in tables
@@ -395,17 +397,39 @@ def checkpoint_round_trip(clone: Clone) -> None:
     docker = docker_path()
     dumped = subprocess.run(  # noqa: S603 - fixed argv, no shell
         [
-            docker, "exec", "--user", "postgres", clone.container, "pg_dump", "--create",
-            "--clean", "--if-exists", "--quote-all-identifiers", "--dbname", DATABASE_NAME,
+            docker,
+            "exec",
+            "--user",
+            "postgres",
+            clone.container,
+            "pg_dump",
+            "--create",
+            "--clean",
+            "--if-exists",
+            "--quote-all-identifiers",
+            "--dbname",
+            DATABASE_NAME,
         ],
         check=True,
         capture_output=True,
     ).stdout
     subprocess.run(  # noqa: S603 - fixed argv, no shell
         [
-            docker, "exec", "--interactive", "--user", "postgres", clone.container, "psql",
-            "--no-psqlrc", "--quiet", "--set", "ON_ERROR_STOP=1", "--username", "postgres",
-            "--dbname", "postgres",
+            docker,
+            "exec",
+            "--interactive",
+            "--user",
+            "postgres",
+            clone.container,
+            "psql",
+            "--no-psqlrc",
+            "--quiet",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "--username",
+            "postgres",
+            "--dbname",
+            "postgres",
         ],
         input=dumped,
         check=True,
@@ -436,5 +460,3 @@ def inject_genuine_schema_drift(clone: Clone) -> None:
                 sql.Identifier(REPARSED_CONSTRAINT),
             )
         )
-
-

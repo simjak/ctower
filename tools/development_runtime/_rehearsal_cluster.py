@@ -8,17 +8,15 @@ import socket
 import subprocess
 import time
 import uuid
-from dataclasses import dataclass
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 import psycopg
-from psycopg import sql
 
 from tools.development_runtime._rehearsal_vocabulary import (
     BASE_REF_SEARCH_DEPTH,
     COMPOSE_PROJECT_PREFIX,
-    COMPOSE_RELATIVE,
     DATABASE_NAME,
     MANIFEST_RELATIVE,
     REPO_ROOT,
@@ -200,5 +198,3 @@ def _prune_docker_networks() -> None:
     subprocess.run(  # noqa: S603 - fixed argv, no shell
         [docker, "network", "prune", "-f"], check=True, capture_output=True
     )
-
-

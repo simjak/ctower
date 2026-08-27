@@ -15,6 +15,7 @@ from typing import Any
 
 import psycopg
 
+from tools.development_runtime._rehearsal_live import assert_read_only, live_read
 from tools.development_runtime._rehearsal_vocabulary import (
     KERNEL_CALL_TIMEOUT_SECONDS,
     KERNEL_SOURCE_RELATIVE,
@@ -22,7 +23,6 @@ from tools.development_runtime._rehearsal_vocabulary import (
     LIVE_DSN_SENTINEL,
     UpgradeRehearsalError,
 )
-from tools.development_runtime._rehearsal_live import live_read
 
 __all__ = ["kernel_call", "kernel_worker", "open_database"]
 
@@ -115,9 +115,7 @@ def _ref_kernel(source: Path):
     import ctower_kernel
 
     if not Path(ctower_kernel.__file__).resolve().is_relative_to(root):  # type: ignore[attr-defined]
-        raise UpgradeRehearsalError(
-            f"kernel resolved to {ctower_kernel.__file__}, not {root}"
-        )
+        raise UpgradeRehearsalError(f"kernel resolved to {ctower_kernel.__file__}, not {root}")
     return ctower_kernel
 
 
@@ -157,7 +155,7 @@ def _op_fingerprint(_source: Any, arguments: argparse.Namespace) -> dict[str, An
     module = _ledger_module()
     with open_database(arguments.dsn) as (connection, live):
         records = _schema_records(module, connection, live)
-        fingerprint = module._schema_fingerprint(records)  # noqa: SLF001 - the attestation's own reader
+        fingerprint = module._schema_fingerprint(records)
     digested = {
         f"{kind}:{identity}": hashlib.sha256(str(detail).encode()).hexdigest()[:16]
         for kind, identity, detail in records
@@ -178,7 +176,8 @@ def _named_checks(module: Any) -> tuple[tuple[str, str], ...]:
     if isinstance(declared, tuple):
         return tuple((check.name, check.query) for check in declared)
     return tuple(  # type: ignore[no-any-return]
-        (name, query) for name, query in module._SEMANTIC_QUERIES  # noqa: SLF001
+        (name, query)
+        for name, query in module._SEMANTIC_QUERIES
     )
 
 
@@ -214,11 +213,9 @@ def _schema_records(module: Any, connection: psycopg.Connection[tuple[object, ..
     """Run the attestation's own schema readers; against live, through the read-only guard."""
 
     if not live:
-        return module._schema_records(connection)  # noqa: SLF001 - the attestation's own reader
+        return module._schema_records(connection)
     records: list[tuple[Any, ...]] = []
-    for query in module._SCHEMA_QUERIES:  # noqa: SLF001
-        parameters = tuple(module._LEDGER for _ in range(query.count("%s")))  # noqa: SLF001
+    for query in module._SCHEMA_QUERIES:
+        parameters = tuple(module._LEDGER for _ in range(query.count("%s")))
         records.extend(live_read(connection, query, parameters))
     return tuple(sorted(records))
-
-

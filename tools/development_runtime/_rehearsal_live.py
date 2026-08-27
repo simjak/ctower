@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
+from pathlib import Path
 from contextlib import contextmanager
-from dataclasses import dataclass
 from dataclasses import dataclass
 from typing import Any
 
@@ -13,7 +12,6 @@ import psycopg
 from psycopg import sql
 
 from tools.development_runtime._rehearsal_vocabulary import (
-    LIVE_DSN_ENVIRON,
     LIVE_DSN_SENTINEL,
     LIVE_FORBIDDEN,
     LIVE_READ_PREFIXES,
@@ -125,12 +123,17 @@ def live_read(
     body = re.sub(r"'[^']*'", "''", statement)
     forbidden = LIVE_FORBIDDEN.search(body)
     if forbidden is not None:
-        raise UpgradeRehearsalError(f"refused a live statement carrying {forbidden.group(1).upper()}")
+        raise UpgradeRehearsalError(
+            f"refused a live statement carrying {forbidden.group(1).upper()}"
+        )
     return connection.execute(statement, parameters).fetchall()
 
 
 def probe_live(target_source: Path) -> LiveProperties:
     """Derive the property list the rehearsal must reproduce."""
+
+    from tools.development_runtime._rehearsal_bridge import kernel_call
+
 
     with live_connection() as (connection, endpoint, recovery):
         version = str(live_read(connection, "SELECT version()")[0][0]).split(" (")[0]
@@ -196,9 +199,7 @@ def probe_live(target_source: Path) -> LiveProperties:
     )
 
 
-def _live_count(
-    connection: psycopg.Connection[tuple[object, ...]], table: str
-) -> int:
+def _live_count(connection: psycopg.Connection[tuple[object, ...]], table: str) -> int:
     statement = (
         sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)).as_string(connection)
     )
@@ -206,5 +207,3 @@ def _live_count(
     if not rows or rows[0][0] is None:
         raise UpgradeRehearsalError(f"live count for {table} returned no answer")
     return int(rows[0][0])
-
-
