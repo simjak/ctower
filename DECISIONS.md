@@ -2293,3 +2293,40 @@ Rejected alternatives:
   described; the exact current join plus short-lived grant is the authority boundary.
 - Adding typing to the same candidate. A read stream cannot mint or carry command authority, and Q3's
   final-admission, byte-vocabulary, custody, and containment controls remain separate work.
+
+## D57 — Fleet-beat retirement is an immutable scheduling cutover (engineering, 2026-08-11, gh#457)
+
+This extends D52's fixed fleet-beat custody and D53's schedule custody without changing their prompt,
+effect, target, or external-delivery boundaries. A pack can leave an installation only after Tower can
+prove why its registered Routine no longer schedules work; a consumer-local literal is not that proof.
+
+1. A protected operator/Commander command retires exactly one tenant-scoped `ctower.beat.*@<revision>`
+   reference. It appends one immutable retirement fact and canonical `routine.retired` event naming the
+   active revision, then deletes only the mutable trigger in the same transaction. Revision, occurrence,
+   effect, event, and command-result history is never updated or deleted.
+2. Registration, scanning, and retirement serialize on the tenant row. The accepted retirement is therefore
+   the scheduling linearization point: a later scan cannot materialize another occurrence, and a later boot
+   or worker tick may validate the old revision but cannot recreate its trigger. Exact command replay returns
+   the stored result; a new command against the same retired reference receives a typed conflict.
+3. Unknown references and references active only in another tenant share `beat-routine-not-found`; this
+   deliberately discloses no foreign tenant state. A principal other than a persisted active operator or
+   Commander receives `beat-routine-retire-forbidden` before any retirement fact or event exists.
+4. Authored-pack verification remains closed. API and worker startup may omit a known pack only when the
+   retirement fact exists for every current tenant; an unknown retirement reference or any absent pack that
+   still has an unretired tenant fails startup. Creating a later tenant can therefore require restoring the
+   pack long enough to make an explicit tenant-scoped scheduling decision.
+5. `POST /v1/runtime/beat-routines/{routine_ref}/retire` and the spool-protected `beat-dispatch retire`
+   command expose this authority. The active-routine read excludes retired references. Mission Control's
+   R2916-owned consumer may replace its hard-coded `RETIRED_BEATS` filter with that Tower-owned active set
+   only after the Tower deployment and live retirement/reboot proof; this decision authorizes no consumer
+   edit, server-side consumption claim, lane binding, or delivery receipt.
+
+Rejected alternatives:
+
+- Updating an immutable Routine revision or storing an `enabled` flag on it. Either erases the distinction
+  between authored definition history and the mutable trigger that makes future work due.
+- Treating a missing pack as retirement. Filesystem absence is unauthenticated configuration drift and must
+  continue to crash startup unless an authoritative retirement fact accounts for it.
+- Keeping consumer-local retired-beat literals as the long-term authority. They can suppress one delivery
+  path but cannot stop occurrence/effect creation, survive consumer replacement coherently, or explain a
+  missing pack to Tower at boot.
