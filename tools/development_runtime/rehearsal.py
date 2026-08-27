@@ -50,8 +50,10 @@ from tools.development_runtime._rehearsal_vocabulary import (
     EXIT_REHEARSAL_FAIL,
     FIXTURE_ROUTINE_EVENTS,
     FIXTURE_TICKETS,
+    KERNEL_SOURCE_RELATIVE,
     LIVE_DSN_ENVIRON,
     OFFLINE_FIXTURE_ENDPOINT,
+    REHEARSAL_IMPORT_ROOTS,
     SCENARIO_NAMES,
     UpgradeRehearsalError,
 )
@@ -69,6 +71,7 @@ __all__ = [
     "kernel_call",
     "live_read",
     "parse_rehearsal_arguments",
+    "REHEARSAL_IMPORT_ROOTS",
     "resolve_live_dsn",
     "run_upgrade_rehearsal",
 ]
