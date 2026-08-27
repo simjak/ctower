@@ -13,9 +13,10 @@ from ctowerctl._output import ExitCode
 from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, SpoolConfig, SpoolError, _keyring
 from ctowerctl.spool import _replay as replay
 from ctowerctl.spool import interface as spool_interface
-from ctowerctl.spool._crypto import RecordType
+from ctowerctl.spool._crypto import RecordType, open_record
 from ctowerctl.spool._models import QuarantineReceipt
 from ctowerctl.spool._recovery import Session, utc_text
+import ctowerctl.spool._recovery as recovery_module
 from ctowerctl.spool._store import LockedStore
 
 __all__: tuple[str, ...] = ()
