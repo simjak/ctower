@@ -22,6 +22,7 @@ from tools.development_runtime._rehearsal_vocabulary import (
     KERNEL_SOURCE_RELATIVE,
     LIVE_DSN_ENVIRON,
     LIVE_DSN_SENTINEL,
+    REHEARSAL_IMPORT_ROOTS,
     UpgradeRehearsalError,
 )
 
@@ -50,6 +51,25 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _child_environment(source: Path, live_dsn: str | None) -> dict[str, str]:
+    """Bind one child to the ref's kernel first, then the host's own import roots."""
+
+    kernel_source = str((source / KERNEL_SOURCE_RELATIVE).resolve())
+    environment = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(
+            [
+                kernel_source,
+                str(_repo_root()),
+                *[str((_repo_root() / relative).resolve()) for relative in REHEARSAL_IMPORT_ROOTS],
+            ]
+        ),
+    }
+    if live_dsn is not None:
+        environment[LIVE_DSN_ENVIRON] = live_dsn
+    return environment
+
+
 def kernel_call(
     source: Path,
     operation: str,
@@ -61,13 +81,7 @@ def kernel_call(
     The resolved live DSN (a secret) travels in the environment only — never in argv.
     """
 
-    kernel_source = str((source / KERNEL_SOURCE_RELATIVE).resolve())
-    environment = {
-        **os.environ,
-        "PYTHONPATH": os.pathsep.join([kernel_source, str(_repo_root())]),
-    }
-    if live_dsn is not None:
-        environment[LIVE_DSN_ENVIRON] = live_dsn
+    environment = _child_environment(source, live_dsn)
     command = [
         sys.executable,
         "-m",

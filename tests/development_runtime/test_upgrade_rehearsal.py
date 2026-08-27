@@ -10,6 +10,7 @@ on this repository's own HEAD. The mission-control tool stays until AC-2's real-
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -23,6 +24,7 @@ import pytest
 import tools.development_runtime.rehearsal as rehearsal  # noqa: PLR0402
 import tools.process_execution as process_execution  # noqa: PLR0402
 from tools.development_runtime import interface as runtime_interface
+from tools.development_runtime.rehearsal import REHEARSAL_IMPORT_ROOTS
 
 __all__: tuple[str, ...] = ()
 
@@ -89,12 +91,21 @@ class TestEntrypointWiring:
     def test_module_entrypoint_answers_help_for_the_rehearsal_verb(self) -> None:
         """`python -m tools.development_runtime upgrade-rehearsal --help` is the operator door."""
 
+        environment = os.environ.copy()
+        environment["PYTHONPATH"] = os.pathsep.join(
+            (
+                str(_REPO_ROOT),
+                *(str(_REPO_ROOT / relative) for relative in REHEARSAL_IMPORT_ROOTS),
+                environment.get("PYTHONPATH", ""),
+            )
+        )
         finished = subprocess.run(
             [sys.executable, "-m", "tools.development_runtime", "upgrade-rehearsal", "--help"],
             capture_output=True,
             text=True,
             timeout=60,
             cwd=_REPO_ROOT,
+            env=environment,
             check=False,
         )
         assert finished.returncode == 0, finished.stderr

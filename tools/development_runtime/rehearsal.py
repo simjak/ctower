@@ -52,12 +52,14 @@ from tools.development_runtime._rehearsal_vocabulary import (
     FIXTURE_TICKETS,
     LIVE_DSN_ENVIRON,
     OFFLINE_FIXTURE_ENDPOINT,
+    REHEARSAL_IMPORT_ROOTS,
     SCENARIO_NAMES,
     UpgradeRehearsalError,
 )
 
 __all__ = [
     "LIVE_DSN_ENVIRON",
+    "REHEARSAL_IMPORT_ROOTS",
     "Clone",
     "LiveProperties",
     "RehearsalResult",
