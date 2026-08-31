@@ -1,5 +1,5 @@
 # Verification-host dependencies only. This is not a ctower product-runtime selection.
-# Compile with uv 0.11.3 using the command documented in the development guide.
+# Compile with uv 0.11.19 using the command documented in the development guide.
 build==1.6.0
 coverage[toml]==7.15.4
 cryptography==50.0.0
