@@ -22,7 +22,14 @@ CREATE TABLE ticket_display_sequences (
 -- component key's first segment is the configured project key; the prefix
 -- itself remains authored data and is never synthesized here.
 WITH active_project_prefixes AS (
-    SELECT component.component_key, split_part(component.component_key, '.', 1) AS project_key,
+    SELECT component.component_key,
+        COALESCE(
+            revision.scope_project,
+            CASE
+                WHEN position('.' in component.component_key) = 0 THEN component.component_key
+                ELSE split_part(component.component_key, '.', 1)
+            END
+        ) AS project_key,
         revision.project_prefix
     FROM company_bundle_active AS active
     JOIN company_bundle_members AS member

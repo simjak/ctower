@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:50434fc9e7129928dfd1ca55dca3d2429d8697b850f5f10004c17e9b7c10f3f5"
+          "sha256": "sha256:676fd8f1acc8997d16d8dae08fb5f4be3685313091d7ebb9e838c5baee609e71"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:adb61bce06b7505c7ff5fddb948d32ae3ab9d079b9dcb46cdf0ea069526ddf55"
+          "sha256": "sha256:62ef4177719c8a2b4e0b2ada3325962fb8d56fb61bf3de0385b22f17a38e101e"
         }
       ],
       "tool_version": "2"
@@ -122,7 +122,7 @@
         },
         {
           "path": "contracts/components/project.schema.json",
-          "sha256": "sha256:e82f7219521e637275fb2b9ae1bfae303d1aab9ee3aab811dca70f4127f0029b"
+          "sha256": "sha256:b39d903fa72f0ab3953d48a2872cc776709923511f5228328c22bc52f381b92e"
         },
         {
           "path": "contracts/components/seat-catalog.schema.json",
@@ -640,7 +640,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:e2d617d191b6031609da9fde5c5b1802e1ce57e4407a66afea718bbbb80082f7"
+          "sha256": "sha256:e5f2daff0d43db1dec572b6e31214570b006fa3e83b87b0588e5e7bc99b25ca3"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",
