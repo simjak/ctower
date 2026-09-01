@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.33.0](https://github.com/simjak/ctower/compare/v0.32.0...v0.33.0) (2026-09-01)
+
+
+### Features
+
+* **qa:** the walk asserts a job, not a page (T-011) ([#582](https://github.com/simjak/ctower/issues/582)) ([da8ce38](https://github.com/simjak/ctower/commit/da8ce38d2e0ad7d037c1046f862cdf7bcb76f75d))
+* **release:** own the upgrade rehearsal gate (T-CTW-040) ([#598](https://github.com/simjak/ctower/issues/598)) ([be12c0d](https://github.com/simjak/ctower/commit/be12c0d069896569daa7fb23a4c5966fe118b262))
+* **web:** a ticket is raised in a sentence, and its page is the record's own (T-027) ([#586](https://github.com/simjak/ctower/issues/586)) ([8ad51b1](https://github.com/simjak/ctower/commit/8ad51b119d84a651c89559e8e2f8fd7891435032))
+* **web:** agents get a home, and making one is two questions (T-025 AC-3, AC-4) ([#584](https://github.com/simjak/ctower/issues/584)) ([c07c234](https://github.com/simjak/ctower/commit/c07c23427a11d7ddae743391ecc08b29cfbfbe21))
+* **web:** an agent's instructions are its own, and they leave the harness screen (T-025 AC-5) ([#585](https://github.com/simjak/ctower/issues/585)) ([50c0b46](https://github.com/simjak/ctower/commit/50c0b46a217db541e8bce9c87ca3b8ad22efffa5))
+* **web:** one timeline — the ticket page adopts the Board's audit read (T-009) ([#564](https://github.com/simjak/ctower/issues/564)) ([bb02730](https://github.com/simjak/ctower/commit/bb0273007c7f4f382cd140e6061b83f65de0ce12))
+* **web:** the agent home opens on a Dashboard that counts only what is recorded (T-025) ([#579](https://github.com/simjak/ctower/issues/579)) ([c590953](https://github.com/simjak/ctower/commit/c5909531a40f9f55691ed0166e634e28e7215304))
+* **web:** the Board is the tickets read as columns, project-scoped and read-only (T-028) ([#595](https://github.com/simjak/ctower/issues/595)) ([9fb238d](https://github.com/simjak/ctower/commit/9fb238d8815759e4ea0b91f1bbddef8b15d3e066))
+* **web:** the company page says what it is, not what addresses it (T-023 AC-2..AC-5) ([#578](https://github.com/simjak/ctower/issues/578)) ([58f8b7e](https://github.com/simjak/ctower/commit/58f8b7eadf17aab246ec759a9e9bd50056695ffd))
+* **web:** the Crews page is a roster, not a dead cockpit (T-029) ([#593](https://github.com/simjak/ctower/issues/593)) ([2ee5dca](https://github.com/simjak/ctower/commit/2ee5dca04d9f1af7049dfc346d6d294e414d8601))
+* **web:** the harness is a card and an agent is a person (T-025) ([#580](https://github.com/simjak/ctower/issues/580)) ([3139d4f](https://github.com/simjak/ctower/commit/3139d4ff7a6702ff3a915c39f895bed085700639))
+* **web:** the harness setup surface (T-016) ([#555](https://github.com/simjak/ctower/issues/555)) ([64b1c14](https://github.com/simjak/ctower/commit/64b1c141e007a814ca8a24e3c4b58b65ca752676))
+* **web:** the Projects page — scopes, boards, and the documents behind them ([#557](https://github.com/simjak/ctower/issues/557)) ([c0c7721](https://github.com/simjak/ctower/commit/c0c77218a7bdbe041caefc2394ac9c95cf638ff4))
+* **web:** the rail is two workspaces, and a project is a scope (T-024) ([#581](https://github.com/simjak/ctower/issues/581)) ([9583bfd](https://github.com/simjak/ctower/commit/9583bfd3d0a02de74f72dd7f02c87bf5608cfc7f))
+* **web:** the slate — board, tickets, audit, workflows, requests, inbox, crews, admin ([#551](https://github.com/simjak/ctower/issues/551)) ([b32b6b8](https://github.com/simjak/ctower/commit/b32b6b8ee0507a3262e4b3c34cabdbf30208eedf)), closes [#552](https://github.com/simjak/ctower/issues/552) [#514](https://github.com/simjak/ctower/issues/514)
+* **web:** the staff are in the rail, by name (T-025 AC-1, AC-2) ([#583](https://github.com/simjak/ctower/issues/583)) ([da8cdac](https://github.com/simjak/ctower/commit/da8cdac1282dff55831c6df1ef3aa7017d8b43f6))
+
+
+### Bug Fixes
+
+* **api:** a tied seat lists its projects in a declared order (T-021) ([#569](https://github.com/simjak/ctower/issues/569)) ([8e80894](https://github.com/simjak/ctower/commit/8e80894a7f2984414e271874c31b96c1cee9f1b2))
+* **checks:** the gate selects every tools path, and a declared suite lists all its files (T-014) ([#566](https://github.com/simjak/ctower/issues/566)) ([20c3d36](https://github.com/simjak/ctower/commit/20c3d36de4e0bc6096c0b07aed630c5cf91b6ffd))
+* **ci:** always-runs compose teardown for the i1 postgres fixture ([#588](https://github.com/simjak/ctower/issues/588)) ([42c021a](https://github.com/simjak/ctower/commit/42c021a01fd6d4bf7909a5492bc26616a0b1e63d))
+* **ctowerctl:** make spool recovery proportional to new work ([#592](https://github.com/simjak/ctower/issues/592)) ([7d9c66e](https://github.com/simjak/ctower/commit/7d9c66e5ad237c3dfb895cd75212b8a216ba61ee))
+* **gate:** every Python path is selected by a gate — lint lists + suite closure (T-014) ([#568](https://github.com/simjak/ctower/issues/568)) ([42de249](https://github.com/simjak/ctower/commit/42de2494711dff56b8064795cf58b94f8938fa5f))
+* **qa:** the walk reads the map the product actually has (T-011) ([#587](https://github.com/simjak/ctower/issues/587)) ([89abd38](https://github.com/simjak/ctower/commit/89abd38f5f621c8a4c7f605f99a728c13dc239f4))
+* **tests:** routine-items no longer depends on wall-clock seconds (T-022) ([#560](https://github.com/simjak/ctower/issues/560)) ([eb85b92](https://github.com/simjak/ctower/commit/eb85b922984e80506cbbd5e91b16e76c67371a85))
+* **tests:** the migration fixture tears its compose project down (T-CTW-036) ([#596](https://github.com/simjak/ctower/issues/596)) ([bda8332](https://github.com/simjak/ctower/commit/bda8332aaa216e6597838c426c89bcacc2daadfc))
+* **web:** lists render the record's order (T-021) ([#561](https://github.com/simjak/ctower/issues/561)) ([8ac5064](https://github.com/simjak/ctower/commit/8ac50648943d41ed5e5a86077d7e1e66324f3a9a))
+* **web:** the cockpit's panes say so when the window cannot hold them (T-010) ([#577](https://github.com/simjak/ctower/issues/577)) ([b935125](https://github.com/simjak/ctower/commit/b935125a4d66729620d0f3f81a206062bf323e43))
+* **web:** the company read waits for admission ([#567](https://github.com/simjak/ctower/issues/567)) ([c943276](https://github.com/simjak/ctower/commit/c94327614080a5fc3ee7a9c653ce41ddbedc38a8))
+* **web:** the repository field answers "why" instead of demanding (T-026 defect 5) ([#590](https://github.com/simjak/ctower/issues/590)) ([9cbe506](https://github.com/simjak/ctower/commit/9cbe506c3d8a5ac7115de16a6988cbbe199ec961))
+* **web:** two one-line DESIGN.md repairs on the harness screen (T-016) ([#562](https://github.com/simjak/ctower/issues/562)) ([5e34138](https://github.com/simjak/ctower/commit/5e341387e20aeadaeea62970d7a8aacc7985742d))
+
 ## [0.32.0](https://github.com/simjak/ctower/compare/v0.31.0...v0.32.0) (2026-08-22)
 
 
