@@ -100,8 +100,8 @@ class VerificationSupplyChainTests(unittest.TestCase):
 
         self.assertTrue(direct)
         self.assertTrue(all(_EXACT_VERSION.fullmatch(line) for line in direct), direct)
-        self.assertIn("uv 0.11.3", self._read("requirements/verify.in"))
-        self.assertIn("uv 0.11.3", compiled)
+        self.assertIn("uv 0.11.19", self._read("requirements/verify.in"))
+        self.assertIn("uv 0.11.19", compiled)
         self.assertIn("--hash=sha256:", compiled)
         self.assertNotIn("git+", compiled)
         self.assertNotIn("-e ", compiled)
