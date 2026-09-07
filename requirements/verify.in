@@ -19,7 +19,7 @@ opentelemetry-sdk==1.44.0
 platformdirs==4.11.3
 pre-commit==4.6.2
 pygments==2.21.0
-psycopg==3.3.4
+psycopg==3.3.5
 psycopg-binary==3.3.4
 psycopg-pool==3.3.1
 pydantic==2.13.4
