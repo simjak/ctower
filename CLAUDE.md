@@ -69,3 +69,25 @@ The short form every crew in THIS repo follows:
    Commanders orchestrate only — never code, QA, credential mints, or release mechanics.
 4. **Per-stage evidence slots block exit**; each stage's mandatory skill produces its evidence.
    Review ≤3 rounds, always. `skills_used` records skill@stage on the ticket.
+
+## Papercuts log
+
+Maintain `/srv/projects/mission-control/papercuts.md`, a global log shared by all my Claude
+sessions of anything that slowed down development. When you lose time to one mid-session,
+append `date · symptom · fix · project`. Check this file first when tooling fails mysteriously.
+
+## Always explain ELI10
+
+Always explain like I am 10 years old, even when I did not ask. Short plain sentences, one
+idea each. Say what the thing is and where it came from before you say what is wrong with it.
+Draw the flow as an ASCII diagram — boxes for the parts, arrows for what moves between them —
+and put it before the prose. A table beats a paragraph. Define a term in the same breath you
+first use it, or do not use it at all.
+
+## Ground the first judgment
+
+Check a claim from angles that can disagree before stating it, not after I push back.
+Definition (code, docs, config) · runtime (logs, metrics, a live read) · counter-case (where
+it already works). Two angles minimum, three for a negative ("cannot", "never", "by design").
+One source read twice is one angle. Ticket comments, session logs and your own summary point
+at a source, they are never the source. My disagreement is not evidence, it is a reason to read.
