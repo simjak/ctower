@@ -32,6 +32,6 @@ ruamel.yaml==0.19.1
 SecretStorage==3.5.0
 setuptools==84.0.0
 types-jsonschema==4.26.0.20260518
-uv==0.12.7
+uv==0.12.18
 uvicorn==0.52.4
 wheel==0.48.0
